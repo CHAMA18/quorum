@@ -1,0 +1,163 @@
+{
+  "generatedAt": "2026-10-17T10:35:02.737Z",
+  "summary": {
+    "runsAudited": 4,
+    "findingsIdenticalAcrossRuns": "no — 2 distinct rule signatures: 3 run(s) with 5 rule types; 1 run(s) with 3 rule types — the dominant signature includes OVER-BUDGET; weaker-outlier runs are pre-safety-floor planner runs kept in the log as evidence.",
+    "draftTextsIdenticalAcrossRuns": "no — 4 distinct draft sets across 4 runs (measured variance)",
+    "tokensPromptTotal": 2376,
+    "tokensCompletionTotal": 920,
+    "llmCallsTotal": 14,
+    "llmCallMs": {
+      "median": 7696,
+      "min": 6296,
+      "max": 9737
+    },
+    "costNote": "Local, in-region endpoint (Ollama): 0 USD marginal cost. Hosted endpoint: multiply run tokens by the published per-token price — the per-run figures above are the auditable input."
+  },
+  "runs": [
+    {
+      "runId": "run_00e49b20",
+      "tenderId": "KE-MOH-2026-117",
+      "status": "AWAITING_GATE",
+      "wallMs": 23870,
+      "plan": {
+        "source": "llm",
+        "parseMarkdownValues": true,
+        "maxDrafts": 2,
+        "model": "llama3.2:3b",
+        "floorNote": false
+      },
+      "findingsSignature": [
+        "R-DOC-MISSING",
+        "R-OVER-BUDGET",
+        "R-PRICE-OUTLIER",
+        "R-SPEC-DEVIATION",
+        "R-VALUE-OUTLIER"
+      ],
+      "findingCount": 10,
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 2,
+        "promptTokens": 486,
+        "completionTokens": 180
+      },
+      "draftTextHashes": [
+        "cf8286cc",
+        "f5611c48"
+      ],
+      "llmToolCalls": 3,
+      "llmToolMs": {
+        "min": 7530,
+        "max": 8406
+      }
+    },
+    {
+      "runId": "run_8ff70f78",
+      "tenderId": "KE-MOH-2026-117",
+      "status": "AWAITING_GATE",
+      "wallMs": 28952,
+      "plan": {
+        "source": "llm",
+        "parseMarkdownValues": true,
+        "maxDrafts": 3,
+        "model": "llama3.2:3b",
+        "floorNote": false
+      },
+      "findingsSignature": [
+        "R-DOC-MISSING",
+        "R-OVER-BUDGET",
+        "R-PRICE-OUTLIER",
+        "R-SPEC-DEVIATION",
+        "R-VALUE-OUTLIER"
+      ],
+      "findingCount": 10,
+      "usage": {
+        "drafts": 3,
+        "llmDrafts": 3,
+        "promptTokens": 702,
+        "completionTokens": 273
+      },
+      "draftTextHashes": [
+        "dde4bbae",
+        "3e8deec1",
+        "3e6f87cf"
+      ],
+      "llmToolCalls": 4,
+      "llmToolMs": {
+        "min": 6296,
+        "max": 7957
+      }
+    },
+    {
+      "runId": "run_0d689efa",
+      "tenderId": "KE-MOH-2026-117",
+      "status": "AWAITING_GATE",
+      "wallMs": 30230,
+      "plan": {
+        "source": "llm",
+        "parseMarkdownValues": true,
+        "maxDrafts": 3,
+        "model": "llama3.2:3b",
+        "floorNote": false
+      },
+      "findingsSignature": [
+        "R-DOC-MISSING",
+        "R-OVER-BUDGET",
+        "R-PRICE-OUTLIER",
+        "R-SPEC-DEVIATION",
+        "R-VALUE-OUTLIER"
+      ],
+      "findingCount": 10,
+      "usage": {
+        "drafts": 3,
+        "llmDrafts": 3,
+        "promptTokens": 702,
+        "completionTokens": 286
+      },
+      "draftTextHashes": [
+        "33eb0986",
+        "da73283f",
+        "5c61174d"
+      ],
+      "llmToolCalls": 4,
+      "llmToolMs": {
+        "min": 7290,
+        "max": 7953
+      }
+    },
+    {
+      "runId": "run_edbb4de5",
+      "tenderId": "KE-MOH-2026-117",
+      "status": "AWAITING_GATE",
+      "wallMs": 26467,
+      "plan": {
+        "source": "llm",
+        "parseMarkdownValues": false,
+        "maxDrafts": 2,
+        "model": "llama3.2:3b",
+        "floorNote": false
+      },
+      "findingsSignature": [
+        "R-DOC-MISSING",
+        "R-PRICE-OUTLIER",
+        "R-SPEC-DEVIATION"
+      ],
+      "findingCount": 8,
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 2,
+        "promptTokens": 486,
+        "completionTokens": 181
+      },
+      "draftTextHashes": [
+        "33eb0986",
+        "c420e073"
+      ],
+      "llmToolCalls": 3,
+      "llmToolMs": {
+        "min": 7476,
+        "max": 9737
+      }
+    }
+  ]
+}

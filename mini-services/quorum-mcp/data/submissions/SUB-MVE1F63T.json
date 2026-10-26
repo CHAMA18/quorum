@@ -1,0 +1,37 @@
+{
+  "gate": {
+    "id": "gate_qm0azl",
+    "runId": "run_9e60a09e",
+    "tenderId": "KE-PHC-2026-311",
+    "tool": "file_gate_submission",
+    "inputs": {
+      "bidder": "NYOTA ENERGY",
+      "value": "KES 12,460,000",
+      "attachments": 11,
+      "findings": [
+        "F-01",
+        "F-02",
+        "F-03",
+        "F-04",
+        "F-05",
+        "F-06",
+        "F-07",
+        "F-08"
+      ],
+      "drafts": [
+        "draft_anjy1o",
+        "draft_zotrh3"
+      ]
+    },
+    "status": "APPROVED",
+    "createdAt": "2026-10-18T16:21:57.724Z",
+    "approver": "Dr. Nkhensani Bilmon",
+    "note": "Quorum present (5/9). Findings reviewed; over-budget and value-outlier bids flagged for clarification. Award proceeds to NYOTA ENERGY per committee minute 01/2026.",
+    "decidedAt": "2026-10-18T16:26:16.352Z"
+  },
+  "receipt": {
+    "submissionId": "SUB-MVE1F63T",
+    "hash": "eafbe77a7b24153dc1ac342ceabd0175",
+    "portal": "egp-portal (simulated)"
+  }
+}

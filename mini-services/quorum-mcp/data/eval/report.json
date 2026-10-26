@@ -1,0 +1,437 @@
+{
+  "generatedAt": "2026-10-23T16:37:32.934Z",
+  "labeller": "one human reviewer, one pass over the source documents, written before the engine was run on them. Not independently double-labelled.",
+  "covered_means": "a rule in the engine is designed to raise this finding type. covered:false items measure what the rule set does not claim to catch. Coverage flags track the CURRENT rule set: when a rule lands (e.g. plan_review deep-value parsing of markdown bid values, 2026-10-16), the flags it covers flip to true — the labels themselves are never edited after their original single pass.",
+  "summary": {
+    "runsPerTender": 3,
+    "tenders": 7,
+    "original": {
+      "goldLabels": 42,
+      "coveredLabels": 39,
+      "recallCovered": 100,
+      "recallAll": 92.9,
+      "precision": 90.7,
+      "findingsTotal": 43,
+      "findingsUnlabelled": 4
+    },
+    "adjudicated": {
+      "goldLabels": 42,
+      "coveredLabels": 39,
+      "recallCovered": 100,
+      "recallAll": 92.9,
+      "precision": 90.7,
+      "findingsTotal": 43,
+      "findingsUnlabelled": 4
+    },
+    "identicalAcrossRuns": "7/7 tenders",
+    "llmCallsPerRun": 0,
+    "variance": {
+      "findingsIdenticalAcrossRuns": "7/7 tenders",
+      "msMedianPerPack": 0.67,
+      "msSpread": [
+        0.48,
+        0.94
+      ],
+      "note": "Identical findings across repeated runs prove stability, not sensitivity — the mutation detection rates below are the sensitivity check. This report does NOT measure LLM run-to-run variance: no drafting endpoint runs in this loop. On a live endpoint the sidecar records per-draft usage in tool-log.jsonl and state.json, and the run register shows per-run draft variation."
+    },
+    "cost": {
+      "llmCallsPerRun": 0,
+      "promptTokensPerRun": 0,
+      "completionTokensPerRun": 0,
+      "costUsdPerRun": 0,
+      "note": "The rule-path eval makes no model calls, so the measured cost of this report is 0 USD. On a live endpoint, cost per run = (prompt_tokens + completion_tokens) × the endpoint's published per-token price; usage per draft is recorded in tool-log.jsonl and on the run's usage block, so the figure is auditable from the append-only log."
+    },
+    "mutation": {
+      "repeatsPerMutation": 3,
+      "executed": 27,
+      "skipped": 8,
+      "overallDetectionRate": 100,
+      "note": "Detection = the engine raises (or, for the removed-ceiling guard, drops) the expected finding. Skipped = the mutation's precondition did not hold for that tender; reported, never counted as a pass."
+    },
+    "heldOut": {
+      "tenders": [
+        "KE-PHC-2026-311",
+        "KE-WRA-2026-058"
+      ],
+      "labelsWrittenBeforeRun": true,
+      "original": {
+        "goldLabels": 13,
+        "coveredLabels": 12,
+        "recallCovered": 100,
+        "recallAll": 92.3,
+        "precision": 92.3,
+        "findingsTotal": 13,
+        "findingsUnlabelled": 1
+      }
+    }
+  },
+  "tenders": [
+    {
+      "tender": "KE-KCS-2026-042",
+      "findings": 9,
+      "gold": 9,
+      "goldHit": 8,
+      "missed": [
+        {
+          "rule": "R-RPB-PENDING",
+          "file": "02-bid-portscan-systems.md",
+          "match": "Radiation Protection Board",
+          "covered": false,
+          "postHoc": false,
+          "note": "the notice makes units without RPB approval ineligible; PortScan approval is still in review. No rule covers this."
+        }
+      ],
+      "unlabelled": [
+        {
+          "rule": "R-DOC-MISSING",
+          "item": "PORTSCAN SYSTEMS — original equipment manufacturers statement",
+          "citation": "01-tender-notice.md, eligibility checklist",
+          "evidence": "Tender notice lists \"original equipment manufacturers statement\" as REQUIRED; the bid does not reference it."
+        }
+      ],
+      "rejectedUncited": 0,
+      "droppedBySelfCheck": 0,
+      "ruleCapHit": false,
+      "identicalAcrossRuns": true,
+      "medianMs": 0.94,
+      "msRange": [
+        0.65,
+        7.46
+      ],
+      "mutations": [
+        {
+          "name": "bid-value-x10",
+          "detectionRate": 100,
+          "skipped": false
+        },
+        {
+          "name": "hide-required-document",
+          "detectionRate": 100,
+          "skipped": false
+        },
+        {
+          "name": "corrupt-supplier-id",
+          "detectionRate": null,
+          "skipped": true
+        },
+        {
+          "name": "remove-budget-ceiling",
+          "detectionRate": 100,
+          "skipped": false
+        },
+        {
+          "name": "line-item-price-x10",
+          "detectionRate": 100,
+          "skipped": false
+        }
+      ]
+    },
+    {
+      "tender": "KE-MOH-2026-117",
+      "findings": 10,
+      "gold": 9,
+      "goldHit": 8,
+      "missed": [
+        {
+          "rule": "R-LICENCE-EXPIRED",
+          "file": "03-bid-equatorial-medicines.md",
+          "match": "PPB",
+          "covered": false,
+          "postHoc": false,
+          "note": "wholesaler licence expired; no rule covers licences"
+        }
+      ],
+      "unlabelled": [
+        {
+          "rule": "R-DOC-MISSING",
+          "item": "EQUATORIAL MEDICINES — ppb wholesaler licence",
+          "citation": "01-tender-notice.md, eligibility checklist",
+          "evidence": "Tender notice lists \"ppb wholesaler licence\" as REQUIRED; the bid does not reference it."
+        },
+        {
+          "rule": "R-DOC-MISSING",
+          "item": "EQUATORIAL MEDICINES — certificate of analysis samples",
+          "citation": "01-tender-notice.md, eligibility checklist",
+          "evidence": "Tender notice lists \"certificate of analysis samples\" as REQUIRED; the bid does not reference it."
+        }
+      ],
+      "rejectedUncited": 0,
+      "droppedBySelfCheck": 0,
+      "ruleCapHit": false,
+      "identicalAcrossRuns": true,
+      "medianMs": 0.92,
+      "msRange": [
+        0.73,
+        3.57
+      ],
+      "mutations": [
+        {
+          "name": "bid-value-x10",
+          "detectionRate": 100,
+          "skipped": false
+        },
+        {
+          "name": "hide-required-document",
+          "detectionRate": 100,
+          "skipped": false
+        },
+        {
+          "name": "corrupt-supplier-id",
+          "detectionRate": null,
+          "skipped": true
+        },
+        {
+          "name": "remove-budget-ceiling",
+          "detectionRate": 100,
+          "skipped": false
+        },
+        {
+          "name": "line-item-price-x10",
+          "detectionRate": 100,
+          "skipped": false
+        }
+      ]
+    },
+    {
+      "tender": "KE-MSA-2026-090",
+      "findings": 2,
+      "gold": 2,
+      "goldHit": 2,
+      "missed": [],
+      "unlabelled": [],
+      "rejectedUncited": 0,
+      "droppedBySelfCheck": 1,
+      "ruleCapHit": false,
+      "identicalAcrossRuns": true,
+      "medianMs": 0.64,
+      "msRange": [
+        0.43,
+        0.85
+      ],
+      "mutations": [
+        {
+          "name": "bid-value-x10",
+          "detectionRate": 100,
+          "skipped": false
+        },
+        {
+          "name": "hide-required-document",
+          "detectionRate": 100,
+          "skipped": false
+        },
+        {
+          "name": "corrupt-supplier-id",
+          "detectionRate": 100,
+          "skipped": false
+        },
+        {
+          "name": "remove-budget-ceiling",
+          "detectionRate": null,
+          "skipped": true
+        },
+        {
+          "name": "line-item-price-x10",
+          "detectionRate": 100,
+          "skipped": false
+        }
+      ]
+    },
+    {
+      "tender": "KE-NCB-104293",
+      "findings": 4,
+      "gold": 4,
+      "goldHit": 4,
+      "missed": [],
+      "unlabelled": [],
+      "rejectedUncited": 0,
+      "droppedBySelfCheck": 0,
+      "ruleCapHit": false,
+      "identicalAcrossRuns": true,
+      "medianMs": 0.69,
+      "msRange": [
+        0.48,
+        0.79
+      ],
+      "mutations": [
+        {
+          "name": "bid-value-x10",
+          "detectionRate": 100,
+          "skipped": false
+        },
+        {
+          "name": "hide-required-document",
+          "detectionRate": 100,
+          "skipped": false
+        },
+        {
+          "name": "corrupt-supplier-id",
+          "detectionRate": null,
+          "skipped": true
+        },
+        {
+          "name": "remove-budget-ceiling",
+          "detectionRate": null,
+          "skipped": true
+        },
+        {
+          "name": "line-item-price-x10",
+          "detectionRate": 100,
+          "skipped": false
+        }
+      ]
+    },
+    {
+      "tender": "KE-PHC-2026-311",
+      "findings": 7,
+      "gold": 8,
+      "goldHit": 7,
+      "missed": [
+        {
+          "rule": "R-LICENCE-EXPIRED",
+          "file": "02-bid-nyota-energy.md",
+          "match": "EPRA",
+          "covered": false,
+          "postHoc": false,
+          "note": "installer licence expired; no rule covers licences"
+        }
+      ],
+      "unlabelled": [],
+      "rejectedUncited": 0,
+      "droppedBySelfCheck": 0,
+      "ruleCapHit": false,
+      "identicalAcrossRuns": true,
+      "medianMs": 0.67,
+      "msRange": [
+        0.64,
+        0.92
+      ],
+      "mutations": [
+        {
+          "name": "bid-value-x10",
+          "detectionRate": 100,
+          "skipped": false
+        },
+        {
+          "name": "hide-required-document",
+          "detectionRate": 100,
+          "skipped": false
+        },
+        {
+          "name": "corrupt-supplier-id",
+          "detectionRate": null,
+          "skipped": true
+        },
+        {
+          "name": "remove-budget-ceiling",
+          "detectionRate": 100,
+          "skipped": false
+        },
+        {
+          "name": "line-item-price-x10",
+          "detectionRate": 100,
+          "skipped": false
+        }
+      ]
+    },
+    {
+      "tender": "KE-WRA-2026-058",
+      "findings": 6,
+      "gold": 5,
+      "goldHit": 5,
+      "missed": [],
+      "unlabelled": [
+        {
+          "rule": "R-VALUE-OUTLIER",
+          "item": "SAHEL WATER WORKS",
+          "citation": "04-bid-sahel-water-works.md, bid value line",
+          "evidence": "Bid value KES 12,635,000 vs peer median 5,600,000 (2.3×)."
+        }
+      ],
+      "rejectedUncited": 0,
+      "droppedBySelfCheck": 0,
+      "ruleCapHit": false,
+      "identicalAcrossRuns": true,
+      "medianMs": 0.51,
+      "msRange": [
+        0.48,
+        0.72
+      ],
+      "mutations": [
+        {
+          "name": "bid-value-x10",
+          "detectionRate": 100,
+          "skipped": false
+        },
+        {
+          "name": "hide-required-document",
+          "detectionRate": 100,
+          "skipped": false
+        },
+        {
+          "name": "corrupt-supplier-id",
+          "detectionRate": null,
+          "skipped": true
+        },
+        {
+          "name": "remove-budget-ceiling",
+          "detectionRate": 100,
+          "skipped": false
+        },
+        {
+          "name": "line-item-price-x10",
+          "detectionRate": 100,
+          "skipped": false
+        }
+      ]
+    },
+    {
+      "tender": "RW-UMUCYO-2027-006",
+      "findings": 5,
+      "gold": 5,
+      "goldHit": 5,
+      "missed": [],
+      "unlabelled": [],
+      "rejectedUncited": 0,
+      "droppedBySelfCheck": 0,
+      "ruleCapHit": false,
+      "identicalAcrossRuns": true,
+      "medianMs": 0.48,
+      "msRange": [
+        0.37,
+        0.85
+      ],
+      "mutations": [
+        {
+          "name": "bid-value-x10",
+          "detectionRate": 100,
+          "skipped": false
+        },
+        {
+          "name": "hide-required-document",
+          "detectionRate": 100,
+          "skipped": false
+        },
+        {
+          "name": "corrupt-supplier-id",
+          "detectionRate": null,
+          "skipped": true
+        },
+        {
+          "name": "remove-budget-ceiling",
+          "detectionRate": 100,
+          "skipped": false
+        },
+        {
+          "name": "line-item-price-x10",
+          "detectionRate": 100,
+          "skipped": false
+        }
+      ]
+    }
+  ],
+  "data_quality_notes": [
+    "RW-UMUCYO: bid price tables are labelled RWF in the header but the cell values carry a KES prefix (the publisher's mess, left as-is). The engine parses the currency each cell states and names the disagreement in the finding's evidence — it no longer hard-codes KES.",
+    "KE-NCB sample brief says a bidder is short two REQUIRED documents; the documents show one missing.",
+    "KE-MSA-2026-090 (added 2026-10-16): pack authored to carry the publishers' documented mess — the notice omits the buyer name entirely, and one bidder's KRA PIN fails the national scheme. Labels written from the documents and the rule definitions before the engine ran on the pack."
+  ]
+}

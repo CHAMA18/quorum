@@ -1,0 +1,40 @@
+:81 {
+        @transform_port_query {
+                query XTransformPort=3031
+        }
+
+        @applications_list {
+                path /api/applications
+                method GET HEAD
+                query XTransformPort=3031
+        }
+
+        # The applications list names every bidder and amount: route it through
+        # the Next gateway, which enforces the officer session.
+        handle @applications_list {
+                reverse_proxy localhost:3000 {
+                        header_up Host {host}
+                        header_up X-Forwarded-For {remote_host}
+                        header_up X-Forwarded-Proto {scheme}
+                        header_up X-Real-IP {remote_host}
+                }
+        }
+
+        handle @transform_port_query {
+                reverse_proxy localhost:{query.XTransformPort} {
+                        header_up Host {host}
+                        header_up X-Forwarded-For {remote_host}
+                        header_up X-Forwarded-Proto {scheme}
+                        header_up X-Real-IP {remote_host}
+                }
+        }
+
+        handle {
+                reverse_proxy localhost:3000 {
+                        header_up Host {host}
+                        header_up X-Forwarded-For {remote_host}
+                        header_up X-Forwarded-Proto {scheme}
+                        header_up X-Real-IP {remote_host}
+                }
+        }
+}

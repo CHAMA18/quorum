@@ -1,0 +1,88 @@
+{
+  "meta": {
+    "edition": "Meta Global AI Developer Hackathon 2026",
+    "note": "Frame prompts for the five-chapter Quorum demo film, regenerated with Muse Image (Meta Model API).",
+    "frames_per_chapter": 8,
+    "size": "1280x720",
+    "fps": 24,
+    "seconds_per_frame": 2
+  },
+  "style_suffix": "Cinematic documentary still, 16:9. Dark operations-room palette: near-black charcoal surfaces (#14161b, #16181d), warm paper tones, a single signal-red accent (#e8382a). Government procurement office in Lusaka, Zambia. Volumetric light, shallow depth of field, 35mm, photorealistic. No text, no letters, no numbers, no logos, no watermarks.",
+  "chapters": [
+    {
+      "id": 1,
+      "title": "The Stack — 14,000 pages",
+      "beat": "Every page is someone's money. Nobody can read them all.",
+      "frames": [
+        "A towering stack of paper tender files filling a dim government archive room from floor to ceiling, a single desk lamp cutting through the dark",
+        "Extreme close-up of a massive pile of stapled tender documents, paper edges fanned out like feathers, one red ribbon marker between the pages",
+        "A wide shot of an empty review desk at night, three overflowing in-trays casting long shadows under fluorescent light",
+        "Top-down view of tender pages spread across a large table in a grid, hands at the edges of the frame, one page highlighted in red",
+        "A wall of metal archive shelves receding into darkness, one aisle lit in red emergency light",
+        "A lone evaluation officer silhouetted against a window, dwarfed by paper boxes stacked beside and behind them",
+        "Close-up of a rubber date stamp resting on a thick bundle of health-supply requisition forms, red ink pad open beside it",
+        "Slow pull-back: an entire room floor-to-ceiling with paper stacks, a single chair in the middle, lit by one hanging bulb"
+      ]
+    },
+    {
+      "id": 2,
+      "title": "The Read — 06:00 local",
+      "beat": "The machine has been in the files since before the office wakes.",
+      "frames": [
+        "A dark open-plan office at dawn, one workstation glowing with twin monitors showing abstract document layouts, city skyline barely visible through the window",
+        "Close-up of a server-grade workstation tower with a single red status light breathing in the dark, morning blue light through blinds",
+        "An abstract visualization of document pages flowing as luminous sheets of light through a dark room, one red thread weaving through them",
+        "A terminal screen glow reflected in a dark desk surface at 6 AM, a cup of tea steaming beside the keyboard, office still empty",
+        "Abstract network graph of connected document nodes hovering above a desk in the dark, most nodes pale, a few glowing red",
+        "Sunrise light beginning to hit the facade of a government ministry building, one window on the fourth floor already lit",
+        "Close-up of paper documents being scanned under a scanner lid light sweeping across, motion blur, dark room",
+        "The same archive room from chapter one, now with every stack dematerialized into drifting light particles converging toward one desk"
+      ]
+    },
+    {
+      "id": 3,
+      "title": "The Evidence — page and line",
+      "beat": "Every claim wired to its source. No citation, no finding.",
+      "frames": [
+        "A tender page rendered enormous on a dark wall display, thin red leader lines connecting one highlighted line to smaller evidence cards floating beside it",
+        "Macro photograph of a printed paragraph with a translucent red highlight over one clause, paper texture visible, dark desk below",
+        "A dark evidence board with pinned document photocopies connected by red string, one pinned card glowing softly",
+        "Close-up of a finger tracing a line of text on paper, red underline drawing itself along the path, shallow focus",
+        "Split composition: a scanned tender page on the left, an abstract structured requirements checklist on the right, a red thread bridging them across the fold",
+        "A magnifying glass resting on a contract page, the lens catching red light, surrounding documents falling into shadow",
+        "Abstract isometric scene: floating document cards each tethered by a thin red line to a central ledger book, dark void background",
+        "A findings ledger rendered as a heavy bound book on a desk, red bookmark ribbon, faint grid of light rising from its open pages"
+      ]
+    },
+    {
+      "id": 4,
+      "title": "The Flag — the pattern breaks",
+      "beat": "Where a price breaks the peer pattern, a flag goes up.",
+      "frames": [
+        "A dark wall of small price tiles arranged in a calm grid pattern, one tile cracked open glowing signal red, others dim",
+        "Abstract line chart of many thin parallel price lines flowing smoothly across a dark canvas, one line spiking violently upward in red",
+        "Close-up of a bid table on paper with rows of figures, one row stamped with a red angular flag mark, shallow depth of field",
+        "A procurement officer's desk from above, documents in neat order, a single red flag pin pushed into one bundle, dramatic side light",
+        "Abstract scene of identical grey boxes on conveyor-like rows, one box tipping over glowing red, motion blur at the edges",
+        "A dark room where projected peer-price histograms float in the air, one histogram outlier pulsing red against the blue-grey rest",
+        "Close-up of an abacus-like row of tokens all level, one token raised and glowing red, dark brushed-metal surface",
+        "Wide shot of a quiet review room at night with a large wall display showing an orderly grid, one cell flaring red like an alarm, light spilling onto the floor"
+      ]
+    },
+    {
+      "id": 5,
+      "title": "The Gate — the human signature",
+      "beat": "One button the machine cannot press. It waits.",
+      "frames": [
+        "A single physical red signature button under a glass cover on a dark desk, a waiting status light beside it, everything else in shadow",
+        "A dark review room with a large screen showing a sealed bundle icon wrapped in a red ribbon, an empty chair in front of it",
+        "Close-up of a human hand hovering above a glass-covered red button, not yet pressing it, dramatic rim light, dark room",
+        "An abstract vault door made of light grids half-open, a red seal floating in the gap, darkness beyond",
+        "A committee table with name cards in shadow, one name card lit by a red desk lamp, a pen resting on a signature page",
+        "Macro of a wax-like red seal pressing into a dark document bundle, fibers of the ribbon visible, chiaroscuro lighting",
+        "The waiting gate screen in a dark office, a soft red pulse animating across its surface, reflection on the polished table below",
+        "Dawn again: the door of the review room half-open, morning light entering, the desk lamp now off, the button untouched under glass"
+      ]
+    }
+  ]
+}

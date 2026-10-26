@@ -1,0 +1,46 @@
+{
+  "ocid": "ocds-rw-rura-2027-021",
+  "id": "RW-RURA-2027-021",
+  "tender": {
+    "title": "Supply of 400 smart water meters, Kigali district network",
+    "description": "Supply, installation and calibration of 400 smart water meters with remote reading.",
+    "value": { "amount": 2400000000, "currency": "RWF" },
+    "documents": [
+      { "title": "Tax clearance certificate", "documentType": "eligibilityCriteria" },
+      { "title": "RURA type approval letter", "documentType": "eligibilityCriteria" }
+    ]
+  },
+  "bids": {
+    "details": [
+      {
+        "tenderers": [{ "name": "Kigali Meter Works" }],
+        "value": { "amount": 2150000000, "currency": "RWF" },
+        "documents": [
+          { "title": "Tax clearance certificate" },
+          { "title": "RURA type approval letter" }
+        ]
+      },
+      {
+        "tenderers": [{ "name": "Volta Metering" }],
+        "value": { "amount": 6100000000, "currency": "RWF" },
+        "documents": [
+          { "title": "Tax clearance certificate" }
+        ]
+      },
+      {
+        "tenderers": [{ "name": "Nile Smart Systems" }],
+        "value": { "amount": 2300000000, "currency": "RWF" },
+        "documents": [
+          { "title": "Tax clearance certificate" },
+          { "title": "RURA type approval letter" }
+        ]
+      }
+    ]
+  },
+  "awards": [
+    {
+      "suppliers": [{ "name": "Volta Metering" }],
+      "value": { "amount": 2600000000, "currency": "RWF" }
+    }
+  ]
+}

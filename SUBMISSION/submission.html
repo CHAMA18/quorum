@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quorum — Meta Global AI Developer Hackathon 2026</title>
+<style>
+  :root{
+    --bg:#14161b; --bg2:#16181d; --panel:#1b1e25; --line:#262a33;
+    --red:#e8382a; --red-soft:#f06b5c; --red-faint:rgba(232,56,42,.14);
+    --ink:#f1f2f4; --mut:#d3d5da; --dim:#6a707c; --paper:#f2f0eb;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--ink);font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 28px}
+  section{padding:72px 0;border-bottom:1px solid var(--line)}
+  .kicker{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--red-soft);font-weight:700}
+  h2{font-size:30px;line-height:1.2;margin:10px 0 18px;letter-spacing:-.01em}
+  p.lead{color:var(--mut);font-size:17px;max-width:760px}
+  .grid{display:grid;gap:16px}
+  .g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+  .g3{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px}
+  .card h3{font-size:16px;margin-bottom:8px}
+  .card p{color:var(--dim);font-size:14px}
+  .card p b,.card p strong{color:var(--mut)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.9em;background:#101216;border:1px solid var(--line);border-radius:6px;padding:1px 6px;color:var(--red-soft)}
+  /* hero */
+  header{position:relative;padding:96px 0 72px;border-bottom:1px solid var(--line);background:
+    radial-gradient(1200px 500px at 70% -10%, rgba(232,56,42,.12), transparent 60%),
+    radial-gradient(800px 400px at 10% 110%, rgba(232,56,42,.07), transparent 60%), var(--bg2);overflow:hidden}
+  .badges{display:flex;flex-wrap:wrap;gap:10px;margin:22px 0 26px}
+  .badge{font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;padding:7px 14px;border-radius:999px;border:1px solid var(--line);color:var(--mut);background:#101216}
+  .badge.red{border-color:rgba(232,56,42,.5);color:#ffb4ac;background:var(--red-faint)}
+  h1{font-size:clamp(40px,7vw,68px);line-height:1.02;letter-spacing:-.03em;font-weight:800}
+  h1 .dot{color:var(--red)}
+  .tagline{font-size:clamp(17px,2.4vw,22px);color:var(--mut);margin-top:16px;max-width:720px}
+  .tagline b{color:var(--ink)}
+  .cta{display:inline-block;margin-top:30px;background:var(--red);color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:13px 26px;border-radius:10px}
+  .cta.ghost{background:transparent;border:1px solid var(--line);color:var(--mut);margin-left:10px}
+  .cta:hover{filter:brightness(1.1)}
+  /* pipeline */
+  .flow{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;margin-top:26px}
+  .step{flex:1;min-width:120px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 12px;text-align:center;position:relative}
+  .step .n{font-size:11px;color:var(--dim);letter-spacing:.18em}
+  .step .t{font-weight:700;font-size:15px;margin-top:4px}
+  .step.gate{background:var(--red-faint);border-color:rgba(232,56,42,.5)}
+  .step.gate .t{color:#ffb4ac}
+  .arrow{align-self:center;color:var(--dim);font-size:18px;padding:0 2px}
+  .haltnote{margin-top:14px;font-size:14px;color:var(--dim)}
+  .haltnote b{color:var(--red-soft)}
+  /* models table */
+  table{width:100%;border-collapse:collapse;margin-top:24px;font-size:14.5px}
+  th,td{padding:14px 14px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+  td b{color:var(--ink)} td{color:var(--dim)} td .m{color:var(--red-soft);font-weight:700}
+  /* gate feature */
+  .gatewrap{display:grid;grid-template-columns:1.1fr .9fr;gap:28px;align-items:center}
+  @media(max-width:820px){.gatewrap{grid-template-columns:1fr}}
+  .gatebox{background:linear-gradient(180deg,#181b21,#101216);border:1px solid rgba(232,56,42,.45);border-radius:16px;padding:30px;text-align:center}
+  .gatebox .btn{display:inline-block;background:var(--red);color:#fff;font-weight:800;letter-spacing:.06em;padding:16px 34px;border-radius:12px;position:relative;box-shadow:0 0 0 6px var(--red-faint)}
+  .gatebox .btn::after{content:"";position:absolute;inset:-14px;border:1px solid rgba(232,56,42,.35);border-radius:18px}
+  .gatebox .wait{margin-top:22px;font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--dim)}
+  .gatebox .who{margin-top:8px;color:var(--mut);font-size:14px}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-top:26px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+  .stat .v{font-size:26px;font-weight:800;color:var(--ink)} .stat .v i{color:var(--red);font-style:normal}
+  .stat .k{font-size:12px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-top:4px}
+  /* chapters */
+  .chap{display:flex;gap:16px;padding:16px 0;border-bottom:1px dashed var(--line);align-items:baseline}
+  .chap:last-child{border-bottom:0}
+  .chap .no{font-family:ui-monospace,Menlo,monospace;color:var(--red-soft);font-size:13px;min-width:86px}
+  .chap .ti{font-weight:700;min-width:190px}
+  .chap .be{color:var(--dim);font-size:14px}
+  footer{padding:52px 0 72px;color:var(--dim);font-size:14px}
+  footer a{color:var(--red-soft);text-decoration:none}
+  footer a:hover{text-decoration:underline}
+  .footlinks{display:flex;flex-wrap:wrap;gap:22px;margin-top:14px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="kicker">Meta Global AI Developer Hackathon 2026 · Submission</div>
+    <h1>QUORUM<span class="dot">.</span></h1>
+    <p class="tagline"><b>The agent prepares the file. The committee awards the tender.</b><br>
+      Agentic tender review for public procurement — every page read over MCP, every finding cited,
+      every redline drafted by <b>Llama&nbsp;3.2, Meta open weights, served in-region</b> — and then the machine stops,
+      because one step is irreversible: a named human signs the gate.</p>
+    <div class="badges">
+      <span class="badge red">Theme · Build for Your World</span>
+      <span class="badge">Track · Indie developer</span>
+      <span class="badge">Live · quorum.chungu-chama.com</span>
+    </div>
+    <a class="cta" href="https://quorum.chungu-chama.com">Open the live product</a>
+    <a class="cta ghost" href="#models">How Meta's models are used</a>
+  </div>
+</header>
+
+<section id="problem">
+  <div class="wrap">
+    <div class="kicker">The problem — known firsthand</div>
+    <h2>14,000 pages. One desk. No margin for error.</h2>
+    <p class="lead">Public-health procurement committees cross-check tender packs of hundreds of pages by hand.
+      Backlogs delay hospital supplies; thin award documentation is exactly what lets fraud go unchallenged.
+      This is a desk the builder knows firsthand — the users are named, the backlog is real, and the constraint
+      is hard: <b style="color:var(--mut)">procurement data must never leave the jurisdiction.</b></p>
+    <div class="grid g3" style="margin-top:26px">
+      <div class="card"><h3>Backlog</h3><p>Packs of hundreds of pages per tender; committees reviewing by hand delay awards for months.</p></div>
+      <div class="card"><h3>Fraud surface</h3><p>Price outliers, missing compliance documents, spec deviations — hidden in volume nobody can read.</p></div>
+      <div class="card"><h3>The constraint</h3><p>Sovereignty. Hosted-only drafting is a non-starter — the model must run where the data lives.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="kicker">The system</div>
+    <h2>A review desk with a structural halt</h2>
+    <p class="lead">A LangGraph.js review graph orchestrates the run; a purpose-built MCP server (JSON-RPC 2.0 over HTTP)
+      exposes five review tools and thirteen cycle tools; the official filesystem MCP server provides path-jailed document reads.
+      Every tool call lands in an append-only audit log.</p>
+    <div class="flow">
+      <div class="step"><div class="n">01</div><div class="t">Load</div></div><div class="arrow">→</div>
+      <div class="step"><div class="n">02</div><div class="t">Extract</div></div><div class="arrow">→</div>
+      <div class="step"><div class="n">03</div><div class="t">Flag</div></div><div class="arrow">→</div>
+      <div class="step"><div class="n">04</div><div class="t">Verify</div></div><div class="arrow">→</div>
+      <div class="step"><div class="n">05</div><div class="t">Draft</div></div><div class="arrow">→</div>
+      <div class="step gate"><div class="n">06</div><div class="t">THE GATE</div></div>
+    </div>
+    <p class="haltnote"><b>The halt is structural, not behavioral:</b> the edge from the graph to filing does not exist.
+      No prompt, tool misuse or model turn can file an award — filing code only runs after a roster-verified human signature.</p>
+  </div>
+</section>
+
+<section id="models">
+  <div class="wrap">
+    <div class="kicker">Built with Meta</div>
+    <h2>Meta's models in the loop</h2>
+    <table>
+      <tr><th style="width:24%">Model</th><th style="width:34%">Role</th><th>Status in this repo</th></tr>
+      <tr>
+        <td><span class="m">Llama 3.2</span><br><span style="font-size:12px">Meta open weights</span></td>
+        <td>Drafts every committee redline through the <code>draft_redline</code> MCP tool — served in-region, so tender data never leaves the jurisdiction</td>
+        <td><b style="color:var(--mut)">Primary drafting path.</b> Ollama setup (<code>llama3.2:3b</code>) documented and measured in-repo (<code>SUBMISSION/10-cost-and-audit.md</code>)</td>
+      </tr>
+      <tr>
+        <td><span class="m">Meta Model API</span></td>
+        <td>Hosted OpenAI-compatible endpoint for the same drafting path — one env change, same graph, same gate</td>
+        <td><b style="color:var(--mut)">First-class option</b> in <code>.env.example</code> — set <code>LLM_BASE_URL</code> / <code>LLM_MODEL</code> / <code>LLM_API_KEY</code></td>
+      </tr>
+      <tr>
+        <td><span class="m">Muse Image</span></td>
+        <td>Regenerates the five-chapter demo film (40 frames, Ken Burns assembly)</td>
+        <td><b style="color:var(--mut)">Complete kit shipped:</b> <code>SUBMISSION/muse-film-kit/</code> — prompt pack, generator, ffmpeg assembler</td>
+      </tr>
+      <tr>
+        <td><span class="m">No endpoint?</span></td>
+        <td>Deterministic template drafts redlines; every draft labelled <code>template</code></td>
+        <td><b style="color:var(--mut)">The product never depends on a secret to boot</b> — offline fallback is measured, not claimed</td>
+      </tr>
+    </table>
+  </div>
+</section>
+
+<section id="gate">
+  <div class="wrap">
+    <div class="gatewrap">
+      <div>
+        <div class="kicker">The non-negotiable</div>
+        <h2>One button the machine cannot press</h2>
+        <p class="lead">Filing an award is irreversible, so the agent cannot do it. The gate refuses the operator until a
+          named approver on the committee roster signs. Only then is the bundle sealed with sha-256, filed to the e-GP
+          portal, and a receipt written. The demo's most interesting moment is the refusal.</p>
+        <div class="stats">
+          <div class="stat"><div class="v">49</div><div class="k">tests green</div></div>
+          <div class="stat"><div class="v">5<i>+13</i></div><div class="k">MCP tools</div></div>
+          <div class="stat"><div class="v">sha-256</div><div class="k">sealed filings</div></div>
+          <div class="stat"><div class="v">100%</div><div class="k">findings cited</div></div>
+        </div>
+      </div>
+      <div class="gatebox">
+        <div class="btn">FILE AWARD</div>
+        <div class="wait">⏳ waiting for human signature</div>
+        <div class="who">Gate refuses until a roster-verified officer signs — by construction.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="film">
+  <div class="wrap">
+    <div class="kicker">The demo film — regenerated with Muse Image</div>
+    <h2>Five chapters, one refusal</h2>
+    <div class="card" style="margin-top:22px">
+      <div class="chap"><div class="no">CH 01</div><div class="ti">The Stack — 14,000 pages</div><div class="be">Every page is someone's money. Nobody can read them all.</div></div>
+      <div class="chap"><div class="no">CH 02</div><div class="ti">The Read — 06:00 local</div><div class="be">The machine has been in the files since before the office wakes.</div></div>
+      <div class="chap"><div class="no">CH 03</div><div class="ti">The Evidence — page and line</div><div class="be">Every claim wired to its source. No citation, no finding.</div></div>
+      <div class="chap"><div class="no">CH 04</div><div class="ti">The Flag — the pattern breaks</div><div class="be">Where a price breaks the peer pattern, a flag goes up.</div></div>
+      <div class="chap"><div class="no">CH 05</div><div class="ti">The Gate — the human signature</div><div class="be">One button the machine cannot press. It waits.</div></div>
+    </div>
+    <p class="lead" style="margin-top:18px;font-size:14px;color:var(--dim)">Kit: <code>SUBMISSION/muse-film-kit/</code> — prompts, frame generator and assembler;
+      output drops into <code>public/film/chapter-{1..5}.mp4</code> and the landing-page cinema player picks it up unchanged.</p>
+  </div>
+</section>
+
+<section id="proof" style="border-bottom:0">
+  <div class="wrap">
+    <div class="kicker">Why it holds up</div>
+    <h2>Proof, not promises</h2>
+    <div class="grid g2" style="margin-top:22px">
+      <div class="card"><h3>Deployed, not mocked</h3><p><b>quorum.chungu-chama.com</b> runs on EC2 <b>af-south-1</b> (nginx, systemd, Route 53) — reproducible from the repo.</p></div>
+      <div class="card"><h3>Measured model path</h3><p>The Llama 3.2 drafting path is <b>measured in-repo</b> — cost formula, token counts and the Ollama setup are documented, not claimed.</p></div>
+      <div class="card"><h3>Safety as tests</h3><p><b>49 green tests</b> enforce the rules: no citation, no finding; the halt-at-the-gate guarantee lives in the graph topology.</p></div>
+      <div class="card"><h3>Tamper-evident record</h3><p><b>Append-only audit JSONL</b> captures every tool call — oversight bodies see who decided what, forever.</p></div>
+      <div class="card"><h3>Eval harness</h3><p>Held-out tender packs and a pre-registered baseline protocol (<code>SUBMISSION/09-fit.md</code>) — findings are checked, not vibes.</p></div>
+      <div class="card"><h3>Sovereign by design</h3><p>Open-weights, in-region drafting keeps procurement data in the jurisdiction — the reason Llama is the primary path.</p></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div style="font-weight:800;color:var(--ink);font-size:16px">QUORUM<span style="color:var(--red)">.</span></div>
+    <div>The agent prepares the file. The committee awards the tender.</div>
+    <div class="footlinks">
+      <a href="https://quorum.chungu-chama.com">Live product</a>
+      <a href="https://github.com/CHAMA18">GitHub · CHAMA18</a>
+      <a href="../META_HACKATHON.md">Submission brief (META_HACKATHON.md)</a>
+      <a href="../README.md">Repository README</a>
+    </div>
+    <div style="margin-top:26px;font-size:12px;letter-spacing:.16em;text-transform:uppercase">Meta Global AI Developer Hackathon 2026 · Theme: Build for Your World · Indie developer track</div>
+  </div>
+</footer>
+
+</body>
+</html>

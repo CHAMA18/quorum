@@ -1,0 +1,4268 @@
+{
+  "gates": [
+    {
+      "id": "gate_dwgd58",
+      "runId": "cycle",
+      "tenderId": "E2E-CYCLE-PROBE",
+      "tool": "record_bid_opening",
+      "inputs": {
+        "registerId": "open_cud1ax",
+        "bids": 2,
+        "late": 1
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T15:18:06.582Z",
+      "requiredOffice": "PROCUREMENT_UNIT"
+    },
+    {
+      "id": "gate_octelx",
+      "runId": "run_2cf33775",
+      "tenderId": "RW-RURA-2027-021",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "Kigali Meter Works",
+        "value": "RWF 2,150,000,000",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_ujru7g",
+          "draft_7xmla0"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T15:18:06.510Z"
+    },
+    {
+      "id": "gate_s9q496",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-145738",
+      "tool": "respond_complaint",
+      "inputs": {
+        "complaintId": "cmp_8y4mkq",
+        "response": "The complaint was reviewed; the award stands."
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T14:57:45.511Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T14:57:45.560Z",
+      "executedAt": "2026-10-21T14:57:45.560Z",
+      "receipt": {
+        "complaintId": "cmp_8y4mkq",
+        "status": "ANSWERED"
+      }
+    },
+    {
+      "id": "gate_4vm2qf",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-145738",
+      "tool": "record_contract_completion",
+      "inputs": {
+        "note": "Final acceptance recorded"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T14:57:45.212Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T14:57:45.287Z",
+      "executedAt": "2026-10-21T14:57:45.287Z",
+      "receipt": {
+        "completedAt": "2026-10-21T14:57:45.287Z"
+      }
+    },
+    {
+      "id": "gate_v6l48p",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-145738",
+      "tool": "certify_payment",
+      "inputs": {
+        "paymentId": "pay_y86zdn",
+        "amount": 1000000,
+        "description": "Mobilisation advance"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T14:57:45.089Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T14:57:45.171Z",
+      "executedAt": "2026-10-21T14:57:45.171Z",
+      "receipt": {
+        "paymentId": "pay_y86zdn",
+        "amount": 1000000
+      }
+    },
+    {
+      "id": "gate_3qqey4",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-145738",
+      "tool": "approve_variation",
+      "inputs": {
+        "variationId": "var_f8j99d",
+        "description": "Extra wards equipment",
+        "pctOfContract": 23.1,
+        "valueDelta": 900000
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T14:57:44.977Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T14:57:45.051Z",
+      "executedAt": "2026-10-21T14:57:45.051Z",
+      "receipt": {
+        "variationId": "var_f8j99d",
+        "pct": 23.1
+      }
+    },
+    {
+      "id": "gate_vqr03p",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-145738",
+      "tool": "sign_contract_pack",
+      "inputs": {
+        "supplier": "BID BETA",
+        "value": 3900000,
+        "currency": "ZMW",
+        "packMd": "# CONTRACT PACK — ZM-PROBE-145738\n\n**Supplier:** BID BETA\n**Contract value:** ZMW 3,900,000\n\n## Contents\n\n1. Contract ag"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T14:57:44.892Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T14:57:44.938Z",
+      "executedAt": "2026-10-21T14:57:44.938Z",
+      "receipt": {
+        "supplier": "BID BETA",
+        "value": 3900000
+      }
+    },
+    {
+      "id": "gate_brq2qx",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-145738",
+      "tool": "publish_award_notice",
+      "inputs": {
+        "sha": "2092315eddd295948424067761f384ca",
+        "portal": "egp-portal (simulated)"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T14:57:44.696Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T14:57:44.756Z",
+      "executedAt": "2026-10-21T14:57:44.757Z",
+      "receipt": {
+        "portal": "egp-portal (simulated)",
+        "standstillEndsAt": "2026-11-04T14:57:44.756Z"
+      }
+    },
+    {
+      "id": "gate_de9c47",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-145738",
+      "tool": "sign_award_report",
+      "inputs": {
+        "sha": "019abf79d1816814f0f2428b80ee422c",
+        "recommendation": "BID BETA"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T14:57:44.587Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T14:57:44.644Z",
+      "executedAt": "2026-10-21T14:57:44.644Z",
+      "receipt": {
+        "sha": "019abf79d1816814f0f2428b80ee422c",
+        "recommendation": "BID BETA"
+      }
+    },
+    {
+      "id": "gate_61s4rd",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-145738",
+      "tool": "certify_evaluation",
+      "inputs": {
+        "matrixId": "mtx_oopp34",
+        "bids": 2
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T14:57:44.468Z",
+      "requiredOffice": "EVALUATION_COMMITTEE",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T14:57:44.539Z",
+      "executedAt": "2026-10-21T14:57:44.540Z",
+      "receipt": {
+        "matrixId": "mtx_oopp34",
+        "status": "CERTIFIED",
+        "recommended": "BID BETA"
+      }
+    },
+    {
+      "id": "gate_elx368",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-145738",
+      "tool": "record_bid_opening",
+      "inputs": {
+        "registerId": "open_rqbgwn",
+        "bids": 2,
+        "late": 1
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T14:57:44.171Z",
+      "requiredOffice": "PROCUREMENT_UNIT",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T14:57:44.274Z",
+      "executedAt": "2026-10-21T14:57:44.275Z",
+      "receipt": {
+        "registerId": "open_rqbgwn",
+        "sha": "c4f3c2404af67f4257ed2adbce1a4115",
+        "admitted": 1
+      }
+    },
+    {
+      "id": "gate_v6vquk",
+      "runId": "run_1e1e4e0c",
+      "tenderId": "ZM-PROBE-145738",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "BID ALPHA",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_7z3wn8",
+          "draft_orek9w"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T14:57:42.143Z"
+    },
+    {
+      "id": "gate_jvhl8w",
+      "runId": "run_e263795b",
+      "tenderId": "ZM-PROBE-145738",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "BID ALPHA",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_akjh15",
+          "draft_faa1cq"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T14:57:39.153Z"
+    },
+    {
+      "id": "gate_5gfakp",
+      "runId": "cycle",
+      "tenderId": "E2E-CYCLE-PROBE",
+      "tool": "record_bid_opening",
+      "inputs": {
+        "registerId": "open_u2rj2q",
+        "bids": 2,
+        "late": 1
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T14:57:38.454Z",
+      "requiredOffice": "PROCUREMENT_UNIT"
+    },
+    {
+      "id": "gate_eiemrd",
+      "runId": "run_13659d1d",
+      "tenderId": "RW-RURA-2027-021",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "Kigali Meter Works",
+        "value": "RWF 2,150,000,000",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_gwck8w",
+          "draft_seqq4h"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T14:57:38.171Z"
+    },
+    {
+      "id": "gate_nmeupk",
+      "runId": "cycle",
+      "tenderId": "E2E-CYCLE-PROBE",
+      "tool": "record_bid_opening",
+      "inputs": {
+        "registerId": "open_17t9s8",
+        "bids": 2,
+        "late": 1
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T11:54:13.287Z",
+      "requiredOffice": "PROCUREMENT_UNIT"
+    },
+    {
+      "id": "gate_bzjb7h",
+      "runId": "run_0312b764",
+      "tenderId": "RW-RURA-2027-021",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "Kigali Meter Works",
+        "value": "RWF 2,150,000,000",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_enrgh7",
+          "draft_j4vep2"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T11:54:13.225Z"
+    },
+    {
+      "id": "gate_0dq9u7",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114529",
+      "tool": "respond_complaint",
+      "inputs": {
+        "complaintId": "cmp_74if8k",
+        "response": "The complaint was reviewed; the award stands."
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:45:34.951Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:45:34.965Z",
+      "executedAt": "2026-10-21T11:45:34.965Z",
+      "receipt": {
+        "complaintId": "cmp_74if8k",
+        "status": "ANSWERED"
+      }
+    },
+    {
+      "id": "gate_43hwps",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114529",
+      "tool": "record_contract_completion",
+      "inputs": {
+        "note": "Final acceptance recorded"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:45:34.779Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:45:34.811Z",
+      "executedAt": "2026-10-21T11:45:34.811Z",
+      "receipt": {
+        "completedAt": "2026-10-21T11:45:34.811Z"
+      }
+    },
+    {
+      "id": "gate_px5e89",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114529",
+      "tool": "certify_payment",
+      "inputs": {
+        "paymentId": "pay_a9054e",
+        "amount": 1000000,
+        "description": "Mobilisation advance"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:45:34.718Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:45:34.746Z",
+      "executedAt": "2026-10-21T11:45:34.746Z",
+      "receipt": {
+        "paymentId": "pay_a9054e",
+        "amount": 1000000
+      }
+    },
+    {
+      "id": "gate_aabtr2",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114529",
+      "tool": "approve_variation",
+      "inputs": {
+        "variationId": "var_n7ygyo",
+        "description": "Extra wards equipment",
+        "pctOfContract": 23.1,
+        "valueDelta": 900000
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:45:34.644Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:45:34.684Z",
+      "executedAt": "2026-10-21T11:45:34.684Z",
+      "receipt": {
+        "variationId": "var_n7ygyo",
+        "pct": 23.1
+      }
+    },
+    {
+      "id": "gate_qquibz",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114529",
+      "tool": "sign_contract_pack",
+      "inputs": {
+        "supplier": "BID BETA",
+        "value": 3900000,
+        "currency": "ZMW",
+        "packMd": "# CONTRACT PACK — ZM-PROBE-114529\n\n**Supplier:** BID BETA\n**Contract value:** ZMW 3,900,000\n\n## Contents\n\n1. Contract ag"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:45:34.583Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:45:34.615Z",
+      "executedAt": "2026-10-21T11:45:34.615Z",
+      "receipt": {
+        "supplier": "BID BETA",
+        "value": 3900000
+      }
+    },
+    {
+      "id": "gate_iwfw4v",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114529",
+      "tool": "publish_award_notice",
+      "inputs": {
+        "sha": "d754ffa50f9ac04c1a8f4a2beedd2a3c",
+        "portal": "egp-portal (simulated)"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:45:34.479Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:45:34.506Z",
+      "executedAt": "2026-10-21T11:45:34.507Z",
+      "receipt": {
+        "portal": "egp-portal (simulated)",
+        "standstillEndsAt": "2026-11-04T11:45:34.506Z"
+      }
+    },
+    {
+      "id": "gate_55zqy2",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114529",
+      "tool": "sign_award_report",
+      "inputs": {
+        "sha": "4dd86f63776eeca55cce35df54938ee1",
+        "recommendation": "BID BETA"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:45:34.424Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:45:34.448Z",
+      "executedAt": "2026-10-21T11:45:34.449Z",
+      "receipt": {
+        "sha": "4dd86f63776eeca55cce35df54938ee1",
+        "recommendation": "BID BETA"
+      }
+    },
+    {
+      "id": "gate_ie5722",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114529",
+      "tool": "certify_evaluation",
+      "inputs": {
+        "matrixId": "mtx_v9rfux",
+        "bids": 2
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:45:34.369Z",
+      "requiredOffice": "EVALUATION_COMMITTEE",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:45:34.392Z",
+      "executedAt": "2026-10-21T11:45:34.392Z",
+      "receipt": {
+        "matrixId": "mtx_v9rfux",
+        "status": "CERTIFIED",
+        "recommended": "BID BETA"
+      }
+    },
+    {
+      "id": "gate_11egxi",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114529",
+      "tool": "record_bid_opening",
+      "inputs": {
+        "registerId": "open_0szy0b",
+        "bids": 2,
+        "late": 1
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:45:34.216Z",
+      "requiredOffice": "PROCUREMENT_UNIT",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:45:34.270Z",
+      "executedAt": "2026-10-21T11:45:34.271Z",
+      "receipt": {
+        "registerId": "open_0szy0b",
+        "sha": "0082fa7a72b16d0b4aee17645df01d53",
+        "admitted": 1
+      }
+    },
+    {
+      "id": "gate_8foygo",
+      "runId": "run_d018667a",
+      "tenderId": "ZM-PROBE-114529",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "BID ALPHA",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_da3ecw",
+          "draft_2568j9"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T11:45:32.193Z"
+    },
+    {
+      "id": "gate_wv01r5",
+      "runId": "run_3d94f5f8",
+      "tenderId": "ZM-PROBE-114529",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "BID ALPHA",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_5ffei6",
+          "draft_wxre4v"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T11:45:29.169Z"
+    },
+    {
+      "id": "gate_gt1wkq",
+      "runId": "cycle",
+      "tenderId": "E2E-CYCLE-PROBE",
+      "tool": "record_bid_opening",
+      "inputs": {
+        "registerId": "open_xk0s2q",
+        "bids": 2,
+        "late": 1
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T11:45:28.759Z",
+      "requiredOffice": "PROCUREMENT_UNIT"
+    },
+    {
+      "id": "gate_089ver",
+      "runId": "run_36312794",
+      "tenderId": "RW-RURA-2027-021",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "Kigali Meter Works",
+        "value": "RWF 2,150,000,000",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_r8i5qt",
+          "draft_c1a82z"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T11:45:28.698Z"
+    },
+    {
+      "id": "gate_vbjs4v",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114000",
+      "tool": "respond_complaint",
+      "inputs": {
+        "complaintId": "cmp_5low2i",
+        "response": "The complaint was reviewed; the award stands."
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:40:06.776Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:40:06.797Z",
+      "executedAt": "2026-10-21T11:40:06.797Z",
+      "receipt": {
+        "complaintId": "cmp_5low2i",
+        "status": "ANSWERED"
+      }
+    },
+    {
+      "id": "gate_67x8zj",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114000",
+      "tool": "record_contract_completion",
+      "inputs": {
+        "note": "Final acceptance recorded"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:40:06.628Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:40:06.655Z",
+      "executedAt": "2026-10-21T11:40:06.655Z",
+      "receipt": {
+        "completedAt": "2026-10-21T11:40:06.655Z"
+      }
+    },
+    {
+      "id": "gate_rlh5xq",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114000",
+      "tool": "certify_payment",
+      "inputs": {
+        "paymentId": "pay_4rzyx4",
+        "amount": 1000000,
+        "description": "Mobilisation advance"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:40:06.580Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:40:06.599Z",
+      "executedAt": "2026-10-21T11:40:06.599Z",
+      "receipt": {
+        "paymentId": "pay_4rzyx4",
+        "amount": 1000000
+      }
+    },
+    {
+      "id": "gate_tqw19a",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114000",
+      "tool": "approve_variation",
+      "inputs": {
+        "variationId": "var_xx5n5c",
+        "description": "Extra wards equipment",
+        "pctOfContract": 23.1,
+        "valueDelta": 900000
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:40:06.515Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:40:06.542Z",
+      "executedAt": "2026-10-21T11:40:06.542Z",
+      "receipt": {
+        "variationId": "var_xx5n5c",
+        "pct": 23.1
+      }
+    },
+    {
+      "id": "gate_360fmw",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114000",
+      "tool": "sign_contract_pack",
+      "inputs": {
+        "supplier": "BID BETA",
+        "value": 3900000,
+        "currency": "ZMW",
+        "packMd": "# CONTRACT PACK — ZM-PROBE-114000\n\n**Supplier:** BID BETA\n**Contract value:** ZMW 3,900,000\n\n## Contents\n\n1. Contract ag"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:40:06.467Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:40:06.484Z",
+      "executedAt": "2026-10-21T11:40:06.484Z",
+      "receipt": {
+        "supplier": "BID BETA",
+        "value": 3900000
+      }
+    },
+    {
+      "id": "gate_e6r44x",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114000",
+      "tool": "publish_award_notice",
+      "inputs": {
+        "sha": "60695d617bc740208ab1d274efd99612",
+        "portal": "egp-portal (simulated)"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:40:06.361Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:40:06.388Z",
+      "executedAt": "2026-10-21T11:40:06.389Z",
+      "receipt": {
+        "portal": "egp-portal (simulated)",
+        "standstillEndsAt": "2026-11-04T11:40:06.388Z"
+      }
+    },
+    {
+      "id": "gate_tixeex",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114000",
+      "tool": "sign_award_report",
+      "inputs": {
+        "sha": "df0bf32762b08fa72be3d98dfe287343",
+        "recommendation": "BID BETA"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:40:06.302Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:40:06.329Z",
+      "executedAt": "2026-10-21T11:40:06.329Z",
+      "receipt": {
+        "sha": "df0bf32762b08fa72be3d98dfe287343",
+        "recommendation": "BID BETA"
+      }
+    },
+    {
+      "id": "gate_0lt4xo",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114000",
+      "tool": "certify_evaluation",
+      "inputs": {
+        "matrixId": "mtx_zvwtgi",
+        "bids": 2
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:40:06.237Z",
+      "requiredOffice": "EVALUATION_COMMITTEE",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:40:06.265Z",
+      "executedAt": "2026-10-21T11:40:06.265Z",
+      "receipt": {
+        "matrixId": "mtx_zvwtgi",
+        "status": "CERTIFIED",
+        "recommended": "BID BETA"
+      }
+    },
+    {
+      "id": "gate_csnqa9",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114000",
+      "tool": "record_bid_opening",
+      "inputs": {
+        "registerId": "open_xwl53w",
+        "bids": 2,
+        "late": 1
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:40:06.071Z",
+      "requiredOffice": "PROCUREMENT_UNIT",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:40:06.133Z",
+      "executedAt": "2026-10-21T11:40:06.134Z",
+      "receipt": {
+        "registerId": "open_xwl53w",
+        "sha": "9e6833d8338f55a6082814e79328ae27",
+        "admitted": 1
+      }
+    },
+    {
+      "id": "gate_ep69ji",
+      "runId": "run_7fdc6de7",
+      "tenderId": "ZM-PROBE-114000",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "BID ALPHA",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_xztpex",
+          "draft_si9cfn"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T11:40:04.044Z"
+    },
+    {
+      "id": "gate_osdiva",
+      "runId": "run_238c42c0",
+      "tenderId": "ZM-PROBE-114000",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "BID ALPHA",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_wr0gql",
+          "draft_c500qe"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T11:40:01.042Z"
+    },
+    {
+      "id": "gate_qqardl",
+      "runId": "cycle",
+      "tenderId": "E2E-CYCLE-PROBE",
+      "tool": "record_bid_opening",
+      "inputs": {
+        "registerId": "open_hqftld",
+        "bids": 2,
+        "late": 1
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T11:40:00.650Z",
+      "requiredOffice": "PROCUREMENT_UNIT"
+    },
+    {
+      "id": "gate_jmpj1t",
+      "runId": "run_41e3eccc",
+      "tenderId": "RW-RURA-2027-021",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "Kigali Meter Works",
+        "value": "RWF 2,150,000,000",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_3hwh4t",
+          "draft_4ryaiy"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T11:40:00.578Z"
+    },
+    {
+      "id": "gate_qztu6u",
+      "runId": "cycle",
+      "tenderId": "E2E-CYCLE-PROBE",
+      "tool": "record_bid_opening",
+      "inputs": {
+        "registerId": "open_24e7ot",
+        "bids": 2,
+        "late": 1
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T11:39:44.165Z",
+      "requiredOffice": "PROCUREMENT_UNIT"
+    },
+    {
+      "id": "gate_hko0q7",
+      "runId": "run_afdece93",
+      "tenderId": "RW-RURA-2027-021",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "Kigali Meter Works",
+        "value": "RWF 2,150,000,000",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_cmn39y",
+          "draft_9tumnk"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T11:39:44.094Z"
+    },
+    {
+      "id": "gate_t2qoyv",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-104845",
+      "tool": "respond_complaint",
+      "inputs": {
+        "complaintId": "cmp_1diqhm",
+        "response": "The complaint was reviewed; the award stands."
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T10:48:51.524Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T10:48:51.539Z",
+      "executedAt": "2026-10-21T10:48:51.539Z",
+      "receipt": {
+        "complaintId": "cmp_1diqhm",
+        "status": "ANSWERED"
+      }
+    },
+    {
+      "id": "gate_0gnyv9",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-104845",
+      "tool": "record_contract_completion",
+      "inputs": {
+        "note": "Final acceptance recorded"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T10:48:51.386Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T10:48:51.409Z",
+      "executedAt": "2026-10-21T10:48:51.409Z",
+      "receipt": {
+        "completedAt": "2026-10-21T10:48:51.409Z"
+      }
+    },
+    {
+      "id": "gate_woduv6",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-104845",
+      "tool": "certify_payment",
+      "inputs": {
+        "paymentId": "pay_vp33cp",
+        "amount": 1000000,
+        "description": "Mobilisation advance"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T10:48:51.333Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T10:48:51.359Z",
+      "executedAt": "2026-10-21T10:48:51.359Z",
+      "receipt": {
+        "paymentId": "pay_vp33cp",
+        "amount": 1000000
+      }
+    },
+    {
+      "id": "gate_imk110",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-104845",
+      "tool": "approve_variation",
+      "inputs": {
+        "variationId": "var_bnlikm",
+        "description": "Extra wards equipment",
+        "pctOfContract": 23.1,
+        "valueDelta": 900000
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T10:48:51.280Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T10:48:51.305Z",
+      "executedAt": "2026-10-21T10:48:51.305Z",
+      "receipt": {
+        "variationId": "var_bnlikm",
+        "pct": 23.1
+      }
+    },
+    {
+      "id": "gate_h18vxs",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-104845",
+      "tool": "sign_contract_pack",
+      "inputs": {
+        "supplier": "BID BETA",
+        "value": 3900000,
+        "currency": "ZMW",
+        "packMd": "# CONTRACT PACK — ZM-PROBE-104845\n\n**Supplier:** BID BETA\n**Contract value:** ZMW 3,900,000\n\n## Contents\n\n1. Contract ag"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T10:48:51.232Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T10:48:51.251Z",
+      "executedAt": "2026-10-21T10:48:51.251Z",
+      "receipt": {
+        "supplier": "BID BETA",
+        "value": 3900000
+      }
+    },
+    {
+      "id": "gate_lomnrk",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-104845",
+      "tool": "publish_award_notice",
+      "inputs": {
+        "sha": "6ba319ad7067a6c8117215b1e8cff7f2",
+        "portal": "egp-portal (simulated)"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T10:48:51.141Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T10:48:51.164Z",
+      "executedAt": "2026-10-21T10:48:51.164Z",
+      "receipt": {
+        "portal": "egp-portal (simulated)",
+        "standstillEndsAt": "2026-11-04T10:48:51.164Z"
+      }
+    },
+    {
+      "id": "gate_i1zrsu",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-104845",
+      "tool": "sign_award_report",
+      "inputs": {
+        "sha": "b0eb374617b2b4eaf761b688d44b0a26",
+        "recommendation": "BID BETA"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T10:48:51.083Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T10:48:51.107Z",
+      "executedAt": "2026-10-21T10:48:51.107Z",
+      "receipt": {
+        "sha": "b0eb374617b2b4eaf761b688d44b0a26",
+        "recommendation": "BID BETA"
+      }
+    },
+    {
+      "id": "gate_0ma7y8",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-104845",
+      "tool": "certify_evaluation",
+      "inputs": {
+        "matrixId": "mtx_sx3q5b",
+        "bids": 2
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T10:48:51.029Z",
+      "requiredOffice": "EVALUATION_COMMITTEE",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T10:48:51.052Z",
+      "executedAt": "2026-10-21T10:48:51.052Z",
+      "receipt": {
+        "matrixId": "mtx_sx3q5b",
+        "status": "CERTIFIED",
+        "recommended": "BID BETA"
+      }
+    },
+    {
+      "id": "gate_ar2lp3",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-104845",
+      "tool": "record_bid_opening",
+      "inputs": {
+        "registerId": "open_8231l3",
+        "bids": 2,
+        "late": 1
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T10:48:50.886Z",
+      "requiredOffice": "PROCUREMENT_UNIT",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T10:48:50.937Z",
+      "executedAt": "2026-10-21T10:48:50.938Z",
+      "receipt": {
+        "registerId": "open_8231l3",
+        "sha": "c4450ae809d2f72c7ae099e49a55d4d8",
+        "admitted": 1
+      }
+    },
+    {
+      "id": "gate_skvwa0",
+      "runId": "run_78bab52d",
+      "tenderId": "ZM-PROBE-104845",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "BID ALPHA",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_k3le90",
+          "draft_4c2uuq"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T10:48:48.863Z"
+    },
+    {
+      "id": "gate_pfrtyj",
+      "runId": "run_6d4cae04",
+      "tenderId": "ZM-PROBE-104845",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "BID ALPHA",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_ewb7ym",
+          "draft_38ozrg"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T10:48:45.841Z"
+    },
+    {
+      "id": "gate_raf3b3",
+      "runId": "cycle",
+      "tenderId": "E2E-CYCLE-PROBE",
+      "tool": "record_bid_opening",
+      "inputs": {
+        "registerId": "open_bkr7sg",
+        "bids": 2,
+        "late": 1
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T10:48:45.744Z",
+      "requiredOffice": "PROCUREMENT_UNIT"
+    },
+    {
+      "id": "gate_pde6zd",
+      "runId": "run_85ca4429",
+      "tenderId": "RW-RURA-2027-021",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "Kigali Meter Works",
+        "value": "RWF 2,150,000,000",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_2jued5",
+          "draft_g18ugo"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T10:48:45.686Z"
+    }
+  ],
+  "runs": [
+    {
+      "id": "run_2cf33775",
+      "tenderId": "RW-RURA-2027-021",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-21T15:18:06.478Z",
+      "updatedAt": "2026-10-21T15:18:06.511Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender RW-RURA-2027-021",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 1 documents read · 3 bids · 1 awards · 1 OCDS records",
+        "▸ plan_review — heuristic · value parsing OCDS only · focus VALUE-OUTLIER > AWARD-OVER-BUDGET > DOC-MISSING > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 3 bidders matched on the platform register",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-VALUE-OUTLIER",
+        "▸ draft_redline — template (no model configured) for R-AWARD-OVER-BUDGET",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus VALUE-OUTLIER, AWARD-OVER-BUDGET, DOC-MISSING) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_octelx) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-VALUE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Volta Metering",
+          "evidence": "Bid value RWF 6,100,000,000 vs peer median 2,225,000,000 (2.7×).",
+          "citation": "ocds-release.json, ocid ocds-rw-rura-2027-021, bids.details[1].value"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "Volta Metering — rura type approval letter",
+          "evidence": "Tender notice lists \"rura type approval letter\" as REQUIRED; the bid does not reference it.",
+          "citation": "ocds-release.json, eligibility checklist"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-AWARD-OVER-BUDGET",
+          "severity": "HIGH",
+          "item": "Volta Metering",
+          "evidence": "Award RWF 2,600,000,000 exceeds the published tender value RWF 2,400,000,000.",
+          "citation": "ocds-release.json, ocid ocds-rw-rura-2027-021, awards[0].value"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_ujru7g",
+          "findingId": "F-01",
+          "original": "Bid value RWF 6,100,000,000 vs peer median 2,225,000,000 (2.7×).",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-VALUE-OUTLIER on Volta Metering prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_7xmla0",
+          "findingId": "F-03",
+          "original": "Award RWF 2,600,000,000 exceeds the published tender value RWF 2,400,000,000.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-AWARD-OVER-BUDGET on Volta Metering prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 1,
+          "bids": 3,
+          "ocdsRecords": 1,
+          "markdownValueBids": 0,
+          "ocdsValueBids": 3
+        },
+        "parseMarkdownValues": false,
+        "focusRules": [
+          "VALUE-OUTLIER",
+          "AWARD-OVER-BUDGET",
+          "DOC-MISSING",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 0 markdown bid value(s) — deep-value parsing off (nothing to parse)",
+        "source": "heuristic"
+      },
+      "gateId": "gate_octelx"
+    },
+    {
+      "id": "run_1e1e4e0c",
+      "tenderId": "ZM-PROBE-145738",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-21T14:57:42.120Z",
+      "updatedAt": "2026-10-21T14:57:42.144Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender ZM-PROBE-145738",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — heuristic · value parsing DEEP (markdown + OCDS) · focus OVER-BUDGET > VALUE-OUTLIER > DOC-MISSING > SUPPLIER-ID > BID-SECURITY > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-DOC-MISSING",
+        "▸ draft_redline — template (no model configured) for R-SUPPLIER-ID",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus OVER-BUDGET, VALUE-OUTLIER, DOC-MISSING) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_v6vquk) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "BID BETA — tax clearance certificate",
+          "evidence": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-manual-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-SUPPLIER-ID",
+          "severity": "HIGH",
+          "item": "BID BETA — Kenya KRA PIN",
+          "evidence": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "citation": "92-bid-bid-beta.md, supplier identifier line"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-BID-SECURITY",
+          "severity": "HIGH",
+          "item": "BID BETA — bid security amount",
+          "evidence": "Bid security ZMW 20,000 is 0.5% of the stated bid value — below the 2% floor.",
+          "citation": "92-bid-bid-beta.md, bid security line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_7z3wn8",
+          "findingId": "F-01",
+          "original": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-DOC-MISSING on BID BETA — tax clearance certificate prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_orek9w",
+          "findingId": "F-02",
+          "original": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-SUPPLIER-ID on BID BETA — Kenya KRA PIN prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "OVER-BUDGET",
+          "VALUE-OUTLIER",
+          "DOC-MISSING",
+          "SUPPLIER-ID",
+          "BID-SECURITY",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 2 markdown bid value(s) + published ceiling — deep-value parsing on",
+        "source": "heuristic"
+      },
+      "gateId": "gate_v6vquk"
+    },
+    {
+      "id": "run_e263795b",
+      "tenderId": "ZM-PROBE-145738",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-21T14:57:39.085Z",
+      "updatedAt": "2026-10-21T14:57:39.155Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender ZM-PROBE-145738",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — heuristic · value parsing DEEP (markdown + OCDS) · focus OVER-BUDGET > VALUE-OUTLIER > DOC-MISSING > SUPPLIER-ID > BID-SECURITY > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-DOC-MISSING",
+        "▸ draft_redline — template (no model configured) for R-SUPPLIER-ID",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus OVER-BUDGET, VALUE-OUTLIER, DOC-MISSING) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_jvhl8w) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "BID BETA — tax clearance certificate",
+          "evidence": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-manual-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-SUPPLIER-ID",
+          "severity": "HIGH",
+          "item": "BID BETA — Kenya KRA PIN",
+          "evidence": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "citation": "92-bid-bid-beta.md, supplier identifier line"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-BID-SECURITY",
+          "severity": "HIGH",
+          "item": "BID BETA — bid security amount",
+          "evidence": "Bid security ZMW 20,000 is 0.5% of the stated bid value — below the 2% floor.",
+          "citation": "92-bid-bid-beta.md, bid security line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_akjh15",
+          "findingId": "F-01",
+          "original": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-DOC-MISSING on BID BETA — tax clearance certificate prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_faa1cq",
+          "findingId": "F-02",
+          "original": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-SUPPLIER-ID on BID BETA — Kenya KRA PIN prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "OVER-BUDGET",
+          "VALUE-OUTLIER",
+          "DOC-MISSING",
+          "SUPPLIER-ID",
+          "BID-SECURITY",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 2 markdown bid value(s) + published ceiling — deep-value parsing on",
+        "source": "heuristic"
+      },
+      "gateId": "gate_jvhl8w"
+    },
+    {
+      "id": "run_13659d1d",
+      "tenderId": "RW-RURA-2027-021",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-21T14:57:38.045Z",
+      "updatedAt": "2026-10-21T14:57:38.172Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender RW-RURA-2027-021",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 1 documents read · 3 bids · 1 awards · 1 OCDS records",
+        "▸ plan_review — heuristic · value parsing OCDS only · focus VALUE-OUTLIER > AWARD-OVER-BUDGET > DOC-MISSING > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 3 bidders matched on the platform register",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-VALUE-OUTLIER",
+        "▸ draft_redline — template (no model configured) for R-AWARD-OVER-BUDGET",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus VALUE-OUTLIER, AWARD-OVER-BUDGET, DOC-MISSING) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_eiemrd) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-VALUE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Volta Metering",
+          "evidence": "Bid value RWF 6,100,000,000 vs peer median 2,225,000,000 (2.7×).",
+          "citation": "ocds-release.json, ocid ocds-rw-rura-2027-021, bids.details[1].value"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "Volta Metering — rura type approval letter",
+          "evidence": "Tender notice lists \"rura type approval letter\" as REQUIRED; the bid does not reference it.",
+          "citation": "ocds-release.json, eligibility checklist"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-AWARD-OVER-BUDGET",
+          "severity": "HIGH",
+          "item": "Volta Metering",
+          "evidence": "Award RWF 2,600,000,000 exceeds the published tender value RWF 2,400,000,000.",
+          "citation": "ocds-release.json, ocid ocds-rw-rura-2027-021, awards[0].value"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_gwck8w",
+          "findingId": "F-01",
+          "original": "Bid value RWF 6,100,000,000 vs peer median 2,225,000,000 (2.7×).",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-VALUE-OUTLIER on Volta Metering prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_seqq4h",
+          "findingId": "F-03",
+          "original": "Award RWF 2,600,000,000 exceeds the published tender value RWF 2,400,000,000.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-AWARD-OVER-BUDGET on Volta Metering prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 1,
+          "bids": 3,
+          "ocdsRecords": 1,
+          "markdownValueBids": 0,
+          "ocdsValueBids": 3
+        },
+        "parseMarkdownValues": false,
+        "focusRules": [
+          "VALUE-OUTLIER",
+          "AWARD-OVER-BUDGET",
+          "DOC-MISSING",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 0 markdown bid value(s) — deep-value parsing off (nothing to parse)",
+        "source": "heuristic"
+      },
+      "gateId": "gate_eiemrd"
+    },
+    {
+      "id": "run_0312b764",
+      "tenderId": "RW-RURA-2027-021",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-21T11:54:13.166Z",
+      "updatedAt": "2026-10-21T11:54:13.227Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender RW-RURA-2027-021",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 1 documents read · 3 bids · 1 awards · 1 OCDS records",
+        "▸ plan_review — heuristic · value parsing OCDS only · focus VALUE-OUTLIER > AWARD-OVER-BUDGET > DOC-MISSING > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 3 bidders matched on the platform register",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-VALUE-OUTLIER",
+        "▸ draft_redline — template (no model configured) for R-AWARD-OVER-BUDGET",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus VALUE-OUTLIER, AWARD-OVER-BUDGET, DOC-MISSING) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_bzjb7h) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-VALUE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Volta Metering",
+          "evidence": "Bid value RWF 6,100,000,000 vs peer median 2,225,000,000 (2.7×).",
+          "citation": "ocds-release.json, ocid ocds-rw-rura-2027-021, bids.details[1].value"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "Volta Metering — rura type approval letter",
+          "evidence": "Tender notice lists \"rura type approval letter\" as REQUIRED; the bid does not reference it.",
+          "citation": "ocds-release.json, eligibility checklist"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-AWARD-OVER-BUDGET",
+          "severity": "HIGH",
+          "item": "Volta Metering",
+          "evidence": "Award RWF 2,600,000,000 exceeds the published tender value RWF 2,400,000,000.",
+          "citation": "ocds-release.json, ocid ocds-rw-rura-2027-021, awards[0].value"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_enrgh7",
+          "findingId": "F-01",
+          "original": "Bid value RWF 6,100,000,000 vs peer median 2,225,000,000 (2.7×).",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-VALUE-OUTLIER on Volta Metering prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_j4vep2",
+          "findingId": "F-03",
+          "original": "Award RWF 2,600,000,000 exceeds the published tender value RWF 2,400,000,000.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-AWARD-OVER-BUDGET on Volta Metering prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 1,
+          "bids": 3,
+          "ocdsRecords": 1,
+          "markdownValueBids": 0,
+          "ocdsValueBids": 3
+        },
+        "parseMarkdownValues": false,
+        "focusRules": [
+          "VALUE-OUTLIER",
+          "AWARD-OVER-BUDGET",
+          "DOC-MISSING",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 0 markdown bid value(s) — deep-value parsing off (nothing to parse)",
+        "source": "heuristic"
+      },
+      "gateId": "gate_bzjb7h"
+    },
+    {
+      "id": "run_d018667a",
+      "tenderId": "ZM-PROBE-114529",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-21T11:45:32.167Z",
+      "updatedAt": "2026-10-21T11:45:32.194Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender ZM-PROBE-114529",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — heuristic · value parsing DEEP (markdown + OCDS) · focus OVER-BUDGET > VALUE-OUTLIER > DOC-MISSING > SUPPLIER-ID > BID-SECURITY > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-DOC-MISSING",
+        "▸ draft_redline — template (no model configured) for R-SUPPLIER-ID",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus OVER-BUDGET, VALUE-OUTLIER, DOC-MISSING) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_8foygo) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "BID BETA — tax clearance certificate",
+          "evidence": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-manual-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-SUPPLIER-ID",
+          "severity": "HIGH",
+          "item": "BID BETA — Kenya KRA PIN",
+          "evidence": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "citation": "92-bid-bid-beta.md, supplier identifier line"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-BID-SECURITY",
+          "severity": "HIGH",
+          "item": "BID BETA — bid security amount",
+          "evidence": "Bid security ZMW 20,000 is 0.5% of the stated bid value — below the 2% floor.",
+          "citation": "92-bid-bid-beta.md, bid security line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_da3ecw",
+          "findingId": "F-01",
+          "original": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-DOC-MISSING on BID BETA — tax clearance certificate prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_2568j9",
+          "findingId": "F-02",
+          "original": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-SUPPLIER-ID on BID BETA — Kenya KRA PIN prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "OVER-BUDGET",
+          "VALUE-OUTLIER",
+          "DOC-MISSING",
+          "SUPPLIER-ID",
+          "BID-SECURITY",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 2 markdown bid value(s) + published ceiling — deep-value parsing on",
+        "source": "heuristic"
+      },
+      "gateId": "gate_8foygo"
+    },
+    {
+      "id": "run_3d94f5f8",
+      "tenderId": "ZM-PROBE-114529",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-21T11:45:29.141Z",
+      "updatedAt": "2026-10-21T11:45:29.170Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender ZM-PROBE-114529",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — heuristic · value parsing DEEP (markdown + OCDS) · focus OVER-BUDGET > VALUE-OUTLIER > DOC-MISSING > SUPPLIER-ID > BID-SECURITY > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-DOC-MISSING",
+        "▸ draft_redline — template (no model configured) for R-SUPPLIER-ID",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus OVER-BUDGET, VALUE-OUTLIER, DOC-MISSING) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_wv01r5) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "BID BETA — tax clearance certificate",
+          "evidence": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-manual-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-SUPPLIER-ID",
+          "severity": "HIGH",
+          "item": "BID BETA — Kenya KRA PIN",
+          "evidence": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "citation": "92-bid-bid-beta.md, supplier identifier line"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-BID-SECURITY",
+          "severity": "HIGH",
+          "item": "BID BETA — bid security amount",
+          "evidence": "Bid security ZMW 20,000 is 0.5% of the stated bid value — below the 2% floor.",
+          "citation": "92-bid-bid-beta.md, bid security line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_5ffei6",
+          "findingId": "F-01",
+          "original": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-DOC-MISSING on BID BETA — tax clearance certificate prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_wxre4v",
+          "findingId": "F-02",
+          "original": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-SUPPLIER-ID on BID BETA — Kenya KRA PIN prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "OVER-BUDGET",
+          "VALUE-OUTLIER",
+          "DOC-MISSING",
+          "SUPPLIER-ID",
+          "BID-SECURITY",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 2 markdown bid value(s) + published ceiling — deep-value parsing on",
+        "source": "heuristic"
+      },
+      "gateId": "gate_wv01r5"
+    },
+    {
+      "id": "run_36312794",
+      "tenderId": "RW-RURA-2027-021",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-21T11:45:28.637Z",
+      "updatedAt": "2026-10-21T11:45:28.700Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender RW-RURA-2027-021",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 1 documents read · 3 bids · 1 awards · 1 OCDS records",
+        "▸ plan_review — heuristic · value parsing OCDS only · focus VALUE-OUTLIER > AWARD-OVER-BUDGET > DOC-MISSING > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 3 bidders matched on the platform register",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-VALUE-OUTLIER",
+        "▸ draft_redline — template (no model configured) for R-AWARD-OVER-BUDGET",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus VALUE-OUTLIER, AWARD-OVER-BUDGET, DOC-MISSING) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_089ver) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-VALUE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Volta Metering",
+          "evidence": "Bid value RWF 6,100,000,000 vs peer median 2,225,000,000 (2.7×).",
+          "citation": "ocds-release.json, ocid ocds-rw-rura-2027-021, bids.details[1].value"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "Volta Metering — rura type approval letter",
+          "evidence": "Tender notice lists \"rura type approval letter\" as REQUIRED; the bid does not reference it.",
+          "citation": "ocds-release.json, eligibility checklist"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-AWARD-OVER-BUDGET",
+          "severity": "HIGH",
+          "item": "Volta Metering",
+          "evidence": "Award RWF 2,600,000,000 exceeds the published tender value RWF 2,400,000,000.",
+          "citation": "ocds-release.json, ocid ocds-rw-rura-2027-021, awards[0].value"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_r8i5qt",
+          "findingId": "F-01",
+          "original": "Bid value RWF 6,100,000,000 vs peer median 2,225,000,000 (2.7×).",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-VALUE-OUTLIER on Volta Metering prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_c1a82z",
+          "findingId": "F-03",
+          "original": "Award RWF 2,600,000,000 exceeds the published tender value RWF 2,400,000,000.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-AWARD-OVER-BUDGET on Volta Metering prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 1,
+          "bids": 3,
+          "ocdsRecords": 1,
+          "markdownValueBids": 0,
+          "ocdsValueBids": 3
+        },
+        "parseMarkdownValues": false,
+        "focusRules": [
+          "VALUE-OUTLIER",
+          "AWARD-OVER-BUDGET",
+          "DOC-MISSING",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 0 markdown bid value(s) — deep-value parsing off (nothing to parse)",
+        "source": "heuristic"
+      },
+      "gateId": "gate_089ver"
+    },
+    {
+      "id": "run_7fdc6de7",
+      "tenderId": "ZM-PROBE-114000",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-21T11:40:04.024Z",
+      "updatedAt": "2026-10-21T11:40:04.044Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender ZM-PROBE-114000",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — heuristic · value parsing DEEP (markdown + OCDS) · focus OVER-BUDGET > VALUE-OUTLIER > DOC-MISSING > SUPPLIER-ID > BID-SECURITY > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-DOC-MISSING",
+        "▸ draft_redline — template (no model configured) for R-SUPPLIER-ID",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus OVER-BUDGET, VALUE-OUTLIER, DOC-MISSING) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_ep69ji) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "BID BETA — tax clearance certificate",
+          "evidence": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-manual-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-SUPPLIER-ID",
+          "severity": "HIGH",
+          "item": "BID BETA — Kenya KRA PIN",
+          "evidence": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "citation": "92-bid-bid-beta.md, supplier identifier line"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-BID-SECURITY",
+          "severity": "HIGH",
+          "item": "BID BETA — bid security amount",
+          "evidence": "Bid security ZMW 20,000 is 0.5% of the stated bid value — below the 2% floor.",
+          "citation": "92-bid-bid-beta.md, bid security line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_xztpex",
+          "findingId": "F-01",
+          "original": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-DOC-MISSING on BID BETA — tax clearance certificate prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_si9cfn",
+          "findingId": "F-02",
+          "original": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-SUPPLIER-ID on BID BETA — Kenya KRA PIN prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "OVER-BUDGET",
+          "VALUE-OUTLIER",
+          "DOC-MISSING",
+          "SUPPLIER-ID",
+          "BID-SECURITY",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 2 markdown bid value(s) + published ceiling — deep-value parsing on",
+        "source": "heuristic"
+      },
+      "gateId": "gate_ep69ji"
+    },
+    {
+      "id": "run_238c42c0",
+      "tenderId": "ZM-PROBE-114000",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-21T11:40:01.001Z",
+      "updatedAt": "2026-10-21T11:40:01.043Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender ZM-PROBE-114000",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — heuristic · value parsing DEEP (markdown + OCDS) · focus OVER-BUDGET > VALUE-OUTLIER > DOC-MISSING > SUPPLIER-ID > BID-SECURITY > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-DOC-MISSING",
+        "▸ draft_redline — template (no model configured) for R-SUPPLIER-ID",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus OVER-BUDGET, VALUE-OUTLIER, DOC-MISSING) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_osdiva) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "BID BETA — tax clearance certificate",
+          "evidence": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-manual-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-SUPPLIER-ID",
+          "severity": "HIGH",
+          "item": "BID BETA — Kenya KRA PIN",
+          "evidence": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "citation": "92-bid-bid-beta.md, supplier identifier line"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-BID-SECURITY",
+          "severity": "HIGH",
+          "item": "BID BETA — bid security amount",
+          "evidence": "Bid security ZMW 20,000 is 0.5% of the stated bid value — below the 2% floor.",
+          "citation": "92-bid-bid-beta.md, bid security line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_wr0gql",
+          "findingId": "F-01",
+          "original": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-DOC-MISSING on BID BETA — tax clearance certificate prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_c500qe",
+          "findingId": "F-02",
+          "original": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-SUPPLIER-ID on BID BETA — Kenya KRA PIN prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "OVER-BUDGET",
+          "VALUE-OUTLIER",
+          "DOC-MISSING",
+          "SUPPLIER-ID",
+          "BID-SECURITY",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 2 markdown bid value(s) + published ceiling — deep-value parsing on",
+        "source": "heuristic"
+      },
+      "gateId": "gate_osdiva"
+    },
+    {
+      "id": "run_41e3eccc",
+      "tenderId": "RW-RURA-2027-021",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-21T11:40:00.555Z",
+      "updatedAt": "2026-10-21T11:40:00.579Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender RW-RURA-2027-021",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 1 documents read · 3 bids · 1 awards · 1 OCDS records",
+        "▸ plan_review — heuristic · value parsing OCDS only · focus VALUE-OUTLIER > AWARD-OVER-BUDGET > DOC-MISSING > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 3 bidders matched on the platform register",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-VALUE-OUTLIER",
+        "▸ draft_redline — template (no model configured) for R-AWARD-OVER-BUDGET",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus VALUE-OUTLIER, AWARD-OVER-BUDGET, DOC-MISSING) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_jmpj1t) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-VALUE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Volta Metering",
+          "evidence": "Bid value RWF 6,100,000,000 vs peer median 2,225,000,000 (2.7×).",
+          "citation": "ocds-release.json, ocid ocds-rw-rura-2027-021, bids.details[1].value"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "Volta Metering — rura type approval letter",
+          "evidence": "Tender notice lists \"rura type approval letter\" as REQUIRED; the bid does not reference it.",
+          "citation": "ocds-release.json, eligibility checklist"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-AWARD-OVER-BUDGET",
+          "severity": "HIGH",
+          "item": "Volta Metering",
+          "evidence": "Award RWF 2,600,000,000 exceeds the published tender value RWF 2,400,000,000.",
+          "citation": "ocds-release.json, ocid ocds-rw-rura-2027-021, awards[0].value"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_3hwh4t",
+          "findingId": "F-01",
+          "original": "Bid value RWF 6,100,000,000 vs peer median 2,225,000,000 (2.7×).",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-VALUE-OUTLIER on Volta Metering prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_4ryaiy",
+          "findingId": "F-03",
+          "original": "Award RWF 2,600,000,000 exceeds the published tender value RWF 2,400,000,000.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-AWARD-OVER-BUDGET on Volta Metering prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 1,
+          "bids": 3,
+          "ocdsRecords": 1,
+          "markdownValueBids": 0,
+          "ocdsValueBids": 3
+        },
+        "parseMarkdownValues": false,
+        "focusRules": [
+          "VALUE-OUTLIER",
+          "AWARD-OVER-BUDGET",
+          "DOC-MISSING",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 0 markdown bid value(s) — deep-value parsing off (nothing to parse)",
+        "source": "heuristic"
+      },
+      "gateId": "gate_jmpj1t"
+    },
+    {
+      "id": "run_afdece93",
+      "tenderId": "RW-RURA-2027-021",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-21T11:39:44.027Z",
+      "updatedAt": "2026-10-21T11:39:44.096Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender RW-RURA-2027-021",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 1 documents read · 3 bids · 1 awards · 1 OCDS records",
+        "▸ plan_review — heuristic · value parsing OCDS only · focus VALUE-OUTLIER > AWARD-OVER-BUDGET > DOC-MISSING > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 3 bidders matched on the platform register",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-VALUE-OUTLIER",
+        "▸ draft_redline — template (no model configured) for R-AWARD-OVER-BUDGET",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus VALUE-OUTLIER, AWARD-OVER-BUDGET, DOC-MISSING) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_hko0q7) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-VALUE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Volta Metering",
+          "evidence": "Bid value RWF 6,100,000,000 vs peer median 2,225,000,000 (2.7×).",
+          "citation": "ocds-release.json, ocid ocds-rw-rura-2027-021, bids.details[1].value"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "Volta Metering — rura type approval letter",
+          "evidence": "Tender notice lists \"rura type approval letter\" as REQUIRED; the bid does not reference it.",
+          "citation": "ocds-release.json, eligibility checklist"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-AWARD-OVER-BUDGET",
+          "severity": "HIGH",
+          "item": "Volta Metering",
+          "evidence": "Award RWF 2,600,000,000 exceeds the published tender value RWF 2,400,000,000.",
+          "citation": "ocds-release.json, ocid ocds-rw-rura-2027-021, awards[0].value"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_cmn39y",
+          "findingId": "F-01",
+          "original": "Bid value RWF 6,100,000,000 vs peer median 2,225,000,000 (2.7×).",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-VALUE-OUTLIER on Volta Metering prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_9tumnk",
+          "findingId": "F-03",
+          "original": "Award RWF 2,600,000,000 exceeds the published tender value RWF 2,400,000,000.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-AWARD-OVER-BUDGET on Volta Metering prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 1,
+          "bids": 3,
+          "ocdsRecords": 1,
+          "markdownValueBids": 0,
+          "ocdsValueBids": 3
+        },
+        "parseMarkdownValues": false,
+        "focusRules": [
+          "VALUE-OUTLIER",
+          "AWARD-OVER-BUDGET",
+          "DOC-MISSING",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 0 markdown bid value(s) — deep-value parsing off (nothing to parse)",
+        "source": "heuristic"
+      },
+      "gateId": "gate_hko0q7"
+    },
+    {
+      "id": "run_78bab52d",
+      "tenderId": "ZM-PROBE-104845",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-21T10:48:48.841Z",
+      "updatedAt": "2026-10-21T10:48:48.864Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender ZM-PROBE-104845",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — heuristic · value parsing DEEP (markdown + OCDS) · focus OVER-BUDGET > VALUE-OUTLIER > DOC-MISSING > SUPPLIER-ID > BID-SECURITY > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-DOC-MISSING",
+        "▸ draft_redline — template (no model configured) for R-SUPPLIER-ID",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus OVER-BUDGET, VALUE-OUTLIER, DOC-MISSING) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_skvwa0) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "BID BETA — tax clearance certificate",
+          "evidence": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-manual-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-SUPPLIER-ID",
+          "severity": "HIGH",
+          "item": "BID BETA — Kenya KRA PIN",
+          "evidence": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "citation": "92-bid-bid-beta.md, supplier identifier line"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-BID-SECURITY",
+          "severity": "HIGH",
+          "item": "BID BETA — bid security amount",
+          "evidence": "Bid security ZMW 20,000 is 0.5% of the stated bid value — below the 2% floor.",
+          "citation": "92-bid-bid-beta.md, bid security line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_k3le90",
+          "findingId": "F-01",
+          "original": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-DOC-MISSING on BID BETA — tax clearance certificate prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_4c2uuq",
+          "findingId": "F-02",
+          "original": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-SUPPLIER-ID on BID BETA — Kenya KRA PIN prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "OVER-BUDGET",
+          "VALUE-OUTLIER",
+          "DOC-MISSING",
+          "SUPPLIER-ID",
+          "BID-SECURITY",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 2 markdown bid value(s) + published ceiling — deep-value parsing on",
+        "source": "heuristic"
+      },
+      "gateId": "gate_skvwa0"
+    },
+    {
+      "id": "run_6d4cae04",
+      "tenderId": "ZM-PROBE-104845",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-21T10:48:45.813Z",
+      "updatedAt": "2026-10-21T10:48:45.842Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender ZM-PROBE-104845",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — heuristic · value parsing DEEP (markdown + OCDS) · focus OVER-BUDGET > VALUE-OUTLIER > DOC-MISSING > SUPPLIER-ID > BID-SECURITY > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-DOC-MISSING",
+        "▸ draft_redline — template (no model configured) for R-SUPPLIER-ID",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus OVER-BUDGET, VALUE-OUTLIER, DOC-MISSING) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_pfrtyj) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "BID BETA — tax clearance certificate",
+          "evidence": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-manual-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-SUPPLIER-ID",
+          "severity": "HIGH",
+          "item": "BID BETA — Kenya KRA PIN",
+          "evidence": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "citation": "92-bid-bid-beta.md, supplier identifier line"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-BID-SECURITY",
+          "severity": "HIGH",
+          "item": "BID BETA — bid security amount",
+          "evidence": "Bid security ZMW 20,000 is 0.5% of the stated bid value — below the 2% floor.",
+          "citation": "92-bid-bid-beta.md, bid security line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_ewb7ym",
+          "findingId": "F-01",
+          "original": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-DOC-MISSING on BID BETA — tax clearance certificate prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_38ozrg",
+          "findingId": "F-02",
+          "original": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-SUPPLIER-ID on BID BETA — Kenya KRA PIN prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "OVER-BUDGET",
+          "VALUE-OUTLIER",
+          "DOC-MISSING",
+          "SUPPLIER-ID",
+          "BID-SECURITY",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 2 markdown bid value(s) + published ceiling — deep-value parsing on",
+        "source": "heuristic"
+      },
+      "gateId": "gate_pfrtyj"
+    },
+    {
+      "id": "run_85ca4429",
+      "tenderId": "RW-RURA-2027-021",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-21T10:48:45.633Z",
+      "updatedAt": "2026-10-21T10:48:45.687Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender RW-RURA-2027-021",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 1 documents read · 3 bids · 1 awards · 1 OCDS records",
+        "▸ plan_review — heuristic · value parsing OCDS only · focus VALUE-OUTLIER > AWARD-OVER-BUDGET > DOC-MISSING > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 3 bidders matched on the platform register",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-VALUE-OUTLIER",
+        "▸ draft_redline — template (no model configured) for R-AWARD-OVER-BUDGET",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus VALUE-OUTLIER, AWARD-OVER-BUDGET, DOC-MISSING) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_pde6zd) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-VALUE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Volta Metering",
+          "evidence": "Bid value RWF 6,100,000,000 vs peer median 2,225,000,000 (2.7×).",
+          "citation": "ocds-release.json, ocid ocds-rw-rura-2027-021, bids.details[1].value"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "Volta Metering — rura type approval letter",
+          "evidence": "Tender notice lists \"rura type approval letter\" as REQUIRED; the bid does not reference it.",
+          "citation": "ocds-release.json, eligibility checklist"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-AWARD-OVER-BUDGET",
+          "severity": "HIGH",
+          "item": "Volta Metering",
+          "evidence": "Award RWF 2,600,000,000 exceeds the published tender value RWF 2,400,000,000.",
+          "citation": "ocds-release.json, ocid ocds-rw-rura-2027-021, awards[0].value"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_2jued5",
+          "findingId": "F-01",
+          "original": "Bid value RWF 6,100,000,000 vs peer median 2,225,000,000 (2.7×).",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-VALUE-OUTLIER on Volta Metering prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_g18ugo",
+          "findingId": "F-03",
+          "original": "Award RWF 2,600,000,000 exceeds the published tender value RWF 2,400,000,000.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-AWARD-OVER-BUDGET on Volta Metering prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 1,
+          "bids": 3,
+          "ocdsRecords": 1,
+          "markdownValueBids": 0,
+          "ocdsValueBids": 3
+        },
+        "parseMarkdownValues": false,
+        "focusRules": [
+          "VALUE-OUTLIER",
+          "AWARD-OVER-BUDGET",
+          "DOC-MISSING",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 0 markdown bid value(s) — deep-value parsing off (nothing to parse)",
+        "source": "heuristic"
+      },
+      "gateId": "gate_pde6zd"
+    }
+  ],
+  "sourceRequests": [],
+  "suppliers": [
+    {
+      "id": "sup_c58c8b95",
+      "name": "E2E Probe Org 1792582784",
+      "registrationNo": "REG-E2E-1792582784",
+      "taxPin": "PIN-E2E-001",
+      "email": "org-e2e-1792582784@probe.example",
+      "categories": [
+        "Pumps"
+      ],
+      "metadata": {
+        "source": "supplier-portal registration",
+        "orgId": "org_60cfb79f"
+      },
+      "status": "ACTIVE",
+      "addedBy": "org:E2E Probe Org 1792582784",
+      "createdAt": "2026-10-21T11:39:44.590Z"
+    },
+    {
+      "id": "sup_e25d744f",
+      "name": "E2E Probe Org 1792582800",
+      "registrationNo": "REG-E2E-1792582800",
+      "taxPin": "PIN-E2E-001",
+      "email": "org-e2e-1792582800@probe.example",
+      "categories": [
+        "Pumps"
+      ],
+      "metadata": {
+        "source": "supplier-portal registration",
+        "orgId": "org_74535aa6"
+      },
+      "status": "ACTIVE",
+      "addedBy": "org:E2E Probe Org 1792582800",
+      "createdAt": "2026-10-21T11:40:00.930Z"
+    },
+    {
+      "id": "sup_d89f20df",
+      "name": "Nyota Energy Ltd",
+      "registrationNo": "PE-114146",
+      "taxPin": "ZRA-1000114146",
+      "contactName": "Chanda Mwale",
+      "email": "nyota-e2e-114146@probe.example",
+      "categories": [
+        "Solar energy"
+      ],
+      "metadata": {
+        "source": "supplier-portal registration",
+        "orgId": "org_148a28d4"
+      },
+      "status": "ACTIVE",
+      "addedBy": "org:Nyota Energy Ltd",
+      "createdAt": "2026-10-21T11:42:01.497Z"
+    },
+    {
+      "id": "sup_2b0d1ed1",
+      "name": "E2E Probe Org 1792583128",
+      "registrationNo": "REG-E2E-1792583128",
+      "taxPin": "PIN-E2E-001",
+      "email": "org-e2e-1792583128@probe.example",
+      "categories": [
+        "Pumps"
+      ],
+      "metadata": {
+        "source": "supplier-portal registration",
+        "orgId": "org_6adc9a2a"
+      },
+      "status": "ACTIVE",
+      "addedBy": "org:E2E Probe Org 1792583128",
+      "createdAt": "2026-10-21T11:45:29.052Z"
+    },
+    {
+      "id": "sup_46860770",
+      "name": "E2E Probe Org 1792583653",
+      "registrationNo": "REG-E2E-1792583653",
+      "taxPin": "PIN-E2E-001",
+      "email": "org-e2e-1792583653@probe.example",
+      "categories": [
+        "Pumps"
+      ],
+      "metadata": {
+        "source": "supplier-portal registration",
+        "orgId": "org_38e4d0a9"
+      },
+      "status": "ACTIVE",
+      "addedBy": "org:E2E Probe Org 1792583653",
+      "createdAt": "2026-10-21T11:54:13.596Z"
+    },
+    {
+      "id": "sup_14f16713",
+      "name": "Kafue Valley Solar Ltd",
+      "registrationNo": "1203456789",
+      "taxPin": "ZRA-PIN-448821",
+      "taxClearanceNo": "TC-2026-118842",
+      "regulator": "ERB",
+      "regulatorNo": "ERB/EL/2211",
+      "contactName": "Mwansa Chilufya",
+      "email": "bids@kafuevalley.example",
+      "phone": "+260 97 118 4420",
+      "address": "Plot 14, Kafue Road, Lusaka",
+      "categories": [
+        "Solar energy",
+        "Water & boreholes"
+      ],
+      "metadata": {
+        "source": "supplier-portal registration",
+        "orgId": "org_fbe83c0d"
+      },
+      "status": "ACTIVE",
+      "addedBy": "org:Kafue Valley Solar Ltd",
+      "createdAt": "2026-10-21T14:53:00.488Z"
+    },
+    {
+      "id": "sup_5199d198",
+      "name": "E2E Probe Org 1792594435",
+      "registrationNo": "REG-E2E-1792594435",
+      "taxPin": "PIN-E2E-001",
+      "email": "org-e2e-1792594435@probe.example",
+      "categories": [
+        "Pumps"
+      ],
+      "metadata": {
+        "source": "supplier-portal registration",
+        "orgId": "org_df3ecbf6"
+      },
+      "status": "ACTIVE",
+      "addedBy": "org:E2E Probe Org 1792594435",
+      "createdAt": "2026-10-21T14:53:55.472Z"
+    },
+    {
+      "id": "sup_d0214ba5",
+      "name": "E2E Probe Org 1792594561",
+      "registrationNo": "REG-E2E-1792594561",
+      "taxPin": "PIN-E2E-001",
+      "email": "org-e2e-1792594561@probe.example",
+      "categories": [
+        "Pumps"
+      ],
+      "metadata": {
+        "source": "supplier-portal registration",
+        "orgId": "org_2cc733ce"
+      },
+      "status": "ACTIVE",
+      "addedBy": "org:E2E Probe Org 1792594561",
+      "createdAt": "2026-10-21T14:56:01.804Z"
+    },
+    {
+      "id": "sup_652b7753",
+      "name": "E2E Probe Org 1792594606",
+      "registrationNo": "REG-E2E-1792594606",
+      "taxPin": "PIN-E2E-001",
+      "email": "org-e2e-1792594606@probe.example",
+      "categories": [
+        "Pumps"
+      ],
+      "metadata": {
+        "source": "supplier-portal registration",
+        "orgId": "org_50af758b"
+      },
+      "status": "ACTIVE",
+      "addedBy": "org:E2E Probe Org 1792594606",
+      "createdAt": "2026-10-21T14:56:46.766Z"
+    },
+    {
+      "id": "sup_857fcb04",
+      "name": "E2E Probe Org 1792594658",
+      "registrationNo": "REG-E2E-1792594658",
+      "taxPin": "PIN-E2E-001",
+      "email": "org-e2e-1792594658@probe.example",
+      "categories": [
+        "Pumps"
+      ],
+      "metadata": {
+        "source": "supplier-portal registration",
+        "orgId": "org_eca47683"
+      },
+      "status": "ACTIVE",
+      "addedBy": "org:E2E Probe Org 1792594658",
+      "createdAt": "2026-10-21T14:57:38.952Z"
+    },
+    {
+      "id": "sup_0b23b56f",
+      "name": "E2E Probe Org 1792594666",
+      "registrationNo": "REG-E2E-1792594666",
+      "taxPin": "PIN-E2E-001",
+      "email": "org-e2e-1792594666@probe.example",
+      "categories": [
+        "Pumps"
+      ],
+      "metadata": {
+        "source": "supplier-portal registration",
+        "orgId": "org_154aacc9"
+      },
+      "status": "ACTIVE",
+      "addedBy": "org:E2E Probe Org 1792594666",
+      "createdAt": "2026-10-21T14:57:47.143Z"
+    },
+    {
+      "id": "sup_8c10f4f5",
+      "name": "E2E Probe Org 1792595886",
+      "registrationNo": "REG-E2E-1792595886",
+      "taxPin": "PIN-E2E-001",
+      "email": "org-e2e-1792595886@probe.example",
+      "categories": [
+        "Pumps"
+      ],
+      "metadata": {
+        "source": "supplier-portal registration",
+        "orgId": "org_6bda9dc6"
+      },
+      "status": "ACTIVE",
+      "addedBy": "org:E2E Probe Org 1792595886",
+      "createdAt": "2026-10-21T15:18:06.915Z"
+    },
+    {
+      "id": "sup_c282efa9",
+      "name": "StackOne",
+      "registrationNo": "2324232323",
+      "regulatorNo": "dfdffdfdfdfdf",
+      "contactName": "Clivate Maiba",
+      "email": "chungu424@gmail.com",
+      "categories": [
+        "Medical supplies"
+      ],
+      "metadata": {
+        "source": "supplier-portal registration",
+        "orgId": "org_d86f8e92"
+      },
+      "status": "ACTIVE",
+      "addedBy": "org:StackOne",
+      "createdAt": "2026-10-21T20:44:16.341Z"
+    }
+  ],
+  "applications": [
+    {
+      "id": "app_68cfafd5",
+      "tenderId": "KE-NCB-104293",
+      "orgId": "org_60cfb79f",
+      "orgName": "E2E Probe Org 1792582784",
+      "actor": "org:E2E Probe Org 1792582784",
+      "supplierId": "sup_c58c8b95",
+      "registrationNo": "REG-E2E-1792582784",
+      "amount": 4200000,
+      "currency": "KES",
+      "coverNote": "e2e probe application",
+      "receivedAt": "2026-10-21T11:39:44.590Z",
+      "status": "RECEIVED"
+    },
+    {
+      "id": "app_3e152914",
+      "tenderId": "KE-NCB-104293",
+      "orgId": "org_74535aa6",
+      "orgName": "E2E Probe Org 1792582800",
+      "actor": "org:E2E Probe Org 1792582800",
+      "supplierId": "sup_e25d744f",
+      "registrationNo": "REG-E2E-1792582800",
+      "amount": 4200000,
+      "currency": "KES",
+      "coverNote": "e2e probe application",
+      "receivedAt": "2026-10-21T11:40:00.931Z",
+      "status": "RECEIVED"
+    },
+    {
+      "id": "app_3c4aa59d",
+      "tenderId": "KE-NCB-104293",
+      "orgId": "org_148a28d4",
+      "orgName": "Nyota Energy Ltd",
+      "actor": "org:Nyota Energy Ltd",
+      "supplierId": "sup_d89f20df",
+      "registrationNo": "PE-114146",
+      "amount": 8250000,
+      "currency": "KES",
+      "coverNote": "60-day delivery; solar borehole pumps per notice lots 1-3.",
+      "receivedAt": "2026-10-21T11:42:01.497Z",
+      "status": "RECEIVED"
+    },
+    {
+      "id": "app_efc931af",
+      "tenderId": "KE-MOH-2026-117",
+      "orgId": "org_6adc9a2a",
+      "orgName": "E2E Probe Org 1792583128",
+      "actor": "org:E2E Probe Org 1792583128",
+      "supplierId": "sup_2b0d1ed1",
+      "registrationNo": "REG-E2E-1792583128",
+      "amount": 4200000,
+      "currency": "KES",
+      "coverNote": "e2e probe application",
+      "receivedAt": "2026-10-21T11:45:29.053Z",
+      "status": "RECEIVED"
+    },
+    {
+      "id": "app_4a5c5dc3",
+      "tenderId": "KE-MOH-2026-117",
+      "orgId": "org_38e4d0a9",
+      "orgName": "E2E Probe Org 1792583653",
+      "actor": "org:E2E Probe Org 1792583653",
+      "supplierId": "sup_46860770",
+      "registrationNo": "REG-E2E-1792583653",
+      "amount": 4200000,
+      "currency": "KES",
+      "coverNote": "e2e probe application",
+      "receivedAt": "2026-10-21T11:54:13.597Z",
+      "status": "RECEIVED"
+    },
+    {
+      "id": "app_d40e16a2",
+      "tenderId": "KE-MOH-2026-117",
+      "orgId": "org_fbe83c0d",
+      "orgName": "Kafue Valley Solar Ltd",
+      "actor": "org:Kafue Valley Solar Ltd",
+      "supplierId": "sup_14f16713",
+      "registrationNo": "1203456789",
+      "amount": 48500000,
+      "currency": "KES",
+      "coverNote": "Delivery within 14 weeks of award; installation and calibration teams based in Nairobi. Referenced deployments in 3 county referral hospitals.",
+      "receivedAt": "2026-10-21T14:53:00.488Z",
+      "status": "RECEIVED"
+    },
+    {
+      "id": "app_8b82bebd",
+      "tenderId": "KE-MOH-2026-117",
+      "orgId": "org_df3ecbf6",
+      "orgName": "E2E Probe Org 1792594435",
+      "actor": "org:E2E Probe Org 1792594435",
+      "supplierId": "sup_5199d198",
+      "registrationNo": "REG-E2E-1792594435",
+      "amount": 4200000,
+      "currency": "KES",
+      "coverNote": "e2e probe application",
+      "receivedAt": "2026-10-21T14:53:55.472Z",
+      "status": "RECEIVED"
+    },
+    {
+      "id": "app_71fb3c73",
+      "tenderId": "KE-MOH-2026-117",
+      "orgId": "org_2cc733ce",
+      "orgName": "E2E Probe Org 1792594561",
+      "actor": "org:E2E Probe Org 1792594561",
+      "supplierId": "sup_d0214ba5",
+      "registrationNo": "REG-E2E-1792594561",
+      "amount": 4200000,
+      "currency": "KES",
+      "coverNote": "e2e probe application",
+      "receivedAt": "2026-10-21T14:56:01.804Z",
+      "status": "RECEIVED"
+    },
+    {
+      "id": "app_19dd74a1",
+      "tenderId": "KE-MOH-2026-117",
+      "orgId": "org_50af758b",
+      "orgName": "E2E Probe Org 1792594606",
+      "actor": "org:E2E Probe Org 1792594606",
+      "supplierId": "sup_652b7753",
+      "registrationNo": "REG-E2E-1792594606",
+      "amount": 4200000,
+      "currency": "KES",
+      "coverNote": "e2e probe application",
+      "receivedAt": "2026-10-21T14:56:46.766Z",
+      "status": "RECEIVED"
+    },
+    {
+      "id": "app_760a192a",
+      "tenderId": "KE-MOH-2026-117",
+      "orgId": "org_eca47683",
+      "orgName": "E2E Probe Org 1792594658",
+      "actor": "org:E2E Probe Org 1792594658",
+      "supplierId": "sup_857fcb04",
+      "registrationNo": "REG-E2E-1792594658",
+      "amount": 4200000,
+      "currency": "KES",
+      "coverNote": "e2e probe application",
+      "receivedAt": "2026-10-21T14:57:38.953Z",
+      "status": "RECEIVED"
+    },
+    {
+      "id": "app_50a35b5b",
+      "tenderId": "KE-MOH-2026-117",
+      "orgId": "org_154aacc9",
+      "orgName": "E2E Probe Org 1792594666",
+      "actor": "org:E2E Probe Org 1792594666",
+      "supplierId": "sup_0b23b56f",
+      "registrationNo": "REG-E2E-1792594666",
+      "amount": 4200000,
+      "currency": "KES",
+      "coverNote": "e2e probe application",
+      "receivedAt": "2026-10-21T14:57:47.143Z",
+      "status": "RECEIVED"
+    },
+    {
+      "id": "app_e924fcd8",
+      "tenderId": "KE-MOH-2026-117",
+      "orgId": "org_6bda9dc6",
+      "orgName": "E2E Probe Org 1792595886",
+      "actor": "org:E2E Probe Org 1792595886",
+      "supplierId": "sup_8c10f4f5",
+      "registrationNo": "REG-E2E-1792595886",
+      "amount": 4200000,
+      "currency": "KES",
+      "coverNote": "e2e probe application",
+      "receivedAt": "2026-10-21T15:18:06.915Z",
+      "status": "RECEIVED"
+    },
+    {
+      "id": "app_6df8b5e7",
+      "tenderId": "KE-KCS-2026-042",
+      "orgId": "org_d86f8e92",
+      "orgName": "StackOne",
+      "actor": "org:StackOne",
+      "supplierId": "sup_c282efa9",
+      "registrationNo": "2324232323",
+      "amount": 543434343434,
+      "currency": "KES",
+      "receivedAt": "2026-10-21T20:44:16.344Z",
+      "status": "RECEIVED"
+    }
+  ],
+  "guards": {
+    "priceVariancePct": 25,
+    "checklist": "STANDARD",
+    "registryCrossCheck": true,
+    "updatedAt": null,
+    "updatedBy": null
+  },
+  "cycle": [
+    {
+      "tenderId": "E2E-CYCLE-PROBE",
+      "coi": [
+        {
+          "id": "coi_0cc12237",
+          "tenderId": "E2E-CYCLE-PROBE",
+          "member": "E2E Member",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T15:18:06.558Z"
+        }
+      ],
+      "alb": [],
+      "debriefs": [],
+      "complaints": [],
+      "clarifications": [],
+      "addenda": [],
+      "notices": [],
+      "specs": [],
+      "createdAt": "2026-10-21T10:48:45.711Z",
+      "closingDate": "2026-12-01T23:59:59.000Z",
+      "closingSetBy": "officer",
+      "closingSetAt": "2026-10-21T15:18:06.545Z",
+      "opening": {
+        "id": "open_cud1ax",
+        "tenderId": "E2E-CYCLE-PROBE",
+        "createdAt": "2026-10-21T15:18:06.582Z",
+        "closingDate": "2026-12-01T23:59:59.000Z",
+        "rows": [
+          {
+            "bidder": "Probe A",
+            "receivedAt": "2026-11-30T10:00:00Z",
+            "late": false
+          },
+          {
+            "bidder": "Probe B",
+            "receivedAt": "2026-12-02T10:00:00Z",
+            "late": true
+          }
+        ],
+        "minutesMd": "# BID OPENING REGISTER — E2E-CYCLE-PROBE\n\nOpened: 2026-10-21T15:18:06.582Z\nClosing date on record: 2026-12-01T23:59:59.000Z\n\n| Bidder | Received | Late | Price read aloud |\n| --- | --- | --- | --- |\n| Probe A | 2026-11-30T10:00:00Z | no | — |\n| Probe B | 2026-12-02T10:00:00Z | YES — rejected unopened | — |\n\n1 bid(s) admitted · 1 late\n\n_Bids were opened publicly; each bid and its price were read aloud and recorded above. The register is sealed with a sha-256 digest once certified by the procurement unit._",
+        "gateId": "gate_dwgd58"
+      }
+    },
+    {
+      "tenderId": "ZM-PROBE-104845",
+      "coi": [
+        {
+          "id": "coi_c94b3dea",
+          "tenderId": "ZM-PROBE-104845",
+          "member": "Dr. Chanda Mwale",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T10:48:51.002Z"
+        },
+        {
+          "id": "coi_9ad4216a",
+          "tenderId": "ZM-PROBE-104845",
+          "member": "Eng. Bwalya Phiri",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T10:48:51.010Z"
+        },
+        {
+          "id": "coi_30b58cd4",
+          "tenderId": "ZM-PROBE-104845",
+          "member": "Dr. Nkhensani Bilmon",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T10:48:51.019Z"
+        }
+      ],
+      "alb": [],
+      "debriefs": [
+        {
+          "id": "dbr_ja5pt9",
+          "tenderId": "ZM-PROBE-104845",
+          "bidder": "BID ALPHA",
+          "md": "# DEBRIEF LETTER — BID ALPHA\n\nTender: ZM-PROBE-104845\n\nThank you for your bid. This debrief is qualitative: it explains why your bid did not succeed without disclosing another bidder's confidential pricing.\n\n**Outcome:** your bid was recorded as responsive at the responsiveness stage.\n\nNo findings stood against your bid specifically.\n\n_You may request a full administrative review under the applicable procurement law within the standstill window._",
+          "status": "DRAFT",
+          "createdAt": "2026-10-21T10:48:51.456Z"
+        }
+      ],
+      "complaints": [
+        {
+          "id": "cmp_1diqhm",
+          "tenderId": "ZM-PROBE-104845",
+          "complainant": "Beta Pharma",
+          "subject": "Award challenge",
+          "body": "",
+          "receivedAt": "2026-10-21T10:48:51.482Z",
+          "duringStandstill": false,
+          "status": "ANSWERED",
+          "response": {
+            "md": "The complaint was reviewed; the award stands.",
+            "at": "2026-10-21T10:48:51.539Z",
+            "by": "Verify Officer",
+            "gateId": "gate_t2qoyv"
+          }
+        }
+      ],
+      "clarifications": [],
+      "addenda": [],
+      "notices": [],
+      "specs": [],
+      "createdAt": "2026-10-21T10:48:50.878Z",
+      "opening": {
+        "id": "open_8231l3",
+        "tenderId": "ZM-PROBE-104845",
+        "createdAt": "2026-10-21T10:48:50.886Z",
+        "closingDate": "2026-11-30T14:00:00.000Z",
+        "rows": [
+          {
+            "bidder": "ALPHA MEDICAL",
+            "receivedAt": "2026-11-30T09:00:00Z",
+            "late": false,
+            "priceRead": "ZMW 4,100,000"
+          },
+          {
+            "bidder": "BETA PHARMA",
+            "receivedAt": "2026-11-30T16:30:00Z",
+            "late": true,
+            "priceRead": "ZMW 3,900,000"
+          }
+        ],
+        "minutesMd": "# BID OPENING REGISTER — ZM-PROBE-104845\n\nOpened: 2026-10-21T10:48:50.886Z\nClosing date on record: 2026-11-30T14:00:00.000Z\n\n| Bidder | Received | Late | Price read aloud |\n| --- | --- | --- | --- |\n| ALPHA MEDICAL | 2026-11-30T09:00:00Z | no | ZMW 4,100,000 |\n| BETA PHARMA | 2026-11-30T16:30:00Z | YES — rejected unopened | ZMW 3,900,000 |\n\n1 bid(s) admitted · 1 late\n\n_Bids were opened publicly; each bid and its price were read aloud and recorded above. The register is sealed with a sha-256 digest once certified by the procurement unit._",
+        "gateId": "gate_ar2lp3",
+        "certifiedAt": "2026-10-21T10:48:50.937Z",
+        "certifiedBy": "Verify Officer",
+        "sha": "c4450ae809d2f72c7ae099e49a55d4d8"
+      },
+      "matrix": {
+        "id": "mtx_sx3q5b",
+        "tenderId": "ZM-PROBE-104845",
+        "runId": "run_78bab52d",
+        "criteria": [
+          {
+            "id": "C-01",
+            "title": "Technical compliance",
+            "weight": 40
+          },
+          {
+            "id": "C-02",
+            "title": "Experience",
+            "weight": 30
+          },
+          {
+            "id": "C-03",
+            "title": "Delivery plan",
+            "weight": 30
+          }
+        ],
+        "technicalWeightPct": 80,
+        "bids": [
+          {
+            "bidder": "BID ALPHA",
+            "source": "91-bid-bid-alpha.md",
+            "late": false,
+            "responsiveness": "RESPONSIVE",
+            "reasons": [],
+            "technicalScores": [
+              {
+                "criterionId": "C-01",
+                "score": 0
+              },
+              {
+                "criterionId": "C-02",
+                "score": 0
+              },
+              {
+                "criterionId": "C-03",
+                "score": 0
+              }
+            ],
+            "technicalTotal": 0,
+            "financial": {
+              "amount": 4100000,
+              "currency": "ZMW",
+              "formulaScore": 95.1
+            },
+            "verdict": "NOT_RECOMMENDED",
+            "total": 19
+          },
+          {
+            "bidder": "BID BETA",
+            "source": "92-bid-bid-beta.md",
+            "late": false,
+            "responsiveness": "RESPONSIVE",
+            "reasons": [],
+            "technicalScores": [
+              {
+                "criterionId": "C-01",
+                "score": 0
+              },
+              {
+                "criterionId": "C-02",
+                "score": 0
+              },
+              {
+                "criterionId": "C-03",
+                "score": 0
+              }
+            ],
+            "technicalTotal": 0,
+            "financial": {
+              "amount": 3900000,
+              "currency": "ZMW",
+              "formulaScore": 100
+            },
+            "verdict": "NOT_RECOMMENDED",
+            "total": 20
+          }
+        ],
+        "status": "CERTIFIED",
+        "createdAt": "2026-10-21T10:48:50.971Z",
+        "gateId": "gate_0ma7y8",
+        "certifiedAt": "2026-10-21T10:48:51.052Z",
+        "certifiedBy": "Verify Officer"
+      },
+      "awardReport": {
+        "tenderId": "ZM-PROBE-104845",
+        "md": "# AWARD RECOMMENDATION REPORT\n\n**Tender:** ZM-PROBE-104845\n**Buyer:** —\n**Method:** —\n\n## 1. Process\n\nThe pack was reviewed by the quorum desk: requirements pinned from the notices, each bid read against them, every finding cited to its document and verified. The evaluation matrix below was certified by the evaluation committee.\n\n## 2. Findings carried into the decision\n\n- **R-DOC-MISSING** BID BETA — tax clearance certificate (MEDIUM)\n- **R-SUPPLIER-ID** BID BETA — Kenya KRA PIN (HIGH)\n- **R-BID-SECURITY** BID BETA — bid security amount (HIGH)\n\n## 3. Evaluation outcome\n\nCriteria: Technical compliance (40%), Experience (30%), Delivery plan (30%)\nTechnical/financial split: 80/20\n\n| Bidder | Responsive | Technical | Financial | Total | Verdict |\n| --- | --- | --- | --- | --- | --- |\n| BID ALPHA | RESPONSIVE | 0 | 95.1 | 19 | NOT_RECOMMENDED |\n| BID BETA | RESPONSIVE | 0 | 100 | 20 | NOT_RECOMMENDED |\n\n## 4. Recommendation\n\nAward to **BID BETA** at ZMW 3,900,000, subject to the accounting officer's signature and the statutory standstill.\n\n## 5. Signatures\n\n- Evaluation committee chair: _signed at the certification gate_\n- Accounting officer: _signed at the award-report gate_",
+        "sha": "b0eb374617b2b4eaf761b688d44b0a26",
+        "createdAt": "2026-10-21T10:48:51.083Z",
+        "recommendation": "BID BETA",
+        "gateId": "gate_i1zrsu",
+        "signedAt": "2026-10-21T10:48:51.107Z",
+        "signedBy": "Verify Officer"
+      },
+      "awardNotice": {
+        "tenderId": "ZM-PROBE-104845",
+        "md": "# NOTICE OF AWARD\n\n**Reference:** ZM-PROBE-104845\n**Buyer:** —\n**Awarded to:** BID BETA\n**Published to:** egp-portal (simulated)\n\n_This notice is published through a simulated portal stub, labelled as such everywhere it appears. The standstill period gives unsuccessful bidders the chance to complain before the contract is signed._",
+        "sha": "6ba319ad7067a6c8117215b1e8cff7f2",
+        "portal": "egp-portal (simulated)",
+        "gateId": "gate_lomnrk",
+        "publishedAt": "2026-10-21T10:48:51.164Z",
+        "publishedBy": "Verify Officer"
+      },
+      "standstill": {
+        "tenderId": "ZM-PROBE-104845",
+        "startsAt": "2026-10-21T10:48:51.164Z",
+        "endsAt": "2026-11-04T10:48:51.164Z",
+        "days": 10,
+        "status": "LIFTED"
+      },
+      "contract": {
+        "tenderId": "ZM-PROBE-104845",
+        "supplier": "BID BETA",
+        "value": 3900000,
+        "currency": "ZMW",
+        "openedAt": "2026-10-21T10:48:51.251Z",
+        "openedFromGate": "gate_h18vxs",
+        "packMd": "# CONTRACT PACK — ZM-PROBE-104845\n\n**Supplier:** BID BETA\n**Contract value:** ZMW 3,900,000\n\n## Contents\n\n1. Contract ag",
+        "milestones": [],
+        "variations": [
+          {
+            "id": "var_bnlikm",
+            "description": "Extra wards equipment",
+            "valueDelta": 900000,
+            "pctOfContract": 23.1,
+            "status": "APPROVED",
+            "at": "2026-10-21T10:48:51.280Z",
+            "gateId": "gate_imk110",
+            "decidedBy": "Verify Officer"
+          }
+        ],
+        "payments": [
+          {
+            "id": "pay_vp33cp",
+            "description": "Mobilisation advance",
+            "amount": 1000000,
+            "currency": "ZMW",
+            "gateId": "gate_woduv6",
+            "certifiedAt": "2026-10-21T10:48:51.359Z",
+            "certifiedBy": "Verify Officer"
+          }
+        ],
+        "completedAt": "2026-10-21T10:48:51.409Z",
+        "completedBy": "Verify Officer"
+      }
+    },
+    {
+      "tenderId": "ZM-PROBE-114000",
+      "coi": [
+        {
+          "id": "coi_0d5dbced",
+          "tenderId": "ZM-PROBE-114000",
+          "member": "Dr. Chanda Mwale",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T11:40:06.201Z"
+        },
+        {
+          "id": "coi_ab2f677a",
+          "tenderId": "ZM-PROBE-114000",
+          "member": "Eng. Bwalya Phiri",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T11:40:06.210Z"
+        },
+        {
+          "id": "coi_922280b9",
+          "tenderId": "ZM-PROBE-114000",
+          "member": "Dr. Nkhensani Bilmon",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T11:40:06.224Z"
+        }
+      ],
+      "alb": [],
+      "debriefs": [
+        {
+          "id": "dbr_kb5ztm",
+          "tenderId": "ZM-PROBE-114000",
+          "bidder": "BID ALPHA",
+          "md": "# DEBRIEF LETTER — BID ALPHA\n\nTender: ZM-PROBE-114000\n\nThank you for your bid. This debrief is qualitative: it explains why your bid did not succeed without disclosing another bidder's confidential pricing.\n\n**Outcome:** your bid was recorded as responsive at the responsiveness stage.\n\nNo findings stood against your bid specifically.\n\n_You may request a full administrative review under the applicable procurement law within the standstill window._",
+          "status": "DRAFT",
+          "createdAt": "2026-10-21T11:40:06.708Z"
+        }
+      ],
+      "complaints": [
+        {
+          "id": "cmp_5low2i",
+          "tenderId": "ZM-PROBE-114000",
+          "complainant": "Beta Pharma",
+          "subject": "Award challenge",
+          "body": "",
+          "receivedAt": "2026-10-21T11:40:06.734Z",
+          "duringStandstill": false,
+          "status": "ANSWERED",
+          "response": {
+            "md": "The complaint was reviewed; the award stands.",
+            "at": "2026-10-21T11:40:06.797Z",
+            "by": "Verify Officer",
+            "gateId": "gate_vbjs4v"
+          }
+        }
+      ],
+      "clarifications": [],
+      "addenda": [],
+      "notices": [],
+      "specs": [],
+      "createdAt": "2026-10-21T11:40:06.066Z",
+      "opening": {
+        "id": "open_xwl53w",
+        "tenderId": "ZM-PROBE-114000",
+        "createdAt": "2026-10-21T11:40:06.071Z",
+        "closingDate": "2026-11-30T14:00:00.000Z",
+        "rows": [
+          {
+            "bidder": "ALPHA MEDICAL",
+            "receivedAt": "2026-11-30T09:00:00Z",
+            "late": false,
+            "priceRead": "ZMW 4,100,000"
+          },
+          {
+            "bidder": "BETA PHARMA",
+            "receivedAt": "2026-11-30T16:30:00Z",
+            "late": true,
+            "priceRead": "ZMW 3,900,000"
+          }
+        ],
+        "minutesMd": "# BID OPENING REGISTER — ZM-PROBE-114000\n\nOpened: 2026-10-21T11:40:06.071Z\nClosing date on record: 2026-11-30T14:00:00.000Z\n\n| Bidder | Received | Late | Price read aloud |\n| --- | --- | --- | --- |\n| ALPHA MEDICAL | 2026-11-30T09:00:00Z | no | ZMW 4,100,000 |\n| BETA PHARMA | 2026-11-30T16:30:00Z | YES — rejected unopened | ZMW 3,900,000 |\n\n1 bid(s) admitted · 1 late\n\n_Bids were opened publicly; each bid and its price were read aloud and recorded above. The register is sealed with a sha-256 digest once certified by the procurement unit._",
+        "gateId": "gate_csnqa9",
+        "certifiedAt": "2026-10-21T11:40:06.133Z",
+        "certifiedBy": "Verify Officer",
+        "sha": "9e6833d8338f55a6082814e79328ae27"
+      },
+      "matrix": {
+        "id": "mtx_zvwtgi",
+        "tenderId": "ZM-PROBE-114000",
+        "runId": "run_7fdc6de7",
+        "criteria": [
+          {
+            "id": "C-01",
+            "title": "Technical compliance",
+            "weight": 40
+          },
+          {
+            "id": "C-02",
+            "title": "Experience",
+            "weight": 30
+          },
+          {
+            "id": "C-03",
+            "title": "Delivery plan",
+            "weight": 30
+          }
+        ],
+        "technicalWeightPct": 80,
+        "bids": [
+          {
+            "bidder": "BID ALPHA",
+            "source": "91-bid-bid-alpha.md",
+            "late": false,
+            "responsiveness": "RESPONSIVE",
+            "reasons": [],
+            "technicalScores": [
+              {
+                "criterionId": "C-01",
+                "score": 0
+              },
+              {
+                "criterionId": "C-02",
+                "score": 0
+              },
+              {
+                "criterionId": "C-03",
+                "score": 0
+              }
+            ],
+            "technicalTotal": 0,
+            "financial": {
+              "amount": 4100000,
+              "currency": "ZMW",
+              "formulaScore": 95.1
+            },
+            "verdict": "NOT_RECOMMENDED",
+            "total": 19
+          },
+          {
+            "bidder": "BID BETA",
+            "source": "92-bid-bid-beta.md",
+            "late": false,
+            "responsiveness": "RESPONSIVE",
+            "reasons": [],
+            "technicalScores": [
+              {
+                "criterionId": "C-01",
+                "score": 0
+              },
+              {
+                "criterionId": "C-02",
+                "score": 0
+              },
+              {
+                "criterionId": "C-03",
+                "score": 0
+              }
+            ],
+            "technicalTotal": 0,
+            "financial": {
+              "amount": 3900000,
+              "currency": "ZMW",
+              "formulaScore": 100
+            },
+            "verdict": "NOT_RECOMMENDED",
+            "total": 20
+          }
+        ],
+        "status": "CERTIFIED",
+        "createdAt": "2026-10-21T11:40:06.168Z",
+        "gateId": "gate_0lt4xo",
+        "certifiedAt": "2026-10-21T11:40:06.265Z",
+        "certifiedBy": "Verify Officer"
+      },
+      "awardReport": {
+        "tenderId": "ZM-PROBE-114000",
+        "md": "# AWARD RECOMMENDATION REPORT\n\n**Tender:** ZM-PROBE-114000\n**Buyer:** —\n**Method:** —\n\n## 1. Process\n\nThe pack was reviewed by the quorum desk: requirements pinned from the notices, each bid read against them, every finding cited to its document and verified. The evaluation matrix below was certified by the evaluation committee.\n\n## 2. Findings carried into the decision\n\n- **R-DOC-MISSING** BID BETA — tax clearance certificate (MEDIUM)\n- **R-SUPPLIER-ID** BID BETA — Kenya KRA PIN (HIGH)\n- **R-BID-SECURITY** BID BETA — bid security amount (HIGH)\n\n## 3. Evaluation outcome\n\nCriteria: Technical compliance (40%), Experience (30%), Delivery plan (30%)\nTechnical/financial split: 80/20\n\n| Bidder | Responsive | Technical | Financial | Total | Verdict |\n| --- | --- | --- | --- | --- | --- |\n| BID ALPHA | RESPONSIVE | 0 | 95.1 | 19 | NOT_RECOMMENDED |\n| BID BETA | RESPONSIVE | 0 | 100 | 20 | NOT_RECOMMENDED |\n\n## 4. Recommendation\n\nAward to **BID BETA** at ZMW 3,900,000, subject to the accounting officer's signature and the statutory standstill.\n\n## 5. Signatures\n\n- Evaluation committee chair: _signed at the certification gate_\n- Accounting officer: _signed at the award-report gate_",
+        "sha": "df0bf32762b08fa72be3d98dfe287343",
+        "createdAt": "2026-10-21T11:40:06.302Z",
+        "recommendation": "BID BETA",
+        "gateId": "gate_tixeex",
+        "signedAt": "2026-10-21T11:40:06.329Z",
+        "signedBy": "Verify Officer"
+      },
+      "awardNotice": {
+        "tenderId": "ZM-PROBE-114000",
+        "md": "# NOTICE OF AWARD\n\n**Reference:** ZM-PROBE-114000\n**Buyer:** —\n**Awarded to:** BID BETA\n**Published to:** egp-portal (simulated)\n\n_This notice is published through a simulated portal stub, labelled as such everywhere it appears. The standstill period gives unsuccessful bidders the chance to complain before the contract is signed._",
+        "sha": "60695d617bc740208ab1d274efd99612",
+        "portal": "egp-portal (simulated)",
+        "gateId": "gate_e6r44x",
+        "publishedAt": "2026-10-21T11:40:06.388Z",
+        "publishedBy": "Verify Officer"
+      },
+      "standstill": {
+        "tenderId": "ZM-PROBE-114000",
+        "startsAt": "2026-10-21T11:40:06.388Z",
+        "endsAt": "2026-11-04T11:40:06.388Z",
+        "days": 10,
+        "status": "LIFTED"
+      },
+      "contract": {
+        "tenderId": "ZM-PROBE-114000",
+        "supplier": "BID BETA",
+        "value": 3900000,
+        "currency": "ZMW",
+        "openedAt": "2026-10-21T11:40:06.484Z",
+        "openedFromGate": "gate_360fmw",
+        "packMd": "# CONTRACT PACK — ZM-PROBE-114000\n\n**Supplier:** BID BETA\n**Contract value:** ZMW 3,900,000\n\n## Contents\n\n1. Contract ag",
+        "milestones": [],
+        "variations": [
+          {
+            "id": "var_xx5n5c",
+            "description": "Extra wards equipment",
+            "valueDelta": 900000,
+            "pctOfContract": 23.1,
+            "status": "APPROVED",
+            "at": "2026-10-21T11:40:06.515Z",
+            "gateId": "gate_tqw19a",
+            "decidedBy": "Verify Officer"
+          }
+        ],
+        "payments": [
+          {
+            "id": "pay_4rzyx4",
+            "description": "Mobilisation advance",
+            "amount": 1000000,
+            "currency": "ZMW",
+            "gateId": "gate_rlh5xq",
+            "certifiedAt": "2026-10-21T11:40:06.599Z",
+            "certifiedBy": "Verify Officer"
+          }
+        ],
+        "completedAt": "2026-10-21T11:40:06.655Z",
+        "completedBy": "Verify Officer"
+      }
+    },
+    {
+      "tenderId": "ZM-PROBE-114529",
+      "coi": [
+        {
+          "id": "coi_e9683745",
+          "tenderId": "ZM-PROBE-114529",
+          "member": "Dr. Chanda Mwale",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T11:45:34.338Z"
+        },
+        {
+          "id": "coi_4fb95a1c",
+          "tenderId": "ZM-PROBE-114529",
+          "member": "Eng. Bwalya Phiri",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T11:45:34.348Z"
+        },
+        {
+          "id": "coi_b6f073a7",
+          "tenderId": "ZM-PROBE-114529",
+          "member": "Dr. Nkhensani Bilmon",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T11:45:34.357Z"
+        }
+      ],
+      "alb": [],
+      "debriefs": [
+        {
+          "id": "dbr_z2816b",
+          "tenderId": "ZM-PROBE-114529",
+          "bidder": "BID ALPHA",
+          "md": "# DEBRIEF LETTER — BID ALPHA\n\nTender: ZM-PROBE-114529\n\nThank you for your bid. This debrief is qualitative: it explains why your bid did not succeed without disclosing another bidder's confidential pricing.\n\n**Outcome:** your bid was recorded as responsive at the responsiveness stage.\n\nNo findings stood against your bid specifically.\n\n_You may request a full administrative review under the applicable procurement law within the standstill window._",
+          "status": "DRAFT",
+          "createdAt": "2026-10-21T11:45:34.870Z"
+        }
+      ],
+      "complaints": [
+        {
+          "id": "cmp_74if8k",
+          "tenderId": "ZM-PROBE-114529",
+          "complainant": "Beta Pharma",
+          "subject": "Award challenge",
+          "body": "",
+          "receivedAt": "2026-10-21T11:45:34.899Z",
+          "duringStandstill": false,
+          "status": "ANSWERED",
+          "response": {
+            "md": "The complaint was reviewed; the award stands.",
+            "at": "2026-10-21T11:45:34.965Z",
+            "by": "Verify Officer",
+            "gateId": "gate_0dq9u7"
+          }
+        }
+      ],
+      "clarifications": [],
+      "addenda": [],
+      "notices": [],
+      "specs": [],
+      "createdAt": "2026-10-21T11:45:34.207Z",
+      "opening": {
+        "id": "open_0szy0b",
+        "tenderId": "ZM-PROBE-114529",
+        "createdAt": "2026-10-21T11:45:34.216Z",
+        "closingDate": "2026-11-30T14:00:00.000Z",
+        "rows": [
+          {
+            "bidder": "ALPHA MEDICAL",
+            "receivedAt": "2026-11-30T09:00:00Z",
+            "late": false,
+            "priceRead": "ZMW 4,100,000"
+          },
+          {
+            "bidder": "BETA PHARMA",
+            "receivedAt": "2026-11-30T16:30:00Z",
+            "late": true,
+            "priceRead": "ZMW 3,900,000"
+          }
+        ],
+        "minutesMd": "# BID OPENING REGISTER — ZM-PROBE-114529\n\nOpened: 2026-10-21T11:45:34.216Z\nClosing date on record: 2026-11-30T14:00:00.000Z\n\n| Bidder | Received | Late | Price read aloud |\n| --- | --- | --- | --- |\n| ALPHA MEDICAL | 2026-11-30T09:00:00Z | no | ZMW 4,100,000 |\n| BETA PHARMA | 2026-11-30T16:30:00Z | YES — rejected unopened | ZMW 3,900,000 |\n\n1 bid(s) admitted · 1 late\n\n_Bids were opened publicly; each bid and its price were read aloud and recorded above. The register is sealed with a sha-256 digest once certified by the procurement unit._",
+        "gateId": "gate_11egxi",
+        "certifiedAt": "2026-10-21T11:45:34.270Z",
+        "certifiedBy": "Verify Officer",
+        "sha": "0082fa7a72b16d0b4aee17645df01d53"
+      },
+      "matrix": {
+        "id": "mtx_v9rfux",
+        "tenderId": "ZM-PROBE-114529",
+        "runId": "run_d018667a",
+        "criteria": [
+          {
+            "id": "C-01",
+            "title": "Technical compliance",
+            "weight": 40
+          },
+          {
+            "id": "C-02",
+            "title": "Experience",
+            "weight": 30
+          },
+          {
+            "id": "C-03",
+            "title": "Delivery plan",
+            "weight": 30
+          }
+        ],
+        "technicalWeightPct": 80,
+        "bids": [
+          {
+            "bidder": "BID ALPHA",
+            "source": "91-bid-bid-alpha.md",
+            "late": false,
+            "responsiveness": "RESPONSIVE",
+            "reasons": [],
+            "technicalScores": [
+              {
+                "criterionId": "C-01",
+                "score": 0
+              },
+              {
+                "criterionId": "C-02",
+                "score": 0
+              },
+              {
+                "criterionId": "C-03",
+                "score": 0
+              }
+            ],
+            "technicalTotal": 0,
+            "financial": {
+              "amount": 4100000,
+              "currency": "ZMW",
+              "formulaScore": 95.1
+            },
+            "verdict": "NOT_RECOMMENDED",
+            "total": 19
+          },
+          {
+            "bidder": "BID BETA",
+            "source": "92-bid-bid-beta.md",
+            "late": false,
+            "responsiveness": "RESPONSIVE",
+            "reasons": [],
+            "technicalScores": [
+              {
+                "criterionId": "C-01",
+                "score": 0
+              },
+              {
+                "criterionId": "C-02",
+                "score": 0
+              },
+              {
+                "criterionId": "C-03",
+                "score": 0
+              }
+            ],
+            "technicalTotal": 0,
+            "financial": {
+              "amount": 3900000,
+              "currency": "ZMW",
+              "formulaScore": 100
+            },
+            "verdict": "NOT_RECOMMENDED",
+            "total": 20
+          }
+        ],
+        "status": "CERTIFIED",
+        "createdAt": "2026-10-21T11:45:34.307Z",
+        "gateId": "gate_ie5722",
+        "certifiedAt": "2026-10-21T11:45:34.392Z",
+        "certifiedBy": "Verify Officer"
+      },
+      "awardReport": {
+        "tenderId": "ZM-PROBE-114529",
+        "md": "# AWARD RECOMMENDATION REPORT\n\n**Tender:** ZM-PROBE-114529\n**Buyer:** —\n**Method:** —\n\n## 1. Process\n\nThe pack was reviewed by the quorum desk: requirements pinned from the notices, each bid read against them, every finding cited to its document and verified. The evaluation matrix below was certified by the evaluation committee.\n\n## 2. Findings carried into the decision\n\n- **R-DOC-MISSING** BID BETA — tax clearance certificate (MEDIUM)\n- **R-SUPPLIER-ID** BID BETA — Kenya KRA PIN (HIGH)\n- **R-BID-SECURITY** BID BETA — bid security amount (HIGH)\n\n## 3. Evaluation outcome\n\nCriteria: Technical compliance (40%), Experience (30%), Delivery plan (30%)\nTechnical/financial split: 80/20\n\n| Bidder | Responsive | Technical | Financial | Total | Verdict |\n| --- | --- | --- | --- | --- | --- |\n| BID ALPHA | RESPONSIVE | 0 | 95.1 | 19 | NOT_RECOMMENDED |\n| BID BETA | RESPONSIVE | 0 | 100 | 20 | NOT_RECOMMENDED |\n\n## 4. Recommendation\n\nAward to **BID BETA** at ZMW 3,900,000, subject to the accounting officer's signature and the statutory standstill.\n\n## 5. Signatures\n\n- Evaluation committee chair: _signed at the certification gate_\n- Accounting officer: _signed at the award-report gate_",
+        "sha": "4dd86f63776eeca55cce35df54938ee1",
+        "createdAt": "2026-10-21T11:45:34.424Z",
+        "recommendation": "BID BETA",
+        "gateId": "gate_55zqy2",
+        "signedAt": "2026-10-21T11:45:34.448Z",
+        "signedBy": "Verify Officer"
+      },
+      "awardNotice": {
+        "tenderId": "ZM-PROBE-114529",
+        "md": "# NOTICE OF AWARD\n\n**Reference:** ZM-PROBE-114529\n**Buyer:** —\n**Awarded to:** BID BETA\n**Published to:** egp-portal (simulated)\n\n_This notice is published through a simulated portal stub, labelled as such everywhere it appears. The standstill period gives unsuccessful bidders the chance to complain before the contract is signed._",
+        "sha": "d754ffa50f9ac04c1a8f4a2beedd2a3c",
+        "portal": "egp-portal (simulated)",
+        "gateId": "gate_iwfw4v",
+        "publishedAt": "2026-10-21T11:45:34.506Z",
+        "publishedBy": "Verify Officer"
+      },
+      "standstill": {
+        "tenderId": "ZM-PROBE-114529",
+        "startsAt": "2026-10-21T11:45:34.506Z",
+        "endsAt": "2026-11-04T11:45:34.506Z",
+        "days": 10,
+        "status": "LIFTED"
+      },
+      "contract": {
+        "tenderId": "ZM-PROBE-114529",
+        "supplier": "BID BETA",
+        "value": 3900000,
+        "currency": "ZMW",
+        "openedAt": "2026-10-21T11:45:34.615Z",
+        "openedFromGate": "gate_qquibz",
+        "packMd": "# CONTRACT PACK — ZM-PROBE-114529\n\n**Supplier:** BID BETA\n**Contract value:** ZMW 3,900,000\n\n## Contents\n\n1. Contract ag",
+        "milestones": [],
+        "variations": [
+          {
+            "id": "var_n7ygyo",
+            "description": "Extra wards equipment",
+            "valueDelta": 900000,
+            "pctOfContract": 23.1,
+            "status": "APPROVED",
+            "at": "2026-10-21T11:45:34.644Z",
+            "gateId": "gate_aabtr2",
+            "decidedBy": "Verify Officer"
+          }
+        ],
+        "payments": [
+          {
+            "id": "pay_a9054e",
+            "description": "Mobilisation advance",
+            "amount": 1000000,
+            "currency": "ZMW",
+            "gateId": "gate_px5e89",
+            "certifiedAt": "2026-10-21T11:45:34.746Z",
+            "certifiedBy": "Verify Officer"
+          }
+        ],
+        "completedAt": "2026-10-21T11:45:34.811Z",
+        "completedBy": "Verify Officer"
+      }
+    },
+    {
+      "tenderId": "ZM-PROBE-145738",
+      "coi": [
+        {
+          "id": "coi_5f68687a",
+          "tenderId": "ZM-PROBE-145738",
+          "member": "Dr. Chanda Mwale",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T14:57:44.390Z"
+        },
+        {
+          "id": "coi_7f5960a6",
+          "tenderId": "ZM-PROBE-145738",
+          "member": "Eng. Bwalya Phiri",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T14:57:44.402Z"
+        },
+        {
+          "id": "coi_1974ace8",
+          "tenderId": "ZM-PROBE-145738",
+          "member": "Dr. Nkhensani Bilmon",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T14:57:44.443Z"
+        }
+      ],
+      "alb": [],
+      "debriefs": [
+        {
+          "id": "dbr_f43awk",
+          "tenderId": "ZM-PROBE-145738",
+          "bidder": "BID ALPHA",
+          "md": "# DEBRIEF LETTER — BID ALPHA\n\nTender: ZM-PROBE-145738\n\nThank you for your bid. This debrief is qualitative: it explains why your bid did not succeed without disclosing another bidder's confidential pricing.\n\n**Outcome:** your bid was recorded as responsive at the responsiveness stage.\n\nNo findings stood against your bid specifically.\n\n_You may request a full administrative review under the applicable procurement law within the standstill window._",
+          "status": "DRAFT",
+          "createdAt": "2026-10-21T14:57:45.376Z"
+        }
+      ],
+      "complaints": [
+        {
+          "id": "cmp_8y4mkq",
+          "tenderId": "ZM-PROBE-145738",
+          "complainant": "Beta Pharma",
+          "subject": "Award challenge",
+          "body": "",
+          "receivedAt": "2026-10-21T14:57:45.441Z",
+          "duringStandstill": false,
+          "status": "ANSWERED",
+          "response": {
+            "md": "The complaint was reviewed; the award stands.",
+            "at": "2026-10-21T14:57:45.560Z",
+            "by": "Verify Officer",
+            "gateId": "gate_s9q496"
+          }
+        }
+      ],
+      "clarifications": [],
+      "addenda": [],
+      "notices": [],
+      "specs": [],
+      "createdAt": "2026-10-21T14:57:44.165Z",
+      "opening": {
+        "id": "open_rqbgwn",
+        "tenderId": "ZM-PROBE-145738",
+        "createdAt": "2026-10-21T14:57:44.171Z",
+        "closingDate": "2026-11-30T14:00:00.000Z",
+        "rows": [
+          {
+            "bidder": "ALPHA MEDICAL",
+            "receivedAt": "2026-11-30T09:00:00Z",
+            "late": false,
+            "priceRead": "ZMW 4,100,000"
+          },
+          {
+            "bidder": "BETA PHARMA",
+            "receivedAt": "2026-11-30T16:30:00Z",
+            "late": true,
+            "priceRead": "ZMW 3,900,000"
+          }
+        ],
+        "minutesMd": "# BID OPENING REGISTER — ZM-PROBE-145738\n\nOpened: 2026-10-21T14:57:44.171Z\nClosing date on record: 2026-11-30T14:00:00.000Z\n\n| Bidder | Received | Late | Price read aloud |\n| --- | --- | --- | --- |\n| ALPHA MEDICAL | 2026-11-30T09:00:00Z | no | ZMW 4,100,000 |\n| BETA PHARMA | 2026-11-30T16:30:00Z | YES — rejected unopened | ZMW 3,900,000 |\n\n1 bid(s) admitted · 1 late\n\n_Bids were opened publicly; each bid and its price were read aloud and recorded above. The register is sealed with a sha-256 digest once certified by the procurement unit._",
+        "gateId": "gate_elx368",
+        "certifiedAt": "2026-10-21T14:57:44.274Z",
+        "certifiedBy": "Verify Officer",
+        "sha": "c4f3c2404af67f4257ed2adbce1a4115"
+      },
+      "matrix": {
+        "id": "mtx_oopp34",
+        "tenderId": "ZM-PROBE-145738",
+        "runId": "run_1e1e4e0c",
+        "criteria": [
+          {
+            "id": "C-01",
+            "title": "Technical compliance",
+            "weight": 40
+          },
+          {
+            "id": "C-02",
+            "title": "Experience",
+            "weight": 30
+          },
+          {
+            "id": "C-03",
+            "title": "Delivery plan",
+            "weight": 30
+          }
+        ],
+        "technicalWeightPct": 80,
+        "bids": [
+          {
+            "bidder": "BID ALPHA",
+            "source": "91-bid-bid-alpha.md",
+            "late": false,
+            "responsiveness": "RESPONSIVE",
+            "reasons": [],
+            "technicalScores": [
+              {
+                "criterionId": "C-01",
+                "score": 0
+              },
+              {
+                "criterionId": "C-02",
+                "score": 0
+              },
+              {
+                "criterionId": "C-03",
+                "score": 0
+              }
+            ],
+            "technicalTotal": 0,
+            "financial": {
+              "amount": 4100000,
+              "currency": "ZMW",
+              "formulaScore": 95.1
+            },
+            "verdict": "NOT_RECOMMENDED",
+            "total": 19
+          },
+          {
+            "bidder": "BID BETA",
+            "source": "92-bid-bid-beta.md",
+            "late": false,
+            "responsiveness": "RESPONSIVE",
+            "reasons": [],
+            "technicalScores": [
+              {
+                "criterionId": "C-01",
+                "score": 0
+              },
+              {
+                "criterionId": "C-02",
+                "score": 0
+              },
+              {
+                "criterionId": "C-03",
+                "score": 0
+              }
+            ],
+            "technicalTotal": 0,
+            "financial": {
+              "amount": 3900000,
+              "currency": "ZMW",
+              "formulaScore": 100
+            },
+            "verdict": "NOT_RECOMMENDED",
+            "total": 20
+          }
+        ],
+        "status": "CERTIFIED",
+        "createdAt": "2026-10-21T14:57:44.319Z",
+        "gateId": "gate_61s4rd",
+        "certifiedAt": "2026-10-21T14:57:44.539Z",
+        "certifiedBy": "Verify Officer"
+      },
+      "awardReport": {
+        "tenderId": "ZM-PROBE-145738",
+        "md": "# AWARD RECOMMENDATION REPORT\n\n**Tender:** ZM-PROBE-145738\n**Buyer:** —\n**Method:** —\n\n## 1. Process\n\nThe pack was reviewed by the quorum desk: requirements pinned from the notices, each bid read against them, every finding cited to its document and verified. The evaluation matrix below was certified by the evaluation committee.\n\n## 2. Findings carried into the decision\n\n- **R-DOC-MISSING** BID BETA — tax clearance certificate (MEDIUM)\n- **R-SUPPLIER-ID** BID BETA — Kenya KRA PIN (HIGH)\n- **R-BID-SECURITY** BID BETA — bid security amount (HIGH)\n\n## 3. Evaluation outcome\n\nCriteria: Technical compliance (40%), Experience (30%), Delivery plan (30%)\nTechnical/financial split: 80/20\n\n| Bidder | Responsive | Technical | Financial | Total | Verdict |\n| --- | --- | --- | --- | --- | --- |\n| BID ALPHA | RESPONSIVE | 0 | 95.1 | 19 | NOT_RECOMMENDED |\n| BID BETA | RESPONSIVE | 0 | 100 | 20 | NOT_RECOMMENDED |\n\n## 4. Recommendation\n\nAward to **BID BETA** at ZMW 3,900,000, subject to the accounting officer's signature and the statutory standstill.\n\n## 5. Signatures\n\n- Evaluation committee chair: _signed at the certification gate_\n- Accounting officer: _signed at the award-report gate_",
+        "sha": "019abf79d1816814f0f2428b80ee422c",
+        "createdAt": "2026-10-21T14:57:44.587Z",
+        "recommendation": "BID BETA",
+        "gateId": "gate_de9c47",
+        "signedAt": "2026-10-21T14:57:44.644Z",
+        "signedBy": "Verify Officer"
+      },
+      "awardNotice": {
+        "tenderId": "ZM-PROBE-145738",
+        "md": "# NOTICE OF AWARD\n\n**Reference:** ZM-PROBE-145738\n**Buyer:** —\n**Awarded to:** BID BETA\n**Published to:** egp-portal (simulated)\n\n_This notice is published through a simulated portal stub, labelled as such everywhere it appears. The standstill period gives unsuccessful bidders the chance to complain before the contract is signed._",
+        "sha": "2092315eddd295948424067761f384ca",
+        "portal": "egp-portal (simulated)",
+        "gateId": "gate_brq2qx",
+        "publishedAt": "2026-10-21T14:57:44.756Z",
+        "publishedBy": "Verify Officer"
+      },
+      "standstill": {
+        "tenderId": "ZM-PROBE-145738",
+        "startsAt": "2026-10-21T14:57:44.756Z",
+        "endsAt": "2026-11-04T14:57:44.756Z",
+        "days": 10,
+        "status": "LIFTED"
+      },
+      "contract": {
+        "tenderId": "ZM-PROBE-145738",
+        "supplier": "BID BETA",
+        "value": 3900000,
+        "currency": "ZMW",
+        "openedAt": "2026-10-21T14:57:44.938Z",
+        "openedFromGate": "gate_vqr03p",
+        "packMd": "# CONTRACT PACK — ZM-PROBE-145738\n\n**Supplier:** BID BETA\n**Contract value:** ZMW 3,900,000\n\n## Contents\n\n1. Contract ag",
+        "milestones": [],
+        "variations": [
+          {
+            "id": "var_f8j99d",
+            "description": "Extra wards equipment",
+            "valueDelta": 900000,
+            "pctOfContract": 23.1,
+            "status": "APPROVED",
+            "at": "2026-10-21T14:57:44.976Z",
+            "gateId": "gate_3qqey4",
+            "decidedBy": "Verify Officer"
+          }
+        ],
+        "payments": [
+          {
+            "id": "pay_y86zdn",
+            "description": "Mobilisation advance",
+            "amount": 1000000,
+            "currency": "ZMW",
+            "gateId": "gate_v6l48p",
+            "certifiedAt": "2026-10-21T14:57:45.171Z",
+            "certifiedBy": "Verify Officer"
+          }
+        ],
+        "completedAt": "2026-10-21T14:57:45.287Z",
+        "completedBy": "Verify Officer"
+      }
+    }
+  ],
+  "pipeline": [
+    {
+      "id": "pip_5438986a",
+      "ref": "E2E-PIPE-1",
+      "title": "e2e pipeline probe",
+      "status": "PLANNED",
+      "createdAt": "2026-10-21T10:48:45.703Z"
+    },
+    {
+      "id": "pip_e5f46360",
+      "ref": "E2E-PIPE-1",
+      "title": "e2e pipeline probe",
+      "status": "PLANNED",
+      "createdAt": "2026-10-21T11:39:44.115Z"
+    },
+    {
+      "id": "pip_b68fd960",
+      "ref": "E2E-PIPE-1",
+      "title": "e2e pipeline probe",
+      "status": "PLANNED",
+      "createdAt": "2026-10-21T11:40:00.608Z"
+    },
+    {
+      "id": "pip_c14c1c90",
+      "ref": "E2E-PIPE-1",
+      "title": "e2e pipeline probe",
+      "status": "PLANNED",
+      "createdAt": "2026-10-21T11:45:28.715Z"
+    },
+    {
+      "id": "pip_954b2ec7",
+      "ref": "E2E-PIPE-1",
+      "title": "e2e pipeline probe",
+      "status": "PLANNED",
+      "createdAt": "2026-10-21T11:54:13.245Z"
+    },
+    {
+      "id": "pip_c4630743",
+      "ref": "E2E-PIPE-1",
+      "title": "e2e pipeline probe",
+      "status": "PLANNED",
+      "createdAt": "2026-10-21T14:57:38.258Z"
+    },
+    {
+      "id": "pip_f0db5e60",
+      "ref": "E2E-PIPE-1",
+      "title": "e2e pipeline probe",
+      "status": "PLANNED",
+      "createdAt": "2026-10-21T15:18:06.532Z"
+    }
+  ],
+  "seq": 347
+}

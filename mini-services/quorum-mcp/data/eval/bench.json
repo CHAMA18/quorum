@@ -1,0 +1,132 @@
+{
+  "generatedAt": "2026-10-22T11:25:44.603Z",
+  "host": {
+    "runtime": "bun",
+    "node": "v26.3.0",
+    "platform": "darwin"
+  },
+  "llmConfigured": false,
+  "llmNote": "a model IS configured on this host (llama3.2:3b) — disconnected in-process for this bench; model-led plan_review/drafted redlines over the same packs are the ~20-minute envelope",
+  "measuredPath": "runReview — the production review graph, invoked directly, deterministic plan (no network)",
+  "fsMcp": "not probed — the direct-fs fallback read path measured (the floor)",
+  "claimBenchmarked": "26 days of committee work vs ~20 min for the agent (landing-page Overview)",
+  "honestFrame": "This measures the deterministic rule sweep per pack on one host without a configured model. The ~20 minutes belongs to a model-led run — plan_review, deep-value parsing and drafted redlines — reading the same packs. Neither number is the manual 26 days; the point of the graph is that the clocks differ by orders of magnitude, and it stops at the gate either way.",
+  "firstRunPays": "one-off review-graph build (LangGraph compile) — visible in row 1, not representative",
+  "perTender": [
+    {
+      "tenderId": "KE-NCB-104293",
+      "files": 3,
+      "packBytes": 3416,
+      "planSource": "heuristic",
+      "requirements": 8,
+      "findings": 4,
+      "rejected": 0,
+      "drafts": 2,
+      "gateRaised": true,
+      "ms": 41
+    },
+    {
+      "tenderId": "KE-MOH-2026-117",
+      "files": 3,
+      "packBytes": 3925,
+      "planSource": "heuristic",
+      "requirements": 8,
+      "findings": 10,
+      "rejected": 0,
+      "drafts": 2,
+      "gateRaised": true,
+      "ms": 9
+    },
+    {
+      "tenderId": "KE-KCS-2026-042",
+      "files": 3,
+      "packBytes": 4252,
+      "planSource": "heuristic",
+      "requirements": 8,
+      "findings": 11,
+      "rejected": 0,
+      "drafts": 2,
+      "gateRaised": true,
+      "ms": 6
+    },
+    {
+      "tenderId": "KE-MSA-2026-090",
+      "files": 3,
+      "packBytes": 3288,
+      "planSource": "heuristic",
+      "requirements": 7,
+      "findings": 2,
+      "rejected": 1,
+      "drafts": 2,
+      "gateRaised": true,
+      "ms": 7
+    },
+    {
+      "tenderId": "RW-UMUCYO-2027-006",
+      "files": 3,
+      "packBytes": 3587,
+      "planSource": "heuristic",
+      "requirements": 8,
+      "findings": 5,
+      "rejected": 0,
+      "drafts": 2,
+      "gateRaised": true,
+      "ms": 5
+    },
+    {
+      "tenderId": "KE-PHC-2026-311",
+      "files": 4,
+      "packBytes": 3624,
+      "planSource": "heuristic",
+      "requirements": 5,
+      "findings": 8,
+      "rejected": 0,
+      "drafts": 2,
+      "gateRaised": true,
+      "ms": 9
+    },
+    {
+      "tenderId": "KE-WRA-2026-058",
+      "files": 4,
+      "packBytes": 3077,
+      "planSource": "heuristic",
+      "requirements": 5,
+      "findings": 6,
+      "rejected": 0,
+      "drafts": 2,
+      "gateRaised": true,
+      "ms": 6
+    },
+    {
+      "tenderId": "KE-MOE-2026-205",
+      "files": 4,
+      "packBytes": 3218,
+      "planSource": "heuristic",
+      "requirements": 4,
+      "findings": 4,
+      "rejected": 0,
+      "drafts": 2,
+      "gateRaised": true,
+      "ms": 4
+    },
+    {
+      "tenderId": "RW-RURA-2027-021",
+      "files": 1,
+      "packBytes": 1461,
+      "planSource": "heuristic",
+      "requirements": 0,
+      "findings": 3,
+      "rejected": 0,
+      "drafts": 2,
+      "gateRaised": true,
+      "ms": 4
+    }
+  ],
+  "summary": {
+    "tenders": 9,
+    "totalMs": 91,
+    "meanMs": 10,
+    "findingsTotal": 53
+  },
+  "recordUntouched": "state.json was never written (detached runs/gates, no-op save); the audit spine is byte-restored after the runs"
+}

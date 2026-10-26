@@ -1,0 +1,401 @@
+{
+  "updatedAt": "2026-10-17T23:18:51.364Z",
+  "links": {
+    "3": {
+      "publicationId": 3,
+      "checkedAt": "2026-10-17T23:13:23.961Z",
+      "registry": {
+        "ok": true,
+        "status": 206,
+        "bytes": 262144,
+        "ocid": "ocds-23g63a01-19284597",
+        "ms": 1210,
+        "error": null
+      },
+      "portal": {
+        "ok": true,
+        "status": 200,
+        "ms": 326,
+        "error": null
+      }
+    },
+    "13": {
+      "publicationId": 13,
+      "checkedAt": "2026-10-17T23:12:17.478Z",
+      "registry": {
+        "ok": true,
+        "status": 206,
+        "bytes": 262144,
+        "ocid": "ocds-muq5cl-124059",
+        "ms": 1750,
+        "error": null
+      },
+      "portal": {
+        "ok": false,
+        "status": null,
+        "ms": 518,
+        "error": "getaddrinfo ENOTFOUND opencontracting.makueni.go.ke"
+      }
+    },
+    "37": {
+      "publicationId": 37,
+      "checkedAt": "2026-10-17T23:12:33.565Z",
+      "registry": {
+        "ok": true,
+        "status": 206,
+        "bytes": 262144,
+        "ocid": "ocds-azam7x-6a867fng-oauth",
+        "ms": 2089,
+        "error": null
+      },
+      "portal": {
+        "ok": true,
+        "status": 200,
+        "ms": 3176,
+        "error": null
+      }
+    },
+    "64": {
+      "publicationId": 64,
+      "checkedAt": "2026-10-17T23:18:51.364Z",
+      "registry": {
+        "ok": true,
+        "status": 206,
+        "bytes": 262144,
+        "ocid": "ocds-gyl66f-0517018034-000001",
+        "ms": 3296,
+        "error": null
+      },
+      "portal": {
+        "ok": true,
+        "status": 200,
+        "ms": 668,
+        "error": null
+      }
+    },
+    "85": {
+      "publicationId": 85,
+      "checkedAt": "2026-10-17T23:12:15.726Z",
+      "registry": {
+        "ok": true,
+        "status": 206,
+        "bytes": 262144,
+        "ocid": "ocds-uhveoc-711879",
+        "ms": 1589,
+        "error": null
+      },
+      "portal": {
+        "ok": true,
+        "status": 206,
+        "ms": 1929,
+        "error": null
+      }
+    },
+    "86": {
+      "publicationId": 86,
+      "checkedAt": "2026-10-17T23:12:51.714Z",
+      "registry": {
+        "ok": true,
+        "status": 206,
+        "bytes": 152943,
+        "ocid": "ocds-zinqhl-002431/EB/WTR/EP002/2020/NG",
+        "ms": 2137,
+        "error": null
+      },
+      "portal": {
+        "ok": true,
+        "status": 200,
+        "ms": 6563,
+        "error": null
+      }
+    },
+    "102": {
+      "publicationId": 102,
+      "checkedAt": "2026-10-17T23:12:53.151Z",
+      "registry": {
+        "ok": true,
+        "status": 206,
+        "bytes": 154716,
+        "ocid": "ocds-fmoaoq-edsg-dca8-00002",
+        "ms": 1436,
+        "error": null
+      },
+      "portal": {
+        "ok": false,
+        "status": null,
+        "ms": 93,
+        "error": "getaddrinfo ENOTFOUND edpms.edostate.gov.ng"
+      }
+    },
+    "103": {
+      "publicationId": 103,
+      "checkedAt": "2026-10-17T23:13:06.247Z",
+      "registry": {
+        "ok": true,
+        "status": 206,
+        "bytes": 35997,
+        "ocid": "ocds-l6turf-6-000031",
+        "ms": 1189,
+        "error": null
+      },
+      "portal": {
+        "ok": false,
+        "status": null,
+        "ms": 71,
+        "error": "getaddrinfo ENOTFOUND gombe.stateopencontracting.com"
+      }
+    },
+    "104": {
+      "publicationId": 104,
+      "checkedAt": "2026-10-17T23:13:05.057Z",
+      "registry": {
+        "ok": true,
+        "status": 206,
+        "bytes": 82324,
+        "ocid": "ocds-bmokzh-006603-EN/WRK/03",
+        "ms": 1270,
+        "error": null
+      },
+      "portal": {
+        "ok": true,
+        "status": 200,
+        "ms": 9186,
+        "error": null
+      }
+    },
+    "105": {
+      "publicationId": 105,
+      "checkedAt": "2026-10-17T23:12:45.150Z",
+      "registry": {
+        "ok": true,
+        "status": 206,
+        "bytes": 9886,
+        "ocid": "ocds-8gbwyb-moin0320",
+        "ms": 1169,
+        "error": null
+      },
+      "portal": {
+        "ok": true,
+        "status": 200,
+        "ms": 1095,
+        "error": null
+      }
+    },
+    "106": {
+      "publicationId": 106,
+      "checkedAt": "2026-10-17T23:13:12.552Z",
+      "registry": {
+        "ok": true,
+        "status": 206,
+        "bytes": 39914,
+        "ocid": "ocds-vsryzs-5f3b5cdc4f63f",
+        "ms": 1139,
+        "error": null
+      },
+      "portal": {
+        "ok": false,
+        "status": 403,
+        "ms": 2663,
+        "error": "HTTP 403"
+      }
+    },
+    "107": {
+      "publicationId": 107,
+      "checkedAt": "2026-10-17T23:12:23.528Z",
+      "registry": {
+        "ok": true,
+        "status": 206,
+        "bytes": 37861,
+        "ocid": "ocds-slk1v3-006066-07-NG",
+        "ms": 1318,
+        "error": null
+      },
+      "portal": {
+        "ok": false,
+        "status": 404,
+        "ms": 2656,
+        "error": "HTTP 404"
+      }
+    },
+    "116": {
+      "publicationId": 116,
+      "checkedAt": "2026-10-17T23:12:55.869Z",
+      "registry": {
+        "ok": true,
+        "status": 206,
+        "bytes": 46749,
+        "ocid": "ocds-6olpk7-0408101035718249",
+        "ms": 897,
+        "error": null
+      },
+      "portal": {
+        "ok": false,
+        "status": 403,
+        "ms": 2717,
+        "error": "HTTP 403"
+      }
+    },
+    "118": {
+      "publicationId": 118,
+      "checkedAt": "2026-10-17T23:13:09.887Z",
+      "registry": {
+        "ok": true,
+        "status": 206,
+        "bytes": 135568,
+        "ocid": "ocds-xwwr9a-049057-OS/EDU/03",
+        "ms": 1505,
+        "error": null
+      },
+      "portal": {
+        "ok": true,
+        "status": 200,
+        "ms": 3639,
+        "error": null
+      }
+    },
+    "125": {
+      "publicationId": 125,
+      "checkedAt": "2026-10-17T23:13:13.889Z",
+      "registry": {
+        "ok": true,
+        "status": 206,
+        "bytes": 25261,
+        "ocid": "ocds-u6fq4x-JWSC001-126262",
+        "ms": 1245,
+        "error": null
+      },
+      "portal": {
+        "ok": true,
+        "status": 200,
+        "ms": 1336,
+        "error": null
+      }
+    },
+    "127": {
+      "publicationId": 127,
+      "checkedAt": "2026-10-17T23:12:30.388Z",
+      "registry": {
+        "ok": true,
+        "status": 206,
+        "bytes": 67878,
+        "ocid": "ocds-j74acu-000632-AN/WRK/01-NG",
+        "ms": 1526,
+        "error": null
+      },
+      "portal": {
+        "ok": true,
+        "status": 200,
+        "ms": 6858,
+        "error": null
+      }
+    },
+    "130": {
+      "publicationId": 130,
+      "checkedAt": "2026-10-17T23:13:22.749Z",
+      "registry": {
+        "ok": true,
+        "status": 206,
+        "bytes": 262144,
+        "ocid": "ocds-rdvc92-401573631468",
+        "ms": 2126,
+        "error": null
+      },
+      "portal": {
+        "ok": true,
+        "status": 200,
+        "ms": 1075,
+        "error": null
+      }
+    },
+    "143": {
+      "publicationId": 143,
+      "checkedAt": "2026-10-17T23:13:18.402Z",
+      "registry": {
+        "ok": true,
+        "status": 206,
+        "bytes": 262144,
+        "ocid": "ocds-9t57fa-100034",
+        "ms": 1977,
+        "error": null
+      },
+      "portal": {
+        "ok": false,
+        "status": 404,
+        "ms": 978,
+        "error": "HTTP 404"
+      }
+    },
+    "145": {
+      "publicationId": 145,
+      "checkedAt": "2026-10-17T23:13:16.423Z",
+      "registry": {
+        "ok": true,
+        "status": 206,
+        "bytes": 262144,
+        "ocid": "ocds-ozzobm-000001/C/NCB/2017/2018/1600000000",
+        "ms": 1778,
+        "error": null
+      },
+      "portal": {
+        "ok": true,
+        "status": 200,
+        "ms": 2528,
+        "error": null
+      }
+    },
+    "147": {
+      "publicationId": 147,
+      "checkedAt": "2026-10-17T23:12:19.178Z",
+      "registry": {
+        "ok": true,
+        "status": 206,
+        "bytes": 262144,
+        "ocid": "ocds-5whusi-0",
+        "ms": 1699,
+        "error": null
+      },
+      "portal": {
+        "ok": true,
+        "status": 200,
+        "ms": 674,
+        "error": null
+      }
+    },
+    "152": {
+      "publicationId": 152,
+      "checkedAt": "2026-10-17T23:13:20.622Z",
+      "registry": {
+        "ok": true,
+        "status": 206,
+        "bytes": 262144,
+        "ocid": "ocds-mv5oob-00016c81-1709-4c3d-8182-65aa5bfeca03",
+        "ms": 2219,
+        "error": null
+      },
+      "portal": {
+        "ok": true,
+        "status": 200,
+        "ms": 611,
+        "error": null
+      }
+    },
+    "156": {
+      "publicationId": 156,
+      "checkedAt": "2026-10-17T23:12:20.872Z",
+      "registry": {
+        "ok": true,
+        "status": 206,
+        "bytes": 262144,
+        "ocid": "ocds-dwjm7l-272135",
+        "ms": 1694,
+        "error": null
+      },
+      "portal": {
+        "ok": true,
+        "status": 200,
+        "ms": 1628,
+        "error": null
+      }
+    }
+  }
+}

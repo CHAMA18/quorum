@@ -1,0 +1,81 @@
+{
+  "generatedAt": "2026-10-22T11:41:00.206Z",
+  "mode": "scale",
+  "host": {
+    "runtime": "bun",
+    "node": "v26.3.0",
+    "platform": "darwin"
+  },
+  "basePack": "KE-NCB-104293",
+  "measuredPath": "buildPack → planFromPack → flagPack → verifyFinding — the functions the review graph calls, minus file listing",
+  "volumeNote": "volume is synthetic repetition of the base pack's bid document — it measures the byte-cost of parsing and sweeping, not semantic variety; documents are staged text (PDF→text conversion happens upstream of this pipeline)",
+  "perSize": [
+    {
+      "targetBytes": 104857.6,
+      "actualBytes": 105921,
+      "bids": 7,
+      "ms": 18,
+      "msPerMB": 177,
+      "findings": 12,
+      "verifyDropped": 0,
+      "capTerritory": true,
+      "phases": {
+        "buildPackMs": 0,
+        "planMs": 1,
+        "flagMs": 16,
+        "verifyMs": 0
+      }
+    },
+    {
+      "targetBytes": 1048576,
+      "actualBytes": 1050616,
+      "bids": 7,
+      "ms": 232,
+      "msPerMB": 232,
+      "findings": 12,
+      "verifyDropped": 0,
+      "capTerritory": true,
+      "phases": {
+        "buildPackMs": 0,
+        "planMs": 2,
+        "flagMs": 227,
+        "verifyMs": 3
+      }
+    },
+    {
+      "targetBytes": 5242880,
+      "actualBytes": 5244176,
+      "bids": 7,
+      "ms": 4709,
+      "msPerMB": 942,
+      "findings": 12,
+      "verifyDropped": 0,
+      "capTerritory": true,
+      "phases": {
+        "buildPackMs": 0,
+        "planMs": 11,
+        "flagMs": 4681,
+        "verifyMs": 17
+      }
+    }
+  ],
+  "scaling": [
+    {
+      "from0p1MB": null
+    },
+    {
+      "from0p1MB": {
+        "bytesRatio": 9.92,
+        "msRatio": 12.89
+      }
+    },
+    {
+      "from0p1MB": {
+        "bytesRatio": 49.51,
+        "msRatio": 261.61
+      }
+    }
+  ],
+  "conclusion": "942 ms/MB at the largest volume — pack-size scaling of the sweep, measured on one host",
+  "recordUntouched": "everything ran in memory; the tenders dir, state.json and the audit spine were never written"
+}

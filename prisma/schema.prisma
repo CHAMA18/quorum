@@ -1,0 +1,14 @@
+// Vestigial by design: Quorum's store is a JSON file (src/lib/db.ts) + Firebase —
+// no ORM anywhere in the app. This schema exists only because the Render deploy
+// pipeline predates the store migration and runs `prisma generate` / `prisma db push`.
+// The generated client is never imported; `db push` creates an empty local sqlite
+// file that nothing reads.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./quorum.db"
+}
