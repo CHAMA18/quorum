@@ -3,7 +3,7 @@
 /**
  * The Film — REEL 01, "The Twenty-Minute Tender".
  *
- * Six chapters, every frame model-generated (CogVideoX-3, open weights),
+ * Five chapters, every frame model-generated (CogVideoX-3, open weights),
  * sequenced by a custom cinema player: title cards, chapter ticks, a master
  * clock pinned to ~02:00, 2.39:1 letterbox, grain, and a silent cut.
  * No embeds, no third-party player — the reel is ours end to end.
@@ -69,15 +69,8 @@ const CHAPTERS: Chapter[] = [
     id: 5,
     title: "The Gate",
     kicker: "CHAPTER 05 — THE HUMAN SIGNATURE",
-    line: "One button the machine cannot press. It waits.",
+    line: "One button the machine cannot press — the committee signs, the machine never does.",
     src: "/film/chapter-5.mp4",
-  },
-  {
-    id: 6,
-    title: "The Award",
-    kicker: "CHAPTER 06 — THE COMMITTEE",
-    line: "The committee signs. The machine never does.",
-    src: "/film/chapter-6.mp4",
   },
 ];
 

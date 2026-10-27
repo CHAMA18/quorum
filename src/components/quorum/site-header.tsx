@@ -74,7 +74,7 @@ export function SiteHeader({
         scrolled ? "border-ink-100 shadow-[0_1px_24px_rgba(11,12,15,0.07)]" : "border-transparent"
       )}
     >
-      <div className="mx-auto flex h-[72px] w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <Link href="/" aria-label="Quorum home" onClick={() => setOpen(false)}>
           <QuorumLogo />
         </Link>
@@ -84,9 +84,13 @@ export function SiteHeader({
             <a
               key={item.label}
               href={item.href}
-              className="rounded-full px-3.5 py-2 text-[14px] font-medium text-ink-600 transition-colors hover:bg-ink-50 hover:text-ink-950"
+              className="group relative rounded-full px-3.5 py-2 text-[14px] font-medium text-ink-600 transition-colors hover:text-ink-950"
             >
               {item.label}
+              <span
+                aria-hidden="true"
+                className="absolute inset-x-3.5 bottom-1 h-px origin-left scale-x-0 bg-brand-500 transition-transform duration-300 group-hover:scale-x-100"
+              />
             </a>
           ))}
         </nav>
@@ -135,16 +139,16 @@ export function SiteHeader({
             <>
               <Link
                 href="/org/dashboard"
-                className="inline-flex h-10 items-center rounded-full bg-brand-600 px-5 text-[13.5px] font-semibold text-white shadow-[0_8px_20px_rgba(217,38,22,0.28)] transition-all hover:bg-brand-700 hover:shadow-[0_10px_26px_rgba(217,38,22,0.36)]"
+                className="inline-flex h-10 items-center rounded-full bg-white px-5 text-[13.5px] font-semibold text-ink-900 shadow-[inset_0_0_0_1px_rgba(11,12,15,0.08)] transition-all hover:bg-ink-50 keep-light"
               >
                 Supplier
               </Link>
               <button
                 type="button"
                 onClick={onDashboard}
-                className="group inline-flex h-10 items-center gap-1.5 rounded-full bg-brand-600 px-5 text-[13.5px] font-semibold text-white shadow-[0_8px_20px_rgba(217,38,22,0.28)] transition-all hover:bg-brand-700 hover:shadow-[0_10px_26px_rgba(217,38,22,0.36)]"
+                className="group inline-flex h-10 items-center gap-1.5 px-2 text-[13.5px] font-bold text-ink-950 transition-colors hover:text-brand-600"
               >
-                Quorum
+                Enter workspace
                 <ArrowUpRight
                   className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
                   aria-hidden="true"

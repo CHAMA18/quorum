@@ -11,20 +11,23 @@ const ITEMS = [
   { icon: Crosshair, text: "THREE TOOLS THAT WORK BEAT NINE THAT HALF-WORK" },
 ];
 
-/** Top announcement ticker — product facts marquee. */
+/** Top announcement ticker — product facts on a slow, pausable marquee. */
 export function TopTicker() {
   const row = [...ITEMS, ...ITEMS];
   return (
-    <div className="relative overflow-hidden bg-ink-950 py-2" aria-label="Quorum announcements">
-      <div className="flex w-max animate-marquee items-center gap-10 pr-10">
+    <div
+      className="group relative overflow-hidden border-b border-white/[0.06] bg-ink-950 py-2.5"
+      aria-label="Quorum announcements"
+    >
+      <div className="flex w-max animate-marquee-slow items-center gap-10 pr-10 group-hover:[animation-play-state:paused]">
         {row.map((item, i) => (
           <span
             key={i}
-            className="flex items-center gap-2.5 whitespace-nowrap font-code text-[10.5px] font-medium tracking-[0.18em] text-ink-200"
+            className="flex items-center gap-2.5 whitespace-nowrap font-code text-[10.5px] font-medium tracking-[0.18em] text-ink-300"
           >
-            <item.icon className="h-3.5 w-3.5 text-brand-400" aria-hidden="true" />
+            <item.icon className="h-3.5 w-3.5 text-brand-400/90" aria-hidden="true" />
             {item.text}
-            <span className="ml-6 inline-block h-1 w-1 rounded-full bg-brand-500" aria-hidden="true" />
+            <span className="ml-6 inline-block h-1 w-1 rounded-full bg-brand-500/70" aria-hidden="true" />
           </span>
         ))}
       </div>

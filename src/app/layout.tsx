@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, Inter, JetBrains_Mono } from "next/font/google";
+import { Archivo, Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseAnalytics } from "@/components/quorum/firebase-analytics";
@@ -22,6 +22,17 @@ const inter = Inter({
 const jetbrains = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-jetbrains",
+  display: "swap",
+});
+
+// The editorial accent voice — italic serif used for single highlighted
+// phrases inside display headlines ("one review run", the greeting's name).
+// Italic-only weight 400; anything bolder would read as decoration, not voice.
+const instrument = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+  style: ["italic"],
+  variable: "--font-instrument",
   display: "swap",
 });
 
@@ -71,7 +82,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${archivo.variable} ${inter.variable} ${jetbrains.variable} font-body antialiased bg-background text-foreground`}
+        className={`${archivo.variable} ${inter.variable} ${jetbrains.variable} ${instrument.variable} font-body antialiased bg-background text-foreground`}
       >
         <ThemeProvider>
           {children}

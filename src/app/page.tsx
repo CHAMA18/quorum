@@ -242,9 +242,12 @@ export default function Home() {
             exit={{ opacity: 0, y: 8 }}
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             role="status"
-            className="fixed bottom-5 left-5 z-[100] flex items-center gap-3 rounded-xl bg-ink-950 px-4 py-3 shadow-[0_18px_50px_rgba(11,12,15,0.4)]"
+            className="fixed bottom-5 left-5 z-[100] flex items-center gap-3 rounded-xl bg-ink-950/85 px-4 py-3 shadow-[0_18px_50px_rgba(11,12,15,0.45)] ring-1 ring-white/15 backdrop-blur-md"
           >
-            <span className="h-2 w-2 shrink-0 rounded-full bg-brand-500" aria-hidden="true" />
+            <span className="relative flex h-2 w-2 shrink-0" aria-hidden="true">
+              <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-brand-500" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-500" />
+            </span>
             <p className="font-code text-[10.5px] font-semibold tracking-[0.14em] text-white">
               {toast}
             </p>
