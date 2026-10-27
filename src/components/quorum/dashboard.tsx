@@ -119,7 +119,7 @@ type GateItem = {
   requiredOffice?: string;
 };
 
-type LedgerRow = { tender: string; action: "AWARDED" | "RETURNED"; by: string; at: string };
+type LedgerRow = { id?: string; tender: string; action: "AWARDED" | "RETURNED"; by: string; at: string };
 
 /* ── Live mission data — every run, gate, decision and finding comes from
    the quorum-mcp sidecar. Nothing is seeded on the client. ───────────── */
@@ -328,6 +328,7 @@ function useMissionData() {
       rawGates
         .filter((g) => g.status !== "PENDING" && g.decidedAt)
         .map((g) => ({
+          id: g.id,
           tender: g.tenderId,
           action: g.status === "REJECTED" ? "RETURNED" : "AWARDED",
           by: g.approver ?? "—",
@@ -675,7 +676,7 @@ function StatusChip({ status }: { status: RunStatus }) {
     );
   if (status === "gate")
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-brand-200 bg-brand-50 px-2.5 py-1 font-code text-[8.5px] font-bold tracking-[0.16em] text-brand-800">
+      <span className="group inline-flex items-center gap-1 rounded-full border border-brand-500/40 bg-transparent px-2.5 py-1 font-code text-[8.5px] font-bold tracking-[0.16em] text-brand-700 transition-colors hover:bg-brand-50">
         <Gavel className="h-2.5 w-2.5" aria-hidden="true" />
         NEEDS APPROVAL
       </span>
@@ -732,10 +733,10 @@ function StatCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay, ease: EASE }}
       className={cn(
-        "relative overflow-hidden rounded-2xl border p-5",
-        featured
-          ? "border-ink-950 bg-night text-white shadow-[0_22px_55px_rgba(11,12,15,0.35)]"
-          : "border-ink-100 bg-white shadow-[0_1px_2px_rgba(11,12,15,0.04)]"
+        /* Flat editorial cell — the stat band wrapper owns the frame, the
+           hairlines and the rounding; featured cell keeps the night fill. */
+        "relative h-full overflow-hidden p-5",
+        featured ? "bg-night text-white" : "bg-white"
       )}
     >
       {featured && <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />}
@@ -1321,7 +1322,7 @@ function NewRunModal({
                           placeholder="Use the title exactly as published"
                           aria-required="true"
                           aria-invalid={Boolean(detailsError && !title.trim())}
-                          className="h-12 w-full rounded-xl border border-ink-200 bg-white px-4 text-[13.5px] text-ink-900 outline-none transition-all placeholder:text-ink-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-600/15 sm:h-[52px]"
+                          className="h-12 w-full rounded-xl border border-ink-200 bg-white px-4 text-[13.5px] text-ink-900 outline-none transition-all placeholder:text-ink-300 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10 sm:h-[52px]"
                         />
                         {titleSource === "sample" && (
                           <p className="mt-1.5 flex items-center gap-1.5 font-code text-[8px] tracking-[0.14em] text-ink-400" aria-live="polite">
@@ -2272,7 +2273,7 @@ export function GateQueue({
             <AnimatePresence initial={false}>
               {ledger.slice(0, 4).map((row) => (
                 <motion.li
-                  key={`${row.tender}-${row.at}-${row.action}`}
+                  key={row.id ?? `${row.tender}-${row.at}-${row.action}`}
                   layout
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -4085,7 +4086,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
                     autoComplete="off"
                     aria-required="true"
                     aria-invalid={Boolean(reqError && !reqName.trim())}
-                    className="h-12 w-full rounded-xl border border-ink-200 bg-white px-4 text-[13.5px] text-ink-900 outline-none transition-all placeholder:text-ink-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-600/15"
+                    className="h-12 w-full rounded-xl border border-ink-200 bg-white px-4 text-[13.5px] text-ink-900 outline-none transition-all placeholder:text-ink-300 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
                   />
                 </div>
                 <div>
@@ -4121,7 +4122,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
                     onChange={(e) => setReqNote(e.target.value)}
                     rows={3}
                     placeholder="What it must supply, and why — optionally."
-                    className="w-full resize-none rounded-xl border border-ink-200 bg-white px-4 py-3 text-[13.5px] text-ink-900 outline-none transition-all placeholder:text-ink-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-600/15"
+                    className="w-full resize-none rounded-xl border border-ink-200 bg-white px-4 py-3 text-[13.5px] text-ink-900 outline-none transition-all placeholder:text-ink-300 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
                   />
                 </div>
                 {reqError && (
@@ -4220,7 +4221,7 @@ function AwardLedgerView({
                 <tbody>
                   {ledger.map((row) => (
                     <tr
-                      key={`${row.tender}-${row.at}-${row.action}`}
+                      key={row.id ?? `${row.tender}-${row.at}-${row.action}`}
                       className="border-b border-ink-50 transition-colors last:border-b-0 hover:bg-paper"
                     >
                       <td className="py-3.5 pl-5 pr-4 font-code text-[10px] font-bold tracking-[0.08em] text-ink-950">
@@ -4781,6 +4782,48 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
               ))}
             </div>
           ) : (
+            <>
+            {/* Convening strip — the quorum's live state, on the default tab.
+                Summon is idempotent: an open sitting lands on the desk, never
+                minted twice. */}
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-4 rounded-2xl border border-ink-100 bg-white px-5 py-4 sm:mb-6">
+              <div className="min-w-0">
+                <p className="font-code text-[9px] font-bold tracking-[0.22em] text-ink-950">
+                  CONVENING — {roll.length} OF {data.seats} PRESENT
+                </p>
+                <p className="mt-1 text-[12.5px] leading-snug text-ink-500">
+                  {data.open > 0
+                    ? `${data.open} seat${data.open === 1 ? " still stands" : "s still stand"} open — the summons goes out, the roll fills.`
+                    : "Quorum is present — the sitting can proceed."}
+                </p>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1.5" aria-hidden="true">
+                  {Array.from({ length: data.seats }).map((_, i) => (
+                    <span
+                      key={i}
+                      title={i < roll.length ? "Seat taken" : "Seat open"}
+                      className={cn(
+                        "h-2.5 w-2.5 rounded-[3px]",
+                        i < roll.length
+                          ? i === 0
+                            ? "bg-brand-500"
+                            : "bg-ink-950"
+                          : "border border-dashed border-ink-300"
+                      )}
+                    />
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void summon()}
+                  disabled={summoning}
+                  className="inline-flex h-10 shrink-0 items-center rounded-xl bg-ink-950 px-4 font-code text-[9px] font-bold tracking-[0.18em] text-white transition-colors hover:bg-brand-600 disabled:opacity-50"
+                >
+                  {summoning ? "SUMMONING…" : "SUMMON THE SITTING"}
+                </button>
+              </div>
+            </div>
             <div data-tour="committee-roll" className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3 2xl:grid-cols-4">
               {roll.map((m, i) => (
                 <motion.div
@@ -4878,12 +4921,21 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                   className="grid place-items-center rounded-2xl border border-dashed border-ink-200 p-4 text-center"
                 >
                   <div>
-                    <p className="font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400">SEAT OPEN</p>
-                    <p className="mt-1 font-code text-[7px] tracking-[0.18em] text-ink-300">QUORUM CALL PENDING</p>
+                    {/* Numbered voids — each open seat knows its place at the
+                        table; the gavel tick in the strip is seat one. */}
+                    <span
+                      className="mx-auto grid h-9 w-9 place-items-center rounded-full border border-dashed border-ink-300 font-code text-[10px] font-bold text-ink-400"
+                      aria-hidden="true"
+                    >
+                      {roll.length + i + 1}
+                    </span>
+                    <p className="mt-2.5 font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400">SEAT OPEN</p>
+                    <p className="mt-1 font-code text-[7px] tracking-[0.18em] text-ink-300">AWAITS THE QUORUM CALL</p>
                   </div>
                 </motion.div>
               ))}
             </div>
+            </>
           )}
         </div>
 
@@ -6433,7 +6485,7 @@ const SUPPLIER_CATEGORIES = [
 const SUPPLIER_REGULATORS = ["NCC", "NHCC", "ERB", "ZPPA", "ZEMA", "Other"] as const;
 
 const SUPPLIER_INPUT =
-  "w-full rounded-xl border border-ink-200 bg-white px-3.5 py-2.5 text-[13px] text-ink-900 outline-none transition-colors placeholder:text-ink-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-600/15";
+  "w-full rounded-xl border border-ink-200 bg-white px-3.5 py-2.5 text-[13px] text-ink-900 outline-none transition-colors placeholder:text-ink-300 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10";
 
 type SupplierDraft = {
   name: string;
@@ -7059,7 +7111,7 @@ function AddSupplierModal({
                           onChange={(e) => setRollQuery(e.target.value)}
                           placeholder="Search by firm or PACRA number…"
                           aria-label="Search the ZPPA record"
-                          className="h-9 w-full rounded-xl border border-ink-200 bg-white pl-9 pr-3 text-[12.5px] text-ink-900 outline-none transition-colors placeholder:text-ink-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-600/15"
+                          className="h-9 w-full rounded-xl border border-ink-200 bg-white pl-9 pr-3 text-[12.5px] text-ink-900 outline-none transition-colors placeholder:text-ink-300 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
                         />
                       </label>
 
@@ -7396,7 +7448,7 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Name, TIN, registration…"
                     aria-label="Search suppliers"
-                    className="h-9 w-52 rounded-full border border-ink-200 bg-paper pl-9 pr-3 text-[12.5px] text-ink-900 outline-none transition-colors placeholder:text-ink-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-600/15"
+                    className="h-9 w-52 rounded-full border border-ink-200 bg-paper pl-9 pr-3 text-[12.5px] text-ink-900 outline-none transition-colors placeholder:text-ink-300 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
                   />
                 </label>
               </div>
@@ -8501,7 +8553,7 @@ export function Dashboard({
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search evaluations…"
                   aria-label="Search evaluations by reference, title or buyer"
-                  className="h-9 w-44 rounded-full border border-ink-200 bg-white pl-9 pr-3 text-[12.5px] text-ink-900 outline-none transition-all placeholder:text-ink-300 focus:w-56 focus:border-brand-500 focus:ring-2 focus:ring-brand-600/15 lg:w-52"
+                  className="h-9 w-44 rounded-full border border-ink-200 bg-white pl-9 pr-3 text-[12.5px] text-ink-900 outline-none transition-all placeholder:text-ink-300 focus:w-56 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10 lg:w-52"
                 />
               </div>
               <p
@@ -8551,7 +8603,10 @@ export function Dashboard({
                   id="mc-greeting"
                   className="mt-4 font-display text-[34px] font-black leading-[1.02] tracking-[-0.025em] text-ink-950 sm:text-[44px]"
                 >
-                  {greeting}, {firstName}
+                  {greeting},{" "}
+                  <span className="font-editorial font-normal tracking-normal text-brand-600">
+                    {firstName}
+                  </span>
                   <span className="text-brand-600">.</span>
                 </h1>
                 <p className="mt-3 max-w-xl text-[14.5px] leading-relaxed text-ink-600">
@@ -8575,8 +8630,11 @@ export function Dashboard({
               </div>
             </div>
 
-            {/* Stats */}
-            <div data-tour="ov-stats" className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+            {/* Stats — a hairline-divided editorial band, not floating cards */}
+            <div
+              data-tour="ov-stats"
+              className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-ink-100 bg-ink-100 xl:grid-cols-4"
+            >
               <StatCard
                 label="EVALUATIONS IN PROGRESS"
                 value={activeRuns}

@@ -271,7 +271,7 @@ const inputCls =
 /* Plan-a-tender surfaces — a roomier, higher-contrast field set than the
    shared inputCls, tuned for both themes (placeholders and hints must read). */
 const planInput =
-  "h-10 w-full rounded-xl border border-ink-300 bg-white px-3 text-[13px] text-ink-900 outline-none transition-[border-color,box-shadow] placeholder:text-ink-400 hover:border-ink-400 focus:border-ink-950 focus:ring-2 focus:ring-brand-500/20";
+  "h-10 w-full rounded-xl border border-ink-300 bg-white px-3 text-[13px] text-ink-900 outline-none transition-[border-color,box-shadow] placeholder:text-ink-400 hover:border-ink-400 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10";
 
 function PlanField({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
@@ -304,10 +304,10 @@ function Btn({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "inline-flex h-9 items-center justify-center gap-1.5 rounded-lg px-3.5 text-[12.5px] font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 disabled:cursor-not-allowed disabled:opacity-40",
+        "inline-flex h-9 items-center justify-center gap-1.5 rounded-lg px-3.5 text-[12.5px] font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-950/20 disabled:cursor-not-allowed disabled:opacity-40",
         variant === "primary" && "bg-brand-600 text-white shadow-sm hover:bg-brand-700 active:scale-[0.98] dark:bg-brand-500 dark:hover:bg-brand-400",
         variant === "ghost" &&
-          "border border-ink-200 text-ink-700 hover:border-ink-950 hover:text-ink-950 active:scale-[0.98] dark:border-ink-200 dark:text-ink-200 dark:hover:border-ink-400 dark:hover:text-white",
+          "border border-ink-200 text-ink-700 hover:border-ink-950 hover:text-ink-950 active:scale-[0.98] dark:border-ink-200 dark:text-ink-800 dark:hover:border-ink-400 dark:hover:text-white",
         className,
       )}
     >
@@ -483,7 +483,7 @@ function TenderPicker({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={`Tender: ${current ? `${current.ref} — ${current.title}` : "select a tender"}`}
-        className="flex h-10 w-full items-center gap-3 rounded-xl border border-ink-200 bg-white px-3 text-left shadow-sm transition-all hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 sm:min-w-[320px] sm:max-w-[420px] dark:hover:border-ink-400"
+        className="flex h-10 w-full items-center gap-3 rounded-xl border border-ink-200 bg-white px-3 text-left shadow-sm transition-all hover:border-ink-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-950/20 sm:min-w-[320px] sm:max-w-[420px] dark:hover:border-ink-400"
       >
         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-brand-50 font-code text-[9px] font-black text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
           {progressOf(currentRef).pct}
@@ -803,7 +803,7 @@ export function CycleView({ onToast }: { user?: unknown; onToast: (m: string) =>
                     onClick={() => set("pipeCur", on ? "" : c)}
                     aria-pressed={on}
                     className={cn(
-                      "h-9 rounded-lg border font-code text-[11px] font-bold tracking-[0.12em] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40",
+                      "h-9 rounded-lg border font-code text-[11px] font-bold tracking-[0.12em] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-950/20",
                       on
                         ? "border-ink-950 bg-ink-950 text-white dark:border-white dark:bg-white dark:text-[#0b0c0f]"
                         : "border-ink-300 text-ink-600 hover:border-ink-400 hover:text-ink-950",
@@ -833,7 +833,7 @@ export function CycleView({ onToast }: { user?: unknown; onToast: (m: string) =>
                 "PIPELINE ENTRY ADDED",
               ).then((ok) => ok && setD((p) => ({ ...p, pipeRef: "", pipeTitle: "", pipeEst: "", pipePub: "" })))
             }
-            className="mt-1 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 text-[13.5px] font-bold text-white shadow-[0_8px_20px_rgba(217,38,22,0.25)] transition-all hover:bg-brand-700 hover:shadow-[0_10px_26px_rgba(217,38,22,0.35)] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 disabled:cursor-not-allowed disabled:bg-ink-100 disabled:text-ink-400 disabled:shadow-none dark:bg-brand-500 dark:hover:bg-brand-400"
+            className="mt-1 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 text-[13.5px] font-bold text-white shadow-[0_8px_20px_rgba(217,38,22,0.25)] transition-all hover:bg-brand-700 hover:shadow-[0_10px_26px_rgba(217,38,22,0.35)] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-950/20 disabled:cursor-not-allowed disabled:bg-ink-100 disabled:text-ink-400 disabled:shadow-none dark:bg-brand-500 dark:hover:bg-brand-400"
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
             Add to pipeline
@@ -1627,7 +1627,7 @@ export function CycleView({ onToast }: { user?: unknown; onToast: (m: string) =>
             target="_blank"
             rel="noreferrer"
             className={cn(
-              "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3.5 text-[12.5px] font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 active:scale-[0.98]",
+              "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3.5 text-[12.5px] font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-950/20 active:scale-[0.98]",
               ref ? "bg-brand-600 text-white shadow-sm hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-400" : "pointer-events-none bg-ink-100 text-ink-400",
             )}
           >
@@ -1705,7 +1705,7 @@ export function CycleView({ onToast }: { user?: unknown; onToast: (m: string) =>
               aria-selected={tab === t.id}
               onClick={() => setTab(t.id)}
               className={cn(
-                "relative whitespace-nowrap rounded-full px-3 py-1.5 font-code text-[9px] font-bold tracking-[0.14em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40",
+                "relative whitespace-nowrap rounded-full px-3 py-1.5 font-code text-[9px] font-bold tracking-[0.14em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-950/20",
                 tab === t.id ? "text-white dark:text-ink-50" : "text-ink-500 hover:bg-ink-50 hover:text-ink-900 dark:hover:bg-ink-100/60 dark:hover:text-ink-100",
               )}
             >
@@ -1848,7 +1848,7 @@ function PipelineRow({
               aria-haspopup="listbox"
               aria-expanded={open}
               aria-label={`Link ${p.ref} to a live tender`}
-              className="inline-flex h-8 items-center gap-1 rounded-lg border border-ink-200 bg-white px-2.5 text-[11px] font-semibold text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40 dark:text-ink-200 dark:hover:border-ink-400"
+              className="inline-flex h-8 items-center gap-1 rounded-lg border border-ink-200 bg-white px-2.5 text-[11px] font-semibold text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-950/20 dark:text-ink-800 dark:hover:border-ink-400"
             >
               Link <ChevronDown className={cn("h-3 w-3 transition-transform", open && "rotate-180")} aria-hidden="true" />
             </button>

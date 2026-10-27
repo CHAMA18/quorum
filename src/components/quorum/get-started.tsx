@@ -290,7 +290,7 @@ export function GetStarted({
                       onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                       placeholder="Amina Mwangi"
                       autoComplete="name"
-                      className="h-12 w-full rounded-lg border border-ink-200 bg-paper px-4 text-[14px] text-ink-900 outline-none transition-all placeholder:text-ink-300 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-600/15"
+                      className="h-12 w-full rounded-lg border border-ink-200 bg-paper px-4 text-[14px] text-ink-900 outline-none transition-all placeholder:text-ink-300 focus:border-ink-950 focus:bg-white focus:ring-2 focus:ring-ink-950/10"
                     />
                   </div>
                   <div>
@@ -304,7 +304,7 @@ export function GetStarted({
                       onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                       placeholder="a.mwangi@county.go.ke"
                       autoComplete="email"
-                      className="h-12 w-full rounded-lg border border-ink-200 bg-paper px-4 text-[14px] text-ink-900 outline-none transition-all placeholder:text-ink-300 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-600/15"
+                      className="h-12 w-full rounded-lg border border-ink-200 bg-paper px-4 text-[14px] text-ink-900 outline-none transition-all placeholder:text-ink-300 focus:border-ink-950 focus:bg-white focus:ring-2 focus:ring-ink-950/10"
                     />
                   </div>
                   <div>
@@ -318,7 +318,7 @@ export function GetStarted({
                       onChange={(e) => setForm((f) => ({ ...f, institution: e.target.value }))}
                       placeholder="County health agency"
                       autoComplete="organization"
-                      className="h-12 w-full rounded-lg border border-ink-200 bg-paper px-4 text-[14px] text-ink-900 outline-none transition-all placeholder:text-ink-300 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-600/15"
+                      className="h-12 w-full rounded-lg border border-ink-200 bg-paper px-4 text-[14px] text-ink-900 outline-none transition-all placeholder:text-ink-300 focus:border-ink-950 focus:bg-white focus:ring-2 focus:ring-ink-950/10"
                     />
                   </div>
                   <div className="flex items-end">

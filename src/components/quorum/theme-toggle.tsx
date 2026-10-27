@@ -41,19 +41,19 @@ export function ThemeModeRow({ className, collapsed = false }: { className?: str
       className={cn(
         "flex w-full items-center rounded-xl border px-3 py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50",
         collapsed
-          ? "h-11 justify-center border-ink-200 bg-white text-ink-600 hover:bg-ink-50 dark:border-white/10 dark:bg-white/[0.03] dark:text-ink-300 dark:hover:bg-white/5"
+          ? "h-11 justify-center border-ink-200 bg-white text-ink-600 hover:bg-ink-50 dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-white/5"
           : "justify-between gap-3 border-ink-200 bg-white/70 hover:bg-ink-50 dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-white/5",
         className
       )}
     >
       <span className={cn("flex items-center", collapsed ? "justify-center" : "gap-2.5")}>
         {isDark ? (
-          <Moon className="h-4 w-4 text-ink-500 dark:text-ink-300" aria-hidden="true" />
+          <Moon className="h-4 w-4 text-ink-500" aria-hidden="true" />
         ) : (
-          <Sun className="h-4 w-4 text-ink-500 dark:text-ink-300" aria-hidden="true" />
+          <Sun className="h-4 w-4 text-ink-500" aria-hidden="true" />
         )}
         {!collapsed ? (
-          <span className="font-code text-[9px] font-semibold tracking-[0.22em] text-ink-600 dark:text-ink-300">
+          <span className="font-code text-[9px] font-semibold tracking-[0.22em] text-ink-600">
             DARK / LIGHT MODE
           </span>
         ) : null}

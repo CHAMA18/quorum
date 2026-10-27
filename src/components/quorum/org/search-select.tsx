@@ -46,7 +46,7 @@ type SearchSelectProps = {
 const EASE = [0.22, 1, 0.36, 1] as const;
 
 const triggerCls =
-  "flex h-11 w-full items-center justify-between gap-2 rounded-lg border border-ink-200 bg-white px-3.5 text-left text-[14px] outline-none transition-all hover:border-ink-300 focus-visible:border-brand-600 focus-visible:ring-4 focus-visible:ring-brand-600/10 dark:border-white/10 dark:bg-night-2 dark:hover:border-white/15";
+  "flex h-11 w-full items-center justify-between gap-2 rounded-lg border border-ink-200 bg-white px-3.5 text-left text-[14px] outline-none transition-all hover:border-ink-300 focus-visible:border-ink-950 focus-visible:ring-4 focus-visible:ring-ink-950/10 dark:border-white/10 dark:bg-night-2 dark:hover:border-white/15";
 
 export function SearchSelect({
   value,

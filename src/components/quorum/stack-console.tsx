@@ -793,7 +793,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                         value={draft.note}
                         onChange={(e) => setApproverDraft((p) => ({ ...p, [g.id]: { ...draft, note: e.target.value } }))}
                         placeholder="Why this may proceed — or why not"
-                        className="mt-1.5 h-10 w-full rounded-xl border border-ink-200 bg-white px-3 text-[13px] text-ink-950 outline-none transition-all placeholder:text-ink-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-600/15"
+                        className="mt-1.5 h-10 w-full rounded-xl border border-ink-200 bg-white px-3 text-[13px] text-ink-950 outline-none transition-all placeholder:text-ink-300 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
                       />
                       <div className="mt-3.5 flex flex-wrap gap-2.5">
                         <button

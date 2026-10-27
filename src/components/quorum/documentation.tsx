@@ -1065,7 +1065,7 @@ export function DocumentationView() {
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search the handbook…"
                 aria-label="Search the handbook"
-                className="h-9 w-full rounded-full border border-ink-200 bg-paper pl-9 pr-3 text-[12.5px] text-ink-900 outline-none transition-colors placeholder:text-ink-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-600/15"
+                className="h-9 w-full rounded-full border border-ink-200 bg-paper pl-9 pr-3 text-[12.5px] text-ink-900 outline-none transition-colors placeholder:text-ink-300 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
               />
             </label>
             {q && (

@@ -58,7 +58,7 @@ function deriveName(email: string): string {
 }
 
 const inputCls =
-  "h-11 w-full rounded-xl border border-ink-200 bg-white px-3.5 text-[14px] text-ink-950 outline-none transition-all placeholder:text-ink-300 focus:border-brand-600 focus:ring-4 focus:ring-brand-600/10 dark:bg-night-2 dark:text-white dark:placeholder:text-ink-500";
+  "h-11 w-full rounded-xl border border-ink-200 bg-white px-3.5 text-[14px] text-ink-950 outline-none transition-all placeholder:text-ink-300 focus:border-ink-950 focus:ring-4 focus:ring-ink-950/10 dark:bg-night-2 dark:text-white dark:placeholder:text-ink-500";
 
 function Field({ label, error, children, hint }: { label: string; error?: string; children: React.ReactNode; hint?: string }) {
   return (
@@ -810,7 +810,7 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
   }
 
   return (
-    <div className="grid min-h-screen bg-paper font-body text-ink-900 antialiased lg:grid-cols-[1.05fr_1fr] dark:bg-night dark:text-ink-100">
+    <div className="grid min-h-screen bg-paper font-body text-ink-900 antialiased lg:grid-cols-[1.05fr_1fr] dark:bg-night dark:text-white">
       <StoryPanel grantedFirstName={firstName} />
 
       {/* Auth panel */}
