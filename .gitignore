@@ -60,6 +60,8 @@ server.log
 # tool/session artifacts (never part of the product)
 /tool-results/
 /upload/
+/logs/
+/shots/
 
 # internal build log (agent work notes, never part of the product)
 /worklog.md

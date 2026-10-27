@@ -1,6 +1,120 @@
 {
   "gates": [
     {
+      "id": "gate_trwj60",
+      "runId": "run_3c49c24e",
+      "tenderId": "KE-MOH-2026-117",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "SAVANNA PHARMA",
+        "value": "KES 588,400,000",
+        "attachments": 12,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03",
+          "F-04",
+          "F-05",
+          "F-06",
+          "F-07",
+          "F-08",
+          "F-09",
+          "F-10"
+        ],
+        "drafts": [
+          "draft_1bzcjx"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-27T13:20:46.771Z"
+    },
+    {
+      "id": "gate_x82wdy",
+      "runId": "run_b3c0745d",
+      "tenderId": "KE-MOH-2026-117",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "SAVANNA PHARMA",
+        "value": "KES 588,400,000",
+        "attachments": 12,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03",
+          "F-04",
+          "F-05",
+          "F-06",
+          "F-07",
+          "F-08",
+          "F-09",
+          "F-10"
+        ],
+        "drafts": [
+          "draft_s6x2cq"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-27T13:20:06.769Z"
+    },
+    {
+      "id": "gate_buh5yo",
+      "runId": "run_c3943d6f",
+      "tenderId": "KE-MOH-2026-117",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "SAVANNA PHARMA",
+        "value": "KES 588,400,000",
+        "attachments": 13,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03",
+          "F-04",
+          "F-05",
+          "F-06",
+          "F-07",
+          "F-08",
+          "F-09",
+          "F-10"
+        ],
+        "drafts": [
+          "draft_n2gwm1",
+          "draft_4wllbm"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-27T13:19:15.681Z"
+    },
+    {
+      "id": "gate_flvsqr",
+      "runId": "run_7afd24a6",
+      "tenderId": "KE-MOH-2026-117",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "SAVANNA PHARMA",
+        "value": "KES 588,400,000",
+        "attachments": 13,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03",
+          "F-04",
+          "F-05",
+          "F-06",
+          "F-07",
+          "F-08",
+          "F-09",
+          "F-10"
+        ],
+        "drafts": [
+          "draft_adgmxr",
+          "draft_j43tvg"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-27T13:18:46.473Z"
+    },
+    {
       "id": "gate_q8szlz",
       "runId": "run_b279b95e",
       "tenderId": "KE-KCS-2026-042",
@@ -1390,6 +1504,788 @@
     }
   ],
   "runs": [
+    {
+      "id": "run_3c49c24e",
+      "tenderId": "KE-MOH-2026-117",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-27T13:20:32.523Z",
+      "updatedAt": "2026-10-27T13:20:46.773Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender KE-MOH-2026-117",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — llm · value parsing DEEP (markdown + OCDS) · focus PRICE-OUTLIER > VALUE-OUTLIER · maxDrafts 1",
+        "▸ extract_requirements — 8 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 10 findings flagged, each cited",
+        "▸ verify_findings — 10/10 confirmed in their cited document",
+        "▸ draft_redline — LLM drafting (llama3.2:1b) for R-PRICE-OUTLIER",
+        "▸ 1 redline draft(s) ready for committee (plan: maxDrafts 1, focus PRICE-OUTLIER, VALUE-OUTLIER) · 1 from the model, 0 template · 368 tokens",
+        "⏸ human gate raised (gate_trwj60) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [
+        {
+          "id": "REQ-01",
+          "clause": "SHALL supply only medicines prequalified by the WHO or registered by the PPB",
+          "page": 1
+        },
+        {
+          "id": "REQ-02",
+          "clause": "SHALL deliver each tracer item to the county medical stores within forty-five (45) days of contract signature",
+          "page": 1
+        },
+        {
+          "id": "REQ-03",
+          "clause": "SHALL assign a shelf life of not less than twenty-four (24) months at delivery for every batch",
+          "page": 1
+        },
+        {
+          "id": "REQ-04",
+          "clause": "SHALL transport cold-chain items at 2–8 °C with validated data loggers on every shipment",
+          "page": 1
+        },
+        {
+          "id": "REQ-05",
+          "clause": "SHALL report any recall or quality defect to the buyer within twenty-four (24) hours",
+          "page": 1
+        },
+        {
+          "id": "REQ-06",
+          "clause": "must hold a valid PPB wholesaler licence for the contract period",
+          "page": 1
+        },
+        {
+          "id": "REQ-07",
+          "clause": "must submit a certificate of analysis for every batch offered",
+          "page": 1
+        },
+        {
+          "id": "REQ-08",
+          "clause": "must declare any anti-dumping or subsidy arrangements affecting quoted prices",
+          "page": 1
+        }
+      ],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Insulin glargine 100IU/ml, pack of 5 pens × 1200 — EQUATORIAL MEDICINES",
+          "evidence": "Unit price KES 41,300 vs peer median KES 6,420 (6.4×) on line item \"insulin glargine 100iu/ml,\".",
+          "citation": "03-bid-equatorial-medicines.md, price schedule"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Cold-chain shipment, validated 2–8 °C × 12 — EQUATORIAL MEDICINES",
+          "evidence": "Unit price KES 8,050,000 vs peer median KES 480,000 (16.8×) on line item \"cold-chain shipment, validated\".",
+          "citation": "03-bid-equatorial-medicines.md, price schedule"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-SPEC-DEVIATION",
+          "severity": "HIGH",
+          "item": "EQUATORIAL MEDICINES",
+          "evidence": "Note: alternative offered for the cold-chain segment — imported passive shippers requested in place of validated reefer trucks (see annex B).",
+          "citation": "03-bid-equatorial-medicines.md, specifications matrix"
+        },
+        {
+          "id": "F-04",
+          "rule": "R-VALUE-OUTLIER",
+          "severity": "HIGH",
+          "item": "EQUATORIAL MEDICINES",
+          "evidence": "Bid value KES 1,362,900,000 vs peer median 588,400,000 (2.3×).",
+          "citation": "03-bid-equatorial-medicines.md, bid value line"
+        },
+        {
+          "id": "F-05",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "SAVANNA PHARMA — cold-chain capability report",
+          "evidence": "Tender notice lists \"cold-chain capability report\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-06",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "EQUATORIAL MEDICINES — ppb wholesaler licence",
+          "evidence": "Tender notice lists \"ppb wholesaler licence\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-07",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "EQUATORIAL MEDICINES — who prequalification or ppb registration certificates",
+          "evidence": "Tender notice lists \"who prequalification or ppb registration certificates\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-08",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "EQUATORIAL MEDICINES — certificate of analysis samples",
+          "evidence": "Tender notice lists \"certificate of analysis samples\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-09",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "EQUATORIAL MEDICINES — cold-chain capability report",
+          "evidence": "Tender notice lists \"cold-chain capability report\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-10",
+          "rule": "R-OVER-BUDGET",
+          "severity": "HIGH",
+          "item": "EQUATORIAL MEDICINES",
+          "evidence": "Bid value KES 1,362,900,000 exceeds the budget ceiling KES 624,800,000 (notice: 01-tender-notice.md).",
+          "citation": "03-bid-equatorial-medicines.md, bid value line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_1bzcjx",
+          "findingId": "F-01",
+          "original": "Unit price KES 41,300 vs peer median KES 6,420 (6.4×) on line item \"insulin glargine 100iu/ml,\".",
+          "proposed": "The Buyer reserves the right to seek written clarification of any line-item price exceeding the peer median by more than 100% prior to award; bids left unclarified after seven (7) working days shall be disqualified.",
+          "rationale": "To ensure transparency and fairness in the procurement process, the Buyer will reserve the right to request written clarification of any line-item price that exceeds the peer median by more than 100% before awarding the contract. Any bids that are left unclarified after seven (7) working days shall be disqualified to prevent unfair advantage to the bidder.",
+          "model": "llama3.2:1b (llm)",
+          "source": "llm",
+          "usage": {
+            "promptTokens": 247,
+            "completionTokens": 121
+          },
+          "latencyMs": 9466
+        }
+      ],
+      "usage": {
+        "drafts": 1,
+        "llmDrafts": 1,
+        "promptTokens": 247,
+        "completionTokens": 121
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "PRICE-OUTLIER",
+          "VALUE-OUTLIER"
+        ],
+        "maxDrafts": 1,
+        "note": "Review plan for PACK INVENTORY tender pack inventory.",
+        "source": "llm",
+        "model": "llama3.2:1b"
+      },
+      "gateId": "gate_trwj60"
+    },
+    {
+      "id": "run_b3c0745d",
+      "tenderId": "KE-MOH-2026-117",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-27T13:19:49.470Z",
+      "updatedAt": "2026-10-27T13:20:06.773Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender KE-MOH-2026-117",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — llm · value parsing DEEP (markdown + OCDS) · focus PRICE-OUTLIER > VALUE-OUTLIER · maxDrafts 1",
+        "▸ extract_requirements — 8 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 10 findings flagged, each cited",
+        "▸ verify_findings — 10/10 confirmed in their cited document",
+        "▸ draft_redline — LLM drafting (llama3.2:1b) for R-PRICE-OUTLIER",
+        "▸ 1 redline draft(s) ready for committee (plan: maxDrafts 1, focus PRICE-OUTLIER, VALUE-OUTLIER) · 1 from the model, 0 template · 367 tokens",
+        "⏸ human gate raised (gate_x82wdy) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [
+        {
+          "id": "REQ-01",
+          "clause": "SHALL supply only medicines prequalified by the WHO or registered by the PPB",
+          "page": 1
+        },
+        {
+          "id": "REQ-02",
+          "clause": "SHALL deliver each tracer item to the county medical stores within forty-five (45) days of contract signature",
+          "page": 1
+        },
+        {
+          "id": "REQ-03",
+          "clause": "SHALL assign a shelf life of not less than twenty-four (24) months at delivery for every batch",
+          "page": 1
+        },
+        {
+          "id": "REQ-04",
+          "clause": "SHALL transport cold-chain items at 2–8 °C with validated data loggers on every shipment",
+          "page": 1
+        },
+        {
+          "id": "REQ-05",
+          "clause": "SHALL report any recall or quality defect to the buyer within twenty-four (24) hours",
+          "page": 1
+        },
+        {
+          "id": "REQ-06",
+          "clause": "must hold a valid PPB wholesaler licence for the contract period",
+          "page": 1
+        },
+        {
+          "id": "REQ-07",
+          "clause": "must submit a certificate of analysis for every batch offered",
+          "page": 1
+        },
+        {
+          "id": "REQ-08",
+          "clause": "must declare any anti-dumping or subsidy arrangements affecting quoted prices",
+          "page": 1
+        }
+      ],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Insulin glargine 100IU/ml, pack of 5 pens × 1200 — EQUATORIAL MEDICINES",
+          "evidence": "Unit price KES 41,300 vs peer median KES 6,420 (6.4×) on line item \"insulin glargine 100iu/ml,\".",
+          "citation": "03-bid-equatorial-medicines.md, price schedule"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Cold-chain shipment, validated 2–8 °C × 12 — EQUATORIAL MEDICINES",
+          "evidence": "Unit price KES 8,050,000 vs peer median KES 480,000 (16.8×) on line item \"cold-chain shipment, validated\".",
+          "citation": "03-bid-equatorial-medicines.md, price schedule"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-SPEC-DEVIATION",
+          "severity": "HIGH",
+          "item": "EQUATORIAL MEDICINES",
+          "evidence": "Note: alternative offered for the cold-chain segment — imported passive shippers requested in place of validated reefer trucks (see annex B).",
+          "citation": "03-bid-equatorial-medicines.md, specifications matrix"
+        },
+        {
+          "id": "F-04",
+          "rule": "R-VALUE-OUTLIER",
+          "severity": "HIGH",
+          "item": "EQUATORIAL MEDICINES",
+          "evidence": "Bid value KES 1,362,900,000 vs peer median 588,400,000 (2.3×).",
+          "citation": "03-bid-equatorial-medicines.md, bid value line"
+        },
+        {
+          "id": "F-05",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "SAVANNA PHARMA — cold-chain capability report",
+          "evidence": "Tender notice lists \"cold-chain capability report\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-06",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "EQUATORIAL MEDICINES — ppb wholesaler licence",
+          "evidence": "Tender notice lists \"ppb wholesaler licence\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-07",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "EQUATORIAL MEDICINES — who prequalification or ppb registration certificates",
+          "evidence": "Tender notice lists \"who prequalification or ppb registration certificates\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-08",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "EQUATORIAL MEDICINES — certificate of analysis samples",
+          "evidence": "Tender notice lists \"certificate of analysis samples\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-09",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "EQUATORIAL MEDICINES — cold-chain capability report",
+          "evidence": "Tender notice lists \"cold-chain capability report\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-10",
+          "rule": "R-OVER-BUDGET",
+          "severity": "HIGH",
+          "item": "EQUATORIAL MEDICINES",
+          "evidence": "Bid value KES 1,362,900,000 exceeds the budget ceiling KES 624,800,000 (notice: 01-tender-notice.md).",
+          "citation": "03-bid-equatorial-medicines.md, bid value line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_s6x2cq",
+          "findingId": "F-01",
+          "original": "Unit price KES 41,300 vs peer median KES 6,420 (6.4×) on line item \"insulin glargine 100iu/ml,\".",
+          "proposed": "The Buyer reserves the right to seek written clarification of any line-item price exceeding the peer median by more than 100% prior to award; bids left unclarified after seven (7) working days shall be disqualified.",
+          "rationale": "To ensure transparency and fairness in the procurement process, the Buyer reserves the right to request clarification on prices that exceed the established median. This provision aims to prevent price gouging and ensure that all bidders are treated equally. If a bid is deemed unclear or unclarifiable after seven working days, it will be disqualified from the competition.",
+          "model": "llama3.2:1b (llm)",
+          "source": "llm",
+          "usage": {
+            "promptTokens": 247,
+            "completionTokens": 120
+          },
+          "latencyMs": 10527
+        }
+      ],
+      "usage": {
+        "drafts": 1,
+        "llmDrafts": 1,
+        "promptTokens": 247,
+        "completionTokens": 120
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "PRICE-OUTLIER",
+          "VALUE-OUTLIER"
+        ],
+        "maxDrafts": 1,
+        "note": "Review plan for PACK INVENTORY tender pack inventory",
+        "source": "llm",
+        "model": "llama3.2:1b"
+      },
+      "gateId": "gate_x82wdy"
+    },
+    {
+      "id": "run_c3943d6f",
+      "tenderId": "KE-MOH-2026-117",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-27T13:19:15.649Z",
+      "updatedAt": "2026-10-27T13:19:15.682Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender KE-MOH-2026-117",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — heuristic · value parsing DEEP (markdown + OCDS) · focus OVER-BUDGET > VALUE-OUTLIER > PRICE-OUTLIER > DOC-MISSING > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 8 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 10 findings flagged, each cited",
+        "▸ verify_findings — 10/10 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-OVER-BUDGET",
+        "▸ draft_redline — template (no model configured) for R-VALUE-OUTLIER",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus OVER-BUDGET, VALUE-OUTLIER, PRICE-OUTLIER) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_buh5yo) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [
+        {
+          "id": "REQ-01",
+          "clause": "SHALL supply only medicines prequalified by the WHO or registered by the PPB",
+          "page": 1
+        },
+        {
+          "id": "REQ-02",
+          "clause": "SHALL deliver each tracer item to the county medical stores within forty-five (45) days of contract signature",
+          "page": 1
+        },
+        {
+          "id": "REQ-03",
+          "clause": "SHALL assign a shelf life of not less than twenty-four (24) months at delivery for every batch",
+          "page": 1
+        },
+        {
+          "id": "REQ-04",
+          "clause": "SHALL transport cold-chain items at 2–8 °C with validated data loggers on every shipment",
+          "page": 1
+        },
+        {
+          "id": "REQ-05",
+          "clause": "SHALL report any recall or quality defect to the buyer within twenty-four (24) hours",
+          "page": 1
+        },
+        {
+          "id": "REQ-06",
+          "clause": "must hold a valid PPB wholesaler licence for the contract period",
+          "page": 1
+        },
+        {
+          "id": "REQ-07",
+          "clause": "must submit a certificate of analysis for every batch offered",
+          "page": 1
+        },
+        {
+          "id": "REQ-08",
+          "clause": "must declare any anti-dumping or subsidy arrangements affecting quoted prices",
+          "page": 1
+        }
+      ],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Insulin glargine 100IU/ml, pack of 5 pens × 1200 — EQUATORIAL MEDICINES",
+          "evidence": "Unit price KES 41,300 vs peer median KES 6,420 (6.4×) on line item \"insulin glargine 100iu/ml,\".",
+          "citation": "03-bid-equatorial-medicines.md, price schedule"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Cold-chain shipment, validated 2–8 °C × 12 — EQUATORIAL MEDICINES",
+          "evidence": "Unit price KES 8,050,000 vs peer median KES 480,000 (16.8×) on line item \"cold-chain shipment, validated\".",
+          "citation": "03-bid-equatorial-medicines.md, price schedule"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-SPEC-DEVIATION",
+          "severity": "HIGH",
+          "item": "EQUATORIAL MEDICINES",
+          "evidence": "Note: alternative offered for the cold-chain segment — imported passive shippers requested in place of validated reefer trucks (see annex B).",
+          "citation": "03-bid-equatorial-medicines.md, specifications matrix"
+        },
+        {
+          "id": "F-04",
+          "rule": "R-VALUE-OUTLIER",
+          "severity": "HIGH",
+          "item": "EQUATORIAL MEDICINES",
+          "evidence": "Bid value KES 1,362,900,000 vs peer median 588,400,000 (2.3×).",
+          "citation": "03-bid-equatorial-medicines.md, bid value line"
+        },
+        {
+          "id": "F-05",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "SAVANNA PHARMA — cold-chain capability report",
+          "evidence": "Tender notice lists \"cold-chain capability report\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-06",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "EQUATORIAL MEDICINES — ppb wholesaler licence",
+          "evidence": "Tender notice lists \"ppb wholesaler licence\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-07",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "EQUATORIAL MEDICINES — who prequalification or ppb registration certificates",
+          "evidence": "Tender notice lists \"who prequalification or ppb registration certificates\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-08",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "EQUATORIAL MEDICINES — certificate of analysis samples",
+          "evidence": "Tender notice lists \"certificate of analysis samples\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-09",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "EQUATORIAL MEDICINES — cold-chain capability report",
+          "evidence": "Tender notice lists \"cold-chain capability report\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-10",
+          "rule": "R-OVER-BUDGET",
+          "severity": "HIGH",
+          "item": "EQUATORIAL MEDICINES",
+          "evidence": "Bid value KES 1,362,900,000 exceeds the budget ceiling KES 624,800,000 (notice: 01-tender-notice.md).",
+          "citation": "03-bid-equatorial-medicines.md, bid value line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_n2gwm1",
+          "findingId": "F-10",
+          "original": "Bid value KES 1,362,900,000 exceeds the budget ceiling KES 624,800,000 (notice: 01-tender-notice.md).",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-OVER-BUDGET on EQUATORIAL MEDICINES prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_4wllbm",
+          "findingId": "F-04",
+          "original": "Bid value KES 1,362,900,000 vs peer median 588,400,000 (2.3×).",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-VALUE-OUTLIER on EQUATORIAL MEDICINES prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "OVER-BUDGET",
+          "VALUE-OUTLIER",
+          "PRICE-OUTLIER",
+          "DOC-MISSING",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 2 markdown bid value(s) + published ceiling — deep-value parsing on",
+        "source": "heuristic"
+      },
+      "gateId": "gate_buh5yo"
+    },
+    {
+      "id": "run_7afd24a6",
+      "tenderId": "KE-MOH-2026-117",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-27T13:18:46.347Z",
+      "updatedAt": "2026-10-27T13:18:46.479Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender KE-MOH-2026-117",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — heuristic · value parsing DEEP (markdown + OCDS) · focus OVER-BUDGET > VALUE-OUTLIER > PRICE-OUTLIER > DOC-MISSING > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 8 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 10 findings flagged, each cited",
+        "▸ verify_findings — 10/10 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-OVER-BUDGET",
+        "▸ draft_redline — template (no model configured) for R-VALUE-OUTLIER",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus OVER-BUDGET, VALUE-OUTLIER, PRICE-OUTLIER) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_flvsqr) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [
+        {
+          "id": "REQ-01",
+          "clause": "SHALL supply only medicines prequalified by the WHO or registered by the PPB",
+          "page": 1
+        },
+        {
+          "id": "REQ-02",
+          "clause": "SHALL deliver each tracer item to the county medical stores within forty-five (45) days of contract signature",
+          "page": 1
+        },
+        {
+          "id": "REQ-03",
+          "clause": "SHALL assign a shelf life of not less than twenty-four (24) months at delivery for every batch",
+          "page": 1
+        },
+        {
+          "id": "REQ-04",
+          "clause": "SHALL transport cold-chain items at 2–8 °C with validated data loggers on every shipment",
+          "page": 1
+        },
+        {
+          "id": "REQ-05",
+          "clause": "SHALL report any recall or quality defect to the buyer within twenty-four (24) hours",
+          "page": 1
+        },
+        {
+          "id": "REQ-06",
+          "clause": "must hold a valid PPB wholesaler licence for the contract period",
+          "page": 1
+        },
+        {
+          "id": "REQ-07",
+          "clause": "must submit a certificate of analysis for every batch offered",
+          "page": 1
+        },
+        {
+          "id": "REQ-08",
+          "clause": "must declare any anti-dumping or subsidy arrangements affecting quoted prices",
+          "page": 1
+        }
+      ],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Insulin glargine 100IU/ml, pack of 5 pens × 1200 — EQUATORIAL MEDICINES",
+          "evidence": "Unit price KES 41,300 vs peer median KES 6,420 (6.4×) on line item \"insulin glargine 100iu/ml,\".",
+          "citation": "03-bid-equatorial-medicines.md, price schedule"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Cold-chain shipment, validated 2–8 °C × 12 — EQUATORIAL MEDICINES",
+          "evidence": "Unit price KES 8,050,000 vs peer median KES 480,000 (16.8×) on line item \"cold-chain shipment, validated\".",
+          "citation": "03-bid-equatorial-medicines.md, price schedule"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-SPEC-DEVIATION",
+          "severity": "HIGH",
+          "item": "EQUATORIAL MEDICINES",
+          "evidence": "Note: alternative offered for the cold-chain segment — imported passive shippers requested in place of validated reefer trucks (see annex B).",
+          "citation": "03-bid-equatorial-medicines.md, specifications matrix"
+        },
+        {
+          "id": "F-04",
+          "rule": "R-VALUE-OUTLIER",
+          "severity": "HIGH",
+          "item": "EQUATORIAL MEDICINES",
+          "evidence": "Bid value KES 1,362,900,000 vs peer median 588,400,000 (2.3×).",
+          "citation": "03-bid-equatorial-medicines.md, bid value line"
+        },
+        {
+          "id": "F-05",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "SAVANNA PHARMA — cold-chain capability report",
+          "evidence": "Tender notice lists \"cold-chain capability report\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-06",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "EQUATORIAL MEDICINES — ppb wholesaler licence",
+          "evidence": "Tender notice lists \"ppb wholesaler licence\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-07",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "EQUATORIAL MEDICINES — who prequalification or ppb registration certificates",
+          "evidence": "Tender notice lists \"who prequalification or ppb registration certificates\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-08",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "EQUATORIAL MEDICINES — certificate of analysis samples",
+          "evidence": "Tender notice lists \"certificate of analysis samples\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-09",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "EQUATORIAL MEDICINES — cold-chain capability report",
+          "evidence": "Tender notice lists \"cold-chain capability report\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-10",
+          "rule": "R-OVER-BUDGET",
+          "severity": "HIGH",
+          "item": "EQUATORIAL MEDICINES",
+          "evidence": "Bid value KES 1,362,900,000 exceeds the budget ceiling KES 624,800,000 (notice: 01-tender-notice.md).",
+          "citation": "03-bid-equatorial-medicines.md, bid value line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_adgmxr",
+          "findingId": "F-10",
+          "original": "Bid value KES 1,362,900,000 exceeds the budget ceiling KES 624,800,000 (notice: 01-tender-notice.md).",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-OVER-BUDGET on EQUATORIAL MEDICINES prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_j43tvg",
+          "findingId": "F-04",
+          "original": "Bid value KES 1,362,900,000 vs peer median 588,400,000 (2.3×).",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-VALUE-OUTLIER on EQUATORIAL MEDICINES prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "OVER-BUDGET",
+          "VALUE-OUTLIER",
+          "PRICE-OUTLIER",
+          "DOC-MISSING",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 2 markdown bid value(s) + published ceiling — deep-value parsing on",
+        "source": "heuristic"
+      },
+      "gateId": "gate_flvsqr"
+    },
     {
       "id": "run_b279b95e",
       "tenderId": "KE-KCS-2026-042",
@@ -5696,5 +6592,5 @@
       "createdAt": "2026-10-21T15:18:06.532Z"
     }
   ],
-  "seq": 472
+  "seq": 546
 }
