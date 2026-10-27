@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { QuorumLogo } from "@/components/quorum/logo";
+import { MasterSwitcher } from "@/components/quorum/master-switcher";
 import { SearchSelect, type SelectOption } from "@/components/quorum/org/search-select";
 import { COUNTRIES, SUGGESTED_COUNTRIES, findCountry, type Country } from "@/lib/countries";
 import { LEGAL_FORM_GROUPS, LEGAL_FORM_OTHER } from "@/lib/legal-forms";
@@ -1301,6 +1302,8 @@ export function OrgAuthScreen() {
 
   return (
     <div className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
+      {/* The master tab switcher — pinned over the door, above every other control */}
+      <MasterSwitcher active="supplier" variant="floating" />
       {/* Story panel */}
       <div className="relative hidden overflow-hidden bg-night lg:flex lg:flex-col lg:justify-between lg:p-12">
         <div
@@ -1315,9 +1318,6 @@ export function OrgAuthScreen() {
         <div className="pointer-events-none absolute inset-0 bg-grid-dark opacity-60" aria-hidden="true" />
         <div className="relative flex items-center justify-between">
           <QuorumLogo variant="light" />
-          <span className="rounded-full border border-brand-400/25 bg-brand-400/10 px-3 py-1 font-code text-[9.5px] font-semibold tracking-[0.2em] text-brand-300">
-            SUPPLIER PORTAL
-          </span>
         </div>
 
         <div className="relative max-w-xl space-y-6">
@@ -1357,7 +1357,8 @@ export function OrgAuthScreen() {
 
       {/* Auth panel */}
       <div className="flex flex-col bg-paper dark:bg-night">
-        <div className="flex items-center justify-between px-5 py-4 lg:hidden">
+        {/* pt-16 clears the floating master switcher above */}
+        <div className="flex items-center justify-between px-5 pb-4 pt-16 lg:hidden">
           <ThemedLogo />
           <Link href="/" className="font-code text-[10px] font-semibold tracking-[0.16em] text-ink-500 hover:text-ink-900 dark:hover:text-white">
             OFFICER DESK →
@@ -1382,10 +1383,8 @@ export function OrgAuthScreen() {
               </div>
             </div>
 
-            <div className="mb-5 hidden items-center justify-between lg:flex">
-              <Link href="/" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-ink-500 transition-colors hover:text-ink-900 dark:text-ink-400 dark:hover:text-white">
-                <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> Officer desk
-              </Link>
+            {/* The master switcher above is the way across — the rail keeps only the portal tag */}
+            <div className="mb-5 hidden items-center justify-end lg:flex">
               <span className="font-code text-[9.5px] font-semibold tracking-[0.2em] text-brand-700 dark:text-brand-400">SUPPLIER PORTAL · /ORG</span>
             </div>
 

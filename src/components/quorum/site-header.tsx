@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUpRight, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
 import { QuorumLogo } from "@/components/quorum/logo";
+import { MasterSwitcher } from "@/components/quorum/master-switcher";
 import type { AuthUser } from "@/lib/auth-types";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/quorum/theme-toggle";
@@ -137,12 +138,7 @@ export function SiteHeader({
             </>
           ) : (
             <>
-              <Link
-                href="/org/dashboard"
-                className="inline-flex h-10 items-center rounded-full bg-white px-5 text-[13.5px] font-semibold text-ink-900 shadow-[inset_0_0_0_1px_rgba(11,12,15,0.08)] transition-all hover:bg-ink-50 keep-light"
-              >
-                Supplier
-              </Link>
+              <MasterSwitcher active="quorum" />
               <button
                 type="button"
                 onClick={onDashboard}
@@ -197,6 +193,9 @@ export function SiteHeader({
                 <div className="mt-2 h-12 animate-pulse rounded-xl bg-ink-100/70" aria-hidden="true" />
               ) : user ? (
                 <div className="mt-2 space-y-2">
+                  <div className="flex justify-center">
+                    <MasterSwitcher active="quorum" />
+                  </div>
                   <div className="flex items-center gap-2.5 rounded-xl border border-ink-200 bg-white px-4 py-3">
                     <span
                       className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ink-950 font-code text-[10px] font-bold text-white"
@@ -234,14 +233,9 @@ export function SiteHeader({
                 </div>
               ) : (
                 <>
-                  <Link
-                    href="/org"
-                    onClick={() => setOpen(false)}
-                    className="mt-2 inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-brand-600 text-[15px] font-semibold text-white shadow-[0_8px_20px_rgba(217,38,22,0.28)] transition-all hover:bg-brand-700 hover:shadow-[0_10px_26px_rgba(217,38,22,0.36)]"
-                  >
-                    Supplier portal — for organizations
-                    <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
-                  </Link>
+                  <div className="mt-2 flex justify-center">
+                    <MasterSwitcher active="quorum" />
+                  </div>
                   <button
                     type="button"
                     onClick={() => {

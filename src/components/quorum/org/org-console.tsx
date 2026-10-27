@@ -27,6 +27,7 @@ import {
   X,
 } from "lucide-react";
 import { QuorumLogo } from "@/components/quorum/logo";
+import { MasterSwitcher } from "@/components/quorum/master-switcher";
 import { SearchSelect, type SelectOption } from "@/components/quorum/org/search-select";
 import { COUNTRIES, SUGGESTED_COUNTRIES, findCountry, type Country } from "@/lib/countries";
 import { LEGAL_FORMS, LEGAL_FORM_GROUPS, LEGAL_FORM_OTHER } from "@/lib/legal-forms";
@@ -1085,9 +1086,14 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
               {org.status}
             </span>
 
+            {/* The master switcher rides the console bar — the officer desk is one tab away */}
+            <div className="hidden lg:inline-flex">
+              <MasterSwitcher active="supplier" />
+            </div>
+
             <Link
               href="/"
-              className="hidden h-9 items-center gap-1 rounded-lg border border-ink-100 bg-white px-3 text-[12px] font-semibold text-ink-700 transition-colors hover:border-brand-300 hover:text-brand-700 sm:inline-flex lg:hidden dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-700 dark:hover:border-brand-500/40 dark:hover:text-brand-300"
+              className="hidden h-9 items-center gap-1 rounded-lg border border-ink-100 bg-white px-3 text-[12px] font-semibold text-ink-700 transition-colors hover:border-brand-300 hover:text-brand-700 sm:inline-flex md:hidden dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-700 dark:hover:border-brand-500/40 dark:hover:text-brand-300"
             >
               Officer desk
               <ArrowUpRight className="h-3 w-3" aria-hidden="true" />

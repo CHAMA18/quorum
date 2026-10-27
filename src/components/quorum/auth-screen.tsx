@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
-import { ArrowLeft, ArrowRight, CircleAlert, Eye, EyeOff, FileText, Landmark, Loader2, Lock, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowRight, CircleAlert, Eye, EyeOff, FileText, Landmark, Loader2, Lock, ShieldCheck, UserRound } from "lucide-react";
 import { QuorumLogo } from "@/components/quorum/logo";
+import { MasterSwitcher } from "@/components/quorum/master-switcher";
 import type { AuthMode, AuthUser } from "@/lib/auth-types";
 import {
   completeGoogleRedirect,
@@ -212,9 +213,6 @@ function StoryPanel({ grantedFirstName }: { grantedFirstName: string | null }) {
 
       <div className="relative flex items-center justify-between">
         <QuorumLogo variant="light" />
-        <span className="rounded-full border border-brand-400/25 bg-brand-400/10 px-3 py-1 font-code text-[9.5px] font-semibold tracking-[0.2em] text-brand-300">
-          OFFICER DESK
-        </span>
       </div>
 
       <div className="relative max-w-xl space-y-6">
@@ -811,11 +809,14 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
 
   return (
     <div className="grid min-h-screen bg-paper font-body text-ink-900 antialiased lg:grid-cols-[1.05fr_1fr] dark:bg-night dark:text-white">
+      {/* The master tab switcher — pinned over the door, above every other control */}
+      <MasterSwitcher active="quorum" variant="floating" />
       <StoryPanel grantedFirstName={firstName} />
 
       {/* Auth panel */}
       <div className="flex flex-col bg-paper dark:bg-night">
-        <div className="flex items-center justify-between px-5 py-4 lg:hidden">
+        {/* pt-16 clears the floating master switcher above */}
+        <div className="flex items-center justify-between px-5 pb-4 pt-16 lg:hidden">
           <button
             type="button"
             onClick={onClose}
@@ -837,14 +838,8 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
           <div className="w-full max-w-[480px]">
             <MobileBrandBand />
 
-            <div className="mb-5 hidden items-center justify-between lg:flex">
-              <button
-                type="button"
-                onClick={onClose}
-                className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-ink-500 transition-colors hover:text-ink-900 dark:text-ink-400 dark:hover:text-white"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> Main site
-              </button>
+            {/* The master switcher above is the way back — the rail keeps only the portal tag */}
+            <div className="mb-5 hidden items-center justify-end lg:flex">
               <span className="font-code text-[9.5px] font-semibold tracking-[0.2em] text-brand-700 dark:text-brand-400">OFFICER PORTAL · /</span>
             </div>
 

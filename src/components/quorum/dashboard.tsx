@@ -54,6 +54,7 @@ import {
 } from "lucide-react";
 import { CycleView } from "@/components/quorum/cycle-view";
 import { QuorumLogo } from "@/components/quorum/logo";
+import { MasterSwitcher } from "@/components/quorum/master-switcher";
 import { StackConsole } from "@/components/quorum/stack-console";
 import { TenderPackPreview, type TenderPackRow } from "@/components/quorum/tender-pack-preview";
 import { TourLayer, type TourStep } from "@/components/quorum/tour";
@@ -8564,6 +8565,10 @@ export function Dashboard({
                 <span className="text-ink-200">·</span> LOCAL
               </p>
               <AgentStatusBadge mode={agentMode} className="hidden md:inline-flex" />
+              {/* The master switcher rides the utility bar — the desk is one tab away */}
+              <div className="hidden xl:inline-flex">
+                <MasterSwitcher active="quorum" />
+              </div>
             </div>
           </div>
         </div>
