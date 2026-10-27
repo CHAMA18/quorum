@@ -14,7 +14,8 @@ notification → contract**. The evaluation desk is the segment Quorum targets:
 the officer-stage where packs are read line by line, requirements are cross-checked
 against each bid, and the award recommendation is written and justified.
 
-That was the founding scope; the tender-cycle build (waves 1-3, 2026-10-21) widens
+That was the founding scope; the tender-cycle build (waves 1–3 — see
+*Provenance* in the README) widens
 the desk around it without moving the line: the cycle now runs **pipeline →
 clarifications/addenda → opening (late-bid enforcement, statutory register) →
 COI + scored evaluation matrix + MED → award report → notice of award +
@@ -45,13 +46,16 @@ appears, including in receipts.
 
 **Agent time (measured, reproducible):**
 
-- Rule path, per tender pack (all six sample packs, median of 5 runs): **0.25–0.91 ms**
-  — published per tender with min–max spread in `mini-services/quorum-mcp/data/eval/report.json`.
+- Rule path, per tender pack (all seven staged packs — KE and RW samples — median
+  of repeated runs): **0.53–1.14 ms**
+  — published per tender with min–max spread in `mini-services/quorum-mcp/data/eval/report.json`
+  (regenerated 2026-10-27, findings identical across repeats for every pack).
 - Full review graph, template mode (documents read over MCP → plan → extract → flag →
-  verify → repair → 2 template drafts → gate raised): **~66 ms wall clock**, measured on
-  a live run (`run_ca3ccb30`, 2026-10-16). With a live LLM endpoint configured, drafting
-  adds one model call per drafted redline (~1–5 s each depending on the endpoint);
-  every draft's latency is recorded on the run and in the sourced report.
+  verify → repair → 2 template drafts → gate raised): **0.15 s wall clock**, measured on
+  a live run (`run_055c076c`, 2026-10-27). With a live LLM endpoint configured, drafting
+  adds one model call per drafted redline (~4–16 s each on a CPU-only 4 GB box,
+  median ~7 s measured across 13 in-window calls); every draft's latency is recorded
+  on the run and in the sourced report.
 
 **Human baseline: deliberately not claimed.** We have not run a controlled comparison
 against a human desk, and we will not quote a number we did not measure. Published
@@ -69,7 +73,7 @@ measurement protocol instead:
 
 No officer has been contacted yet — that is stated as fact in §3 and §5. What the
 buildathon courts *can* check today is a public, sourced context for every claim
-about the desk Quorum targets (links live as of 2026-10-17):
+about the desk Quorum targets (links live as of 2026-10-27):
 
 | # | Researchable fact | Source |
 | --- | --- | --- |

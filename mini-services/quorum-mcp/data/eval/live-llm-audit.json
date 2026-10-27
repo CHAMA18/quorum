@@ -1,30 +1,65 @@
 {
-  "generatedAt": "2026-10-17T10:35:02.737Z",
+  "generatedAt": "2026-10-27T09:02:00.891Z",
   "summary": {
-    "runsAudited": 4,
-    "findingsIdenticalAcrossRuns": "no — 2 distinct rule signatures: 3 run(s) with 5 rule types; 1 run(s) with 3 rule types — the dominant signature includes OVER-BUDGET; weaker-outlier runs are pre-safety-floor planner runs kept in the log as evidence.",
-    "draftTextsIdenticalAcrossRuns": "no — 4 distinct draft sets across 4 runs (measured variance)",
-    "tokensPromptTotal": 2376,
-    "tokensCompletionTotal": 920,
-    "llmCallsTotal": 14,
+    "runsAudited": 6,
+    "findingsIdenticalAcrossRuns": "no — 3 distinct rule signatures: 4 run(s) with 5 rule types; 1 run(s) with 2 rule types; 1 run(s) with 4 rule types — the dominant signature includes OVER-BUDGET; weaker-outlier runs are pre-safety-floor planner runs kept in the log as evidence.",
+    "draftTextsIdenticalAcrossRuns": "no — 2 distinct draft sets across 6 runs (measured variance)",
+    "tokensPromptTotal": 1529,
+    "tokensCompletionTotal": 661,
+    "llmCallsTotal": 13,
     "llmCallMs": {
-      "median": 7696,
-      "min": 6296,
-      "max": 9737
+      "median": 6975,
+      "min": 4222,
+      "max": 16263
     },
     "costNote": "Local, in-region endpoint (Ollama): 0 USD marginal cost. Hosted endpoint: multiply run tokens by the published per-token price — the per-run figures above are the auditable input."
   },
   "runs": [
     {
-      "runId": "run_00e49b20",
-      "tenderId": "KE-MOH-2026-117",
+      "runId": "run_b279b95e",
+      "tenderId": "KE-KCS-2026-042",
       "status": "AWAITING_GATE",
-      "wallMs": 23870,
+      "wallMs": 13717,
+      "plan": {
+        "source": "llm",
+        "parseMarkdownValues": true,
+        "maxDrafts": 1,
+        "model": "llama3.2:1b",
+        "floorNote": false
+      },
+      "findingsSignature": [
+        "R-DOC-MISSING",
+        "R-OVER-BUDGET",
+        "R-PRICE-OUTLIER",
+        "R-SPEC-DEVIATION",
+        "R-VALUE-OUTLIER"
+      ],
+      "findingCount": 11,
+      "usage": {
+        "drafts": 1,
+        "llmDrafts": 1,
+        "promptTokens": 242,
+        "completionTokens": 110
+      },
+      "draftTextHashes": [
+        "c420e073"
+      ],
+      "llmToolCalls": 2,
+      "llmToolMs": {
+        "min": 4752,
+        "max": 8932
+      }
+    },
+    {
+      "runId": "run_5d299bef",
+      "tenderId": "KE-KCS-2026-042",
+      "status": "AWAITING_GATE",
+      "wallMs": 17633,
       "plan": {
         "source": "llm",
         "parseMarkdownValues": true,
         "maxDrafts": 2,
-        "model": "llama3.2:3b",
+        "model": "llama3.2:1b",
         "floorNote": false
       },
       "findingsSignature": [
@@ -34,129 +69,157 @@
         "R-SPEC-DEVIATION",
         "R-VALUE-OUTLIER"
       ],
-      "findingCount": 10,
+      "findingCount": 11,
       "usage": {
         "drafts": 2,
         "llmDrafts": 2,
-        "promptTokens": 486,
-        "completionTokens": 180
+        "promptTokens": 427,
+        "completionTokens": 167
       },
       "draftTextHashes": [
-        "cf8286cc",
-        "f5611c48"
-      ],
-      "llmToolCalls": 3,
-      "llmToolMs": {
-        "min": 7530,
-        "max": 8406
-      }
-    },
-    {
-      "runId": "run_8ff70f78",
-      "tenderId": "KE-MOH-2026-117",
-      "status": "AWAITING_GATE",
-      "wallMs": 28952,
-      "plan": {
-        "source": "llm",
-        "parseMarkdownValues": true,
-        "maxDrafts": 3,
-        "model": "llama3.2:3b",
-        "floorNote": false
-      },
-      "findingsSignature": [
-        "R-DOC-MISSING",
-        "R-OVER-BUDGET",
-        "R-PRICE-OUTLIER",
-        "R-SPEC-DEVIATION",
-        "R-VALUE-OUTLIER"
-      ],
-      "findingCount": 10,
-      "usage": {
-        "drafts": 3,
-        "llmDrafts": 3,
-        "promptTokens": 702,
-        "completionTokens": 273
-      },
-      "draftTextHashes": [
-        "dde4bbae",
-        "3e8deec1",
-        "3e6f87cf"
-      ],
-      "llmToolCalls": 4,
-      "llmToolMs": {
-        "min": 6296,
-        "max": 7957
-      }
-    },
-    {
-      "runId": "run_0d689efa",
-      "tenderId": "KE-MOH-2026-117",
-      "status": "AWAITING_GATE",
-      "wallMs": 30230,
-      "plan": {
-        "source": "llm",
-        "parseMarkdownValues": true,
-        "maxDrafts": 3,
-        "model": "llama3.2:3b",
-        "floorNote": false
-      },
-      "findingsSignature": [
-        "R-DOC-MISSING",
-        "R-OVER-BUDGET",
-        "R-PRICE-OUTLIER",
-        "R-SPEC-DEVIATION",
-        "R-VALUE-OUTLIER"
-      ],
-      "findingCount": 10,
-      "usage": {
-        "drafts": 3,
-        "llmDrafts": 3,
-        "promptTokens": 702,
-        "completionTokens": 286
-      },
-      "draftTextHashes": [
-        "33eb0986",
-        "da73283f",
-        "5c61174d"
-      ],
-      "llmToolCalls": 4,
-      "llmToolMs": {
-        "min": 7290,
-        "max": 7953
-      }
-    },
-    {
-      "runId": "run_edbb4de5",
-      "tenderId": "KE-MOH-2026-117",
-      "status": "AWAITING_GATE",
-      "wallMs": 26467,
-      "plan": {
-        "source": "llm",
-        "parseMarkdownValues": false,
-        "maxDrafts": 2,
-        "model": "llama3.2:3b",
-        "floorNote": false
-      },
-      "findingsSignature": [
-        "R-DOC-MISSING",
-        "R-PRICE-OUTLIER",
-        "R-SPEC-DEVIATION"
-      ],
-      "findingCount": 8,
-      "usage": {
-        "drafts": 2,
-        "llmDrafts": 2,
-        "promptTokens": 486,
-        "completionTokens": 181
-      },
-      "draftTextHashes": [
-        "33eb0986",
+        "c420e073",
         "c420e073"
       ],
       "llmToolCalls": 3,
       "llmToolMs": {
-        "min": 7476,
-        "max": 9737
+        "min": 4222,
+        "max": 6975
+      }
+    },
+    {
+      "runId": "run_73a2b33c",
+      "tenderId": "KE-KCS-2026-042",
+      "status": "AWAITING_GATE",
+      "wallMs": 10798,
+      "plan": {
+        "source": "llm",
+        "parseMarkdownValues": true,
+        "maxDrafts": 1,
+        "model": "llama3.2:1b",
+        "floorNote": false
+      },
+      "findingsSignature": [
+        "R-DOC-MISSING",
+        "R-OVER-BUDGET",
+        "R-PRICE-OUTLIER",
+        "R-SPEC-DEVIATION",
+        "R-VALUE-OUTLIER"
+      ],
+      "findingCount": 11,
+      "usage": {
+        "drafts": 1,
+        "llmDrafts": 1,
+        "promptTokens": 210,
+        "completionTokens": 75
+      },
+      "draftTextHashes": [
+        "c420e073"
+      ],
+      "llmToolCalls": 2,
+      "llmToolMs": {
+        "min": 4316,
+        "max": 6422
+      }
+    },
+    {
+      "runId": "run_39126a9a",
+      "tenderId": "KE-MSA-2026-090",
+      "status": "AWAITING_GATE",
+      "wallMs": 34964,
+      "plan": {
+        "source": "llm",
+        "parseMarkdownValues": true,
+        "maxDrafts": 1,
+        "model": "llama3.2:1b",
+        "floorNote": false
+      },
+      "findingsSignature": [
+        "R-BUYER-MISSING",
+        "R-SUPPLIER-ID"
+      ],
+      "findingCount": 2,
+      "usage": {
+        "drafts": 1,
+        "llmDrafts": 1,
+        "promptTokens": 228,
+        "completionTokens": 92
+      },
+      "draftTextHashes": [
+        "c420e073"
+      ],
+      "llmToolCalls": 2,
+      "llmToolMs": {
+        "min": 7800,
+        "max": 10400
+      }
+    },
+    {
+      "runId": "run_e7b6930d",
+      "tenderId": "KE-MOE-2026-205",
+      "status": "AWAITING_GATE",
+      "wallMs": 22021,
+      "plan": {
+        "source": "llm",
+        "parseMarkdownValues": true,
+        "maxDrafts": 1,
+        "model": "llama3.2:1b",
+        "floorNote": false
+      },
+      "findingsSignature": [
+        "R-DOC-MISSING",
+        "R-OVER-BUDGET",
+        "R-PRICE-OUTLIER",
+        "R-SPEC-DEVIATION"
+      ],
+      "findingCount": 4,
+      "usage": {
+        "drafts": 1,
+        "llmDrafts": 1,
+        "promptTokens": 209,
+        "completionTokens": 139
+      },
+      "draftTextHashes": [
+        "c420e073"
+      ],
+      "llmToolCalls": 2,
+      "llmToolMs": {
+        "min": 5691,
+        "max": 16263
+      }
+    },
+    {
+      "runId": "run_148acf55",
+      "tenderId": "KE-MOH-2026-117",
+      "status": "AWAITING_GATE",
+      "wallMs": 16583,
+      "plan": {
+        "source": "llm",
+        "parseMarkdownValues": true,
+        "maxDrafts": 1,
+        "model": "llama3.2:1b",
+        "floorNote": false
+      },
+      "findingsSignature": [
+        "R-DOC-MISSING",
+        "R-OVER-BUDGET",
+        "R-PRICE-OUTLIER",
+        "R-SPEC-DEVIATION",
+        "R-VALUE-OUTLIER"
+      ],
+      "findingCount": 10,
+      "usage": {
+        "drafts": 1,
+        "llmDrafts": 1,
+        "promptTokens": 213,
+        "completionTokens": 78
+      },
+      "draftTextHashes": [
+        "c420e073"
+      ],
+      "llmToolCalls": 2,
+      "llmToolMs": {
+        "min": 7084,
+        "max": 9293
       }
     }
   ]

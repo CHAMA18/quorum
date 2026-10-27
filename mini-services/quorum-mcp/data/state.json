@@ -1,6 +1,194 @@
 {
   "gates": [
     {
+      "id": "gate_q8szlz",
+      "runId": "run_b279b95e",
+      "tenderId": "KE-KCS-2026-042",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "PORTSCAN SYSTEMS",
+        "value": "KES 1,772,000,000",
+        "attachments": 13,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03",
+          "F-04",
+          "F-05",
+          "F-06",
+          "F-07",
+          "F-08",
+          "F-09",
+          "F-10",
+          "F-11"
+        ],
+        "drafts": [
+          "draft_s3rosq"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-27T09:01:46.906Z"
+    },
+    {
+      "id": "gate_9j16v9",
+      "runId": "run_5d299bef",
+      "tenderId": "KE-KCS-2026-042",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "PORTSCAN SYSTEMS",
+        "value": "KES 1,772,000,000",
+        "attachments": 14,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03",
+          "F-04",
+          "F-05",
+          "F-06",
+          "F-07",
+          "F-08",
+          "F-09",
+          "F-10",
+          "F-11"
+        ],
+        "drafts": [
+          "draft_fql2b0",
+          "draft_585nte"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-27T09:01:30.380Z"
+    },
+    {
+      "id": "gate_rc80rs",
+      "runId": "run_73a2b33c",
+      "tenderId": "KE-KCS-2026-042",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "PORTSCAN SYSTEMS",
+        "value": "KES 1,772,000,000",
+        "attachments": 13,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03",
+          "F-04",
+          "F-05",
+          "F-06",
+          "F-07",
+          "F-08",
+          "F-09",
+          "F-10",
+          "F-11"
+        ],
+        "drafts": [
+          "draft_278kdd"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-27T09:01:08.180Z"
+    },
+    {
+      "id": "gate_dd8514",
+      "runId": "run_39126a9a",
+      "tenderId": "KE-MSA-2026-090",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "BAHARI MEDICAL",
+        "value": "KES 109,800,000",
+        "attachments": 4,
+        "findings": [
+          "F-01",
+          "F-02"
+        ],
+        "drafts": [
+          "draft_bl6klo"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-27T08:59:42.482Z"
+    },
+    {
+      "id": "gate_d82jaw",
+      "runId": "run_e7b6930d",
+      "tenderId": "KE-MOE-2026-205",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "LAKESHORE EDUCATIONAL",
+        "value": "KES 77,920,000",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03",
+          "F-04"
+        ],
+        "drafts": [
+          "draft_t5rkfb"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-27T08:59:29.456Z"
+    },
+    {
+      "id": "gate_k5tbm8",
+      "runId": "run_148acf55",
+      "tenderId": "KE-MOH-2026-117",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "SAVANNA PHARMA",
+        "value": "KES 588,400,000",
+        "attachments": 12,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03",
+          "F-04",
+          "F-05",
+          "F-06",
+          "F-07",
+          "F-08",
+          "F-09",
+          "F-10"
+        ],
+        "drafts": [
+          "draft_xbvkwq"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-27T08:58:06.260Z"
+    },
+    {
+      "id": "gate_753w2e",
+      "runId": "run_055c076c",
+      "tenderId": "KE-KCS-2026-042",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "PORTSCAN SYSTEMS",
+        "value": "KES 1,772,000,000",
+        "attachments": 14,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03",
+          "F-04",
+          "F-05",
+          "F-06",
+          "F-07",
+          "F-08",
+          "F-09",
+          "F-10",
+          "F-11"
+        ],
+        "drafts": [
+          "draft_2cmm6j",
+          "draft_4kycty"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-27T08:50:04.755Z"
+    },
+    {
       "id": "gate_dwgd58",
       "runId": "cycle",
       "tenderId": "E2E-CYCLE-PROBE",
@@ -1202,6 +1390,1250 @@
     }
   ],
   "runs": [
+    {
+      "id": "run_b279b95e",
+      "tenderId": "KE-KCS-2026-042",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-27T09:01:33.192Z",
+      "updatedAt": "2026-10-27T09:01:46.909Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender KE-KCS-2026-042",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — llm · value parsing DEEP (markdown + OCDS) · focus PRICE-OUTLIER > VALUE-OUTLIER · maxDrafts 1",
+        "▸ extract_requirements — 8 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 11 findings flagged, each cited",
+        "▸ verify_findings — 11/11 confirmed in their cited document",
+        "▸ draft_redline — LLM drafting (llama3.2:1b) for R-PRICE-OUTLIER",
+        "▸ 1 redline draft(s) ready for committee (plan: maxDrafts 1, focus PRICE-OUTLIER, VALUE-OUTLIER) · 1 from the model, 0 template · 352 tokens",
+        "⏸ human gate raised (gate_q8szlz) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [
+        {
+          "id": "REQ-01",
+          "clause": "SHALL deliver drive-through X-ray scanners with imaging throughput of at least 25 containers/hour per site",
+          "page": 1
+        },
+        {
+          "id": "REQ-02",
+          "clause": "SHALL complete installation and radiation-safety certification at each port within one hundred and twenty (120) days of contract signature",
+          "page": 1
+        },
+        {
+          "id": "REQ-03",
+          "clause": "SHALL integrate scanner imagery with the existing customs risk-management system via documented API",
+          "page": 1
+        },
+        {
+          "id": "REQ-04",
+          "clause": "SHALL train at least forty (40) customs officers as operators and fifteen (15) as image analysts",
+          "page": 1
+        },
+        {
+          "id": "REQ-05",
+          "clause": "SHALL provide on-site spare parts for two (2) years and comprehensive maintenance for five (5) years",
+          "page": 1
+        },
+        {
+          "id": "REQ-06",
+          "clause": "SHALL obtain type approval from the Radiation Protection Board before energising any unit",
+          "page": 1
+        },
+        {
+          "id": "REQ-07",
+          "clause": "must supply reference installations of the same scanner model operating in at least two (2) customs administrations",
+          "page": 1
+        },
+        {
+          "id": "REQ-08",
+          "clause": "must disclose total ionising dose per inspected container and the radiation-safety dossier",
+          "page": 1
+        }
+      ],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Drive-through X-ray scanner, 25 containers/hour × 3 — COASTLINE SCREENING",
+          "evidence": "Unit price KES 1,140,000,000 vs peer median KES 466,000,000 (2.4×) on line item \"drive-through x-ray scanner,\".",
+          "citation": "03-bid-coastline-screening.md, price schedule"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Imagery-risk API integration, per port × 3 — COASTLINE SCREENING",
+          "evidence": "Unit price KES 41,200,000 vs peer median KES 18,900,000 (2.2×) on line item \"imagery-risk api integration,\".",
+          "citation": "03-bid-coastline-screening.md, price schedule"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Operator & analyst training programme × 3 — COASTLINE SCREENING",
+          "evidence": "Unit price KES 29,800,000 vs peer median KES 22,400,000 (1.3×) on line item \"operator & analyst\".",
+          "citation": "03-bid-coastline-screening.md, price schedule"
+        },
+        {
+          "id": "F-04",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "On-site spares consignment, 2 years × 3 — COASTLINE SCREENING",
+          "evidence": "Unit price KES 84,500,000 vs peer median KES 36,800,000 (2.3×) on line item \"on-site spares consignment,\".",
+          "citation": "03-bid-coastline-screening.md, price schedule"
+        },
+        {
+          "id": "F-05",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Comprehensive maintenance, 5 years × 3 — COASTLINE SCREENING",
+          "evidence": "Unit price KES 96,300,000 vs peer median KES 48,200,000 (2.0×) on line item \"comprehensive maintenance, 5\".",
+          "citation": "03-bid-coastline-screening.md, price schedule"
+        },
+        {
+          "id": "F-06",
+          "rule": "R-SPEC-DEVIATION",
+          "severity": "HIGH",
+          "item": "COASTLINE SCREENING",
+          "evidence": "Note: alternative offered for the radiation certification segment — in-house certification pathway requested (see annex D).",
+          "citation": "03-bid-coastline-screening.md, specifications matrix"
+        },
+        {
+          "id": "F-07",
+          "rule": "R-VALUE-OUTLIER",
+          "severity": "HIGH",
+          "item": "COASTLINE SCREENING",
+          "evidence": "Bid value KES 3,940,000,000 vs peer median 1,772,000,000 (2.2×).",
+          "citation": "03-bid-coastline-screening.md, bid value line"
+        },
+        {
+          "id": "F-08",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "PORTSCAN SYSTEMS — original equipment manufacturers statement",
+          "evidence": "Tender notice lists \"original equipment manufacturers statement\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-09",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "COASTLINE SCREENING — reference installation letters (2 customs administrations)",
+          "evidence": "Tender notice lists \"reference installation letters (2 customs administrations)\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-10",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "COASTLINE SCREENING — radiation protection board type-approval dossier",
+          "evidence": "Tender notice lists \"radiation protection board type-approval dossier\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-11",
+          "rule": "R-OVER-BUDGET",
+          "severity": "HIGH",
+          "item": "COASTLINE SCREENING",
+          "evidence": "Bid value KES 3,940,000,000 exceeds the budget ceiling KES 1,860,000,000 (notice: 01-tender-notice.md).",
+          "citation": "03-bid-coastline-screening.md, bid value line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_s3rosq",
+          "findingId": "F-01",
+          "original": "Unit price KES 1,140,000,000 vs peer median KES 466,000,000 (2.4×) on line item \"drive-through x-ray scanner,\".",
+          "proposed": "The Buyer reserves the right to seek written clarification of any line-item price exceeding the peer median by more than 100% prior to award; bids left unclarified after seven (7) working days shall be disqualified.",
+          "rationale": "To ensure transparency and fairness in the procurement process, the Buyer will provide written clarification to the selected bidder within seven working days of receiving a bid that exceeds the peer median by more than 100%. If the clarification is not provided within this timeframe, the bid shall be disqualified.",
+          "model": "llama3.2:1b (llm)",
+          "source": "llm",
+          "usage": {
+            "promptTokens": 242,
+            "completionTokens": 110
+          },
+          "latencyMs": 8933
+        }
+      ],
+      "usage": {
+        "drafts": 1,
+        "llmDrafts": 1,
+        "promptTokens": 242,
+        "completionTokens": 110
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "PRICE-OUTLIER",
+          "VALUE-OUTLIER"
+        ],
+        "maxDrafts": 1,
+        "note": "Review plan for PACK INVENTORY tender pack inventory.",
+        "source": "llm",
+        "model": "llama3.2:1b"
+      },
+      "gateId": "gate_q8szlz"
+    },
+    {
+      "id": "run_5d299bef",
+      "tenderId": "KE-KCS-2026-042",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-27T09:01:12.749Z",
+      "updatedAt": "2026-10-27T09:01:30.382Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender KE-KCS-2026-042",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — llm · value parsing DEEP (markdown + OCDS) · focus DOC-MISSING > SUPPLIER-ID · maxDrafts 2",
+        "▸ extract_requirements — 8 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 11 findings flagged, each cited",
+        "▸ verify_findings — 11/11 confirmed in their cited document",
+        "▸ draft_redline — LLM drafting (llama3.2:1b) for R-DOC-MISSING",
+        "▸ draft_redline — LLM drafting (llama3.2:1b) for R-DOC-MISSING",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus DOC-MISSING, SUPPLIER-ID) · 2 from the model, 0 template · 594 tokens",
+        "⏸ human gate raised (gate_9j16v9) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [
+        {
+          "id": "REQ-01",
+          "clause": "SHALL deliver drive-through X-ray scanners with imaging throughput of at least 25 containers/hour per site",
+          "page": 1
+        },
+        {
+          "id": "REQ-02",
+          "clause": "SHALL complete installation and radiation-safety certification at each port within one hundred and twenty (120) days of contract signature",
+          "page": 1
+        },
+        {
+          "id": "REQ-03",
+          "clause": "SHALL integrate scanner imagery with the existing customs risk-management system via documented API",
+          "page": 1
+        },
+        {
+          "id": "REQ-04",
+          "clause": "SHALL train at least forty (40) customs officers as operators and fifteen (15) as image analysts",
+          "page": 1
+        },
+        {
+          "id": "REQ-05",
+          "clause": "SHALL provide on-site spare parts for two (2) years and comprehensive maintenance for five (5) years",
+          "page": 1
+        },
+        {
+          "id": "REQ-06",
+          "clause": "SHALL obtain type approval from the Radiation Protection Board before energising any unit",
+          "page": 1
+        },
+        {
+          "id": "REQ-07",
+          "clause": "must supply reference installations of the same scanner model operating in at least two (2) customs administrations",
+          "page": 1
+        },
+        {
+          "id": "REQ-08",
+          "clause": "must disclose total ionising dose per inspected container and the radiation-safety dossier",
+          "page": 1
+        }
+      ],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Drive-through X-ray scanner, 25 containers/hour × 3 — COASTLINE SCREENING",
+          "evidence": "Unit price KES 1,140,000,000 vs peer median KES 466,000,000 (2.4×) on line item \"drive-through x-ray scanner,\".",
+          "citation": "03-bid-coastline-screening.md, price schedule"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Imagery-risk API integration, per port × 3 — COASTLINE SCREENING",
+          "evidence": "Unit price KES 41,200,000 vs peer median KES 18,900,000 (2.2×) on line item \"imagery-risk api integration,\".",
+          "citation": "03-bid-coastline-screening.md, price schedule"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Operator & analyst training programme × 3 — COASTLINE SCREENING",
+          "evidence": "Unit price KES 29,800,000 vs peer median KES 22,400,000 (1.3×) on line item \"operator & analyst\".",
+          "citation": "03-bid-coastline-screening.md, price schedule"
+        },
+        {
+          "id": "F-04",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "On-site spares consignment, 2 years × 3 — COASTLINE SCREENING",
+          "evidence": "Unit price KES 84,500,000 vs peer median KES 36,800,000 (2.3×) on line item \"on-site spares consignment,\".",
+          "citation": "03-bid-coastline-screening.md, price schedule"
+        },
+        {
+          "id": "F-05",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Comprehensive maintenance, 5 years × 3 — COASTLINE SCREENING",
+          "evidence": "Unit price KES 96,300,000 vs peer median KES 48,200,000 (2.0×) on line item \"comprehensive maintenance, 5\".",
+          "citation": "03-bid-coastline-screening.md, price schedule"
+        },
+        {
+          "id": "F-06",
+          "rule": "R-SPEC-DEVIATION",
+          "severity": "HIGH",
+          "item": "COASTLINE SCREENING",
+          "evidence": "Note: alternative offered for the radiation certification segment — in-house certification pathway requested (see annex D).",
+          "citation": "03-bid-coastline-screening.md, specifications matrix"
+        },
+        {
+          "id": "F-07",
+          "rule": "R-VALUE-OUTLIER",
+          "severity": "HIGH",
+          "item": "COASTLINE SCREENING",
+          "evidence": "Bid value KES 3,940,000,000 vs peer median 1,772,000,000 (2.2×).",
+          "citation": "03-bid-coastline-screening.md, bid value line"
+        },
+        {
+          "id": "F-08",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "PORTSCAN SYSTEMS — original equipment manufacturers statement",
+          "evidence": "Tender notice lists \"original equipment manufacturers statement\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-09",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "COASTLINE SCREENING — reference installation letters (2 customs administrations)",
+          "evidence": "Tender notice lists \"reference installation letters (2 customs administrations)\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-10",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "COASTLINE SCREENING — radiation protection board type-approval dossier",
+          "evidence": "Tender notice lists \"radiation protection board type-approval dossier\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-11",
+          "rule": "R-OVER-BUDGET",
+          "severity": "HIGH",
+          "item": "COASTLINE SCREENING",
+          "evidence": "Bid value KES 3,940,000,000 exceeds the budget ceiling KES 1,860,000,000 (notice: 01-tender-notice.md).",
+          "citation": "03-bid-coastline-screening.md, bid value line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_fql2b0",
+          "findingId": "F-08",
+          "original": "Tender notice lists \"original equipment manufacturers statement\" as REQUIRED; the bid does not reference it.",
+          "proposed": "The Buyer reserves the right to seek written clarification of any line-item price exceeding the peer median by more than 100% prior to award; bids left unclarified after five (5) working days shall be disqualified.",
+          "rationale": "The original equipment manufacturers statement is not explicitly mentioned in the tender notice, which may indicate a lack of transparency or compliance with the required statement. This anomaly may impact the fairness and integrity of the procurement process.",
+          "model": "llama3.2:1b (llm)",
+          "source": "llm",
+          "usage": {
+            "promptTokens": 210,
+            "completionTokens": 94
+          },
+          "latencyMs": 6976
+        },
+        {
+          "id": "draft_585nte",
+          "findingId": "F-09",
+          "original": "Tender notice lists \"reference installation letters (2 customs administrations)\" as REQUIRED; the bid does not reference it.",
+          "proposed": "The Buyer reserves the right to seek written clarification of any line-item price exceeding the peer median by more than 100% prior to award; bids left unclarified after seven (7) working days shall be disqualified.",
+          "rationale": "This clause aims to provide a clear process for resolving price discrepancies and ensures transparency in the procurement process.",
+          "model": "llama3.2:1b (llm)",
+          "source": "llm",
+          "usage": {
+            "promptTokens": 217,
+            "completionTokens": 73
+          },
+          "latencyMs": 6401
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 2,
+        "promptTokens": 427,
+        "completionTokens": 167
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "DOC-MISSING",
+          "SUPPLIER-ID"
+        ],
+        "maxDrafts": 2,
+        "note": "Review plan for PACK INVENTORY tender",
+        "source": "llm",
+        "model": "llama3.2:1b"
+      },
+      "gateId": "gate_9j16v9"
+    },
+    {
+      "id": "run_73a2b33c",
+      "tenderId": "KE-KCS-2026-042",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-27T09:00:57.386Z",
+      "updatedAt": "2026-10-27T09:01:08.184Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender KE-KCS-2026-042",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — llm · value parsing DEEP (markdown + OCDS) · focus DOC-MISSING > SUPPLIER-ID · maxDrafts 1",
+        "▸ extract_requirements — 8 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 11 findings flagged, each cited",
+        "▸ verify_findings — 11/11 confirmed in their cited document",
+        "▸ draft_redline — LLM drafting (llama3.2:1b) for R-DOC-MISSING",
+        "▸ 1 redline draft(s) ready for committee (plan: maxDrafts 1, focus DOC-MISSING, SUPPLIER-ID) · 1 from the model, 0 template · 285 tokens",
+        "⏸ human gate raised (gate_rc80rs) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [
+        {
+          "id": "REQ-01",
+          "clause": "SHALL deliver drive-through X-ray scanners with imaging throughput of at least 25 containers/hour per site",
+          "page": 1
+        },
+        {
+          "id": "REQ-02",
+          "clause": "SHALL complete installation and radiation-safety certification at each port within one hundred and twenty (120) days of contract signature",
+          "page": 1
+        },
+        {
+          "id": "REQ-03",
+          "clause": "SHALL integrate scanner imagery with the existing customs risk-management system via documented API",
+          "page": 1
+        },
+        {
+          "id": "REQ-04",
+          "clause": "SHALL train at least forty (40) customs officers as operators and fifteen (15) as image analysts",
+          "page": 1
+        },
+        {
+          "id": "REQ-05",
+          "clause": "SHALL provide on-site spare parts for two (2) years and comprehensive maintenance for five (5) years",
+          "page": 1
+        },
+        {
+          "id": "REQ-06",
+          "clause": "SHALL obtain type approval from the Radiation Protection Board before energising any unit",
+          "page": 1
+        },
+        {
+          "id": "REQ-07",
+          "clause": "must supply reference installations of the same scanner model operating in at least two (2) customs administrations",
+          "page": 1
+        },
+        {
+          "id": "REQ-08",
+          "clause": "must disclose total ionising dose per inspected container and the radiation-safety dossier",
+          "page": 1
+        }
+      ],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Drive-through X-ray scanner, 25 containers/hour × 3 — COASTLINE SCREENING",
+          "evidence": "Unit price KES 1,140,000,000 vs peer median KES 466,000,000 (2.4×) on line item \"drive-through x-ray scanner,\".",
+          "citation": "03-bid-coastline-screening.md, price schedule"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Imagery-risk API integration, per port × 3 — COASTLINE SCREENING",
+          "evidence": "Unit price KES 41,200,000 vs peer median KES 18,900,000 (2.2×) on line item \"imagery-risk api integration,\".",
+          "citation": "03-bid-coastline-screening.md, price schedule"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Operator & analyst training programme × 3 — COASTLINE SCREENING",
+          "evidence": "Unit price KES 29,800,000 vs peer median KES 22,400,000 (1.3×) on line item \"operator & analyst\".",
+          "citation": "03-bid-coastline-screening.md, price schedule"
+        },
+        {
+          "id": "F-04",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "On-site spares consignment, 2 years × 3 — COASTLINE SCREENING",
+          "evidence": "Unit price KES 84,500,000 vs peer median KES 36,800,000 (2.3×) on line item \"on-site spares consignment,\".",
+          "citation": "03-bid-coastline-screening.md, price schedule"
+        },
+        {
+          "id": "F-05",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Comprehensive maintenance, 5 years × 3 — COASTLINE SCREENING",
+          "evidence": "Unit price KES 96,300,000 vs peer median KES 48,200,000 (2.0×) on line item \"comprehensive maintenance, 5\".",
+          "citation": "03-bid-coastline-screening.md, price schedule"
+        },
+        {
+          "id": "F-06",
+          "rule": "R-SPEC-DEVIATION",
+          "severity": "HIGH",
+          "item": "COASTLINE SCREENING",
+          "evidence": "Note: alternative offered for the radiation certification segment — in-house certification pathway requested (see annex D).",
+          "citation": "03-bid-coastline-screening.md, specifications matrix"
+        },
+        {
+          "id": "F-07",
+          "rule": "R-VALUE-OUTLIER",
+          "severity": "HIGH",
+          "item": "COASTLINE SCREENING",
+          "evidence": "Bid value KES 3,940,000,000 vs peer median 1,772,000,000 (2.2×).",
+          "citation": "03-bid-coastline-screening.md, bid value line"
+        },
+        {
+          "id": "F-08",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "PORTSCAN SYSTEMS — original equipment manufacturers statement",
+          "evidence": "Tender notice lists \"original equipment manufacturers statement\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-09",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "COASTLINE SCREENING — reference installation letters (2 customs administrations)",
+          "evidence": "Tender notice lists \"reference installation letters (2 customs administrations)\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-10",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "COASTLINE SCREENING — radiation protection board type-approval dossier",
+          "evidence": "Tender notice lists \"radiation protection board type-approval dossier\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-11",
+          "rule": "R-OVER-BUDGET",
+          "severity": "HIGH",
+          "item": "COASTLINE SCREENING",
+          "evidence": "Bid value KES 3,940,000,000 exceeds the budget ceiling KES 1,860,000,000 (notice: 01-tender-notice.md).",
+          "citation": "03-bid-coastline-screening.md, bid value line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_278kdd",
+          "findingId": "F-08",
+          "original": "Tender notice lists \"original equipment manufacturers statement\" as REQUIRED; the bid does not reference it.",
+          "proposed": "The Buyer reserves the right to seek written clarification of any line-item price exceeding the peer median by more than 100% prior to award; bids left unclarified after five (5) working days shall be disqualified.",
+          "rationale": "This clause aims to provide a clear process for resolving price discrepancies, ensuring transparency and fairness in the procurement process.",
+          "model": "llama3.2:1b (llm)",
+          "source": "llm",
+          "usage": {
+            "promptTokens": 210,
+            "completionTokens": 75
+          },
+          "latencyMs": 6422
+        }
+      ],
+      "usage": {
+        "drafts": 1,
+        "llmDrafts": 1,
+        "promptTokens": 210,
+        "completionTokens": 75
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "DOC-MISSING",
+          "SUPPLIER-ID"
+        ],
+        "maxDrafts": 1,
+        "note": "Review plan for PACK INVENTORY tender",
+        "source": "llm",
+        "model": "llama3.2:1b"
+      },
+      "gateId": "gate_rc80rs"
+    },
+    {
+      "id": "run_39126a9a",
+      "tenderId": "KE-MSA-2026-090",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-27T08:59:07.520Z",
+      "updatedAt": "2026-10-27T08:59:42.484Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender KE-MSA-2026-090",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — llm · value parsing DEEP (markdown + OCDS) · focus PRICE-OUTLIER > VALUE-OUTLIER > DEBARMENT · maxDrafts 1",
+        "▸ extract_requirements — 7 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 2/3 confirmed in their cited document · 1 sent to repair (pass 1/2)",
+        "▸ revise_findings — repair pass 1/2: 0 re-anchored, 1 dropped with reasons",
+        "▸ revise_findings — dropped: R-BID-SECURITY MOMBASA MARINE — bid security: re-anchored to 2 real line(s) of 03-bid-mombasa-marine.md but the self-check still refuses the finding",
+        "▸ verify_findings — 2/2 confirmed in their cited document",
+        "▸ draft_redline — LLM drafting (llama3.2:1b) for R-SUPPLIER-ID",
+        "▸ 1 redline draft(s) ready for committee (plan: maxDrafts 1, focus PRICE-OUTLIER, VALUE-OUTLIER, DEBARMENT) · 1 from the model, 0 template · 320 tokens",
+        "⏸ human gate raised (gate_dd8514) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [
+        {
+          "id": "REQ-01",
+          "clause": "SHALL deliver portable water-testing kits conforming to WHO field-testing guidance in Annex B",
+          "page": 1
+        },
+        {
+          "id": "REQ-02",
+          "clause": "SHALL supply reagent refill packs with a minimum shelf life of eighteen (18) months on delivery",
+          "page": 1
+        },
+        {
+          "id": "REQ-03",
+          "clause": "SHALL commission each laboratory kit within thirty (30) days of delivery and train at least four (4) county laboratory technicians per depot",
+          "page": 1
+        },
+        {
+          "id": "REQ-04",
+          "clause": "SHALL calibrate every incubator against a traceable reference standard before handover",
+          "page": 1
+        },
+        {
+          "id": "REQ-05",
+          "clause": "SHALL state the country of manufacture for every line item",
+          "page": 1
+        },
+        {
+          "id": "REQ-06",
+          "clause": "must hold a valid tax compliance certificate at submission",
+          "page": 1
+        },
+        {
+          "id": "REQ-07",
+          "clause": "must hold current ISO/IEC 17025 accreditation for the assays quoted",
+          "page": 1
+        }
+      ],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-BUYER-MISSING",
+          "severity": "MEDIUM",
+          "item": "Tender KE-MSA-2026-090 — buyer name",
+          "evidence": "Tender notice KE-MSA-2026-090 names no buyer — the pack never says who the contracting entity is.",
+          "citation": "01-tender-notice.md, tender reference line"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-SUPPLIER-ID",
+          "severity": "HIGH",
+          "item": "MOMBASA MARINE — Kenya KRA PIN",
+          "evidence": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "citation": "03-bid-mombasa-marine.md, supplier identifier line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_bl6klo",
+          "findingId": "F-02",
+          "original": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "proposed": "The Buyer reserves the right to seek written clarification of any line-item price exceeding the peer median by more than 100% prior to award; bids left unclarified after ten (10) working days shall be disqualified.",
+          "rationale": "This clause aims to protect against price gouging and ensure transparency in the procurement process. It requires the supplier to justify any price increase and allows for a formal review process to ensure fairness and accuracy.",
+          "model": "llama3.2:1b (llm)",
+          "source": "llm",
+          "usage": {
+            "promptTokens": 228,
+            "completionTokens": 92
+          },
+          "latencyMs": 7800
+        }
+      ],
+      "usage": {
+        "drafts": 1,
+        "llmDrafts": 1,
+        "promptTokens": 228,
+        "completionTokens": 92
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "PRICE-OUTLIER",
+          "VALUE-OUTLIER",
+          "DEBARMENT"
+        ],
+        "maxDrafts": 1,
+        "note": "Review plan for PACK INVENTORY tender pack inventory.",
+        "source": "llm",
+        "model": "llama3.2:1b"
+      },
+      "gateId": "gate_dd8514"
+    },
+    {
+      "id": "run_e7b6930d",
+      "tenderId": "KE-MOE-2026-205",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-27T08:59:07.438Z",
+      "updatedAt": "2026-10-27T08:59:29.459Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender KE-MOE-2026-205",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 4 documents read · 3 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — llm · value parsing DEEP (markdown + OCDS) · focus DOC-MISSING > SUPPLIER-ID > BID-SECURITY > DEBARMENT · maxDrafts 1",
+        "▸ extract_requirements — 4 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 3 bidders matched on the platform register",
+        "▸ flag_finding — 4 findings flagged, each cited",
+        "▸ verify_findings — 4/4 confirmed in their cited document",
+        "▸ draft_redline — LLM drafting (llama3.2:1b) for R-DOC-MISSING",
+        "▸ 1 redline draft(s) ready for committee (plan: maxDrafts 1, focus DOC-MISSING, SUPPLIER-ID, BID-SECURITY) · 1 from the model, 0 template · 348 tokens",
+        "⏸ human gate raised (gate_d82jaw) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [
+        {
+          "id": "REQ-01",
+          "clause": "SHALL deliver double-seat student desks conforming to the KS 1 series standard, 500 per school",
+          "page": 1
+        },
+        {
+          "id": "REQ-02",
+          "clause": "SHALL deliver physics laboratory kits with stainless steel apparatus, one class set per school",
+          "page": 1
+        },
+        {
+          "id": "REQ-03",
+          "clause": "SHALL install all units at each school within ninety (90) days of contract signature",
+          "page": 1
+        },
+        {
+          "id": "REQ-04",
+          "clause": "SHALL provide a twenty-four (24) month warranty on all equipment",
+          "page": 1
+        }
+      ],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Physics lab kit, class set × 40 — RIFT VALLEY LAB",
+          "evidence": "Unit price KES 230,000 vs peer median KES 90,000 (2.6×) on line item \"physics lab kit,\".",
+          "citation": "03-bid-rift-valley-lab.md, price schedule"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-SPEC-DEVIATION",
+          "severity": "HIGH",
+          "item": "RIFT VALLEY LAB",
+          "evidence": "Alternative offered for the physics kit: plastic apparatus in place of stainless steel (see annex B).",
+          "citation": "03-bid-rift-valley-lab.md, specifications matrix"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "RIFT VALLEY LAB — manufacturer authorization letter",
+          "evidence": "Tender notice lists \"manufacturer authorization letter\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-04",
+          "rule": "R-OVER-BUDGET",
+          "severity": "HIGH",
+          "item": "RIFT VALLEY LAB",
+          "evidence": "Bid value KES 91,800,000 exceeds the budget ceiling KES 90,000,000 (notice: 01-tender-notice.md).",
+          "citation": "03-bid-rift-valley-lab.md, bid value line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_t5rkfb",
+          "findingId": "F-03",
+          "original": "Tender notice lists \"manufacturer authorization letter\" as REQUIRED; the bid does not reference it.",
+          "proposed": "The Buyer reserves the right to seek written clarification of any line-item price exceeding the peer median by more than 100% prior to award; bids left unclarified after seven (7) working days shall be disqualified.",
+          "rationale": "To ensure transparency and fairness in the procurement process, the Buyer reserves the right to seek written clarification of any line-item price exceeding the peer median by more than 100% prior to award. This provision is intended to protect the Buyer's interests and prevent unfair pricing practices. Bids that are left unclarified after seven (7) working days shall be disqualified to prevent undue delay or financial harm to the Buyer.",
+          "model": "llama3.2:1b (llm)",
+          "source": "llm",
+          "usage": {
+            "promptTokens": 209,
+            "completionTokens": 139
+          },
+          "latencyMs": 16263
+        }
+      ],
+      "usage": {
+        "drafts": 1,
+        "llmDrafts": 1,
+        "promptTokens": 209,
+        "completionTokens": 139
+      },
+      "plan": {
+        "pack": {
+          "files": 4,
+          "bids": 3,
+          "ocdsRecords": 0,
+          "markdownValueBids": 3,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "DOC-MISSING",
+          "SUPPLIER-ID",
+          "BID-SECURITY",
+          "DEBARMENT"
+        ],
+        "maxDrafts": 1,
+        "note": "Review plan for PACK INVENTORY tender pack inventory",
+        "source": "llm",
+        "model": "llama3.2:1b"
+      },
+      "gateId": "gate_d82jaw"
+    },
+    {
+      "id": "run_148acf55",
+      "tenderId": "KE-MOH-2026-117",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-27T08:57:49.682Z",
+      "updatedAt": "2026-10-27T08:58:06.265Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender KE-MOH-2026-117",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — llm · value parsing DEEP (markdown + OCDS) · focus DOC-MISSING > SUPPLIER-ID > BID-SECURITY > DEBARMENT · maxDrafts 1",
+        "▸ extract_requirements — 8 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 10 findings flagged, each cited",
+        "▸ verify_findings — 10/10 confirmed in their cited document",
+        "▸ draft_redline — LLM drafting (llama3.2:1b) for R-DOC-MISSING",
+        "▸ 1 redline draft(s) ready for committee (plan: maxDrafts 1, focus DOC-MISSING, SUPPLIER-ID, BID-SECURITY) · 1 from the model, 0 template · 291 tokens",
+        "⏸ human gate raised (gate_k5tbm8) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [
+        {
+          "id": "REQ-01",
+          "clause": "SHALL supply only medicines prequalified by the WHO or registered by the PPB",
+          "page": 1
+        },
+        {
+          "id": "REQ-02",
+          "clause": "SHALL deliver each tracer item to the county medical stores within forty-five (45) days of contract signature",
+          "page": 1
+        },
+        {
+          "id": "REQ-03",
+          "clause": "SHALL assign a shelf life of not less than twenty-four (24) months at delivery for every batch",
+          "page": 1
+        },
+        {
+          "id": "REQ-04",
+          "clause": "SHALL transport cold-chain items at 2–8 °C with validated data loggers on every shipment",
+          "page": 1
+        },
+        {
+          "id": "REQ-05",
+          "clause": "SHALL report any recall or quality defect to the buyer within twenty-four (24) hours",
+          "page": 1
+        },
+        {
+          "id": "REQ-06",
+          "clause": "must hold a valid PPB wholesaler licence for the contract period",
+          "page": 1
+        },
+        {
+          "id": "REQ-07",
+          "clause": "must submit a certificate of analysis for every batch offered",
+          "page": 1
+        },
+        {
+          "id": "REQ-08",
+          "clause": "must declare any anti-dumping or subsidy arrangements affecting quoted prices",
+          "page": 1
+        }
+      ],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Insulin glargine 100IU/ml, pack of 5 pens × 1200 — EQUATORIAL MEDICINES",
+          "evidence": "Unit price KES 41,300 vs peer median KES 6,420 (6.4×) on line item \"insulin glargine 100iu/ml,\".",
+          "citation": "03-bid-equatorial-medicines.md, price schedule"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Cold-chain shipment, validated 2–8 °C × 12 — EQUATORIAL MEDICINES",
+          "evidence": "Unit price KES 8,050,000 vs peer median KES 480,000 (16.8×) on line item \"cold-chain shipment, validated\".",
+          "citation": "03-bid-equatorial-medicines.md, price schedule"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-SPEC-DEVIATION",
+          "severity": "HIGH",
+          "item": "EQUATORIAL MEDICINES",
+          "evidence": "Note: alternative offered for the cold-chain segment — imported passive shippers requested in place of validated reefer trucks (see annex B).",
+          "citation": "03-bid-equatorial-medicines.md, specifications matrix"
+        },
+        {
+          "id": "F-04",
+          "rule": "R-VALUE-OUTLIER",
+          "severity": "HIGH",
+          "item": "EQUATORIAL MEDICINES",
+          "evidence": "Bid value KES 1,362,900,000 vs peer median 588,400,000 (2.3×).",
+          "citation": "03-bid-equatorial-medicines.md, bid value line"
+        },
+        {
+          "id": "F-05",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "SAVANNA PHARMA — cold-chain capability report",
+          "evidence": "Tender notice lists \"cold-chain capability report\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-06",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "EQUATORIAL MEDICINES — ppb wholesaler licence",
+          "evidence": "Tender notice lists \"ppb wholesaler licence\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-07",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "EQUATORIAL MEDICINES — who prequalification or ppb registration certificates",
+          "evidence": "Tender notice lists \"who prequalification or ppb registration certificates\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-08",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "EQUATORIAL MEDICINES — certificate of analysis samples",
+          "evidence": "Tender notice lists \"certificate of analysis samples\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-09",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "EQUATORIAL MEDICINES — cold-chain capability report",
+          "evidence": "Tender notice lists \"cold-chain capability report\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-10",
+          "rule": "R-OVER-BUDGET",
+          "severity": "HIGH",
+          "item": "EQUATORIAL MEDICINES",
+          "evidence": "Bid value KES 1,362,900,000 exceeds the budget ceiling KES 624,800,000 (notice: 01-tender-notice.md).",
+          "citation": "03-bid-equatorial-medicines.md, bid value line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_xbvkwq",
+          "findingId": "F-05",
+          "original": "Tender notice lists \"cold-chain capability report\" as REQUIRED; the bid does not reference it.",
+          "proposed": "The Buyer reserves the right to seek written clarification of any line-item price exceeding the peer median by more than 100% prior to award; bids left unclarified after five (5) working days shall be disqualified.",
+          "rationale": "This clause aims to ensure transparency and fairness in the bidding process, allowing the Buyer to make informed decisions and avoid potential disputes.",
+          "model": "llama3.2:1b (llm)",
+          "source": "llm",
+          "usage": {
+            "promptTokens": 213,
+            "completionTokens": 78
+          },
+          "latencyMs": 7085
+        }
+      ],
+      "usage": {
+        "drafts": 1,
+        "llmDrafts": 1,
+        "promptTokens": 213,
+        "completionTokens": 78
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "DOC-MISSING",
+          "SUPPLIER-ID",
+          "BID-SECURITY",
+          "DEBARMENT"
+        ],
+        "maxDrafts": 1,
+        "note": "Review plan for PACK INVENTORY tender pack inventory",
+        "source": "llm",
+        "model": "llama3.2:1b"
+      },
+      "gateId": "gate_k5tbm8"
+    },
+    {
+      "id": "run_055c076c",
+      "tenderId": "KE-KCS-2026-042",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-27T08:50:04.604Z",
+      "updatedAt": "2026-10-27T08:50:04.758Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender KE-KCS-2026-042",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — heuristic · value parsing DEEP (markdown + OCDS) · focus OVER-BUDGET > VALUE-OUTLIER > PRICE-OUTLIER > DOC-MISSING > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 8 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 11 findings flagged, each cited",
+        "▸ verify_findings — 11/11 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-OVER-BUDGET",
+        "▸ draft_redline — template (no model configured) for R-VALUE-OUTLIER",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus OVER-BUDGET, VALUE-OUTLIER, PRICE-OUTLIER) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_753w2e) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [
+        {
+          "id": "REQ-01",
+          "clause": "SHALL deliver drive-through X-ray scanners with imaging throughput of at least 25 containers/hour per site",
+          "page": 1
+        },
+        {
+          "id": "REQ-02",
+          "clause": "SHALL complete installation and radiation-safety certification at each port within one hundred and twenty (120) days of contract signature",
+          "page": 1
+        },
+        {
+          "id": "REQ-03",
+          "clause": "SHALL integrate scanner imagery with the existing customs risk-management system via documented API",
+          "page": 1
+        },
+        {
+          "id": "REQ-04",
+          "clause": "SHALL train at least forty (40) customs officers as operators and fifteen (15) as image analysts",
+          "page": 1
+        },
+        {
+          "id": "REQ-05",
+          "clause": "SHALL provide on-site spare parts for two (2) years and comprehensive maintenance for five (5) years",
+          "page": 1
+        },
+        {
+          "id": "REQ-06",
+          "clause": "SHALL obtain type approval from the Radiation Protection Board before energising any unit",
+          "page": 1
+        },
+        {
+          "id": "REQ-07",
+          "clause": "must supply reference installations of the same scanner model operating in at least two (2) customs administrations",
+          "page": 1
+        },
+        {
+          "id": "REQ-08",
+          "clause": "must disclose total ionising dose per inspected container and the radiation-safety dossier",
+          "page": 1
+        }
+      ],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Drive-through X-ray scanner, 25 containers/hour × 3 — COASTLINE SCREENING",
+          "evidence": "Unit price KES 1,140,000,000 vs peer median KES 466,000,000 (2.4×) on line item \"drive-through x-ray scanner,\".",
+          "citation": "03-bid-coastline-screening.md, price schedule"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Imagery-risk API integration, per port × 3 — COASTLINE SCREENING",
+          "evidence": "Unit price KES 41,200,000 vs peer median KES 18,900,000 (2.2×) on line item \"imagery-risk api integration,\".",
+          "citation": "03-bid-coastline-screening.md, price schedule"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Operator & analyst training programme × 3 — COASTLINE SCREENING",
+          "evidence": "Unit price KES 29,800,000 vs peer median KES 22,400,000 (1.3×) on line item \"operator & analyst\".",
+          "citation": "03-bid-coastline-screening.md, price schedule"
+        },
+        {
+          "id": "F-04",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "On-site spares consignment, 2 years × 3 — COASTLINE SCREENING",
+          "evidence": "Unit price KES 84,500,000 vs peer median KES 36,800,000 (2.3×) on line item \"on-site spares consignment,\".",
+          "citation": "03-bid-coastline-screening.md, price schedule"
+        },
+        {
+          "id": "F-05",
+          "rule": "R-PRICE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Comprehensive maintenance, 5 years × 3 — COASTLINE SCREENING",
+          "evidence": "Unit price KES 96,300,000 vs peer median KES 48,200,000 (2.0×) on line item \"comprehensive maintenance, 5\".",
+          "citation": "03-bid-coastline-screening.md, price schedule"
+        },
+        {
+          "id": "F-06",
+          "rule": "R-SPEC-DEVIATION",
+          "severity": "HIGH",
+          "item": "COASTLINE SCREENING",
+          "evidence": "Note: alternative offered for the radiation certification segment — in-house certification pathway requested (see annex D).",
+          "citation": "03-bid-coastline-screening.md, specifications matrix"
+        },
+        {
+          "id": "F-07",
+          "rule": "R-VALUE-OUTLIER",
+          "severity": "HIGH",
+          "item": "COASTLINE SCREENING",
+          "evidence": "Bid value KES 3,940,000,000 vs peer median 1,772,000,000 (2.2×).",
+          "citation": "03-bid-coastline-screening.md, bid value line"
+        },
+        {
+          "id": "F-08",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "PORTSCAN SYSTEMS — original equipment manufacturers statement",
+          "evidence": "Tender notice lists \"original equipment manufacturers statement\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-09",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "COASTLINE SCREENING — reference installation letters (2 customs administrations)",
+          "evidence": "Tender notice lists \"reference installation letters (2 customs administrations)\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-10",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "COASTLINE SCREENING — radiation protection board type-approval dossier",
+          "evidence": "Tender notice lists \"radiation protection board type-approval dossier\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-tender-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-11",
+          "rule": "R-OVER-BUDGET",
+          "severity": "HIGH",
+          "item": "COASTLINE SCREENING",
+          "evidence": "Bid value KES 3,940,000,000 exceeds the budget ceiling KES 1,860,000,000 (notice: 01-tender-notice.md).",
+          "citation": "03-bid-coastline-screening.md, bid value line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_2cmm6j",
+          "findingId": "F-11",
+          "original": "Bid value KES 3,940,000,000 exceeds the budget ceiling KES 1,860,000,000 (notice: 01-tender-notice.md).",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-OVER-BUDGET on COASTLINE SCREENING prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_4kycty",
+          "findingId": "F-07",
+          "original": "Bid value KES 3,940,000,000 vs peer median 1,772,000,000 (2.2×).",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-VALUE-OUTLIER on COASTLINE SCREENING prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "OVER-BUDGET",
+          "VALUE-OUTLIER",
+          "PRICE-OUTLIER",
+          "DOC-MISSING",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 2 markdown bid value(s) + published ceiling — deep-value parsing on",
+        "source": "heuristic"
+      },
+      "gateId": "gate_753w2e"
+    },
     {
       "id": "run_2cf33775",
       "tenderId": "RW-RURA-2027-021",
@@ -4264,5 +5696,5 @@
       "createdAt": "2026-10-21T15:18:06.532Z"
     }
   ],
-  "seq": 347
+  "seq": 472
 }

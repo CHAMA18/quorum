@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-10-23T16:37:32.934Z",
+  "generatedAt": "2026-10-27T09:02:01.348Z",
   "labeller": "one human reviewer, one pass over the source documents, written before the engine was run on them. Not independently double-labelled.",
   "covered_means": "a rule in the engine is designed to raise this finding type. covered:false items measure what the rule set does not claim to catch. Coverage flags track the CURRENT rule set: when a rule lands (e.g. plan_review deep-value parsing of markdown bid values, 2026-10-16), the flags it covers flip to true — the labels themselves are never edited after their original single pass.",
   "summary": {
-    "runsPerTender": 3,
+    "runsPerTender": 5,
     "tenders": 7,
     "original": {
       "goldLabels": 42,
@@ -27,10 +27,10 @@
     "llmCallsPerRun": 0,
     "variance": {
       "findingsIdenticalAcrossRuns": "7/7 tenders",
-      "msMedianPerPack": 0.67,
+      "msMedianPerPack": 0.71,
       "msSpread": [
-        0.48,
-        0.94
+        0.53,
+        1.14
       ],
       "note": "Identical findings across repeated runs prove stability, not sensitivity — the mutation detection rates below are the sensitivity check. This report does NOT measure LLM run-to-run variance: no drafting endpoint runs in this loop. On a live endpoint the sidecar records per-draft usage in tool-log.jsonl and state.json, and the run register shows per-run draft variation."
     },
@@ -42,7 +42,7 @@
       "note": "The rule-path eval makes no model calls, so the measured cost of this report is 0 USD. On a live endpoint, cost per run = (prompt_tokens + completion_tokens) × the endpoint's published per-token price; usage per draft is recorded in tool-log.jsonl and on the run's usage block, so the figure is auditable from the append-only log."
     },
     "mutation": {
-      "repeatsPerMutation": 3,
+      "repeatsPerMutation": 5,
       "executed": 27,
       "skipped": 8,
       "overallDetectionRate": 100,
@@ -93,10 +93,10 @@
       "droppedBySelfCheck": 0,
       "ruleCapHit": false,
       "identicalAcrossRuns": true,
-      "medianMs": 0.94,
+      "medianMs": 1.14,
       "msRange": [
-        0.65,
-        7.46
+        0.97,
+        7.21
       ],
       "mutations": [
         {
@@ -159,10 +159,10 @@
       "droppedBySelfCheck": 0,
       "ruleCapHit": false,
       "identicalAcrossRuns": true,
-      "medianMs": 0.92,
+      "medianMs": 1,
       "msRange": [
-        0.73,
-        3.57
+        0.78,
+        1.1
       ],
       "mutations": [
         {
@@ -203,10 +203,10 @@
       "droppedBySelfCheck": 1,
       "ruleCapHit": false,
       "identicalAcrossRuns": true,
-      "medianMs": 0.64,
+      "medianMs": 0.6,
       "msRange": [
-        0.43,
-        0.85
+        0.58,
+        0.86
       ],
       "mutations": [
         {
@@ -247,10 +247,10 @@
       "droppedBySelfCheck": 0,
       "ruleCapHit": false,
       "identicalAcrossRuns": true,
-      "medianMs": 0.69,
+      "medianMs": 0.71,
       "msRange": [
-        0.48,
-        0.79
+        0.68,
+        0.76
       ],
       "mutations": [
         {
@@ -300,10 +300,10 @@
       "droppedBySelfCheck": 0,
       "ruleCapHit": false,
       "identicalAcrossRuns": true,
-      "medianMs": 0.67,
+      "medianMs": 0.78,
       "msRange": [
-        0.64,
-        0.92
+        0.74,
+        0.96
       ],
       "mutations": [
         {
@@ -351,10 +351,10 @@
       "droppedBySelfCheck": 0,
       "ruleCapHit": false,
       "identicalAcrossRuns": true,
-      "medianMs": 0.51,
+      "medianMs": 0.68,
       "msRange": [
-        0.48,
-        0.72
+        0.59,
+        0.87
       ],
       "mutations": [
         {
@@ -395,10 +395,10 @@
       "droppedBySelfCheck": 0,
       "ruleCapHit": false,
       "identicalAcrossRuns": true,
-      "medianMs": 0.48,
+      "medianMs": 0.53,
       "msRange": [
-        0.37,
-        0.85
+        0.42,
+        9.42
       ],
       "mutations": [
         {
