@@ -82,6 +82,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
+        suppressHydrationWarning
         className={`${archivo.variable} ${inter.variable} ${jetbrains.variable} ${instrument.variable} font-body antialiased bg-background text-foreground`}
       >
         <ThemeProvider>
