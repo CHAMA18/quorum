@@ -113,6 +113,9 @@ export function SiteFooter() {
             <span className="font-code text-[10px] tracking-[0.18em] text-ink-600">
               AGENTS PREPARE · COMMITTEES DECIDE
             </span>
+            <span className="font-code text-[10px] tracking-[0.18em] text-ink-600">
+              BUILT WITH LLAMA
+            </span>
             <span className="font-code text-[10px] tracking-[0.18em] text-ink-600">NAIROBI · EAT</span>
           </div>
         </div>

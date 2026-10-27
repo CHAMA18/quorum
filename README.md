@@ -11,6 +11,16 @@ deterministic template is the offline fallback) — and then stops. Filing an aw
 irreversible, so the agent cannot do it: a **named human signs the gate** first, and only
 then is the bundle sealed, filed and receipted.
 
+| | |
+|---|---|
+| ![Quorum landing](docs/screenshots/hero.png) | ![Officer dashboard](docs/screenshots/dashboard.png) |
+| ![Committee desk](docs/screenshots/committee.png) | ![Mobile](docs/screenshots/mobile.png) |
+
+**Try it in one command:** `bash scripts/judge-demo.sh` — boots the stack, seeds a
+verified officer, launches a real review run over a demo tender pack, waits for the
+agent to halt itself at the human-signature gate, then replays the unsigned-mutation
+refusal as proof the agent cannot file.
+
 ---
 
 ## Meta Global AI Developer Hackathon 2026
@@ -400,6 +410,18 @@ curl -s localhost:3031/mcp -X POST -H 'content-type: application/json' \
 - **PDF/A export** of sourced reports for court-ready archival (currently Markdown).
 - **Committee quorum analytics** in the ledger (median time-to-decision, repeat-approver patterns) — the data is already in the audit log.
 - **A second eval labeller** on a 20% overlap sample with disagreement review, so the gold labels carry an inter-annotator check instead of a single reviewer's pass (disclosed under Limitations).
+
+---
+
+## License
+
+Code: **MIT** — see [LICENSE](./LICENSE).
+Model: drafting runs on [Llama 3.2](https://github.com/meta-llama/llama-models) (Meta
+open weights), governed by the [Llama 3.2 Community License](https://github.com/meta-llama/llama-models/blob/main/models/llama3_2/LICENSE) —
+see [NOTICE](./NOTICE).
+
+**Built with Llama.** Self-hosted by design: tender documents never leave the
+deployment's jurisdiction.
 
 ---
 

@@ -2,6 +2,8 @@
   "name": "nextjs_tailwind_shadcn_ts",
   "version": "0.2.1",
   "private": true,
+  "license": "MIT",
+  "llamaLicense": "Llama 3.2 Community License \u2014 see NOTICE",
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
     "mcp": "bun mini-services/quorum-mcp/index.ts",
