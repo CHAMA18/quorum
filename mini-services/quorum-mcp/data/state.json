@@ -4746,8 +4746,30 @@
       "currency": "ZMW",
       "status": "PLANNED",
       "createdAt": "2026-10-28T08:44:49.802Z"
+    },
+    {
+      "id": "pip_5b0015c4",
+      "ref": "ZM-2026-001",
+      "title": "Supply Information",
+      "office": "ACCOUNTING_OFFICER",
+      "budgetEstimate": 90000,
+      "currency": "ZMW",
+      "expectedPublication": "2026-10-28",
+      "status": "PLANNED",
+      "createdAt": "2026-10-28T20:51:25.387Z"
+    },
+    {
+      "id": "pip_009eddfa",
+      "ref": "ZM-2026-002",
+      "title": "We need this done now",
+      "office": "ACCOUNTING_OFFICER",
+      "budgetEstimate": 90000,
+      "currency": "ZMW",
+      "expectedPublication": "2026-10-28",
+      "status": "PLANNED",
+      "createdAt": "2026-10-28T20:51:51.233Z"
     }
   ],
   "stepUpUses": [],
-  "seq": 407
+  "seq": 409
 }
