@@ -1,18 +1,24 @@
 /**
  * Desk tools for the Muse assistant.
  *
- * Every tool is a READ — a GET against records that already exist on the
- * quorum-mcp sidecar (:3031). There is deliberately no tool here that can
- * sign, award, return, file, summon or register: the assistant answers
- * questions about the desk, and the gavel stays where the product puts it —
- * behind a named human at the Approvals gate.
+ * Every live tool is a READ — a GET against records that already exist on the
+ * quorum-mcp sidecar (:3031) or the web app's committee register. The
+ * system_guide tool returns Quorum's own static operating manual. There is
+ * deliberately no tool here that can sign, award, return, file, summon or
+ * register: the assistant answers questions about the desk, and the gavel
+ * stays where the product puts it — behind a named human at the Approvals
+ * gate.
  *
  * The definitions travel to the model; the executors stay on the server, so
  * the model never chooses a URL, never sees a session and can only ask for
  * reads this file has already written down.
  */
 
+import { GUIDE_IDS, readSystemGuide } from "@/lib/quorum-knowledge";
+
 const SIDECAR = "http://127.0.0.1:3031";
+/* The committee register lives in the web app's JSON store, not the sidecar. */
+const WEB = (process.env.QUORUM_WEB_URL?.trim() || "http://127.0.0.1:3000").replace(/\/+$/, "");
 
 export interface DeskTool {
   name: string;
@@ -24,9 +30,25 @@ export interface DeskTool {
 
 export const DESK_TOOLS: DeskTool[] = [
   {
+    name: "system_guide",
+    description:
+      "Read Quorum's own operating manual — the product, review pipeline, human gate, audit/receipts, roles, screens, supplier portal, notifications, documents/uploads, models/provenance, security, deployment and known limits. Use this for any 'how does Quorum work', 'where do I…', 'who can…', 'what is real yet' or architecture question. Call it before answering from general knowledge.",
+    parameters: {
+      type: "object",
+      properties: {
+        topic: {
+          type: "string",
+          enum: [...GUIDE_IDS],
+          description: "One section id. Omit for the topic index.",
+        },
+      },
+      required: [],
+    },
+  },
+  {
     name: "desk_snapshot",
     description:
-      "One read of the whole desk: how many evaluations are running, queued, at the gate or decided; how many approvals are waiting for a human signature; the agent service's own health. Use this first for any 'what is happening' question.",
+      "One read of the whole desk: how many evaluations are running, queued, at the gate or decided; how many approvals are waiting for a human signature; whether the committee is quorate; the agent service's own health. Use this first for any 'what is happening' question.",
     parameters: { type: "object", properties: {}, required: [] },
   },
   {
@@ -46,8 +68,35 @@ export const DESK_TOOLS: DeskTool[] = [
     description:
       "List the approvals sitting at the human gate — files the agent finished and halted. Each shows its status (PENDING / APPROVED / REJECTED / EXECUTED), the gate tool it corresponds to, when it was filed and, once decided, who signed it and when. Pending items are the ones waiting on a named human.",
     parameters: {
-      type: "integer",
-      description: "How many to return. Default 15, max 40.",
+      type: "object",
+      properties: {
+        limit: { type: "integer", description: "How many to return. Default 15, max 40." },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "list_audit",
+    description:
+      "Read the most recent entries from the append-only, hash-chained audit trail: who did what, which tool ran, the run/gate it touched, and whether it succeeded. Use for 'what happened recently', 'who signed', or 'does the record show…' questions. This is read-only.",
+    parameters: {
+      type: "object",
+      properties: {
+        limit: { type: "integer", description: "How many recent entries to return. Default 12, max 40." },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "list_suppliers",
+    description:
+      "Read the supplier register: names, registration/tax identifiers, categories and status (ACTIVE, SUSPENDED, BLACKLISTED). Use when the officer asks about a bidder's standing or the register. This does not expose passwords or portal sessions.",
+    parameters: {
+      type: "object",
+      properties: {
+        limit: { type: "integer", description: "How many suppliers to return. Default 20, max 50." },
+      },
+      required: [],
     },
   },
   {
@@ -84,6 +133,15 @@ async function getJson(path: string, timeoutMs = 6000): Promise<Record<string, u
     signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) throw new Error(`sidecar ${res.status} on ${path}`);
+  return (await res.json().catch(() => ({}))) as Record<string, unknown>;
+}
+
+async function getWebJson(path: string, timeoutMs = 6000): Promise<Record<string, unknown>> {
+  const res = await fetch(`${WEB}${path}`, {
+    cache: "no-store",
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!res.ok) throw new Error(`web ${res.status} on ${path}`);
   return (await res.json().catch(() => ({}))) as Record<string, unknown>;
 }
 
@@ -158,16 +216,32 @@ function viewGate(g: Gate) {
 export async function runDeskTool(name: string, args: Record<string, unknown>): Promise<string> {
   try {
     switch (name) {
+      case "system_guide":
+        return readSystemGuide(String(args.topic ?? ""));
       case "desk_snapshot": {
-        const [runs, gates, health] = await Promise.all([
+        const [runs, gates, health, committee] = await Promise.all([
           getJson("/api/runs"),
           getJson("/api/gates"),
           getJson("/api/health", 3000).catch(() => null),
+          getWebJson("/api/committee", 4000).catch(() => null),
         ]);
         const list = (runs.runs ?? []) as Run[];
         const gateList = (gates.gates ?? []) as Gate[];
         const h = health as Health | null;
+        const cm = committee;
         return JSON.stringify({
+          quorum: cm
+            ? {
+                seats: cm.seats ?? null,
+                required: cm.required ?? null,
+                present: cm.present ?? null,
+                met:
+                  typeof cm.present === "number" && typeof cm.required === "number"
+                    ? cm.present >= cm.required
+                    : null,
+                openSitting: cm.sitting ? (cm.sitting as { status?: string }).status ?? null : null,
+              }
+            : { unavailable: true },
           evaluations: {
             total: list.length,
             running: list.filter((r) => r.status === "RUNNING").length,
@@ -198,6 +272,54 @@ export async function runDeskTool(name: string, args: Record<string, unknown>): 
         const list = ((gates.gates ?? []) as Gate[]).slice(0, limit);
         return JSON.stringify({ count: list.length, approvals: list.map(viewGate) });
       }
+      case "list_audit": {
+        const limit = Math.min(Math.max(Number(args.limit ?? 12) || 12, 1), 40);
+        const log = await getJson(`/api/log?limit=${limit}`);
+        const entries = ((log.entries ?? []) as {
+          seq: number;
+          ts: string;
+          actor: string;
+          tool: string;
+          kind: string;
+          status: string;
+          runId?: string;
+        }[]).slice(0, limit);
+        return JSON.stringify({
+          count: entries.length,
+          entries: entries.map((e) => ({
+            seq: e.seq,
+            at: e.ts,
+            actor: e.actor,
+            tool: e.tool,
+            kind: e.kind,
+            status: e.status,
+            run: e.runId ?? null,
+          })),
+          note: "Read-only projection. The full inputs/outputs stay in the Audit trail screen.",
+        });
+      }
+      case "list_suppliers": {
+        const limit = Math.min(Math.max(Number(args.limit ?? 20) || 20, 1), 50);
+        const suppliers = await getJson("/api/suppliers");
+        const list = ((suppliers.suppliers ?? []) as {
+          id: string;
+          name: string;
+          registrationNo?: string;
+          taxPin?: string;
+          categories?: string[];
+          status?: string;
+        }[]).slice(0, limit);
+        return JSON.stringify({
+          count: list.length,
+          suppliers: list.map((s) => ({
+            name: s.name,
+            registrationNo: s.registrationNo ?? null,
+            taxPin: s.taxPin ?? null,
+            categories: s.categories ?? [],
+            status: s.status ?? "UNKNOWN",
+          })),
+        });
+      }
       case "list_deadlines": {
         const dl = await getJson("/api/cycle/deadlines");
         const items = (dl.deadlines ?? []) as {
@@ -219,7 +341,7 @@ export async function runDeskTool(name: string, args: Record<string, unknown>): 
         });
       }
       case "committee_state": {
-        const cm = await getJson("/api/committee");
+        const cm = await getWebJson("/api/committee");
         return JSON.stringify({
           seats: cm.seats ?? null,
           required: cm.required ?? null,

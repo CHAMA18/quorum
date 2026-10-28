@@ -4,7 +4,7 @@
 **Builder:** CHAMA18 (indie developer track)
 **Theme:** Build for Your World
 **Edition:** Meta Global AI Developer Hackathon 2026 (Oct 26 – Nov 4, 2026)
-**Live product:** `quorum.chungu-chama.com` (EC2, `af-south-1`) · **Repo:** this repository
+**Live product:** [`quorum-edge.chungu424.workers.dev`](https://quorum-edge.chungu424.workers.dev) (Cloudflare Worker HTTPS front door; EC2 `af-south-1` origin) · **Repo:** this repository
 
 ---
 
@@ -34,13 +34,22 @@ hardware, and the repo measures it rather than claiming it.
 | --- | --- | --- |
 | **Llama 3.2** (Meta open weights) | Drafts every committee redline through the `draft_redline` MCP tool | Primary drafting path. Ollama setup (`llama3.2:3b`) documented and measured in-repo — see `.env.example` and `SUBMISSION/10-cost-and-audit.md` |
 | **Meta Model API** | Hosted OpenAI-compatible endpoint for the same drafting path | First-class configuration option in `.env.example` — set `LLM_BASE_URL`/`LLM_MODEL`/`LLM_API_KEY` from your Meta developer console |
+| **Muse Spark 1.3** | The read-only desk assistant: live desk tools plus Quorum's operating manual | Live in the assistant; answers show the returned model provenance |
+| **Muse Voice Transcribe 1.0** | The assistant's microphone: WAV clip in, sentence out | Live; procurement vocabulary is biased into the recognizer |
 | **Muse Image** | Regenerates the five-chapter demo film | Complete kit: prompt pack, frame generator, ffmpeg assembler — `SUBMISSION/muse-film-kit/` |
+
+Spoken replies use a real neural voice: **Deepgram Aura-2 through Cloudflare Workers AI**, with MeloTTS and then the browser's installed voice as fallbacks. The assistant is read-only by construction and cannot sign, award, return, file or summon.
 
 The drafting path is deliberately model-agnostic (any OpenAI-compatible endpoint), so the
 same binary that runs Llama 3.2 on a desk-side Ollama instance runs against the Meta
 Model API with one environment change — and with no endpoint configured at all, a
 deterministic template drafts redlines and labels every draft `template`. The product
 never depends on a secret to boot.
+
+Attribution is evidence, not a badge: every draft stores the exact model string the
+endpoint returned plus its source, `/api/health` reports the newest attributed model answer,
+`/api/runs` carries per-run plan/draft/token attribution, and the downloadable report
+prints a **Model attribution** table.
 
 ## What is built (and verifiable)
 
@@ -50,9 +59,9 @@ never depends on a secret to boot.
 - **LangGraph.js review graph** — load → extract → flag → verify → draft → propose the
   gate. The halt-at-the-gate guarantee is structural: the edge to filing does not exist
   in the graph, so no prompt, tool misuse or model turn can file an award.
-- **The gate.** Filing runs only after a roster-verified signature by a named human; the
-  bundle is sealed with sha-256 and a receipt is written. The demo's most interesting
-  moment is the gate refusing the operator.
+- **The gate.** Filing runs only after a roster-verified signature by a named human,
+  with the committee roll quorate; the bundle is sealed with sha-256 and a receipt is
+  written. The demo's most interesting moment is the gate refusing the operator.
 - **Deterministic rules engine** — price outliers (peer-median ×2), missing required
   documents, spec deviations, over-ceiling bids, publisher mess (supplier identifiers
   that break their own national scheme, notices that never name the buyer, price tables

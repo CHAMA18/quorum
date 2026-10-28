@@ -18,6 +18,11 @@ const nextConfig: NextConfig = {
   /* Keep standalone output rooted in this app; a parent package-lock.json
      must not nest the server under an unrelated workspace directory. */
   turbopack: { root: process.cwd() },
+  /* The tender extractors are Node-only parsers (pdfjs-dist, mammoth,
+     read-excel-file) whose bundling trips Turbopack's NFT tracer. Loading them
+     from node_modules at runtime keeps the route server-side and the build
+     intact; the standalone output copies them. */
+  serverExternalPackages: ["unpdf", "pdfjs-dist", "mammoth", "read-excel-file"],
   typescript: {
     ignoreBuildErrors: true,
   },

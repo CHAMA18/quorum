@@ -2,7 +2,7 @@
 
 **The agent prepares the file. The committee awards the tender.**
 
-**Meta Global AI Developer Hackathon 2026** · Theme: **Build for Your World** · Track: **Indie developer** · Built by **CHAMA18** · Deployed at `quorum.chungu-chama.com` (AWS `af-south-1`, hosted on EC2) · Stack: Next.js 16 · Bun · LangGraph.js · MCP · **Llama 3.2 (Meta open weights)**
+**Meta Global AI Developer Hackathon 2026** · Theme: **Build for Your World** · Track: **Indie developer** · Built by **CHAMA18** · Live HTTPS: [`quorum-edge.chungu424.workers.dev`](https://quorum-edge.chungu424.workers.dev) (Cloudflare Worker front door; custom domain pending) · AWS `af-south-1`, hosted on EC2 · Stack: Next.js 16 · Bun · LangGraph.js · MCP · **Meta models**
 
 Quorum reviews public-health tender packs with a tool-wielding agent: it reads every
 document over MCP, extracts the requirements, flags findings with citations and drafts
@@ -38,9 +38,22 @@ refusal as proof the agent cannot file.
   - **Meta Model API** is the first-class hosted option for the same drafting path —
     point `LLM_BASE_URL` at the endpoint issued in your Meta developer console
     (see [`.env.example`](.env.example)).
+  - **Attribution is recorded, not inferred.** Every draft stores the exact model
+    string the endpoint returned and whether it came from the model or the template.
+    `/api/health` names the configured endpoint and newest attributed answer, `/api/runs`
+    carries per-run attribution (plan model, drafts, tokens), the downloadable report
+    prints a **Model attribution** table, and the UI shows `MODEL · llama3.2:3b` in
+    the live terminal and **Tools & models**.
   - **Muse Image** regenerates the five-chapter demo film — prompt pack, frame
     generator and ffmpeg assembler live in
     [`SUBMISSION/muse-film-kit/`](SUBMISSION/muse-film-kit/README.md).
+  - **The desk assistant** uses Muse Spark for the read-only tool loop and Muse
+    Voice Transcribe for the mic. Spoken replies use a real neural voice —
+    Deepgram Aura-2 through Cloudflare Workers AI, with MeloTTS then the
+    browser's installed voice as fallbacks. It answers from live desk tools
+    (runs, gates, deadlines, committee, audit, suppliers, one tender) and from
+    Quorum's own operating manual, so it can explain the product as well as
+    report its state. It cannot sign, award, return, file or summon.
 - **Submission kit.** Pitch page: [`SUBMISSION/submission.html`](SUBMISSION/submission.html) ·
   one-page brief: [`META_HACKATHON.md`](META_HACKATHON.md).
 
@@ -155,8 +168,8 @@ The public portals split the tender cycle in two, and this README states the spl
 - **Read everything.** The agent ingests the tender pack (notices, bids, OCDS records) through a sandboxed filesystem MCP server — path-jailed to the tender directory — so no document is skimmed or skipped.
 - **Pin the requirements.** SHALL/must clauses, budget ceilings and deadlines are extracted into structured, page-referenced requirements.
 - **Flag findings with citations.** Deterministic rules — price outliers (peer-median ×2), missing required documents, spec deviations, over-ceiling bids, and the publishers' documented mess (supplier identifiers that break their own national scheme, notices that never name the buyer, price tables whose cells state a different currency from their header — read as stated, and named in the evidence) — raise findings, each carrying its source file path and evidence excerpt. No citation, no finding: that rule is enforced by the test suite.
-- **Draft redlines.** For flagged clauses, an LLM drafts a `{proposed, rationale}` committee redline through any OpenAI-compatible endpoint set in `LLM_BASE_URL`/`LLM_MODEL`. The intended setup is an open-weights model served in-region; the endpoint in `.env.local` is not (see [Limitations](#limitations)). A deterministic template fallback keeps runs alive if inference is unreachable, and every draft records its source.
-- **Stop at the gate.** The review graph ends at `propose_gate`. The edge from the gate to filing does not exist in the graph — no prompt, tool misuse or model turn can file an award. Only a *named* human on the committee roster can release the sealed filing.
+- **Draft redlines.** For flagged clauses, an LLM drafts a `{proposed, rationale}` committee redline through any OpenAI-compatible endpoint set in `LLM_BASE_URL`/`LLM_MODEL`. The live demo points it at **Llama 3.2** (`llama3.2:3b`) on Ollama; **Meta Model API** is the hosted option for the same path. A deterministic template fallback keeps runs alive if inference is unreachable, and every draft records its source and the exact model string returned (or the template label when no model answered).
+- **Stop at the gate.** The review graph ends at `propose_gate`. The edge from the gate to filing does not exist in the graph — no prompt, tool misuse or model turn can file an award. Only a *named* human on the committee roster can release the sealed filing, and only while the roll carries the configured quorum.
 - **Prove everything.** One append-only line per tool call lands in `tool-log.jsonl`, and each approved filing writes a sha-256-sealed receipt into `data/submissions/`.
 
 The product surfaces this as **Workspace** (live run register, human-gate queue, decision ledger, agent feed) and a **live stack console** on the landing page.
@@ -215,7 +228,7 @@ settings · workspace invites               working directory
 
 **Agents.** One agentic runtime, `quorum-agent`, inside the `quorum-mcp` MCP server (Bun, port 3031) — an *agent-with-hands*, not a chatbot: it reads tender packs (via MCP), writes findings and redlines (via MCP), and may only *request* the irreversible filing.
 
-**LLMs.** Any OpenAI-compatible endpoint set by `LLM_BASE_URL`/`LLM_MODEL`. The intended setup is an **open-weights** model served **in-region**. The endpoint currently in `.env.local` is GitHub Copilot's `gpt-4.1`, which is neither open-weights nor in-region. The model does exactly one job — redline prose (`draft_redline` → `llmDraft`: prompt → strict-JSON clause `{proposed, rationale}`) — with a deterministic template fallback. Every draft records its real source (`llm` or `template`), model, tokens and latency. All compliance logic is code, not model output.
+**LLMs.** Any OpenAI-compatible endpoint set by `LLM_BASE_URL`/`LLM_MODEL`. The live demo uses **Llama 3.2** (`llama3.2:3b`) through Ollama on localhost; the **Meta Model API** is the hosted alternative for the same path. The model has two bounded jobs — planning the review depth (`plan_review`, every field validated and clamped) and writing redline prose (`draft_redline` → `llmDraft`: prompt → strict-JSON clause `{proposed, rationale}`) — each with a deterministic fallback. Every draft records its real source (`llm` or `template`), the endpoint-returned model string, tokens and latency; `/api/health`, `/api/runs` and the sourced report expose that attribution.
 
 **Memory.** No vector store — durable, structured state: `state.json` (runs, gates, receipts; restored on boot), per-run accumulators (requirements, findings, drafts, progress trail), and the append-only `tool-log.jsonl` audit file (which the UI streams live).
 
@@ -264,7 +277,7 @@ The review desk's five tools are the original core; the tender-cycle build (wave
 
 The cycle tools (`record_bid_opening`, `build_evaluation_matrix`, `open_alb_dossier`, `draft_award_report`, `publish_award_notice`, `prepare_contract_pack`, `request_variation`, `log_complaint`, `log_clarification`, `issue_addendum`, `draft_specification`, `draft_notice`, `add_pipeline_entry`) share the same cores with the REST surface the Cycle view calls — the agent's hands and the officer's desk act on identical code paths. The statutory gates (`record_bid_opening`, `certify_evaluation`, `sign_award_report`, `publish_award_notice`, `sign_contract_pack`, `approve_variation`, `certify_payment`, `record_contract_completion`, `respond_complaint`, `publish_notice`) declare `requiredOffice`, and the sidecar refuses an approval from a roster member who does not hold that office (the signed-in officer holds the gavel and may always sign).
 
-Every call that executes is audit-logged (READ / WRITES / IRREVERSIBLE) to `data/tool-log.jsonl`. The three graph-only tools are logged by the review graph, not by a direct `/mcp` call. The log chain now continues across restarts — boot reads the log back, so the next append points at the last line's hash, never at genesis.
+Every call that executes is audit-logged (READ / WRITES / IRREVERSIBLE) to `data/tool-log.jsonl`. The three graph-only tools are logged by the review graph, not by a direct `/mcp` call. The log chain now continues across restarts — boot reads the log back, so the next append points at the last line's hash, never at genesis. Tender uploads are audited too: every object that reaches R2 appends a `tender_upload` line with its key, size, content type and staging outcome — including scanned PDFs, JSON/ZIP packs and uploads whose text could not be staged. If the audit append itself cannot be reached, the upload response says `audited: false` instead of claiming a record that does not exist. Signed downloads are audited the same way: every delivered document — full or a single byte range — appends a `tender_download` READ line with the tender, object key, bytes served, user and link expiry, and the response carries the entry's seq/id/self hash (or `x-quorum-audit: unavailable` if the append could not be reached, without blocking the bytes). Operator removals append a `tender_delete` WRITES line, and the browser reports the removal and its audit number.
 
 ---
 
@@ -273,9 +286,10 @@ Every call that executes is audit-logged (READ / WRITES / IRREVERSIBLE) to `data
 The standing rule: **the agent never holds the pen.** When the review graph finishes, the run parks in **AWAITING_GATE** and the submission appears in the HUMAN GATE queue.
 
 1. The agent raises `file_gate_submission` → the tool returns `gate_pending` — nothing executes.
-2. A **named** approver opens the gate and signs with a full name:
+2. A **named** approver opens the gate and signs with a full name — and the roll must carry the configured quorum:
    - `422` — approval refused without a name,
    - `403` — refused if the name isn't on the PRESENT committee roster (or the signed-in officer),
+   - `409` — refused if fewer than `quorum_required` members are PRESENT; the response carries the live count,
    - `503` — fail-closed if the roster can't be read at all.
 3. On APPROVE only, `filing_graph` runs: sha-256 seal → submit to the e-GP portal → receipt written to `data/submissions/` → run flips to FILED.
 4. On REJECT, the bundle returns to the agent for revision — and the ledger records who returned it.
@@ -294,7 +308,7 @@ Full workflow detail (incl. supporting capabilities): [`SUBMISSION/03-solution.m
 | Agent protocol | **MCP** — own JSON-RPC 2.0/HTTP server + the official `@modelcontextprotocol/server-filesystem` over stdio | Protocol-native tool registry; battle-tested, path-jailed document reads |
 | LLM | **Llama 3.2 (Meta open weights)** via any OpenAI-compatible endpoint (`LLM_BASE_URL`/`LLM_MODEL`); **Meta Model API** as the hosted option; deterministic template fallback | Data sovereignty holds only if the endpoint is open-weights and in-region. Llama 3.2 keeps drafting on Meta open weights (the Ollama setup is measured in-repo); the Meta Model API keeps it on Meta's hosted stack. |
 | Databases | One dependency-free JSON file for the web app (users, sessions, committee roster, settings, workspace invites, pilot requests), written atomically; file-backed state + append-only audit JSONL on the agent side | Small, inspectable, zero native dependencies; append-only where auditable |
-| Identity | Firebase Auth (email/passphrase + Google Sign-In) + Firebase Storage mirror | Real authentication without a homegrown password system |
+| Identity & documents | Firebase Auth (email/passphrase + Google Sign-In); tender bytes in Cloudflare R2 through the quorum-edge gate, with PDF/DOCX/XLSX text extracted into the sidecar's tender directory | Real authentication without a homegrown password system; uploads stay behind a server-side secret and the review graph reads text, not binaries |
 | Infra | nginx, systemd, EC2 `t4g.small` in `af-south-1`, Route 53 zone, Elastic IP | Small, boring, reproducible from the repo |
 | Tests | Bun test runner, `engine.test.ts` — 49 tests green | Safety rules enforced by tests, not just docs |
 
@@ -330,10 +344,15 @@ Copy `.env.example` — every variable is optional; the product runs fully witho
 | `LLM_MODEL` | quorum-mcp | Model name the endpoint serves. |
 | `LLM_API_KEY` | quorum-mcp | Bearer token, only if the endpoint requires one. |
 | `QUORUM_WEB_URL` | quorum-mcp | Where the sidecar reads the committee roster (default `http://127.0.0.1:3000`). |
+| `MUSE_API_KEY` / `MUSE_MODEL` | web app | Meta Model API key and model for the assistant (defaults to `LLM_API_KEY` / `muse-spark-1.3`). Without it the chat says so; typing still works. |
+| `MUSE_VOICE_MODEL` | web app | Muse Voice Transcribe model for the microphone (default `muse-voice-transcribe-1.0`). |
+| `QUORUM_EDGE_URL` | web app | Cloudflare Worker base URL for neural TTS and the R2 document gate (e.g. `https://quorum-edge.chungu424.workers.dev`). |
+| `QUORUM_EDGE_SECRET` | web app | Server-to-server key for the Worker's `/__edge/tts` and R2 endpoints; never ships to the browser. |
+| `QUORUM_DOWNLOAD_SECRET` | web app | Optional separate key for five-minute signed tender-download URLs. Falls back to `GATE_SECRET`; keep it server-side. |
 
 **With no LLM configured**, redline drafting runs on the deterministic template fallback and every draft is labelled `template` — nothing breaks, prose quality does. The review plan (see Agent architecture) falls back the same way: a deterministic pack inspection decides review depth when no model is configured.
 
-**Firebase (identity mirror + document storage).** The client-safe web config ships in `src/lib/firebase.ts` — Firebase web configs are public identifiers by design; access is guarded by Firebase Security Rules, not by secrecy of these values. To use your own project: create one at console.firebase.google.com, enable the Email/Password provider (and Google sign-in if wanted) under Authentication, enable Storage, and replace the `firebaseConfig` object. Every Firebase call is lazy and failure-tolerant: if the project is unreachable, rate-limited or a provider is not yet enabled, each helper resolves quietly to null and the product carries on with its local stack (scrypt sessions, local vault) — nothing is blocked on Firebase.
+**Firebase (identity mirror).** The client-safe web config ships in `src/lib/firebase.ts` — Firebase web configs are public identifiers by design; access is guarded by Firebase Security Rules, not by secrecy of these values. To use your own project: create one at console.firebase.google.com, enable the Email/Password provider (and Google sign-in if wanted) under Authentication, and replace the `firebaseConfig` object. Tender documents do **not** live in Firebase Storage: their bytes go to Cloudflare R2 through the quorum-edge gate. Every Firebase call is lazy and failure-tolerant: if the project is unreachable, rate-limited or a provider is not yet enabled, each helper resolves quietly to null and the product carries on with its local stack (scrypt sessions, local vault) — nothing is blocked on Firebase.
 
 **Authorised domains (required for Google sign-in).** Firebase enforces the origin of every browser sign-in server-side: `signInWithPopup`/`signInWithRedirect` fail with `auth/unauthorized-domain` unless the address the app is served from is whitelisted in the project. When Google sign-in reports *"can't run from this address yet"*, add the deployment's hostname (e.g. your EC2 domain or preview host, and `localhost` for development — already on the default list) under **Firebase console → Authentication → Settings → Authorised domains → Add domain**. There is deliberately no code-side bypass: the whitelist is enforced by Google's servers, and any workaround would be a security regression. The email/passphrase path is unaffected by this list.
 
@@ -347,12 +366,12 @@ Copy `.env.example` — every variable is optional; the product runs fully witho
 
 1. **Landing page → the live stack console.** Health (incl. third-party fs-MCP status), the five tools with their READ/WRITES/IRREVERSIBLE kind, the architecture map, and the streaming audit log.
 2. **Sign in** (or register) → Workspace.
-3. **New evaluation** (sidebar CTA) → step 02 DOCUMENTS: drop real tender files (they mirror to Firebase Storage) → pick the checks → launch.
+3. **New evaluation** (sidebar CTA) → step 02 DOCUMENTS: stage a shipped sample pack (the fully parsed path) or drop real files — the bytes store in Cloudflare R2 through the edge gate and PDF/DOCX/XLSX text is extracted into the sidecar's tender directory for the review graph → pick the checks → launch.
 4. Watch the orchestrated run: documents read over MCP → requirements pinned → findings flagged, each cited → redlines drafted by the configured LLM (or the template fallback).
 5. The run parks at the **human gate**. Open the gate, sign as the named approver — only then is the bundle sealed (sha-256) and filed, with a receipt written to `data/submissions/`.
 6. Every step above is one line in the audit log: `GET :3031/api/log`.
 7. **Sourced report:** expand any completed run in the register → click **SOURCED REPORT** to download the full citations-first Markdown report (findings, evidence, drafts, audit trail, gate decision). **COPY AUDIT TRAIL** copies the run's audit line to the clipboard.
-8. **Team:** Settings → Team Members → create an invite code (role: OFFICER or COMMITTEE; optional email note) → share it → your teammate pastes it during registration and joins the workspace; codes expire in 14 days and can be revoked.
+8. **Team and oversight:** Settings → Team Members shows who holds which workspace role. Owners and admins invite teammates or open **Oversight** (SYSTEM → Oversight) to change roles, suspend an account, revoke live sessions, suspend a supplier organization with a recorded reason, and read the governance log. Auditors get the same console read-only. Invite codes expire in 14 days and can be revoked.
 
 **Try the MCP surface directly:**
 
@@ -366,13 +385,13 @@ curl -s localhost:3031/mcp -X POST -H 'content-type: application/json' \
 - MCP (JSON-RPC 2.0): `POST :3031/mcp` — `initialize` · `ping` · `tools/list` · `tools/call`
 - REST: `/api/health` · `/api/tools` · `/api/architecture` · `/api/log?limit=` · `GET|POST /api/runs` · `GET /api/runs/:id/report` (downloads the sourced report as `.md`) · `GET /api/gates` · `POST /api/gates/:id/decision` · `GET|POST|DELETE /api/team`
 - Supplier marketplace (sidecar): `GET /api/marketplace` (the opportunities board) · `GET|POST /api/applications` (POST is org-attested only — late bids, duplicates and suspended suppliers are refused)
-- Web-app routes: `/api/auth/*` (register/login/logout/me) · `/api/org/auth/*` + `/api/org/profile` + `/api/org/tenders` + `/api/org/applications` (the organization portal — a separate account space with its own cookie) · `/api/committee` (+ `/summon`) · `/api/contact` · `/api/agent-status` · `/api/mcp-ensure`
+- Web-app routes: `/api/auth/*` (register/login/logout/me/step-up) · `/api/org/auth/*` + `/api/org/profile` + `/api/org/tenders` + `/api/org/applications` (the organization portal — a separate account space with its own cookie) · `/api/team` (workspace roles and invites) · `/api/oversight` (organization lifecycle + governance log) · `/api/committee` (+ `/summon`, `/meetings`) · `/api/notifications` · `/api/contact` · `/api/agent-status` · `/api/mcp-ensure` · `/api/tenders/:ref/docs/link` (mints a five-minute signed download URL) · `/api/tenders/:ref/docs` (`GET` lists every stored object under the tender's prefix; `POST` stores a document; `DELETE` removes one for operators and audits the removal) · `/api/tenders/:ref/docs/download` (session- and signature-checked R2 download; single `Range` requests return `206 Partial Content`, or `416` outside the object) · `/api/muse/chat` (Muse Spark + read-only desk tools) · `/api/muse/transcribe` (Muse Voice Transcribe) · `/api/muse/speak` (Cloudflare Workers AI neural voice)
 
 **Product surfaces:**
 
 - **Landing** (`/`) — product story, live stack console, film (also embedded in this README: [Demo film](#demo-film)).
 - **Auth** (`/#/login`, `/#/register`) — email/passphrase + Google Sign-In (Firebase project `public-tender`; identity mirror + document storage), with the optional workspace invite code field.
-- **Workspace** (`/#/dashboard`) — live stats, run register with start times and SOURCED REPORT downloads, human-gate queue with named sign-off, decision ledger, agent feed, portal sync, committee roll-call, settings with team members.
+- **Workspace** (`/#/dashboard`) — live stats, run register with start times and SOURCED REPORT downloads, human-gate queue with named sign-off and quorum roll-call, decision ledger, agent feed, portal sync, committee register, and a role-scoped **Oversight** console (people, invites, organizations, governance log) beside the hash-chained audit trail.
 - **Supplier portal** (`/org`) — the organization side's own door: a 4-step registration wizard that builds an organization PROFILE (legal identity, statutory registrations, capabilities — the fields the supplier register asks bidders to hold), then a console with Overview / Profile / Opportunities / Applications. Organizations browse every staged tender pack (closing date resolved from the cycle record first, the notice text second — an unstated closing is shown as unstated), file applications that are attested `org:<name>` into the same audit spine, and are refused honestly: late bids after the closing date, a second bid per tender, suspended/blacklisted register status. The officers' Opening tab shows the electronic applications as context — the register itself remains the officer's act.
 
 ---
@@ -382,28 +401,28 @@ curl -s localhost:3031/mcp -X POST -H 'content-type: application/json' \
 **Deliberate, product-level boundaries (these are the design):**
 
 - The agent cannot file an award by itself — by construction, not by policy. Everything irreversible is behind the named human gate.
-- Committee *offices* (procurement unit, evaluation committee, accounting officer, oversight) are stored on the register and enforced at the statutory gates — a member who does not hold a gate's office is refused (403). The workspace itself is still flat: every member reads the same runs/gates/ledger; office enforcement lives at the signature, not at page level.
+- The workspace has five roles — OWNER, ADMIN, OFFICER, COMMITTEE and AUDITOR — enforced on every mutation route and on the sidecar gateway, not only by hiding buttons. Owners and admins manage people and organizations; officers run evaluations and suppliers; committee members read the file and sign gates they are rostered and officed for; auditors read the oversight console and audit trail but cannot write. Committee *offices* (procurement unit, evaluation committee, accounting officer, oversight) remain a separate register, enforced at the statutory gates — a member who does not hold a gate's office is refused (403), and a quorum-short roll is refused (409).
 - The compliance layer is deterministic rule-based (**ten** rule families), not a general reasoning engine — it catches what the rules cover, and it is honest about that.
 - **Mutations carry identity, verified server-side.** Every state-changing request to the sidecar must arrive either sealed by the Next gateway (an HMAC over method, path, actor and timestamp — the gateway derives the actor from the verified session, never from the caller) or with a real web session cookie that the sidecar re-verifies against the web app, server-to-server. Anonymous mutations are refused with 401; the sidecar binds to loopback only, so the gateway is the only public door; `POST /mcp` stays the documented agent door (its irreversible steps halt behind the same named-human gates). A request whose declared identity disagrees with the verified one is refused with 403 and logged — impersonating an officer fails loud, not silent.
 - **The audit spine surfaces its own durability.** `GET /api/health` reports an `auditSpine` block (log-write failures, state-save failures, corrupt-state quarantine) — "nothing happens silently" includes the spine itself. A state file that exists but cannot be parsed is quarantined (renamed, never deleted) and flagged, instead of being silently treated as first boot.
 **Current state of the deployment:**
 
-- With no `LLM_BASE_URL` configured, redline drafting runs on the deterministic template fallback rather than a live model — capabilities are unaffected; prose quality is. Wire an in-region endpoint to upgrade that layer.
+- The live demo is wired to **Llama 3.2** (`llama3.2:3b`) through Ollama, so redline drafting runs against a real model while tender text stays on the desk. **Meta Model API** is the hosted alternative (one env change). If the endpoint is unreachable, drafting falls back to the deterministic template and the draft/report say `source: "template"` — capabilities are unaffected; prose quality is.
 - Run-to-run variance and cost are measured for **both** paths (`SUBMISSION/10-cost-and-audit.md`): the deterministic rule path (findings identical across repeats for every staged pack; 0 tokens → 0 USD) and the live-model path on an in-region open-weights endpoint (Ollama, `llama3.2:1b` on a 4 GB CPU-only box) — re-measured 2026-10-27 across 6 runs (3 packs + 3 same-pack repeats): findings stable on the same pack (same 11 findings, same 5-rule signature), draft texts distinct run-to-run, 291–348 tokens/run, 6,975 ms median per model call, 0 USD marginal cost. `bun live-audit.ts` regenerates the artifact at any time from the append-only log; a hosted endpoint's cost is the published formula (tokens × price), never a guessed number.
 - **The gold labels are single-labeller** — one human, one pass, written before the engine ran; not independently double-labelled (stated verbatim in `data/eval/report.json`). The mitigations are structural, not cosmetic: labels were pre-registered, every post-hoc addition is flagged `postHoc` and reported separately, and mutation testing checks sensitivity independently of the labels. A second labeller on a 20% overlap sample with disagreement review is the first hire of the evaluation layer (`Future improvements`).
 - With a small planner, the model-led plan could disable deep-value parsing on packs whose bid values demand it — one such run was logged as evidence, and the engine now applies a planner **safety floor** (parsing may be added, never removed while bid values are present), pinned by a dedicated test. That trade-off is documented rather than hidden.
 - The e-GP portal receipt is labeled `egp-portal (simulated)` — sealing and receipts are real (sha-256, persisted), the transmission is a demo stub until wired to a live portal integration.
 - Organization accounts open their session immediately at registration — there is no email-verification loop on the supplier door. That is deliberate: an organization's statutory verification (registration number, tax clearance) is the procurement desk's act on the supplier register, not a mail loop; the desk can suspend an organization (`SUSPENDED`), which blocks sign-in and new applications.
 - Beneficial-ownership / registry matching is exposed via the source-request queue as a pending source, not yet a live connector.
-- No HTTPS yet: the certbot step is staged but waits on the Route 53 A record for `quorum.chungu-chama.com` (blocked by the IAM permissions boundary on the deploying user; HTTP still works over the Elastic IP).
+- HTTPS is served by the `quorum-edge` Cloudflare Worker at `quorum-edge.chungu424.workers.dev`; it proxies the EC2 origin and gives the demo a working TLS host while the custom domain's Route 53 record remains blocked. The Worker is stateless; the sidecar and its files stay on EC2.
 - Emails for invites/reports are not sent — invite codes are copy-paste; report downloads happen in-browser. No email provider is configured.
 
 ---
 
 ## Future improvements
 
-- **An open-weights, in-region endpoint** on the deployed instance (set `LLM_BASE_URL`/`LLM_MODEL`; the current `.env.local` uses GitHub Copilot `gpt-4.1`), plus tracking model-attribution in every audit line it drafts.
-- **Role enforcement** in the workspace (OFFICER vs COMMITTEE) — sticky to the invite codes that already carry the role.
+- **Per-workspace model policy** — pin Llama 3.2 or the Meta Model API per deployment and surface the recorded attribution side by side; the drafting path already records which model answered.
+- **Ownership transfer** — the workspace keeps a single owner; transferring that authority atomically is a deliberate next step, not a role dropdown.
 - **Live e-GP / OCDS portal connectors** so filings and awards land on the real national portal, and sourced reports ingest live OCDS feeds rather than staged packages.
 - **Registry integrations** from the source-request queue (beneficial ownership, supplier registries) with findings matched pre-award.
 - **HTTPS + domain bring-up** the moment the Route 53 record is creatable (certbot staged; server already nginx-configured).

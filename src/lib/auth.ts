@@ -69,11 +69,23 @@ export async function getUserFromToken(token: string | undefined) {
     deleteSessionByToken(token);
     return null;
   }
+  /* Suspension is checked on every request, not just at sign-in. An open tab
+     stops working the moment an admin suspends the account. */
+  if (found.user.status === "SUSPENDED") {
+    deleteSessionByToken(token);
+    return null;
+  }
   return found.user;
 }
 
-export function publicUser(u: { id: string; name: string; email: string; organization: string | null }): AuthUser {
-  return { id: u.id, name: u.name, email: u.email, organization: u.organization };
+export function publicUser(u: {
+  id: string;
+  name: string;
+  email: string;
+  organization: string | null;
+  role: AuthUser["role"];
+}): AuthUser {
+  return { id: u.id, name: u.name, email: u.email, organization: u.organization, role: u.role };
 }
 
 /* ── Naive in-memory rate limiter (per process, per IP) ─────────────────── */

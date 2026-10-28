@@ -1,6 +1,72 @@
 {
   "gates": [
     {
+      "id": "gate_ck5wte",
+      "runId": "run_2ef86ff8",
+      "tenderId": "RW-RURA-2027-021",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "Kigali Meter Works",
+        "value": "RWF 2,150,000,000",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_0ny1up",
+          "draft_3qoh1i"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-28T14:53:58.188Z"
+    },
+    {
+      "id": "gate_xqpkxo",
+      "runId": "run_953a9f46",
+      "tenderId": "RW-RURA-2027-021",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "Kigali Meter Works",
+        "value": "RWF 2,150,000,000",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_syyz1r",
+          "draft_nd78cl"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-28T08:18:01.571Z"
+    },
+    {
+      "id": "gate_m6rpwy",
+      "runId": "run_61c3762a",
+      "tenderId": "RW-RURA-2027-021",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "Kigali Meter Works",
+        "value": "RWF 2,150,000,000",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_iwo5em",
+          "draft_0y8wed"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-28T08:17:53.204Z"
+    },
+    {
       "id": "gate_dwgd58",
       "runId": "cycle",
       "tenderId": "E2E-CYCLE-PROBE",
@@ -10,9 +76,17 @@
         "bids": 2,
         "late": 1
       },
-      "status": "PENDING",
+      "status": "EXECUTED",
       "createdAt": "2026-10-21T15:18:06.582Z",
-      "requiredOffice": "PROCUREMENT_UNIT"
+      "requiredOffice": "PROCUREMENT_UNIT",
+      "approver": "Chungu Chipimo Chama",
+      "decidedAt": "2026-10-28T08:17:01.203Z",
+      "executedAt": "2026-10-28T08:17:01.204Z",
+      "receipt": {
+        "registerId": "open_cud1ax",
+        "sha": "7549d2185916f54219a1d3d195df3e4a",
+        "admitted": 1
+      }
     },
     {
       "id": "gate_octelx",
@@ -33,8 +107,16 @@
           "draft_7xmla0"
         ]
       },
-      "status": "PENDING",
-      "createdAt": "2026-10-21T15:18:06.510Z"
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T15:18:06.510Z",
+      "approver": "Chungu Chipimo Chama",
+      "decidedAt": "2026-10-28T08:17:03.401Z",
+      "executedAt": "2026-10-28T08:17:03.414Z",
+      "receipt": {
+        "submissionId": "SUB-MVRUCJW0",
+        "hash": "318e6a2705e89cbb0f614d9853bea9ab",
+        "portal": "egp-portal (simulated)"
+      }
     },
     {
       "id": "gate_s9q496",
@@ -1248,11 +1330,348 @@
   ],
   "runs": [
     {
-      "id": "run_2cf33775",
+      "id": "run_2ef86ff8",
       "tenderId": "RW-RURA-2027-021",
       "status": "AWAITING_GATE",
+      "startedAt": "2026-10-28T14:52:20.902Z",
+      "updatedAt": "2026-10-28T14:53:58.220Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender RW-RURA-2027-021",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 1 documents read · 3 bids · 1 awards · 1 OCDS records",
+        "▸ plan_review — llm · value parsing OCDS only · focus PRICE-OUTLIER > VALUE-OUTLIER > OVER-BUDGET > AWARD-OVER-BUDGET > DOC-MISSING > SPEC-DEVIATION > SUPPLIER-ID > BUYER-MISSING > BID-SECURITY > DEBARMENT > PROMPT-INJECTION · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STRICT · registry cross-check OFF",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — LLM drafting (llama3.2:3b · Ollama · local) for R-VALUE-OUTLIER",
+        "▸ draft_redline — LLM drafting (llama3.2:3b · Ollama · local) for R-AWARD-OVER-BUDGET",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus PRICE-OUTLIER, VALUE-OUTLIER, OVER-BUDGET) · 2 from the model, 0 template · 610 tokens",
+        "⏸ human gate raised (gate_ck5wte) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-VALUE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Volta Metering",
+          "evidence": "Bid value RWF 6,100,000,000 vs peer median 2,225,000,000 (2.7×).",
+          "citation": "ocds-release.json, ocid ocds-rw-rura-2027-021, bids.details[1].value"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-DOC-MISSING",
+          "severity": "HIGH",
+          "item": "Volta Metering — rura type approval letter",
+          "evidence": "Tender notice lists \"rura type approval letter\" as REQUIRED; the bid does not reference it. Raised under the STRICT checklist — completeness findings escalate to HIGH.",
+          "citation": "ocds-release.json, eligibility checklist"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-AWARD-OVER-BUDGET",
+          "severity": "HIGH",
+          "item": "Volta Metering",
+          "evidence": "Award RWF 2,600,000,000 exceeds the published tender value RWF 2,400,000,000.",
+          "citation": "ocds-release.json, ocid ocds-rw-rura-2027-021, awards[0].value"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_0ny1up",
+          "findingId": "F-01",
+          "original": "Bid value RWF 6,100,000,000 vs peer median 2,225,000,000 (2.7×).",
+          "proposed": "The Buyer reserves the right to seek written clarification of any line-item price exceeding the peer median by more than 2.7× prior to award; bids left unclarified after five (5) working days shall be disqualified.",
+          "rationale": "...",
+          "model": "llama3.2:3b",
+          "source": "llm",
+          "usage": {
+            "promptTokens": 238,
+            "completionTokens": 56
+          },
+          "latencyMs": 24485
+        },
+        {
+          "id": "draft_3qoh1i",
+          "findingId": "F-03",
+          "original": "Award RWF 2,600,000,000 exceeds the published tender value RWF 2,400,000,000.",
+          "proposed": "The Buyer reserves the right to request verification of the untrusted evidence prior to award; failure to provide verification within three (3) working days shall be grounds for disqualification of the bid.",
+          "rationale": "This clause ensures the Buyer can investigate the untrusted evidence and make an informed decision about the award, while also setting a reasonable timeframe for the bidder to respond.",
+          "model": "llama3.2:3b",
+          "source": "llm",
+          "usage": {
+            "promptTokens": 237,
+            "completionTokens": 79
+          },
+          "latencyMs": 22075
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 2,
+        "promptTokens": 475,
+        "completionTokens": 135
+      },
+      "plan": {
+        "pack": {
+          "files": 1,
+          "bids": 3,
+          "ocdsRecords": 1,
+          "markdownValueBids": 0,
+          "ocdsValueBids": 3
+        },
+        "parseMarkdownValues": false,
+        "focusRules": [
+          "PRICE-OUTLIER",
+          "VALUE-OUTLIER",
+          "OVER-BUDGET",
+          "AWARD-OVER-BUDGET",
+          "DOC-MISSING",
+          "SPEC-DEVIATION",
+          "SUPPLIER-ID",
+          "BUYER-MISSING",
+          "BID-SECURITY",
+          "DEBARMENT",
+          "PROMPT-INJECTION"
+        ],
+        "maxDrafts": 2,
+        "note": "Review plan for tender pack inventory",
+        "source": "llm",
+        "model": "llama3.2:3b"
+      },
+      "gateId": "gate_ck5wte"
+    },
+    {
+      "id": "run_953a9f46",
+      "tenderId": "RW-RURA-2027-021",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-28T08:16:55.472Z",
+      "updatedAt": "2026-10-28T08:18:01.572Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender RW-RURA-2027-021",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 1 documents read · 3 bids · 1 awards · 1 OCDS records",
+        "▸ plan_review — llm · value parsing OCDS only · focus PRICE-OUTLIER > VALUE-OUTLIER > OVER-BUDGET > AWARD-OVER-BUDGET > DOC-MISSING > SPEC-DEVIATION > SUPPLIER-ID > BUYER-MISSING > BID-SECURITY > DEBARMENT · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >40% · checklist STRICT · registry cross-check OFF",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — LLM drafting (llama3.2:3b) for R-VALUE-OUTLIER",
+        "▸ draft_redline — LLM drafting (llama3.2:3b) for R-AWARD-OVER-BUDGET",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus PRICE-OUTLIER, VALUE-OUTLIER, OVER-BUDGET) · 2 from the model, 0 template · 584 tokens",
+        "⏸ human gate raised (gate_xqpkxo) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-VALUE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Volta Metering",
+          "evidence": "Bid value RWF 6,100,000,000 vs peer median 2,225,000,000 (2.7×).",
+          "citation": "ocds-release.json, ocid ocds-rw-rura-2027-021, bids.details[1].value"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-DOC-MISSING",
+          "severity": "HIGH",
+          "item": "Volta Metering — rura type approval letter",
+          "evidence": "Tender notice lists \"rura type approval letter\" as REQUIRED; the bid does not reference it. Raised under the STRICT checklist — completeness findings escalate to HIGH.",
+          "citation": "ocds-release.json, eligibility checklist"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-AWARD-OVER-BUDGET",
+          "severity": "HIGH",
+          "item": "Volta Metering",
+          "evidence": "Award RWF 2,600,000,000 exceeds the published tender value RWF 2,400,000,000.",
+          "citation": "ocds-release.json, ocid ocds-rw-rura-2027-021, awards[0].value"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_syyz1r",
+          "findingId": "F-01",
+          "original": "Bid value RWF 6,100,000,000 vs peer median 2,225,000,000 (2.7×).",
+          "proposed": "The Buyer reserves the right to request a detailed breakdown of the bid price for the Volta Metering system, including a justification for the R-VALUE-OUTLIER, prior to award; bids lacking such information shall be disqualified.",
+          "rationale": "...",
+          "model": "llama3.2:3b (llm)",
+          "source": "llm",
+          "usage": {
+            "promptTokens": 215,
+            "completionTokens": 57
+          },
+          "latencyMs": 16773
+        },
+        {
+          "id": "draft_nd78cl",
+          "findingId": "F-03",
+          "original": "Award RWF 2,600,000,000 exceeds the published tender value RWF 2,400,000,000.",
+          "proposed": "The Buyer reserves the right to request a detailed breakdown of the costs associated with the awarded contract, including a justification for any line-item price exceeding the peer median by more than 100%, prior to contract commencement; failure to provide such information within five (5) working days shall be considered a material breach of contract.",
+          "rationale": "This provision ensures transparency and accountability in the award process, while also allowing for a reasonable timeframe for the supplier to provide necessary information.",
+          "model": "llama3.2:3b (llm)",
+          "source": "llm",
+          "usage": {
+            "promptTokens": 214,
+            "completionTokens": 98
+          },
+          "latencyMs": 15963
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 2,
+        "promptTokens": 429,
+        "completionTokens": 155
+      },
+      "plan": {
+        "pack": {
+          "files": 1,
+          "bids": 3,
+          "ocdsRecords": 1,
+          "markdownValueBids": 0,
+          "ocdsValueBids": 3
+        },
+        "parseMarkdownValues": false,
+        "focusRules": [
+          "PRICE-OUTLIER",
+          "VALUE-OUTLIER",
+          "OVER-BUDGET",
+          "AWARD-OVER-BUDGET",
+          "DOC-MISSING",
+          "SPEC-DEVIATION",
+          "SUPPLIER-ID",
+          "BUYER-MISSING",
+          "BID-SECURITY",
+          "DEBARMENT"
+        ],
+        "maxDrafts": 2,
+        "note": "Review plan for the given tender pack inventory.",
+        "source": "llm",
+        "model": "llama3.2:3b"
+      },
+      "gateId": "gate_xqpkxo"
+    },
+    {
+      "id": "run_61c3762a",
+      "tenderId": "RW-RURA-2027-021",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-28T08:16:54.185Z",
+      "updatedAt": "2026-10-28T08:17:53.205Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender RW-RURA-2027-021",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 1 documents read · 3 bids · 1 awards · 1 OCDS records",
+        "▸ plan_review — llm · value parsing OCDS only · focus PRICE-OUTLIER > VALUE-OUTLIER > OVER-BUDGET > AWARD-OVER-BUDGET > DOC-MISSING > SPEC-DEVIATION > SUPPLIER-ID > BUYER-MISSING > BID-SECURITY > DEBARMENT · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >40% · checklist STRICT · registry cross-check OFF",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — LLM drafting (llama3.2:3b) for R-VALUE-OUTLIER",
+        "▸ draft_redline — LLM drafting (llama3.2:3b) for R-AWARD-OVER-BUDGET",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus PRICE-OUTLIER, VALUE-OUTLIER, OVER-BUDGET) · 2 from the model, 0 template · 596 tokens",
+        "⏸ human gate raised (gate_m6rpwy) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-VALUE-OUTLIER",
+          "severity": "HIGH",
+          "item": "Volta Metering",
+          "evidence": "Bid value RWF 6,100,000,000 vs peer median 2,225,000,000 (2.7×).",
+          "citation": "ocds-release.json, ocid ocds-rw-rura-2027-021, bids.details[1].value"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-DOC-MISSING",
+          "severity": "HIGH",
+          "item": "Volta Metering — rura type approval letter",
+          "evidence": "Tender notice lists \"rura type approval letter\" as REQUIRED; the bid does not reference it. Raised under the STRICT checklist — completeness findings escalate to HIGH.",
+          "citation": "ocds-release.json, eligibility checklist"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-AWARD-OVER-BUDGET",
+          "severity": "HIGH",
+          "item": "Volta Metering",
+          "evidence": "Award RWF 2,600,000,000 exceeds the published tender value RWF 2,400,000,000.",
+          "citation": "ocds-release.json, ocid ocds-rw-rura-2027-021, awards[0].value"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_iwo5em",
+          "findingId": "F-01",
+          "original": "Bid value RWF 6,100,000,000 vs peer median 2,225,000,000 (2.7×).",
+          "proposed": "The Buyer reserves the right to request a detailed breakdown of the bid value exceeding the peer median by more than 100%, and any such discrepancies shall be addressed prior to award; bids left unclarified after five (5) working days shall be disqualified.",
+          "rationale": "This provision ensures transparency and fairness in the bidding process, allowing the Buyer to understand the value proposition presented by the bidder and address any potential anomalies or discrepancies.",
+          "model": "llama3.2:3b (llm)",
+          "source": "llm",
+          "usage": {
+            "promptTokens": 215,
+            "completionTokens": 91
+          },
+          "latencyMs": 26490
+        },
+        {
+          "id": "draft_0y8wed",
+          "findingId": "F-03",
+          "original": "Award RWF 2,600,000,000 exceeds the published tender value RWF 2,400,000,000.",
+          "proposed": "The Buyer reserves the right to request a detailed breakdown of all costs associated with the awarded contract, including any line-item price exceeding the peer median by more than 100%, prior to contract commencement.",
+          "rationale": "This provision ensures transparency and accountability, allowing the Buyer to verify the accuracy of the bid and identify potential areas of cost savings or inefficiencies.",
+          "model": "llama3.2:3b (llm)",
+          "source": "llm",
+          "usage": {
+            "promptTokens": 214,
+            "completionTokens": 76
+          },
+          "latencyMs": 12314
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 2,
+        "promptTokens": 429,
+        "completionTokens": 167
+      },
+      "plan": {
+        "pack": {
+          "files": 1,
+          "bids": 3,
+          "ocdsRecords": 1,
+          "markdownValueBids": 0,
+          "ocdsValueBids": 3
+        },
+        "parseMarkdownValues": false,
+        "focusRules": [
+          "PRICE-OUTLIER",
+          "VALUE-OUTLIER",
+          "OVER-BUDGET",
+          "AWARD-OVER-BUDGET",
+          "DOC-MISSING",
+          "SPEC-DEVIATION",
+          "SUPPLIER-ID",
+          "BUYER-MISSING",
+          "BID-SECURITY",
+          "DEBARMENT"
+        ],
+        "maxDrafts": 2,
+        "note": "Review plan for tender pack inventory",
+        "source": "llm",
+        "model": "llama3.2:3b"
+      },
+      "gateId": "gate_m6rpwy"
+    },
+    {
+      "id": "run_2cf33775",
+      "tenderId": "RW-RURA-2027-021",
+      "status": "FILED",
       "startedAt": "2026-10-21T15:18:06.478Z",
-      "updatedAt": "2026-10-21T15:18:06.511Z",
+      "updatedAt": "2026-10-28T08:17:03.414Z",
       "progress": [
         "▸ review_graph invoked — langgraph.js · tender RW-RURA-2027-021",
         "▸ tender_documents_list — via server-filesystem MCP",
@@ -1267,7 +1686,8 @@
         "▸ draft_redline — template (no model configured) for R-AWARD-OVER-BUDGET",
         "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus VALUE-OUTLIER, AWARD-OVER-BUDGET, DOC-MISSING) · 0 from the model, 2 template · 0 tokens",
         "⏸ human gate raised (gate_octelx) — filing blocked until a named human signs",
-        "✓ review graph complete — the graph itself stops at the gate"
+        "✓ review graph complete — the graph itself stops at the gate",
+        "✓ Chungu Chipimo Chama signed the gate — bundle filed · SUB-MVRUCJW0"
       ],
       "requirements": [],
       "findings": [
@@ -3087,9 +3507,10 @@
         "source": "supplier-portal registration",
         "orgId": "org_d86f8e92"
       },
-      "status": "ACTIVE",
+      "status": "SUSPENDED",
       "addedBy": "org:StackOne",
-      "createdAt": "2026-10-21T20:44:16.341Z"
+      "createdAt": "2026-10-21T20:44:16.341Z",
+      "updatedAt": "2026-10-28T20:45:03.727Z"
     }
   ],
   "applications": [
@@ -3277,9 +3698,9 @@
   ],
   "guards": {
     "priceVariancePct": 40,
-    "checklist": "STANDARD",
-    "registryCrossCheck": false,
-    "updatedAt": "2026-10-28T05:32:51.351Z",
+    "checklist": "STRICT",
+    "registryCrossCheck": true,
+    "updatedAt": "2026-10-28T19:55:50.410Z",
     "updatedBy": "Chungu Chipimo Chama"
   },
   "cycle": [
@@ -3324,9 +3745,9 @@
         ],
         "minutesMd": "# BID OPENING REGISTER — E2E-CYCLE-PROBE\n\nOpened: 2026-10-21T15:18:06.582Z\nClosing date on record: 2026-12-01T23:59:59.000Z\n\n| Bidder | Received | Late | Price read aloud |\n| --- | --- | --- | --- |\n| Probe A | 2026-11-30T10:00:00Z | no | — |\n| Probe B | 2026-12-02T10:00:00Z | YES — rejected unopened | — |\n\n1 bid(s) admitted · 1 late\n\n_Bids were opened publicly; each bid and its price were read aloud and recorded above. The register is sealed with a sha-256 digest once certified by the procurement unit._",
         "gateId": "gate_dwgd58",
-        "certifiedAt": "2026-10-28T08:05:28.876Z",
+        "certifiedAt": "2026-10-28T08:17:01.203Z",
         "certifiedBy": "Chungu Chipimo Chama",
-        "sha": "ee9f79b66a87a2702ea04b5001efe57d"
+        "sha": "7549d2185916f54219a1d3d195df3e4a"
       }
     },
     {
@@ -4315,7 +4736,18 @@
       "title": "e2e pipeline probe",
       "status": "PLANNED",
       "createdAt": "2026-10-21T15:18:06.532Z"
+    },
+    {
+      "id": "pip_443db5dd",
+      "ref": "ZM",
+      "title": "Supply",
+      "office": "PROCUREMENT_UNIT",
+      "budgetEstimate": 2500000,
+      "currency": "ZMW",
+      "status": "PLANNED",
+      "createdAt": "2026-10-28T08:44:49.802Z"
     }
   ],
-  "seq": 360
+  "stepUpUses": [],
+  "seq": 407
 }

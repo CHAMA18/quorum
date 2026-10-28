@@ -1,0 +1,17 @@
+name = "quorum-edge"
+main = "src/index.ts"
+compatibility_date = "2026-10-28"
+workers_dev = true
+
+[vars]
+ORIGIN_URL = "http://ec2-15-240-7-70.af-south-1.compute.amazonaws.com"
+
+[[r2_buckets]]
+binding = "TENDERS"
+bucket_name = "quorum-tenders"
+
+[ai]
+binding = "AI"
+
+[observability]
+enabled = true

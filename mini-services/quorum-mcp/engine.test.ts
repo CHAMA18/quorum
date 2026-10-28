@@ -6,10 +6,13 @@ import {
   buyerMissingFindings,
   callLlama,
   citesKnownDocument,
+  fetchQuorum,
   fetchRoster,
   flagPack,
   llmConfigFromEnv,
   llmPlanFromPack,
+  modelAttributionForRun,
+  modelStatus,
   type FetchLike,
   parseBid,
   parseMarkdownBidValue,
@@ -24,7 +27,9 @@ import {
   supplierIdFindings,
   verifyFinding,
   verifyFindingReason,
+  quorumCheck,
   type BidDoc,
+  type CommitteeQuorum,
   type Finding,
   type RosterMember,
 } from "./engine";
@@ -159,16 +164,78 @@ describe("self-check against the cited document", () => {
 });
 
 describe("drafting model: OpenAI-compatible LLM endpoint", () => {
-  const cfg = { baseUrl: "http://llama.internal:8000/v1/", model: "llama-3.1-70b-instruct", apiKey: "k" };
+  const cfg = { baseUrl: "http://llama.internal:8000/v1/", model: "llama-3.1-70b-instruct", apiKey: "k", provider: "openai-compatible" as const, configuredBy: "llm-env" as const };
 
   test("reads the endpoint from LLM_* env and needs both URL and model", () => {
     expect(llmConfigFromEnv({ LLM_BASE_URL: "http://llama.internal:8000/v1", LLM_MODEL: "llama-3.1-70b-instruct" })).toEqual({
       baseUrl: "http://llama.internal:8000/v1",
       model: "llama-3.1-70b-instruct",
       apiKey: undefined,
+      provider: "openai-compatible",
+      configuredBy: "llm-env",
     });
     expect(llmConfigFromEnv({ LLM_BASE_URL: "http://llama.internal:8000/v1" })).toBeNull();
     expect(llmConfigFromEnv({})).toBeNull();
+  });
+
+  test("recognises the live Llama 3.2 path and the Meta Model API fallback", () => {
+    const llama = llmConfigFromEnv({
+      LLM_BASE_URL: "http://localhost:11434/v1",
+      LLM_MODEL: "llama3.2:3b",
+    });
+    expect(llama?.provider).toBe("ollama");
+    expect(llama?.model).toBe("llama3.2:3b");
+    expect(modelStatus({ LLM_BASE_URL: "http://localhost:11434/v1", LLM_MODEL: "llama3.2:3b" })).toMatchObject({
+      configured: true,
+      mode: "llm",
+      model: "llama3.2:3b",
+      provider: "ollama",
+      endpoint: "http://localhost:11434",
+    });
+    const meta = llmConfigFromEnv({ META_MODEL_API_KEY: "k", META_MODEL: "muse-spark-1.3" });
+    expect(meta).toMatchObject({
+      baseUrl: "https://api.meta.ai/v1",
+      model: "muse-spark-1.3",
+      provider: "meta-model-api",
+      configuredBy: "meta-model-api",
+    });
+    /* A partial LLM_* pair is not silently redirected to a different provider. */
+    expect(llmConfigFromEnv({ LLM_BASE_URL: "http://localhost:11434/v1", MUSE_API_KEY: "k" })).toBeNull();
+    expect(modelStatus({})).toMatchObject({ configured: false, mode: "template", provider: "template" });
+  });
+
+  test("attributes a run from stored plan and draft facts", () => {
+    const attributed = modelAttributionForRun({
+      plan: { source: "llm", model: "llama3.2:3b" },
+      drafts: [
+        { model: "llama3.2:3b", source: "llm" },
+        { model: "llama3.2:3b (llm) — old row", source: undefined },
+      ],
+      usage: { promptTokens: 300, completionTokens: 50 },
+    } as never);
+    expect(attributed.mode).toBe("llm");
+    expect(attributed.models).toEqual(["llama3.2:3b"]);
+    expect(attributed.draftLlm).toBe(2);
+    expect(attributed.draftTemplate).toBe(0);
+    expect(attributed.promptTokens).toBe(300);
+
+    const template = modelAttributionForRun({
+      plan: { source: "heuristic" },
+      drafts: [{ model: "template (no model configured)", source: "template" }],
+      usage: { promptTokens: 0, completionTokens: 0 },
+    } as never);
+    expect(template.mode).toBe("template");
+    expect(template.models).toEqual([]);
+
+    /* A configured endpoint that did not answer is still template output. */
+    const unreachable = modelAttributionForRun({
+      plan: { source: "heuristic" },
+      drafts: [{ model: "template (llama3.2:3b unavailable)", source: "template" }],
+      usage: { promptTokens: 0, completionTokens: 0 },
+    } as never);
+    expect(unreachable.mode).toBe("template");
+    expect(unreachable.models).toEqual([]);
+    expect(unreachable.draftTemplate).toBe(1);
   });
 
   test("posts an OpenAI-compatible chat request to the configured endpoint only", async () => {
@@ -236,6 +303,95 @@ describe("approver check against the committee roster", () => {
     expect(await fetchRoster(refused, "http://web")).toBeNull();
     const broken: FetchLike = async () => new Response("err", { status: 500 });
     expect(await fetchRoster(broken, "http://web")).toBeNull();
+  });
+});
+
+describe("committee quorum at the gate", () => {
+  const quorum = (present: number, required = 5, seats = 9): CommitteeQuorum => ({
+    seats,
+    required,
+    present,
+    members: [
+      ...Array.from({ length: present }, (_, i) => ({
+        name: `Present Member ${i + 1}`,
+        status: "PRESENT" as const,
+      })),
+      ...Array.from({ length: Math.max(0, seats - present) }, (_, i) => ({
+        name: `Excused Member ${i + 1}`,
+        status: "EXCUSED" as const,
+      })),
+    ],
+  });
+
+  test("refuses a short roll and names how many more are needed", () => {
+    const roll = quorumCheck(quorum(4), undefined);
+    expect(roll.ok).toBe(false);
+    expect(roll.present).toBe(4);
+    expect(roll.needed).toBe(1);
+    expect(roll.reason).toContain("4 of 5 required");
+    expect(roll.reason).toContain("1 more member");
+  });
+
+  test("allows a full roll", () => {
+    expect(quorumCheck(quorum(5), undefined).ok).toBe(true);
+  });
+
+  test("ignores a stale present count — the member rows decide", () => {
+    const stale = { ...quorum(2), present: 9 };
+    const roll = quorumCheck(stale, undefined);
+    expect(roll.ok).toBe(false);
+    expect(roll.present).toBe(2);
+  });
+
+  test("counts the signed-in gavel when the register does not list them", () => {
+    const roll = quorumCheck(quorum(4), "Jane Doe");
+    expect(roll.ok).toBe(true);
+    expect(roll.present).toBe(5);
+  });
+
+  test("does not count the gavel twice when they are already PRESENT", () => {
+    const roll = quorumCheck(quorum(4), "  present   member 1 ");
+    expect(roll.ok).toBe(false);
+    expect(roll.present).toBe(4);
+  });
+
+  test("reads seats, required and the roll from /api/committee", async () => {
+    let url = "";
+    const ok = (async (u: string) => {
+      url = String(u);
+      return new Response(
+        JSON.stringify({
+          seats: 9,
+          required: 5,
+          present: 2,
+          members: [
+            { name: "Wanjiru Kamau", status: "PRESENT" },
+            { name: "Otieno Mwangi", status: "EXCUSED" },
+          ],
+        })
+      );
+    }) as FetchLike;
+    const read = await fetchQuorum(ok, "http://web");
+    expect(read?.seats).toBe(9);
+    expect(read?.required).toBe(5);
+    expect(read?.present).toBe(2);
+    expect(read?.members).toHaveLength(2);
+    expect(url).toBe("http://web/api/committee");
+  });
+
+  test("fails closed on a malformed or unreadable roll", async () => {
+    const missingCounts = (async () =>
+      new Response(JSON.stringify({ members: [] }))) as FetchLike;
+    expect(await fetchQuorum(missingCounts, "http://web")).toBeNull();
+
+    const badMember = (async () =>
+      new Response(JSON.stringify({ seats: 9, required: 5, present: 2, members: [{ name: "X", status: "MAYBE" }] }))) as FetchLike;
+    expect(await fetchQuorum(badMember, "http://web")).toBeNull();
+
+    const down: FetchLike = async () => {
+      throw new Error("ECONNREFUSED");
+    };
+    expect(await fetchQuorum(down, "http://web")).toBeNull();
   });
 });
 
@@ -350,7 +506,7 @@ describe("plan_review — the depth decision for one pack", () => {
   });
 
   test("an LLM plan is validated and clamped; garbage falls back to the heuristic", async () => {
-    const cfg = { baseUrl: "http://llama.internal:8000/v1", model: "llama-3.1-70b-instruct" };
+    const cfg = { baseUrl: "http://llama.internal:8000/v1", model: "llama-3.1-70b-instruct", provider: "openai-compatible" as const, configuredBy: "llm-env" as const };
     let calls = 0;
     const good: FetchLike = async () => {
       calls += 1;
@@ -376,7 +532,7 @@ describe("plan_review — the depth decision for one pack", () => {
   });
 
   test("safety floor: an LLM plan cannot switch off deep-value parsing when the pack has bid values", async () => {
-    const cfg = { baseUrl: "http://llama.internal:8000/v1", model: "llama-3.1-70b-instruct" };
+    const cfg = { baseUrl: "http://llama.internal:8000/v1", model: "llama-3.1-70b-instruct", provider: "openai-compatible" as const, configuredBy: "llm-env" as const };
     const disables: FetchLike = async () =>
       new Response(
         JSON.stringify({

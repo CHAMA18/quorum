@@ -20,6 +20,7 @@ import {
   CheckCircle2,
   ChevronDown,
   CircleAlert,
+  Cpu,
   FileLock2,
   Fingerprint,
   GitBranch,
@@ -32,16 +33,32 @@ import {
   XCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatGateReceipt, type GateReceipt } from "@/lib/gate-receipts";
+import { requestStepUp } from "@/components/quorum/step-up";
 import { SpecBar } from "@/components/quorum/reveal";
 
 const SVC = "/api";
 
+/* Live service shapes: every nested object is optional on the wire. A health
+   payload that loses a sub-object must degrade to a dash, never crash the
+   console. */
 interface Health {
-  ok: boolean;
-  uptimeSec: number;
-  fsMcp: { status: string; tools: string[] };
-  graphs: string[];
-  counts: { toolCalls: number; runs: number; gates: number; pendingGates: number };
+  ok?: boolean;
+  uptimeSec?: number;
+  fsMcp?: { status?: string; tools?: string[] };
+  graphs?: string[];
+  counts?: { toolCalls?: number; runs?: number; gates?: number; pendingGates?: number };
+  /* The configured drafting endpoint and the newest actual answer in the log. */
+  model?: {
+    configured?: boolean;
+    mode?: string;
+    model?: string | null;
+    provider?: string;
+    providerLabel?: string;
+    endpoint?: string | null;
+    configuredBy?: string | null;
+    lastCall?: { tool?: string; model?: string; source?: string | null; at?: string; runId?: string | null } | null;
+  };
 }
 
 interface ToolDef {
@@ -53,16 +70,16 @@ interface ToolDef {
 interface LogEntry {
   seq: number;
   id: string;
-  ts: string;
-  actor: string;
-  server: string;
-  tool: string;
-  kind: string;
+  ts?: string;
+  actor?: string;
+  server?: string;
+  tool?: string;
+  kind?: string;
   runId?: string;
   inputs: unknown;
   outputs: unknown;
-  status: string;
-  durationMs: number;
+  status?: string;
+  durationMs?: number;
 }
 
 interface Finding {
@@ -82,16 +99,30 @@ interface Draft {
   model: string;
 }
 
+interface RunModelAttribution {
+  mode: "llm" | "mixed" | "template";
+  planSource: "heuristic" | "llm" | null;
+  planModel: string | null;
+  draftTotal: number;
+  draftLlm: number;
+  draftTemplate: number;
+  models: string[];
+  promptTokens: number;
+  completionTokens: number;
+}
+
 interface Run {
   id: string;
   tenderId: string;
-  status: string;
-  startedAt: string;
-  progress: string[];
-  requirements: { id: string; clause: string; page: number }[];
-  findings: Finding[];
-  drafts: Draft[];
+  status?: string;
+  startedAt?: string;
+  progress?: string[];
+  requirements?: { id: string; clause: string; page: number }[];
+  findings?: Finding[];
+  drafts?: Draft[];
   gateId?: string;
+  /* Stored facts from the sidecar: which model planned and drafted this run. */
+  model?: RunModelAttribution;
 }
 
 interface CommitteeLite {
@@ -112,7 +143,9 @@ interface Gate {
   approver?: string;
   note?: string;
   executedAt?: string;
-  receipt?: { submissionId: string; hash: string; portal: string };
+  /* A receipt is whatever its executor returned — the shared formatter reads
+     every shape without assuming a hash or a submission id. */
+  receipt?: GateReceipt;
 }
 
 interface StackCard {
@@ -133,7 +166,8 @@ function MonoLabel({ children, className }: { children: React.ReactNode; classNa
   );
 }
 
-function KindChip({ kind }: { kind: string }) {
+function KindChip({ kind }: { kind?: string }) {
+  const label = kind || "READ";
   const map: Record<string, string> = {
     READ: "border-ink-200 bg-white text-ink-600",
     WRITES: "border-brand-300 bg-brand-50 text-brand-700",
@@ -145,10 +179,10 @@ function KindChip({ kind }: { kind: string }) {
     <span
       className={cn(
         "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 font-code text-[8px] font-bold tracking-[0.14em]",
-        map[kind] ?? "border-ink-200 bg-white text-ink-500"
+        map[label] ?? "border-ink-200 bg-white text-ink-500"
       )}
     >
-      {kind.replace("_", "-")}
+      {label.replace("_", "-")}
     </span>
   );
 }
@@ -159,8 +193,8 @@ function StatusIcon({ status }: { status: string }) {
   return <XCircle className="h-3.5 w-3.5 text-brand-600" aria-hidden="true" />;
 }
 
-function Clock(iso: string) {
-  return iso.slice(11, 19);
+function Clock(iso?: string | null) {
+  return typeof iso === "string" ? iso.slice(11, 19) : "—";
 }
 
 function initialsOf(name: string): string {
@@ -550,11 +584,16 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
       onToast("A NAMED HUMAN IS REQUIRED — SELECT THE APPROVING OFFICER FROM THE REGISTER");
       return;
     }
+    const stepUp = await requestStepUp(gate.id);
+    if (!stepUp) {
+      onToast("GATE NOT SIGNED — STEP-UP CANCELLED");
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch(`${SVC}/gates/${gate.id}/decision?XTransformPort=3031`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "x-quorum-stepup": stepUp },
         body: JSON.stringify({ decision, approver: who, note: draft.note.trim() }),
       });
       const data = (await res.json()) as { error?: string; gate?: Gate };
@@ -577,6 +616,19 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
   const pending = gates.filter((g) => g.status === "PENDING");
   const decided = gates.filter((g) => g.status !== "PENDING");
   const lastRun = runs[0];
+  const model = health?.model;
+  const lastModelCall = model?.lastCall;
+  const answeredModel = lastModelCall?.source === "llm" ? lastModelCall.model : null;
+  const modelLabel = !model
+    ? "MODEL · …"
+    : model.configured
+      ? `${answeredModel ?? model.model ?? "configured model"} · ${model.providerLabel ?? "configured endpoint"}`
+      : "TEMPLATE FALLBACK";
+  const modelTitle = !model
+    ? "Reading the configured drafting endpoint from quorum-mcp…"
+    : model.configured
+      ? `${model.providerLabel ?? "Model"} at ${model.endpoint ?? "configured endpoint"}${lastModelCall?.source === "llm" ? ` · latest attributed answer: ${lastModelCall.model} via ${lastModelCall.tool}` : " · no model-attributed call in the log yet"}`
+      : "No drafting endpoint on this host — redlines are deterministic template output";
 
   return (
     <div className="space-y-8">
@@ -607,11 +659,21 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
           <span
             className={cn(
               "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-code text-[8.5px] font-bold tracking-[0.18em]",
-              health?.fsMcp.status === "connected" ? "border-ink-200 bg-white text-ink-700" : "border-ink-200 bg-white text-ink-400"
+              health?.fsMcp?.status === "connected" ? "border-ink-200 bg-white text-ink-700" : "border-ink-200 bg-white text-ink-400"
             )}
           >
             <Server className="h-3 w-3" aria-hidden="true" />
-            SERVER-FILESYSTEM MCP · {health?.fsMcp.status.toUpperCase() ?? "…"}
+            SERVER-FILESYSTEM MCP · {health?.fsMcp?.status?.toUpperCase() ?? "…"}
+          </span>
+          <span
+            title={modelTitle}
+            className={cn(
+              "inline-flex max-w-full items-center gap-2 truncate rounded-full border px-3 py-1.5 font-code text-[8.5px] font-bold tracking-[0.18em]",
+              model?.configured ? "border-ink-900 bg-ink-950 text-white" : "border-ink-200 bg-white text-ink-500"
+            )}
+          >
+            <Cpu className="h-3 w-3 shrink-0" aria-hidden="true" />
+            <span className="truncate">{modelLabel.toUpperCase()}</span>
           </span>
           <span className="inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white px-3 py-1.5 font-code text-[8.5px] font-bold tracking-[0.18em] text-ink-700">
             <GitBranch className="h-3 w-3" aria-hidden="true" />
@@ -619,7 +681,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
           </span>
           <span className="inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white px-3 py-1.5 font-code text-[8.5px] font-bold tracking-[0.18em] text-ink-700">
             <Fingerprint className="h-3 w-3" aria-hidden="true" />
-            {health?.counts.toolCalls ?? 0} TOOL CALLS LOGGED
+            {health?.counts?.toolCalls ?? 0} TOOL CALLS LOGGED
           </span>
         </div>
       </section>
@@ -698,11 +760,11 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                       lastRun.status === "RUNNING" && "text-ink-900"
                     )}
                   >
-                    {lastRun.status.replace("_", " ")}
+                    {(lastRun.status ?? "").replace("_", " ") || "UNREPORTED"}
                   </span>
                 </p>
                 <div className="mt-2 space-y-1 font-code text-[11px] leading-relaxed text-ink-700">
-                  {lastRun.progress.map((p, i) => (
+                  {(lastRun.progress ?? []).map((p, i) => (
                     <motion.p key={`${lastRun.id}-${i}`} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}>
                       {p}
                     </motion.p>
@@ -710,15 +772,26 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <span className="rounded-full border border-ink-200 px-2.5 py-1 font-code text-[9px] tracking-[0.14em] text-ink-600">
-                    {lastRun.requirements.length} REQUIREMENTS
+                    {(lastRun.requirements ?? []).length} REQUIREMENTS
                   </span>
                   <span className="rounded-full border border-brand-200 bg-brand-50 px-2.5 py-1 font-code text-[9px] tracking-[0.14em] text-brand-700">
-                    {lastRun.findings.length} FINDINGS
+                    {(lastRun.findings ?? []).length} FINDINGS
                   </span>
                   <span className="rounded-full border border-ink-200 px-2.5 py-1 font-code text-[9px] tracking-[0.14em] text-ink-600">
-                    {lastRun.drafts.length} DRAFTS
+                    {(lastRun.drafts ?? []).length} DRAFTS
                   </span>
                 </div>
+                {lastRun.model && (
+                  <p className="mt-2.5 font-code text-[9.5px] leading-relaxed tracking-[0.08em] text-ink-500">
+                    MODEL ATTRIBUTION ·{" "}
+                    <span className="text-ink-800">
+                      {(lastRun.model.models ?? []).length > 0 ? (lastRun.model.models ?? []).join(", ") : "template fallback"}
+                    </span>{" "}
+                    · PLAN {lastRun.model.planSource === "llm" ? "MODEL-LED" : "DETERMINISTIC"} · DRAFTS{" "}
+                    {lastRun.model.draftLlm ?? 0}/{lastRun.model.draftTotal ?? 0} BY MODEL ·{" "}
+                    {((lastRun.model.promptTokens ?? 0) + (lastRun.model.completionTokens ?? 0)).toLocaleString()} TOKENS
+                  </p>
+                )}
               </div>
             ) : (
               <p className="mt-3 text-[12.5px] text-ink-500">No run yet — fire the graph to watch it live.</p>
@@ -853,9 +926,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                       by <span className="font-semibold text-ink-900">{g.approver}</span>
                     </span>
                     {g.receipt && (
-                      <span className="font-code text-[10.5px] text-ink-500">
-                        {g.receipt.submissionId} · sha {g.receipt.hash.slice(0, 12)}
-                      </span>
+                      <span className="font-code text-[10.5px] text-ink-500">{formatGateReceipt(g.receipt)}</span>
                     )}
                     <span className="ml-auto font-code text-[9.5px] tracking-[0.14em] text-ink-400">
                       {(g.executedAt ?? g.decidedAt ?? "").slice(11, 19)} UTC
@@ -873,7 +944,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <MonoLabel>TOOL LOG — EVERY CALL, APPEND-ONLY</MonoLabel>
           <MonoLabel className="text-ink-400">
-            {health?.counts.toolCalls ?? log.length} ENTRIES · JSONL ON DISK
+            {health?.counts?.toolCalls ?? log.length} ENTRIES · JSONL ON DISK
           </MonoLabel>
         </div>
         <div className="mt-4 max-h-[26rem] overflow-y-auto rounded-[12px] panel [scrollbar-width:thin]">
@@ -899,11 +970,10 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                     <td className="max-w-[10rem] truncate px-3.5 py-2.5 text-[12px] font-medium text-ink-800">{e.actor}</td>
                     <td className="max-w-[13rem] truncate px-3.5 py-2.5 font-code text-[10.5px] text-ink-600">{e.server}</td>
                     <td className="px-3.5 py-2.5 font-code text-[11px] font-bold text-ink-950">{e.tool}</td>
-                    <td className="px-3.5 py-2.5">
-                      <span className="inline-flex items-center gap-1.5">
-                        <StatusIcon status={e.status} />
+                    <td className="px-3.5 py-2.5">                        <span className="inline-flex items-center gap-1.5">
+                        <StatusIcon status={e.status ?? ""} />
                         <span className="font-code text-[9.5px] font-bold tracking-[0.1em] text-ink-600">
-                          {e.status.replace("_", " ")}
+                          {(e.status ?? "UNRECORDED").replace("_", " ")}
                         </span>
                       </span>
                     </td>

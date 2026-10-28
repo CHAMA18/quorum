@@ -60,6 +60,13 @@ export async function POST(req: NextRequest) {
     user = markUserVerified(user.id) ?? user;
   }
 
+  if (user.status === "SUSPENDED") {
+    return NextResponse.json(
+      { code: "ACCOUNT_SUSPENDED", error: "This workspace account is suspended." },
+      { status: 403 }
+    );
+  }
+
   const { token, expiresAt } = await createSession(user.id, true);
   const res = NextResponse.json({ user: publicUser(user) });
   res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions(expiresAt));

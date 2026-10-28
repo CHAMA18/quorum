@@ -28,7 +28,10 @@
         "./src/*"
       ]
     },
-    "types": ["node", "bun-types"]
+    "types": [
+      "node",
+      "bun-types"
+    ]
   },
   "include": [
     "next-env.d.ts",
@@ -39,6 +42,7 @@
   ],
   "exclude": [
     "node_modules",
-    "examples"
+    "examples",
+    "workers"
   ]
 }

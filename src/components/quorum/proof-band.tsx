@@ -82,8 +82,8 @@ export function ProofBand() {
         const runs = json.runs ?? [];
         setTotals({
           tenders: new Set(runs.map((r) => r.tenderId)).size,
-          findings: runs.reduce((n, r) => n + r.findings.length, 0),
-          drafts: runs.reduce((n, r) => n + r.drafts.length, 0),
+          findings: runs.reduce((n, r) => n + (r.findings?.length ?? 0), 0),
+          drafts: runs.reduce((n, r) => n + (r.drafts?.length ?? 0), 0),
           runs: runs.length,
         });
       } catch {

@@ -1,4 +1,5 @@
 import { state, toolLog, type Finding, type Gate, type Run } from "./store";
+import { modelAttributionForRun } from "./model";
 
 /**
  * GET /api/runs/:id/report — the sourced report as a downloadable Markdown file.
@@ -58,6 +59,21 @@ export function buildReport(runId: string): { filename: string; markdown: string
   lines.push(`| Started | ${run.startedAt} |`);
   lines.push(`| Updated | ${run.updatedAt} |`);
   lines.push(`| Human gate | ${gateWord(gate)} |`);
+  lines.push("");
+
+  /* Attribution is part of the committee file: which model planned the review,
+     which model wrote each accepted draft, and the exact strings the endpoint
+     returned. Template mode is stated, never disguised as model output. */
+  const attribution = modelAttributionForRun(run);
+  lines.push("## Model attribution");
+  lines.push("");
+  lines.push("| Field | Value |");
+  lines.push("| --- | --- |");
+  lines.push(`| Review plan | ${attribution.planSource === "llm" ? `model-led (\`${attribution.planModel ?? "model"}\`)` : "deterministic pack inspection"} |`);
+  lines.push(`| Drafts from the model | ${attribution.draftLlm} of ${attribution.draftTotal} |`);
+  lines.push(`| Drafts from template | ${attribution.draftTemplate} |`);
+  lines.push(`| Model(s) returned by the endpoint | ${attribution.models.length ? attribution.models.map((m) => `\`${m}\``).join(", ") : "none — template mode"} |`);
+  lines.push(`| Tokens | ${(attribution.promptTokens + attribution.completionTokens).toLocaleString()} (${attribution.promptTokens.toLocaleString()} in / ${attribution.completionTokens.toLocaleString()} out) |`);
   lines.push("");
 
   if (run.plan) {

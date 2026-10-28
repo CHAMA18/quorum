@@ -16,7 +16,10 @@
  *  - FirebaseAnalytics  — page-view telemetry for the "public-tender" project
  *  - auth-screen        — best-effort identity mirror into Firebase Auth
  *                         + Google sign-in (signInWithGooglePopup)
- *  - dashboard New Run  — tender document uploads to Firebase Storage
+ *
+ * Tender document uploads no longer use Firebase Storage: the New Evaluation
+ * wizard stores files through the quorum-edge R2 gate (see
+ * src/lib/tender-upload.ts and /api/tenders/[ref]/docs).
  */
 
 export const firebaseProjectId = "public-tender";
@@ -38,7 +41,6 @@ export const firebaseWebApiKey = firebaseConfig.apiKey;
 
 type FirebaseAppModule = typeof import("firebase/app");
 type AuthModule = typeof import("firebase/auth");
-type StorageModule = typeof import("firebase/storage");
 
 let appPromise: Promise<import("firebase/app").FirebaseApp | null> | null = null;
 
@@ -77,18 +79,6 @@ async function getAuthLazy() {
     return { mod, auth: mod.getAuth(app) };
   } catch (err) {
     debugLog("auth", err);
-    return null;
-  }
-}
-
-async function getStorageLazy() {
-  const app = await getApp();
-  if (!app) return null;
-  try {
-    const mod: StorageModule = await import("firebase/storage");
-    return { mod, storage: mod.getStorage(app) };
-  } catch (err) {
-    debugLog("storage", err);
     return null;
   }
 }
@@ -335,77 +325,6 @@ export async function completeGoogleRedirect(): Promise<GoogleSignInResult | nul
     return { status: "ok", identity };
   } catch (err) {
     return { status: "denied", reason: mapAuthError("google-redirect-result", err) };
-  }
-}
-
-/* ── Storage — tender document uploads ─────────────────────────────────────── */
-
-/** Storage forbids `#`, `[`, `]`, `*`, `?` in object paths. */
-function safeName(name: string): string {
-  return name.replace(/[#\[\]\*\?]/g, "_").replace(/\s+/g, "-");
-}
-
-export interface TenderUploadResult {
-  path: string;
-  url: string;
-  bytes: number;
-}
-
-/**
- * Upload one tender document to Firebase Storage under tenders/{ref}/.
- * Uses a resumable task with a hard 15s budget: if the bucket rejects
- * (fresh projects deny unauthenticated writes by default) or hangs, the
- * task is cancelled and null returned — callers fall back to the local
- * vault without ceremony.
- */
-export async function uploadTenderDocument(
-  tenderRef: string,
-  file: File
-): Promise<TenderUploadResult | null> {
-  try {
-    const pair = await getStorageLazy();
-    if (!pair) return null;
-    const { mod, storage } = pair;
-    const objectPath = `tenders/${safeName(tenderRef)}/${Date.now()}-${safeName(file.name)}`;
-    const objectRef = mod.ref(storage, objectPath);
-    const task = mod.uploadBytesResumable(objectRef, file, {
-      contentType: file.type || "application/octet-stream",
-      customMetadata: { tenderRef, originalName: file.name },
-    });
-
-    return await new Promise<TenderUploadResult | null>((resolve) => {
-      const budget = setTimeout(() => {
-        try {
-          task.cancel();
-        } catch {
-          /* already terminal */
-        }
-        resolve(null);
-      }, 15_000);
-
-      task.then(
-        async (snap) => {
-          clearTimeout(budget);
-          try {
-            const url = await mod.getDownloadURL(snap.ref);
-            resolve({
-              path: objectPath,
-              url,
-              bytes: snap.metadata.size ? Number(snap.metadata.size) : file.size,
-            });
-          } catch {
-            resolve(null);
-          }
-        },
-        () => {
-          clearTimeout(budget);
-          resolve(null);
-        }
-      );
-    });
-  } catch (err) {
-    debugLog("storage.upload", err);
-    return null;
   }
 }
 

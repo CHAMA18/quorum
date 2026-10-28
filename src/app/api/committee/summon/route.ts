@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { recordSummons } from "@/lib/committee";
+import { can } from "@/lib/permissions";
 
 /**
  * POST /api/committee/summon — issue a real quorum call. A summons mints the
@@ -18,6 +19,9 @@ export async function POST(req: NextRequest) {
       /* Committee records carry the officer's name — an anonymous write has
          no name to carry, so it is refused rather than filed as "unknown". */
       return NextResponse.json({ error: "Sign in to make changes — committee records carry the officer's name." }, { status: 401 });
+    }
+    if (!can(user.role, "manage_meetings")) {
+      return NextResponse.json({ error: "Your workspace role cannot summon a sitting." }, { status: 403 });
     }
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
     const agenda = typeof body.agenda === "string" ? body.agenda : undefined;

@@ -1302,8 +1302,6 @@ export function OrgAuthScreen() {
 
   return (
     <div className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
-      {/* The master tab switcher — pinned over the door, above every other control */}
-      <MasterSwitcher active="supplier" variant="floating" />
       {/* Story panel */}
       <div className="relative hidden overflow-hidden bg-night lg:flex lg:flex-col lg:justify-between lg:p-12">
         <div
@@ -1357,8 +1355,8 @@ export function OrgAuthScreen() {
 
       {/* Auth panel */}
       <div className="flex flex-col bg-paper dark:bg-night">
-        {/* pt-16 clears the floating master switcher above */}
-        <div className="flex items-center justify-between px-5 pb-4 pt-16 lg:hidden">
+        {/* pt-5 — the portal switcher now lives in the card, so the mobile header needs no clearance */}
+        <div className="flex items-center justify-between px-5 pb-4 pt-5 lg:hidden">
           <ThemedLogo />
           <Link href="/" className="font-code text-[10px] font-semibold tracking-[0.16em] text-ink-500 hover:text-ink-900 dark:hover:text-white">
             OFFICER DESK →
@@ -1383,17 +1381,19 @@ export function OrgAuthScreen() {
               </div>
             </div>
 
-            {/* The master switcher above is the way across — the rail keeps only the portal tag */}
+            {/* Portal tag — the Quorum / Supplier switcher sits inside the card, above the brand. */}
             <div className="mb-5 hidden items-center justify-end lg:flex">
               <span className="font-code text-[9.5px] font-semibold tracking-[0.2em] text-brand-700 dark:text-brand-400">SUPPLIER PORTAL · /ORG</span>
             </div>
 
             {registeredName ? (
               <div className="rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-6 shadow-[0_16px_48px_rgba(11,12,15,0.08)] sm:p-8 dark:border-white/10 dark:bg-night-2">
+                <div className="mb-5"><MasterSwitcher active="supplier" className="w-full [&>button]:flex-1" /></div>
                 <OnTheRegister orgName={registeredName} onEnter={onDone} />
               </div>
             ) : existingOrg ? (
               <div className="rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-6 shadow-[0_16px_48px_rgba(11,12,15,0.08)] dark:border-white/10 dark:bg-night-2">
+                <div className="mb-5"><MasterSwitcher active="supplier" className="w-full [&>button]:flex-1" /></div>
                 <p className="font-code text-[9.5px] font-semibold tracking-[0.18em] text-brand-700 dark:text-brand-400">SESSION ALREADY OPEN</p>
                 <p className="mt-2 text-[15px] font-semibold text-ink-950 dark:text-white">{existingOrg.name}</p>
                 <p className="mt-1 text-[13px] text-ink-500 dark:text-ink-400">
@@ -1410,7 +1410,8 @@ export function OrgAuthScreen() {
               </div>
             ) : (
               <div className="rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-6 shadow-[0_16px_48px_rgba(11,12,15,0.08)] sm:p-8 dark:border-white/10 dark:bg-night-2">
-                <div className="mb-6">
+                <div className="mb-6 space-y-4">
+                  <MasterSwitcher active="supplier" className="w-full [&>button]:flex-1" />
                   <ThemedLogo />
                 </div>
                 <div className="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-ink-50 p-1 ring-1 ring-inset ring-ink-200 dark:bg-white/[0.04] dark:ring-white/10">

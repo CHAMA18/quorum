@@ -68,3 +68,7 @@ server.log
 
 # ...but ship the example
 !.env.example
+
+# Cloudflare Workers local state
+workers/*/.wrangler/
+workers/*/.dev.vars

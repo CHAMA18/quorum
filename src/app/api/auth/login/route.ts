@@ -123,6 +123,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  if (user.status === "SUSPENDED") {
+    return NextResponse.json(
+      {
+        code: "ACCOUNT_SUSPENDED",
+        error: "This workspace account is suspended. Ask the workspace owner or an admin to restore it.",
+      },
+      { status: 403 }
+    );
+  }
+
   if (!user.emailVerified) {
     return NextResponse.json(
       {

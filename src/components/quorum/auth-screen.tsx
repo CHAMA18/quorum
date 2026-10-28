@@ -808,14 +808,12 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
 
   return (
     <div className="grid min-h-screen bg-paper font-body text-ink-900 antialiased lg:grid-cols-[1.05fr_1fr] dark:bg-night dark:text-white">
-      {/* The master tab switcher — pinned over the door, above every other control */}
-      <MasterSwitcher active="quorum" variant="floating" />
       <StoryPanel grantedFirstName={firstName} />
 
       {/* Auth panel */}
       <div className="flex flex-col bg-paper dark:bg-night">
-        {/* pt-16 clears the floating master switcher above */}
-        <div className="flex items-center justify-between px-5 pb-4 pt-16 lg:hidden">
+        {/* pt-5 — the portal switcher now lives in the card, so the mobile header needs no clearance */}
+        <div className="flex items-center justify-between px-5 pb-4 pt-5 lg:hidden">
           <button
             type="button"
             onClick={onClose}
@@ -837,12 +835,13 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
           <div className="w-full max-w-[480px]">
             <MobileBrandBand />
 
-            {/* The master switcher above is the way back — the rail keeps only the portal tag */}
+            {/* Portal tag — the Quorum / Supplier switcher sits inside the card, above the brand. */}
             <div className="mb-5 hidden items-center justify-end lg:flex">
               <span className="font-code text-[9.5px] font-semibold tracking-[0.2em] text-brand-700 dark:text-brand-400">OFFICER PORTAL · /</span>
             </div>
 
             <div className="rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-6 shadow-[0_16px_48px_rgba(11,12,15,0.08)] sm:p-8 dark:bg-night-2">
+              <MasterSwitcher active="quorum" className="mb-5 w-full [&>button]:flex-1" />
               <AnimatePresence mode="wait">
                 {status === "success" && granted ? (
                   <SuccessPanel

@@ -14,8 +14,10 @@
  *   · thinking — the sentence goes to /api/muse/chat, where Muse Spark runs
  *     an agentic loop over read-only desk tools (runs, approvals, deadlines,
  *     the committee register, one tender's record).
- *   · speaking — the reply is read aloud by the browser's own voice, and
- *     shown in full on screen.
+ *   · speaking — the reply is read aloud in a real neural voice. Deepgram
+ *     Aura-2 runs through Cloudflare Workers AI; MeloTTS is the server-side
+ *     fallback; the browser's installed voice is the last resort. The voice
+ *     can be changed in the panel and is remembered on the device.
  *
  * The assistant is read-only by construction — the same line the review
  * graph draws. It can tell you what waits at the gate; it cannot sign it.
@@ -30,14 +32,25 @@ import { cn } from "@/lib/utils";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-type Turn = { id: string; role: "user" | "assistant"; text: string; heard?: string; tools?: string[] };
+type Turn = { id: string; role: "user" | "assistant"; text: string; heard?: string; tools?: string[]; model?: string };
 
 const SUGGESTIONS = [
   "What is waiting at the gate?",
-  "Any overdue clocks?",
   "Is quorum present?",
-  "How many evaluations are live?",
+  "How does the gate work?",
+  "What can't you do?",
 ];
+
+const VOICE_KEY = "quorum.muse.voice";
+
+/** Cloudflare Workers AI speakers; "browser" skips the edge and uses the device. */
+const VOICE_PRESETS = [
+  { id: "asteria", label: "Aura · warm", blurb: "Deepgram Aura-2" },
+  { id: "orion", label: "Aura · deep", blurb: "Deepgram Aura-2" },
+  { id: "luna", label: "Aura · bright", blurb: "Deepgram Aura-2" },
+  { id: "atlas", label: "Aura · calm", blurb: "Deepgram Aura-2" },
+  { id: "browser", label: "System", blurb: "installed browser voice" },
+] as const;
 
 /* ── WAV encoding in the browser ──────────────────────────────────────────
    The mic gives us Float32 PCM from an AudioContext; Muse's file endpoint
@@ -91,28 +104,182 @@ const MAX_RECORD_MS = 25_000;
 
 /* ── The spoken reply ─────────────────────────────────────────────────────── */
 
+function bestBrowserVoice(): SpeechSynthesisVoice | null {
+  if (!("speechSynthesis" in window)) return null;
+  const voices = window.speechSynthesis.getVoices();
+  const preferred = [
+    "samantha",
+    "daniel",
+    "karen",
+    "moira",
+    "tessa",
+    "serena",
+    "google uk english female",
+    "google uk english male",
+    "microsoft aria",
+    "microsoft jenny",
+    "microsoft sonia",
+    "ava",
+    "allison",
+    "alex",
+    "tom",
+  ];
+  for (const name of preferred) {
+    const hit = voices.find((v) => v.name.toLowerCase().includes(name));
+    if (hit) return hit;
+  }
+  return (
+    voices.find((v) => /en[-_](ZA|GB|KE|NG)/i.test(v.lang)) ??
+    voices.find((v) => /^en/i.test(v.lang)) ??
+    null
+  );
+}
+
+type SpeakerMode = "aura" | "browser";
+
 function useSpeaker(enabled: boolean) {
-  const stop = useCallback(() => {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+  const [voice, setVoiceState] = useState<string>("asteria");
+  const [mode, setMode] = useState<SpeakerMode>("aura");
+  const [speaking, setSpeaking] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const urlRef = useRef<string | null>(null);
+  const primeRef = useRef<HTMLAudioElement | null>(null);
+  const speechSeqRef = useRef(0);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(VOICE_KEY);
+      if (saved && VOICE_PRESETS.some((v) => v.id === saved)) setVoiceState(saved);
+    } catch {
+      /* private mode / storage blocked — the default is fine */
+    }
   }, []);
+
+  const cleanupAudio = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.onended = null;
+      audioRef.current.onerror = null;
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    if (urlRef.current) {
+      URL.revokeObjectURL(urlRef.current);
+      urlRef.current = null;
+    }
+  }, []);
+
+  const stop = useCallback(() => {
+    speechSeqRef.current += 1;
+    cleanupAudio();
+    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+    setSpeaking(false);
+  }, [cleanupAudio]);
+
+  const setVoice = useCallback(
+    (next: string) => {
+      stop();
+      const allowed = VOICE_PRESETS.some((v) => v.id === next) ? next : "asteria";
+      setVoiceState(allowed);
+      setMode(allowed === "browser" ? "browser" : "aura");
+      try {
+        window.localStorage.setItem(VOICE_KEY, allowed);
+      } catch {
+        /* ignore storage failures */
+      }
+    },
+    [stop]
+  );
+
+  /** Prime audio on the first real user gesture, so a later async reply can play. */
+  const prime = useCallback(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (!primeRef.current) {
+        primeRef.current = new Audio(
+          "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA="
+        );
+        primeRef.current.volume = 0;
+      }
+      void primeRef.current.play().catch(() => undefined);
+      if ("speechSynthesis" in window) window.speechSynthesis.getVoices();
+    } catch {
+      /* the browser may still allow the real playback; this is only a nudge */
+    }
+  }, []);
+
   const speak = useCallback(
-    (text: string) => {
-      if (!enabled || typeof window === "undefined" || !("speechSynthesis" in window)) return;
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text.replace(/[*#`>|-]/g, " "));
+    async (text: string) => {
+      if (!enabled || typeof window === "undefined") return;
+      stop();
+      const seq = speechSeqRef.current;
+      const clean = text
+        .replace(/```[\s\S]*?```/g, " ")
+        .replace(/[*#`>_|]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (!clean) return;
+
+      /* 1. The real neural voice — Cloudflare Workers AI, via our own route. */
+      if (voice !== "browser") {
+        try {
+          const res = await fetch("/api/muse/speak", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ text: clean, voice }),
+          });
+          const type = res.headers.get("content-type") ?? "";
+          if (res.ok && type.startsWith("audio/")) {
+            const blob = await res.blob();
+            if (seq !== speechSeqRef.current) return;
+            const url = URL.createObjectURL(blob);
+            const audio = new Audio(url);
+            audioRef.current = audio;
+            urlRef.current = url;
+            audio.onended = () => {
+              setSpeaking(false);
+              cleanupAudio();
+            };
+            audio.onerror = () => {
+              setSpeaking(false);
+              cleanupAudio();
+            };
+            setMode("aura");
+            setSpeaking(true);
+            try {
+              await audio.play();
+              return;
+            } catch {
+              cleanupAudio();
+            }
+          }
+        } catch {
+          /* fall through to the installed voice */
+        }
+      }
+
+      /* 2. The browser's own voice — the last fallback, never a silent failure. */
+      if (seq !== speechSeqRef.current) return;
+      if (!("speechSynthesis" in window)) {
+        setSpeaking(false);
+        return;
+      }
+      const utterance = new SpeechSynthesisUtterance(clean);
       utterance.rate = 1.02;
       utterance.pitch = 1;
-      const voices = window.speechSynthesis.getVoices();
-      const pick =
-        voices.find((v) => /en[-_](GB|ZA|KE|NG)/i.test(v.lang)) ??
-        voices.find((v) => /^en/i.test(v.lang)) ??
-        null;
+      const pick = bestBrowserVoice();
       if (pick) utterance.voice = pick;
+      utterance.onend = () => setSpeaking(false);
+      utterance.onerror = () => setSpeaking(false);
+      setMode("browser");
+      setSpeaking(true);
       window.speechSynthesis.speak(utterance);
     },
-    [enabled]
+    [cleanupAudio, enabled, stop, voice]
   );
-  return { speak, stop };
+
+  useEffect(() => () => cleanupAudio(), [cleanupAudio]);
+
+  return { speak, stop, prime, voice, setVoice, mode, speaking };
 }
 
 /* ── The bubble ───────────────────────────────────────────────────────────── */
@@ -133,13 +300,12 @@ export function MuseAssistant({ name }: { name?: string }) {
 
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Float32Array[]>([]);
   const contextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { speak, stop } = useSpeaker(speakOn && open);
+  const { speak, stop, prime, voice, setVoice, mode, speaking } = useSpeaker(speakOn && open);
 
   /* Chrome ships a new default voice list after the first utterance. */
   useEffect(() => {
@@ -192,6 +358,7 @@ export function MuseAssistant({ name }: { name?: string }) {
         const data = (await res.json().catch(() => ({}))) as {
           reply?: string;
           toolsRead?: string[];
+          model?: string;
           note?: string;
         };
         const reply = (data.reply ?? "I could not answer that just now.").trim();
@@ -202,9 +369,10 @@ export function MuseAssistant({ name }: { name?: string }) {
             role: "assistant",
             text: reply,
             ...(data.toolsRead && data.toolsRead.length ? { tools: data.toolsRead } : {}),
+            ...(data.model ? { model: data.model } : {}),
           },
         ]);
-        speak(reply);
+        void speak(reply);
       } catch {
         const note =
           "The assistant service is not answering right now. Nothing on the desk changed — try again in a moment.";
@@ -223,26 +391,27 @@ export function MuseAssistant({ name }: { name?: string }) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
-    const recorder = recorderRef.current;
     const context = contextRef.current;
     const stream = streamRef.current;
-    recorderRef.current = null;
     contextRef.current = null;
     streamRef.current = null;
-    if (!recorder || !context) return;
+    if (!context) return;
 
-    await new Promise<void>((resolve) => {
-      recorder.onstop = () => resolve();
-      recorder.stop();
-    });
+    /* Let the last ScriptProcessor buffer land before closing the graph. */
+    await new Promise<void>((resolve) => setTimeout(resolve, 80));
     stream?.getTracks().forEach((track) => track.stop());
     setHearing(false);
     setHeardLevel(0);
 
+    const sampleRate = context.sampleRate;
     const chunks = chunksRef.current;
     chunksRef.current = [];
     const length = chunks.reduce((sum, c) => sum + c.length, 0);
-    if (length < TARGET_RATE / 4) return; /* under a quarter second — ignore */
+    if (length < TARGET_RATE / 4) {
+      /* Under a quarter second — ignore, but always close the microphone. */
+      void context.close().catch(() => undefined);
+      return;
+    }
 
     const merged = new Float32Array(length);
     let at = 0;
@@ -250,7 +419,7 @@ export function MuseAssistant({ name }: { name?: string }) {
       merged.set(chunk, at);
       at += chunk.length;
     }
-    const wav = encodeWav(downMix(merged, context.sampleRate, TARGET_RATE), TARGET_RATE);
+    const wav = encodeWav(downMix(merged, sampleRate, TARGET_RATE), TARGET_RATE);
 
     setBusy(true);
     try {
@@ -274,18 +443,27 @@ export function MuseAssistant({ name }: { name?: string }) {
 
   const startHearing = useCallback(async () => {
     if (busy || hearing) return;
+    prime();
     stop();
     setVoiceNote(null);
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setVoiceNote("This browser has no microphone API — type instead.");
+      return;
+    }
+    let stream: MediaStream | null = null;
+    let context: AudioContext | null = null;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
-      const context = new AudioContext();
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
+      });
+      context = new AudioContext();
+      await context.resume();
+      if (typeof context.createScriptProcessor !== "function") {
+        throw new Error("ScriptProcessor is unavailable");
+      }
       const source = context.createMediaStreamSource(stream);
       /* The meter is the only reason for this node — it drives the bars. */
       const meter = context.createScriptProcessor(2048, 1, 1);
-      const analyser = context.createAnalyser();
-      analyser.fftSize = 512;
-      source.connect(analyser);
-      meter.connect(context.destination);
       chunksRef.current = [];
       meter.onaudioprocess = (event) => {
         const data = event.inputBuffer.getChannelData(0);
@@ -295,18 +473,22 @@ export function MuseAssistant({ name }: { name?: string }) {
         setHeardLevel(Math.min(1, Math.sqrt(sum / data.length) * 6));
       };
       source.connect(meter);
+      meter.connect(context.destination);
 
-      const recorder = new MediaRecorder(stream);
-      recorder.start();
-      recorderRef.current = recorder;
       contextRef.current = context;
       streamRef.current = stream;
       setHearing(true);
       timerRef.current = setTimeout(() => void stopHearing(), MAX_RECORD_MS);
     } catch {
+      stream?.getTracks().forEach((track) => track.stop());
+      void context?.close().catch(() => undefined);
+      contextRef.current = null;
+      streamRef.current = null;
+      setHearing(false);
+      setHeardLevel(0);
       setVoiceNote("The microphone is blocked in this browser — allow it, or type instead.");
     }
-  }, [busy, hearing, stop, stopHearing]);
+  }, [busy, hearing, prime, stop, stopHearing]);
 
   useEffect(
     () => () => {
@@ -324,10 +506,18 @@ export function MuseAssistant({ name }: { name?: string }) {
       {/* The launcher — always reachable, never in the way of the page's own controls */}
       <motion.button
         type="button"
-        onClick={() => (open ? shut() : setOpen(true))}
+        onClick={() => {
+          if (open) {
+            shut();
+          } else {
+            prime();
+            setOpen(true);
+          }
+        }}
         aria-label={open ? "Close the desk assistant" : "Open the desk assistant — talk or type"}
         aria-expanded={open}
-        className="focus-brand group fixed bottom-5 right-5 z-[75] flex h-14 items-center gap-2.5 rounded-full bg-brand-600 pl-4 pr-5 text-white shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_18px_40px_-16px_rgba(217,38,22,0.85)] transition-colors hover:bg-brand-700 sm:bottom-7 sm:right-7"
+        title={open ? "Close the desk assistant" : "Ask the desk"}
+        className="focus-brand group fixed bottom-5 right-5 z-[75] grid h-14 w-14 place-items-center rounded-full bg-brand-600 p-0 text-white shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_18px_40px_-16px_rgba(217,38,22,0.85)] transition-colors hover:bg-brand-700 sm:bottom-7 sm:right-7"
         whileHover={reduce ? undefined : { y: -2 }}
         whileTap={reduce ? undefined : { scale: 0.97 }}
       >
@@ -345,9 +535,6 @@ export function MuseAssistant({ name }: { name?: string }) {
               )}
             </>
           )}
-        </span>
-        <span className="hidden font-code text-[9.5px] font-bold uppercase tracking-[0.18em] sm:inline">
-          {open ? "Close" : "Ask the desk"}
         </span>
       </motion.button>
 
@@ -384,6 +571,7 @@ export function MuseAssistant({ name }: { name?: string }) {
                 <button
                   type="button"
                   onClick={() => {
+                    prime();
                     setSpeakOn((s) => !s);
                     stop();
                   }}
@@ -391,7 +579,11 @@ export function MuseAssistant({ name }: { name?: string }) {
                   title={speakOn ? "Mute replies" : "Unmute replies"}
                   className={cn(
                     "grid h-8 w-8 place-items-center rounded-lg transition-colors",
-                    speakOn ? "text-ink-300 hover:bg-white/10 hover:text-white" : "text-ink-500 hover:bg-white/10 hover:text-white"
+                    speakOn
+                      ? speaking
+                        ? "text-brand-300 hover:bg-white/10 hover:text-white"
+                        : "text-ink-300 hover:bg-white/10 hover:text-white"
+                      : "text-ink-500 hover:bg-white/10 hover:text-white"
                   )}
                 >
                   {speakOn ? <Volume2 className="h-4 w-4" aria-hidden="true" /> : <VolumeX className="h-4 w-4" aria-hidden="true" />}
@@ -417,14 +609,18 @@ export function MuseAssistant({ name }: { name?: string }) {
                 <div className="space-y-3">
                   <p className="text-[13px] leading-relaxed text-ink-300">
                     Ask about the desk — what is running, what waits at the gate, which clocks are running, what one
-                    tender&apos;s record says. Answers come from the live record, and they are read aloud.
+                    tender&apos;s record says, or how Quorum itself works. Answers come from the live record and the
+                    product&apos;s own operating manual, and they are read aloud in a real neural voice.
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {SUGGESTIONS.map((s) => (
                       <button
                         key={s}
                         type="button"
-                        onClick={() => void ask(s)}
+                        onClick={() => {
+                          prime();
+                          void ask(s);
+                        }}
                         className="rounded-full border border-white/12 px-2.5 py-1.5 font-code text-[8px] font-semibold tracking-[0.12em] text-ink-200 transition-colors hover:border-brand-500/60 hover:text-white"
                       >
                         {s.toUpperCase()}
@@ -450,14 +646,20 @@ export function MuseAssistant({ name }: { name?: string }) {
                       </p>
                     )}
                     <p className="text-[13px] leading-relaxed">{t.text}</p>
-                    {t.tools && t.tools.length > 0 && (
+                    {(t.tools?.length || t.model) && (
                       <p className="mt-2 flex flex-wrap items-center gap-1 font-code text-[7px] tracking-[0.14em] text-ink-400">
-                        READ THE DESK:
-                        {t.tools.map((tool, i) => (
-                          <span key={`${tool}-${i}`} className="rounded bg-white/[0.07] px-1.5 py-0.5 text-ink-300">
-                            {tool.toUpperCase()}
+                        {t.tools && t.tools.length > 0 && <>READ THE DESK:
+                          {t.tools.map((tool, i) => (
+                            <span key={`${tool}-${i}`} className="rounded bg-white/[0.07] px-1.5 py-0.5 text-ink-300">
+                              {tool.toUpperCase()}
+                            </span>
+                          ))}
+                        </>}
+                        {t.model && (
+                          <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-brand-300">
+                            MODEL · {t.model.toUpperCase()}
                           </span>
-                        ))}
+                        )}
                       </p>
                     )}
                   </div>
@@ -508,7 +710,7 @@ export function MuseAssistant({ name }: { name?: string }) {
                     })}
                   </div>
                   <span className="font-code text-[8px] font-bold tracking-[0.16em] text-brand-300">
-                    LISTENING · RELEASE TO SEND
+                    LISTENING · TAP TO SEND
                   </span>
                 </div>
               )}
@@ -516,6 +718,7 @@ export function MuseAssistant({ name }: { name?: string }) {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
+                  prime();
                   void ask(draft);
                 }}
                 className="flex items-center gap-2"
@@ -528,7 +731,7 @@ export function MuseAssistant({ name }: { name?: string }) {
                   }}
                   disabled={busy}
                   aria-label={hearing ? "Stop listening and send" : "Ask by voice"}
-                  title={hearing ? "Send" : "Hold a question by voice"}
+                  title={hearing ? "Send the question" : "Tap to speak, then tap again to send"}
                   className={cn(
                     "grid h-11 w-11 shrink-0 place-items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                     hearing
@@ -556,8 +759,34 @@ export function MuseAssistant({ name }: { name?: string }) {
                   <Send className="h-4 w-4" aria-hidden="true" />
                 </button>
               </form>
-              <p className="mt-2 text-center font-code text-[7px] tracking-[0.16em] text-ink-500">
-                MUSE SPARK + MUSE VOICE · READ-ONLY · THE GAVEL IS NOT IN THIS BUBBLE
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 font-code text-[7px] tracking-[0.16em] text-ink-500">
+                <span className={speaking ? "text-brand-300" : undefined}>
+                  {!speakOn ? "MUTED" : speaking ? "SPEAKING" : mode === "aura" ? "AURA-2" : "SYSTEM VOICE"}
+                </span>
+                <span aria-hidden="true">·</span>
+                <label className="inline-flex items-center gap-1">
+                  VOICE
+                  <select
+                    value={voice}
+                    onChange={(e) => {
+                      prime();
+                      setVoice(e.target.value);
+                    }}
+                    aria-label="Spoken reply voice"
+                    className="max-w-[7.5rem] cursor-pointer rounded border border-white/10 bg-night px-1 py-0.5 font-code text-[7px] tracking-[0.1em] text-ink-300 outline-none focus:border-brand-500/60"
+                  >
+                    {VOICE_PRESETS.map((preset) => (
+                      <option key={preset.id} value={preset.id} title={preset.blurb}>
+                        {preset.label.toUpperCase()}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <span aria-hidden="true">·</span>
+                <span>READ-ONLY</span>
+              </div>
+              <p className="mt-1 text-center font-code text-[7px] tracking-[0.16em] text-ink-500">
+                MUSE SPARK + REAL VOICE · THE GAVEL IS NOT IN THIS BUBBLE
               </p>
             </div>
           </motion.div>

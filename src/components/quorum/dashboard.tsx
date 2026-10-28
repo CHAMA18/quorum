@@ -41,7 +41,9 @@ import {
   Plus,
   Radio,
   RefreshCw,
+  Scale,
   Search,
+  ScrollText,
   ServerCog,
   Settings,
   ShieldCheck,
@@ -55,12 +57,24 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
+import { AuditView } from "@/components/quorum/audit-view";
+import { OversightView } from "@/components/quorum/oversight-view";
 import { CalendarView } from "@/components/quorum/calendar-view";
 import { CycleView } from "@/components/quorum/cycle-view";
 import { SpecBar } from "@/components/quorum/reveal";
 import { QuorumLogo } from "@/components/quorum/logo";
 import { MasterSwitcher } from "@/components/quorum/master-switcher";
+import { NotificationBell } from "@/components/quorum/notification-bell";
 import { StackConsole } from "@/components/quorum/stack-console";
+import { StepUpHost, requestStepUp } from "@/components/quorum/step-up";
+import {
+  ASSIGNABLE_ROLES,
+  ROLE_LABELS,
+  can as canDo,
+  type AssignableRole,
+  type Capability,
+  type WorkspaceRole,
+} from "@/lib/permissions";
 import { TenderPackPreview, type TenderPackRow } from "@/components/quorum/tender-pack-preview";
 import { TourLayer, type TourStep } from "@/components/quorum/tour";
 import {
@@ -71,7 +85,8 @@ import {
 } from "@/components/quorum/schedule-meeting";
 import { WorkspacePalette, type PaletteGroup } from "@/components/quorum/workspace-palette";
 import type { AuthUser } from "@/lib/auth-types";
-import { uploadTenderDocument } from "@/lib/firebase";
+import { signedTenderDownloadUrl, uploadTenderDocument } from "@/lib/tender-upload";
+import { StoredDocsBrowser } from "@/components/quorum/stored-docs-browser";
 import { cn } from "@/lib/utils";
 import { ThemeModeRow } from "@/components/quorum/theme-toggle";
 import { gateFact, type GateInputs } from "@/components/quorum/gate-facts";
@@ -202,10 +217,11 @@ const RUN_STATUS: Record<BackendRun["status"], RunStatus> = {
   FAILED: "complete",
 };
 
-const FINDING_CLASSES: FindingClass[] = ["DOCUMENT", "COMPLIANCE", "REGISTRY", "PRICING", "ARITHMETIC", "DISCLOSURE", "LOGISTICS"];
+const FINDING_CLASSES: FindingClass[] = ["DOCUMENT", "COMPLIANCE", "REGISTRY", "PRICING", "ARITHMETIC", "DISCLOSURE", "LOGISTICS", "SECURITY"];
 
 function classOf(rule: string): FindingClass {
   const upper = rule.toUpperCase();
+  if (upper.includes("PROMPT-INJECTION")) return "SECURITY";
   return FINDING_CLASSES.find((c) => upper.includes(c)) ?? "DOCUMENT";
 }
 
@@ -217,10 +233,36 @@ function clockOf(iso?: string): string {
     : date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 
+/* Live rows come off the wire with optional detail: a persisted run can lose
+   its findings array, a gate can lose its inputs object. Normalize once at the
+   fetch boundary so every downstream count and card reads a safe shape. */
+function normalizeRun(r: BackendRun): BackendRun {
+  return { ...r, findings: Array.isArray(r.findings) ? r.findings : [] };
+}
+
+function normalizeGate(g: BackendGate): BackendGate {
+  return {
+    ...g,
+    inputs: (g.inputs && typeof g.inputs === "object" ? g.inputs : {}) as GateInputs,
+  };
+}
+
+/* The roll rides alongside the runs: the gate queue must state whether the
+   committee is quorate before it offers a signature. Malformed committee
+   payloads are treated as unread, not as a present roll. */
+function normalizeCommittee(value: unknown): CommitteeData | null {
+  if (!value || typeof value !== "object") return null;
+  const c = value as Partial<CommitteeData>;
+  if (!Array.isArray(c.members)) return null;
+  if (typeof c.seats !== "number" || typeof c.required !== "number" || typeof c.present !== "number") return null;
+  return c as CommitteeData;
+}
+
 /* Polls the sidecar's runs and gates; derives every view the dashboard renders. */
 function useMissionData() {
   const [rawRuns, setRawRuns] = useState<BackendRun[]>([]);
   const [rawGates, setRawGates] = useState<BackendGate[]>([]);
+  const [committee, setCommittee] = useState<CommitteeData | null>(null);
   const [reachable, setReachable] = useState(false);
   /* Tender registry — the sidecar knows each pack's proper name and buyer.
      Runs and gates only carry the reference, so the views look the human
@@ -243,12 +285,15 @@ function useMissionData() {
   const refresh = useCallback(async () => {
     void pullRegistry();
     try {
-      const [r, g] = await Promise.all([
+      const [r, g, c] = await Promise.all([
         fetch("/api/runs?XTransformPort=3031").then((x) => x.json()),
         fetch("/api/gates?XTransformPort=3031").then((x) => x.json()),
+        fetch("/api/committee").then((x) => (x.ok ? x.json() : null)).catch(() => null),
       ]);
-      setRawRuns(r.runs ?? []);
-      setRawGates(g.gates ?? []);
+      setRawRuns((r.runs ?? []).map(normalizeRun));
+      setRawGates((g.gates ?? []).map(normalizeGate));
+      const roll = normalizeCommittee(c);
+      if (roll) setCommittee(roll);
       setReachable(true);
     } catch {
       setReachable(false);
@@ -260,13 +305,16 @@ function useMissionData() {
     const poll = async () => {
       void pullRegistry();
       try {
-        const [r, g] = await Promise.all([
+        const [r, g, c] = await Promise.all([
           fetch("/api/runs?XTransformPort=3031").then((x) => x.json()),
           fetch("/api/gates?XTransformPort=3031").then((x) => x.json()),
+          fetch("/api/committee").then((x) => (x.ok ? x.json() : null)).catch(() => null),
         ]);
         if (!alive) return;
-        setRawRuns(r.runs ?? []);
-        setRawGates(g.gates ?? []);
+        setRawRuns((r.runs ?? []).map(normalizeRun));
+        setRawGates((g.gates ?? []).map(normalizeGate));
+        const roll = normalizeCommittee(c);
+        if (roll) setCommittee(roll);
         setReachable(true);
       } catch {
         if (alive) setReachable(false);
@@ -370,7 +418,7 @@ function useMissionData() {
     return map;
   }, [rawRuns]);
 
-  return { runs, queue, ledger, verdicts, findings, notes, reachable, refresh };
+  return { runs, queue, ledger, verdicts, findings, notes, committee, reachable, refresh };
 }
 
 /* Grouped navigation — the options that fit an agentic procurement
@@ -387,10 +435,12 @@ type SectionId =
   | "mc-sources"
   | "mc-ledger"
   | "mc-committee"
+  | "mc-oversight"
   | "mc-calendar"
   | "mc-suppliers"
   | "mc-rules"
   | "mc-stack"
+  | "mc-audit"
   | "mc-settings"
   | "mc-walkthrough";
 
@@ -437,6 +487,8 @@ const NAV_GROUPS: {
     group: "SYSTEM",
     items: [
       { id: "mc-stack", label: "Tools & models", icon: ServerCog },
+      { id: "mc-oversight", label: "Oversight", icon: Scale },
+      { id: "mc-audit", label: "Audit trail", icon: ScrollText },
       { id: "mc-rules", label: "Rules & safeguards", icon: ShieldCheck },
       { id: "mc-settings", label: "Settings", icon: Settings },
       { id: "docs", label: "Documentation", icon: Library, href: "/docs" },
@@ -444,6 +496,40 @@ const NAV_GROUPS: {
     ],
   },
 ];
+
+/* Which capability opens a section. Items absent from this map are open to
+   every signed-in desk role (overview, award history, calendar, settings).
+   Hiding the destination is convenience; every route repeats the check. */
+const SECTION_CAPABILITY: Partial<Record<SectionId, Capability>> = {
+  "mc-runs": "run_reviews",
+  "mc-gates": "sign_gates",
+  "mc-cycle": "run_reviews",
+  "mc-activity": "run_reviews",
+  "mc-findings": "run_reviews",
+  "mc-reports": "run_reviews",
+  "mc-sources": "manage_sources",
+  "mc-committee": "manage_meetings",
+  "mc-calendar": "manage_meetings",
+  "mc-suppliers": "manage_suppliers",
+  "mc-rules": "manage_rules",
+  "mc-stack": "manage_rules",
+  "mc-oversight": "view_oversight",
+  "mc-audit": "read_audit",
+};
+
+function canOpenSection(user: AuthUser | null, id: SectionId): boolean {
+  const capability = SECTION_CAPABILITY[id];
+  return !capability || canDo(user?.role, capability);
+}
+
+function navGroupsFor(user: AuthUser | null) {
+  return NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) =>
+      item.href ? true : canOpenSection(user, item.id as SectionId),
+    ),
+  })).filter((group) => group.items.length > 0);
+}
 
 const SECTION_LABEL = Object.fromEntries(
   NAV_GROUPS.flatMap((g) => g.items.filter((i) => !i.href).map((i) => [i.id, i.label] as const))
@@ -862,8 +948,13 @@ type StagedDoc = {
   name: string;
   size: string;
   status: "RECEIVED" | "PARSING" | "INDEXED";
-  /* Cloud mirror state — present only for uploaded files. SYNCING → CLOUD | LOCAL. */
+  /* R2 mirror state — present only for uploaded files. SYNCING → CLOUD | LOCAL. */
   storage?: "SYNCING" | "CLOUD" | "LOCAL";
+  /* Extraction/staging result, shown under the filename. */
+  note?: string;
+  /* The stored object (R2 key + tender) — the citation for a signed download. */
+  key?: string;
+  ref?: string;
 };
 
 const SCOPE_CHECKS = [
@@ -877,6 +968,7 @@ function formatBytes(n: number): string {
   if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
+
 
 /* ── Tender-reference autofill ─────────────────────────────────────────────
    The reference is ready before the officer types a character. It drafts
@@ -984,8 +1076,8 @@ function DocStatusChip({ status }: { status: StagedDoc["status"] }) {
   );
 }
 
-/* Cloud-mirror chip for real uploads — Firebase Storage when the project
-   allows it, the local vault when it doesn't. Never an error, always honest. */
+/* Storage chip for real uploads — Cloudflare R2 through the edge gate when
+   it accepts the file, the local vault when it doesn't. Never an error. */
 function StorageChip({ storage }: { storage: NonNullable<StagedDoc["storage"]> }) {
   if (storage === "SYNCING")
     return (
@@ -1001,7 +1093,7 @@ function StorageChip({ storage }: { storage: NonNullable<StagedDoc["storage"]> }
     return (
       <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-ink-200 bg-white px-2 py-0.5 font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-600">
         <CloudUpload className="h-2.5 w-2.5" aria-hidden="true" />
-        CLOUD
+        R2
       </span>
     );
   return (
@@ -1017,18 +1109,24 @@ function NewRunModal({
   onClose,
   onLaunch,
   pastRefs = [],
+  canDeleteDocs = false,
 }: {
   open: boolean;
   onClose: () => void;
   onLaunch: (ref: string, title: string, format: string, docs: number, checks: number) => void;
   /* The register's references — the sequence the draft continues. */
   pastRefs?: string[];
+  /* Operator capability: removing an R2 object, enforced again by the route. */
+  canDeleteDocs?: boolean;
 }) {
   const [step, setStep] = useState(0);
   const [ref, setRef] = useState("");
   const [title, setTitle] = useState("");
   const [format, setFormat] = useState("OCDS");
   const [docs, setDocs] = useState<StagedDoc[]>([]);
+  /* Bumped after each successful R2 upload so the stored-document browser
+     re-reads the tender's prefix instead of waiting for a page reload. */
+  const [storedVersion, setStoredVersion] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [checks, setChecks] = useState<Record<string, boolean>>({ specs: true, quantities: true, prices: true });
   const [detailsError, setDetailsError] = useState("");
@@ -1091,7 +1189,16 @@ function NewRunModal({
     if (!open || samples.length > 0) return;
     fetch("/api/sample-tenders?XTransformPort=3031")
       .then((x) => x.json())
-      .then((d) => setSamples(d.samples ?? []))
+      .then((d) =>
+        setSamples(
+          ((d.samples ?? []) as SampleTenderRow[]).map((s) => ({
+            ...s,
+            /* A pack without a readable file list still renders; the reader
+               says no document is selected instead of crashing on `.map`. */
+            files: Array.isArray(s.files) ? s.files : [],
+          }))
+        )
+      )
       .catch(() => setSamples([]));
   }, [open, samples.length]);
 
@@ -1195,17 +1302,50 @@ function NewRunModal({
     );
     /* The staged pack speaks for the tender — adopt its reference and title. */
     adoptFromDocs(fresh.map((d) => d.name));
-    /* Every real file mirrors to Firebase Storage (project "public-tender")
-       in parallel with the ingestion pipeline. If the bucket is unreachable
-       the document simply stays in the local vault — never an error. */
+    /* Every real file is stored in Cloudflare R2 through the edge gate in
+       parallel with the ingestion pipeline. The edge secret stays on the
+       server; if the gate is unreachable the document stays in the local
+       vault — never an error. Use the reference the pack itself adopted,
+       not a stale state read. */
+    const uploadRef = extractRef(fresh.map((d) => d.name)) ?? (ref.trim() || "UNREFERENCED");
     fresh.forEach((d) => {
       const file = filesRef.current.get(d.id);
       if (!file) return;
       setDocs((cur) => cur.map((x) => (x.id === d.id ? { ...x, storage: "SYNCING" } : x)));
-      void uploadTenderDocument(ref.trim() || "UNREFERENCED", file).then((result) => {
+      void uploadTenderDocument(uploadRef, file).then((result) => {
+        const pages = result?.pages
+          ? ` · ${result.pages} PAGE${result.pages === 1 ? "" : "S"}`
+          : result?.sheets?.length
+            ? ` · ${result.sheets.length} SHEET${result.sheets.length === 1 ? "" : "S"}`
+            : "";
+        const auditTag = result
+          ? result.audited
+            ? result.audit?.seq
+              ? ` · AUDIT #${result.audit.seq}`
+              : " · AUDITED"
+            : result.auditReason
+              ? ` · AUDIT NOT RECORDED — ${result.auditReason}`
+              : " · AUDIT NOT RECORDED"
+          : "";
+        const note = result
+          ? (result.staged
+              ? `STAGED AS ${(result.kind ?? "doc").toUpperCase()}${pages}${result.note ? ` · ${result.note}` : ""}`
+              : result.reason ?? result.note ?? "STORED IN R2 — NOT STAGED FOR REVIEW") + auditTag
+          : "KEPT IN THE LOCAL VAULT — R2 GATE UNAVAILABLE";
         setDocs((cur) =>
-          cur.map((x) => (x.id === d.id ? { ...x, storage: result ? "CLOUD" : "LOCAL" } : x))
+          cur.map((x) =>
+            x.id === d.id
+              ? {
+                  ...x,
+                  storage: result ? "CLOUD" : "LOCAL",
+                  note,
+                  key: result?.key,
+                  ref: result?.key ? uploadRef : undefined,
+                }
+              : x
+          )
         );
+        if (result?.key) setStoredVersion((v) => v + 1);
       });
     });
   };
@@ -1539,7 +1679,7 @@ function NewRunModal({
                           <p className="font-code text-[8.5px] tracking-[0.14em] text-ink-400" aria-live="polite">
                             {docs.length === 0
                               ? "NO DOCUMENTS STAGED"
-                              : `INDEXED ${indexed} OF ${docs.length}${cloudSynced > 0 ? ` · ${cloudSynced} CLOUD` : ""}`}
+                              : `INDEXED ${indexed} OF ${docs.length}${cloudSynced > 0 ? ` · ${cloudSynced} R2` : ""}`}
                           </p>
                         </div>
                         <div
@@ -1580,7 +1720,7 @@ function NewRunModal({
                             NOTICE · BIDS · OCDS JSON · PRICE SCHEDULES · EMAILS — UP TO 12 FILES
                           </p>
                           <p className="mt-1.5 font-code text-[7.5px] tracking-[0.12em] text-ink-400">
-                            REAL FILES MIRROR TO FIREBASE STORAGE · PROJECT “PUBLIC-TENDER”
+                            REAL FILES STORE IN CLOUDFLARE R2 · EDGE-GATED · 10 MB EACH
                           </p>
                           <button
                             type="button"
@@ -1613,10 +1753,37 @@ function NewRunModal({
                             {docs.map((d) => (
                               <li key={d.id} className="flex items-center gap-2.5 rounded-xl border border-ink-100 bg-white px-3 py-2.5">
                                 <FileText className="h-3.5 w-3.5 shrink-0 text-ink-400" aria-hidden="true" />
-                                <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-ink-800">{d.name}</span>
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate text-[12px] font-medium text-ink-800">{d.name}</span>
+                                  {d.note && (
+                                    <span className="mt-0.5 block truncate font-code text-[7.5px] tracking-[0.08em] text-ink-400">{d.note}</span>
+                                  )}
+                                </span>
                                 <span className="shrink-0 font-code text-[8px] tracking-[0.08em] text-ink-400">{d.size}</span>
                                 <DocStatusChip status={d.status} />
                                 {d.storage && <StorageChip storage={d.storage} />}
+                                {d.key && d.ref && (
+                                  <button
+                                    type="button"
+                                    aria-label={`Download ${d.name}`}
+                                    onClick={() => {
+                                      const key = d.key;
+                                      const docRef = d.ref;
+                                      if (!key || !docRef) return;
+                                      void signedTenderDownloadUrl(docRef, key).then((url) => {
+                                        if (!url) return;
+                                        const a = document.createElement("a");
+                                        a.href = url;
+                                        a.download = d.name;
+                                        a.rel = "noopener";
+                                        a.click();
+                                      });
+                                    }}
+                                    className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-ink-400 transition-colors hover:bg-brand-50 hover:text-brand-700"
+                                  >
+                                    <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                                  </button>
+                                )}
                                 <button
                                   type="button"
                                   aria-label={`Remove ${d.name}`}
@@ -1633,6 +1800,13 @@ function NewRunModal({
                             ))}
                           </ul>
                         </div>
+                      )}
+                      {ref.trim() && (
+                        <StoredDocsBrowser
+                          key={`${ref}:${storedVersion}`}
+                          tenderRef={ref}
+                          canDelete={canDeleteDocs}
+                        />
                       )}
                     </>
                   )}
@@ -1693,7 +1867,7 @@ function NewRunModal({
                       </div>
                       <p className="rounded-xl bg-paper px-4 py-3 text-center font-code text-[9px] font-bold tracking-[0.16em] text-ink-700">
                         {docs.length} DOCUMENT{docs.length === 1 ? "" : "S"}
-                        {cloudSynced > 0 ? ` · ${cloudSynced} CLOUD` : ""} · {checksOn} CHECK{checksOn === 1 ? "" : "S"} · EST. {estMinutes} MIN
+                        {cloudSynced > 0 ? ` · ${cloudSynced} R2` : ""} · {checksOn} CHECK{checksOn === 1 ? "" : "S"} · EST. {estMinutes} MIN
                       </p>
                       {checksOn === 0 && (
                         <p role="status" className="text-center text-[11.5px] text-brand-700">Select at least one review check to launch this run.</p>
@@ -1807,7 +1981,7 @@ function SidebarContent({
         aria-label="Workspace sections"
         className="min-h-0 flex-1 overflow-y-auto px-3 pb-1 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1"
       >
-        {NAV_GROUPS.map((group, gi) => (
+        {navGroupsFor(user).map((group, gi) => (
           <div key={group.group} className={cn(gi > 0 && "mt-4", gi === 0 && "pt-1")}>
             <p className="flex items-center gap-2.5 px-3 pb-2">
               <span className="font-code text-[8px] font-semibold uppercase tracking-[0.24em] text-ink-600">
@@ -1888,23 +2062,6 @@ function SidebarContent({
         ))}
       </nav>
 
-      <div className="px-3 pb-3">
-        <div className="mb-3 h-px bg-white/[0.07]" aria-hidden="true" />
-        <button
-          type="button"
-          data-tour="nav-new-run"
-          onClick={onNewRun}
-          className="focus-brand group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-brand-600 px-3 py-3 text-[13px] font-semibold text-white shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_14px_30px_-14px_rgba(217,38,22,0.9)] transition-colors hover:bg-brand-700"
-        >
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full"
-          />
-          <Plus className="relative h-4 w-4" aria-hidden="true" />
-          <span className="relative">New evaluation</span>
-        </button>
-      </div>
-
       <div className="border-t border-white/[0.07] px-3 pb-5 pt-4">
         {/* The rail reports the sidecar it is talking to, not just a brand */}
         <div className="mb-3 flex items-center gap-2.5 px-1" aria-label={`Agent ${agentModeOf(agent)}`}>
@@ -1945,7 +2102,7 @@ function SidebarContent({
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[13px] font-semibold text-white">{user?.name ?? "Guest officer"}</span>
             <span className="block truncate font-code text-[8px] tracking-[0.14em] text-ink-500">
-              {(user?.email ?? "").toUpperCase()}
+              {user?.role ? `${ROLE_LABELS[user.role].toUpperCase()} · ${user.email.toUpperCase()}` : "NOT SIGNED IN"}
             </span>
           </span>
           <button
@@ -1991,6 +2148,7 @@ function RunRegister({
   onFilter,
   onToast,
   notes,
+  canDeleteDocuments = false,
 }: {
   runs: McRun[];
   query: string;
@@ -1999,6 +2157,7 @@ function RunRegister({
   onFilter: (f: RunFilter) => void;
   onToast: (m: string) => void;
   notes: Record<string, string[]>;
+  canDeleteDocuments?: boolean;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -2017,6 +2176,10 @@ function RunRegister({
     return matches && inFilter;
   });
 
+  /* Bids are a property of the register, not a column: the count rides with each
+     evaluation and the register header carries the live total. */
+  const totalBids = filtered.reduce((n, r) => n + (r.bids ?? 0), 0);
+
   return (
     <section id="mc-runs" aria-labelledby="mc-runs-h" className="scroll-mt-24">
       <motion.div
@@ -2030,6 +2193,9 @@ function RunRegister({
           <div>
             <h2 id="mc-runs-h" className="type-title text-ink-950">
               Recent evaluations
+              <span className="ml-2 inline-flex translate-y-[-1px] items-center rounded-full border border-ink-200/70 bg-paper-2/80 px-2 py-0.5 align-middle font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-500 dark:border-white/10 dark:bg-white/[0.05] dark:text-ink-300">
+                {totalBids} BIDS
+              </span>
             </h2>
             <p className="mt-1 type-micro text-ink-400">
               Last 7 days · {filtered.length} of {runs.length} evaluations
@@ -2074,16 +2240,16 @@ function RunRegister({
             <caption className="sr-only">Recent evaluations with their status, findings and citations</caption>
             <thead>
               <tr className="border-b border-ink-200/70 bg-paper-2/70 dark:border-white/10 dark:bg-white/[0.02]">
-                {["Evaluation", "Bids", "Issues", "Sourced", "Status", "Time", ""].map((h, i) => (
+                {["Evaluation", "Issues", "Sourced", "Status", "Time", ""].map((h, i) => (
                   <th
                     key={i}
                     scope="col"
                     className={cn(
                       "px-4 py-3 type-micro font-semibold text-ink-400",
                       i === 0 && "pl-5",
-                      i === 6 && "w-10",
-                      (i === 1 || i === 2 || i === 3) && "text-right",
-                      i === 5 && "text-right"
+                      i === 5 && "w-10",
+                      (i === 1 || i === 2) && "text-right",
+                      i === 4 && "text-right"
                     )}
                   >
                     {h}
@@ -2113,7 +2279,7 @@ function RunRegister({
                       aria-expanded={isOpen}
                       aria-label={`${run.id} — ${run.title}. Toggle run details.`}
                     >
-                      <td className="py-3.5 pl-5 pr-4">
+                      <td className="min-w-[260px] py-3.5 pl-5 pr-4 align-top">
                         <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-950">
                           {run.id}
                           {run.attempt && run.attempt > 1 ? (
@@ -2122,10 +2288,11 @@ function RunRegister({
                             </span>
                           ) : null}
                         </p>
-                        <p className="mt-0.5 max-w-[240px] truncate text-[12.5px] font-medium text-ink-600">{run.title}</p>
-                      </td>
-                      <td className="px-4 py-3.5 text-right text-[13px] font-semibold text-ink-800 tabular">
-                        {run.bids ?? "—"}
+                        <p className="mt-0.5 max-w-[440px] whitespace-normal break-words text-[12.5px] font-medium leading-snug text-ink-600">{run.title}</p>
+                        <span className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-ink-200/70 bg-paper-2/70 px-2 py-0.5 font-code text-[7px] font-bold tracking-[0.12em] text-ink-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-300">
+                          <span className="tabular text-[8px] text-ink-800 dark:text-white">{run.bids ?? 0}</span>
+                          BID{(run.bids ?? 0) === 1 ? "" : "S"}
+                        </span>
                       </td>
                       <td className="px-4 py-3.5 text-right">
                         {run.findings > 0 ? (
@@ -2195,6 +2362,15 @@ function RunRegister({
                               <p className="mt-3 font-code text-[8px] tracking-[0.18em] text-ink-400">
                                 PACK AT LAUNCH · {run.docs} DOCUMENT{run.docs === 1 ? "" : "S"} INDEXED · INGESTED BY QUORUM-AGENT
                               </p>
+                            )}
+                            {run.status === "complete" && (
+                              <div className="mt-3.5">
+                                <StoredDocsBrowser
+                                  tenderRef={run.id}
+                                  canDelete={canDeleteDocuments}
+                                  title="STORED TENDER DOCUMENTS"
+                                />
+                              </div>
                             )}
                             <div className="mt-3.5 flex flex-wrap items-center gap-2">
                               <button
@@ -2283,22 +2459,174 @@ function RunRegister({
   );
 }
 
+/* The roll beside the gate queue. A signature is a committee act, so the
+   officer sees whether the committee is quorate before acting — and the
+   sidecar refuses the decision even if this screen is bypassed. */
+function QuorumRoll({ quorum, onOpenRoll }: { quorum: CommitteeData | null; onOpenRoll?: () => void }) {
+  if (!quorum) return null;
+
+  const you = quorum.you;
+  const youKey = you ? rosterNameKey(you.name) : null;
+  const present = quorum.members.filter((m) => m.status === "PRESENT");
+  const excused = quorum.members.filter(
+    (m) => m.status === "EXCUSED" && !(youKey && rosterNameKey(m.name) === youKey)
+  );
+  const youAlreadyPresent =
+    !!you && present.some((m) => rosterNameKey(m.name) === rosterNameKey(you.name));
+  const presentCount = quorumPresentCount(quorum);
+  const met = presentCount >= quorum.required;
+  const short = Math.max(0, quorum.required - presentCount);
+  const seats = Math.max(1, quorum.seats);
+  const roll = [
+    ...present.map((m) => ({ name: m.name, state: "PRESENT" as const })),
+    ...(you && !youAlreadyPresent
+      ? [{ name: `${you.name} — you`, state: "GAVEL" as const }]
+      : []),
+    ...excused.map((m) => ({ name: m.name, state: "EXCUSED" as const })),
+  ];
+
+  return (
+    <div
+      aria-label="Committee quorum roll call"
+      className={cn(
+        "border-b px-5 py-4",
+        met
+          ? "border-ink-200/70 bg-paper/60 dark:border-white/10"
+          : "border-brand-500/25 bg-brand-500/[0.035]"
+      )}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="flex items-center gap-1.5 font-code text-[8.5px] font-bold tracking-[0.18em] text-ink-500">
+          <Users className="h-3 w-3" aria-hidden="true" />
+          QUORUM ROLL CALL
+        </p>
+        <span
+          className={cn(
+            "tabular rounded-full border px-2.5 py-1 font-code text-[8px] font-bold tracking-[0.14em]",
+            met
+              ? "border-ink-950 bg-ink-950 text-white dark:border-white/20"
+              : "border-brand-500/40 bg-white text-brand-700 dark:bg-brand-950/30 dark:text-brand-300"
+          )}
+        >
+          {presentCount} OF {quorum.required} REQUIRED
+        </span>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-1.5" aria-hidden="true">
+        {Array.from({ length: seats }).map((_, i) => (
+          <span
+            key={i}
+            className={cn(
+              "h-2.5 w-5 rounded-[2px] border",
+              i < presentCount
+                ? "border-ink-950 bg-ink-950"
+                : i < quorum.required
+                  ? "border-brand-500/50 bg-brand-500/10"
+                  : "border-ink-200 bg-transparent dark:border-white/15"
+            )}
+          />
+        ))}
+        <span
+          className={cn(
+            "ml-2 font-code text-[8px] font-bold tracking-[0.14em]",
+            met ? "text-ink-950 dark:text-white" : "text-brand-700 dark:text-brand-300"
+          )}
+        >
+          {met ? "QUORUM PRESENT" : `${short} MORE NEEDED`}
+        </span>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="max-w-xl text-[12px] leading-relaxed text-ink-600 dark:text-ink-300">
+          {met
+            ? "The roll carries — the committee can decide."
+            : "The roll is short — every gate decision is refused until enough members are marked PRESENT."}
+        </p>
+        {onOpenRoll && (
+          <button
+            type="button"
+            onClick={onOpenRoll}
+            className="inline-flex h-8 items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 font-code text-[8px] font-bold tracking-[0.14em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 dark:border-white/15 dark:bg-transparent dark:text-ink-300 dark:hover:border-white/40 dark:hover:text-white"
+          >
+            OPEN THE ROLL
+            <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
+          </button>
+        )}
+      </div>
+
+      <details className="mt-2.5">
+        <summary className="cursor-pointer font-code text-[8px] font-bold tracking-[0.16em] text-ink-400 transition-colors hover:text-ink-700 dark:hover:text-ink-200">
+          READ THE ROLL · {presentCount} PRESENT
+        </summary>
+        <ul className="mt-2 grid gap-1 sm:grid-cols-2">
+          {roll.map((m, i) => (
+            <li
+              key={`${m.name}-${i}`}
+              className="flex items-center justify-between gap-2 rounded border border-ink-100 bg-white px-2.5 py-1.5 dark:border-white/10 dark:bg-white/[0.03]"
+            >
+              <span className="min-w-0 truncate text-[11.5px] font-medium text-ink-800 dark:text-ink-100">{m.name}</span>
+              <span
+                className={cn(
+                  "shrink-0 font-code text-[7px] font-bold tracking-[0.14em]",
+                  m.state === "EXCUSED"
+                    ? "text-ink-400"
+                    : m.state === "GAVEL"
+                      ? "text-brand-600 dark:text-brand-300"
+                      : "text-ink-600 dark:text-ink-300"
+                )}
+              >
+                {m.state}
+              </span>
+            </li>
+          ))}
+          {roll.length === 0 && (
+            <li className="font-code text-[8px] tracking-[0.14em] text-ink-400">NO MEMBERS ON THE ROLL</li>
+          )}
+        </ul>
+      </details>
+    </div>
+  );
+}
+
+function rosterNameKey(value: string): string {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+/* Mirror the sidecar's count: PRESENT rows plus the signed-in gavel, once. */
+function quorumPresentCount(quorum: CommitteeData): number {
+  const present = quorum.members.filter((m) => m.status === "PRESENT").length;
+  const you = quorum.you;
+  const youAlreadyPresent =
+    !!you && quorum.members.some((m) => m.status === "PRESENT" && rosterNameKey(m.name) === rosterNameKey(you.name));
+  return present + (you && !youAlreadyPresent ? 1 : 0);
+}
+
 /* ── Human gate queue ────────────────────────────────────────────────────── */
 
 export function GateQueue({
   queue,
   ledger,
   firstName,
+  quorum,
   onSign,
   onReturn,
+  onOpenRoll,
+  canSign = true,
 }: {
   queue: GateItem[];
   ledger: LedgerRow[];
   firstName: string;
+  quorum: CommitteeData | null;
   onSign: (g: GateItem) => void;
   onReturn: (g: GateItem) => void;
+  onOpenRoll?: () => void;
+  /* Read-only roles see the queue but never the signature controls. */
+  canSign?: boolean;
 }) {
   const [decided, setDecided] = useState<Record<string, "AWARDED" | "RETURNED">>({});
+  const presentCount = quorum ? quorumPresentCount(quorum) : 0;
+  const blocked = !!quorum && presentCount < quorum.required;
+  const short = quorum ? Math.max(0, quorum.required - presentCount) : 0;
 
   const act = (g: GateItem, kind: "AWARDED" | "RETURNED") => {
     setDecided((prev) => ({ ...prev, [g.id]: kind }));
@@ -2344,6 +2672,8 @@ export function GateQueue({
           </span>
         </header>
 
+        <QuorumRoll quorum={quorum} onOpenRoll={onOpenRoll} />
+
         <div className="grid flex-1 grid-cols-1 items-start gap-3 px-4 py-4" aria-live="polite">
           <AnimatePresence initial={false}>
             {queue.map((g) => (
@@ -2385,15 +2715,23 @@ export function GateQueue({
                     </dd>
                   </div>
                 </dl>
+                {blocked && (
+                  <p className="mt-3.5 rounded-md border border-brand-200 bg-brand-50 px-2.5 py-1.5 font-code text-[8px] font-bold leading-relaxed tracking-[0.12em] text-brand-800 dark:border-brand-900 dark:bg-brand-950/40 dark:text-brand-200">
+                    QUORUM SHORT — {short} MORE PRESENT NEEDED BEFORE THIS GATE CAN BE DECIDED
+                  </p>
+                )}
+                {canSign ? (
                 <div data-tour="gate-actions" className="mt-4 flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => act(g, "AWARDED")}
-                    disabled={g.valueMissing}
+                    disabled={g.valueMissing || blocked}
                     title={
-                      g.valueMissing
-                        ? "A contract always has a contract value — record the award value before this is signed."
-                        : undefined
+                      blocked
+                        ? `Quorum not present — ${presentCount} of ${quorum?.required ?? 0}. Mark members PRESENT in Committee before signing.`
+                        : g.valueMissing
+                          ? "A contract always has a contract value — record the award value before this is signed."
+                          : undefined
                     }
                     className="focus-brand inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full bg-brand-600 text-[12.5px] font-bold tracking-[0.02em] text-white shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_12px_26px_-14px_rgba(217,38,22,0.9)] transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
@@ -2403,11 +2741,22 @@ export function GateQueue({
                   <button
                     type="button"
                     onClick={() => act(g, "RETURNED")}
-                    className="focus-brand inline-flex h-10 flex-1 items-center justify-center rounded-full border border-ink-200/80 text-[12.5px] font-semibold text-ink-700 transition-colors hover:border-ink-400 hover:bg-white hover:text-ink-950 dark:border-white/12 dark:hover:bg-white/[0.04]"
+                    disabled={blocked}
+                    title={
+                      blocked
+                        ? `Quorum not present — ${presentCount} of ${quorum?.required ?? 0}. Mark members PRESENT in Committee before deciding.`
+                        : undefined
+                    }
+                    className="focus-brand inline-flex h-10 flex-1 items-center justify-center rounded-full border border-ink-200/80 text-[12.5px] font-semibold text-ink-700 transition-colors hover:border-ink-400 hover:bg-white hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/12 dark:hover:bg-white/[0.04]"
                   >
                     Return for review
                   </button>
                 </div>
+                ) : (
+                  <p className="mt-4 rounded-md border border-ink-200 bg-paper px-2.5 py-2 font-code text-[8px] font-bold leading-relaxed tracking-[0.12em] text-ink-500">
+                    READ-ONLY — YOUR WORKSPACE ROLE CANNOT SIGN THIS GATE
+                  </p>
+                )}
                 <p className="mt-3 type-micro text-ink-400">
                   File submitted {g.ago} · every flag cited
                 </p>
@@ -3121,7 +3470,8 @@ type FindingClass =
   | "REGISTRY"
   | "ARITHMETIC"
   | "DISCLOSURE"
-  | "LOGISTICS";
+  | "LOGISTICS"
+  | "SECURITY";
 type FindingStatus = "OPEN" | "CLEARED" | "RE-CHECK";
 type SeedFinding = { run: string; note: string; cls: FindingClass; src: string };
 type FindingRow = SeedFinding & { id: string; tender: string; status: FindingStatus };
@@ -4704,6 +5054,10 @@ function committeeTabCount(id: CommitteeTab, data: CommitteeData | null, live: b
 }
 
 function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: string) => void }) {
+  /* The register is an admin surface; running a sitting is not. A committee
+     member may summon, admit and write minutes (manage_meetings) without
+     being able to change who holds a seat. */
+  const canManageRegister = canDo(user?.role, "manage_committee");
   const [data, setData] = useState<CommitteeData | null>(null);
   const [loadErr, setLoadErr] = useState(false);
   const [summoning, setSummoning] = useState(false);
@@ -4996,14 +5350,21 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
         headers: { "content-type": "application/json" },
         body: JSON.stringify(draft),
       });
-      const d = (await res.json()) as (CommitteeData & { scheduled?: ScheduledMeeting }) | { error: string };
+      const d = (await res.json()) as
+        | (CommitteeData & { scheduled?: ScheduledMeeting; scheduledCount?: number })
+        | { error: string };
       if (!res.ok || "error" in d) throw new Error("error" in d ? d.error : "failed");
       setData(d);
       setMeetOpen(false);
       const when = new Date(draft.startsAt)
         .toLocaleString("en-GB", { weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
         .toUpperCase();
-      onToast(`MEETING SCHEDULED — ${when} · THE ROOM IS MINTED`);
+      const count = d.scheduledCount ?? 1;
+      onToast(
+        count > 1
+          ? `${count} WEEKLY MEETINGS SCHEDULED — FIRST ${when} · EVERY ROOM IS MINTED`
+          : `MEETING SCHEDULED — ${when} · THE ROOM IS MINTED`
+      );
     } catch (err) {
       setMeetErr(
         err instanceof Error && err.message !== "failed"
@@ -5036,8 +5397,15 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
      stored members plus the signed-in officer; nothing is hardcoded. */
   const roll: { initials: string; name: string; role: string; you?: boolean; excused?: boolean; id?: string; office?: string }[] = [];
   if (data) {
-    const presentMembers = data.members.filter((m) => m.status === "PRESENT");
-    const excusedMembers = data.members.filter((m) => m.status === "EXCUSED");
+    /* The gavel is rendered once, from the session — never also as a roster
+       row with the same name. */
+    const youKey = data.you ? rosterNameKey(data.you.name) : null;
+    const presentMembers = data.members.filter(
+      (m) => m.status === "PRESENT" && !(youKey && rosterNameKey(m.name) === youKey)
+    );
+    const excusedMembers = data.members.filter(
+      (m) => m.status === "EXCUSED" && !(youKey && rosterNameKey(m.name) === youKey)
+    );
     const chair = presentMembers.find((m) => m.isChair);
     const rest = presentMembers.filter((m) => !m.isChair);
     if (chair) roll.push({ initials: initialsOf(chair.name), name: chair.name, role: chair.role, id: chair.id, ...(chair.office ? { office: chair.office } : {}) });
@@ -5077,17 +5445,19 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
             <CalendarPlus className="h-3.5 w-3.5" aria-hidden="true" />
             SCHEDULE MEETING
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setMemberErr(null);
-              setMemberOpen(true);
-            }}
-            className="inline-flex h-10 items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 font-code text-[9px] font-bold tracking-[0.18em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950"
-          >
-            <UserPlus className="h-3.5 w-3.5" aria-hidden="true" />
-            REGISTER A MEMBER
-          </button>
+          {canManageRegister && (
+            <button
+              type="button"
+              onClick={() => {
+                setMemberErr(null);
+                setMemberOpen(true);
+              }}
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 font-code text-[9px] font-bold tracking-[0.18em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950"
+            >
+              <UserPlus className="h-3.5 w-3.5" aria-hidden="true" />
+              REGISTER A MEMBER
+            </button>
+          )}
         </div>
       }
     >
@@ -5224,7 +5594,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                       "PRESENT"
                     )}
                   </span>
-                  {!m.you && m.id && (
+                  {canManageRegister && !m.you && m.id && (
                     <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-2 border-t border-ink-100 pt-2.5">
                       <select
                         value={m.office ?? ""}
@@ -5888,15 +6258,34 @@ type TeamInvite = {
 };
 
 type TeamData = {
-  members: { id: string; name: string; email: string; organization: string | null; joined: string; currentAccount: boolean }[];
+  members: {
+    id: string;
+    name: string;
+    email: string;
+    organization: string | null;
+    role: WorkspaceRole;
+    status: "ACTIVE" | "SUSPENDED";
+    joined: string;
+    currentAccount: boolean;
+  }[];
   invites: TeamInvite[];
+  canManage: boolean;
+  actorRole: WorkspaceRole;
 };
 
-function TeamMembersSection({ user, onToast }: { user: AuthUser | null; onToast: (m: string) => void }) {
+function TeamMembersSection({
+  user,
+  onToast,
+  onOpenOversight,
+}: {
+  user: AuthUser | null;
+  onToast: (m: string) => void;
+  onOpenOversight: () => void;
+}) {
   const [data, setData] = useState<TeamData | null>(null);
   const [loadErr, setLoadErr] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<"OFFICER" | "COMMITTEE">("OFFICER");
+  const [inviteRole, setInviteRole] = useState<AssignableRole>("OFFICER");
   const [busy, setBusy] = useState(false);
   const [freshCode, setFreshCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -5979,13 +6368,26 @@ function TeamMembersSection({ user, onToast }: { user: AuthUser | null; onToast:
           <p className={labelClass}>WORKSPACE ACCESS</p>
           <h3 id="settings-team-heading" className={titleClass}>Team Members</h3>
           <p className="mt-1 text-[12.5px] text-ink-500">
-            People with access to this workspace. Committee decision-makers are managed separately in Committee.
+            Workspace authority, separate from the committee roster. Role changes and organization suspension live in
+            the oversight console.
           </p>
         </div>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-paper px-3 py-1.5 font-code text-[8px] font-bold tracking-[0.14em] text-ink-500">
-          <Users className="h-3 w-3" aria-hidden="true" />
-          {data ? `${data.members.length} MEMBER${data.members.length === 1 ? "" : "S"}` : "INVITATIONS"}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-paper px-3 py-1.5 font-code text-[8px] font-bold tracking-[0.14em] text-ink-500">
+            <Users className="h-3 w-3" aria-hidden="true" />
+            {data ? `${data.members.length} MEMBER${data.members.length === 1 ? "" : "S"}` : "INVITATIONS"}
+          </span>
+          {canDo(user?.role, "view_oversight") && (
+            <button
+              type="button"
+              onClick={onOpenOversight}
+              className="inline-flex items-center gap-1.5 rounded-full border border-ink-950 bg-ink-950 px-3 py-1.5 font-code text-[8px] font-bold tracking-[0.14em] text-white transition-colors hover:bg-ink-800"
+            >
+              <Scale className="h-3 w-3" aria-hidden="true" />
+              OPEN OVERSIGHT
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Members */}
@@ -6007,21 +6409,25 @@ function TeamMembersSection({ user, onToast }: { user: AuthUser | null; onToast:
               <p className="truncate text-[13px] font-semibold text-ink-950">{m.name}</p>
               <p className="truncate font-code text-[8px] tracking-[0.12em] text-ink-500">{m.email.toUpperCase()}</p>
             </div>
-            {m.currentAccount ? (
-              <span className="rounded-full border border-ink-200 bg-white px-2.5 py-1 font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-500">
-                CURRENT ACCOUNT
+            <span className="rounded-full border border-ink-200 bg-white px-2.5 py-1 font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-600">
+              {ROLE_LABELS[m.role].toUpperCase()}
+            </span>
+            {m.status === "SUSPENDED" && (
+              <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 font-code text-[7.5px] font-bold tracking-[0.14em] text-red-700">
+                SUSPENDED
               </span>
-            ) : (
+            )}
+            {m.currentAccount && (
               <span className="rounded-full border border-ink-100 bg-paper px-2.5 py-1 font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-400">
-                MEMBER
+                YOU
               </span>
             )}
           </li>
         ))}
       </ul>
 
-      {/* Invite composer */}
-      {user && (
+      {/* Invite composer — only the roles that may write people access */}
+      {user && data?.canManage && (
         <div className="mt-5 rounded-xl border border-ink-100 bg-paper/60 p-4">
           <p className="font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400">INVITE A TEAMMATE</p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -6035,12 +6441,17 @@ function TeamMembersSection({ user, onToast }: { user: AuthUser | null; onToast:
             />
             <select
               value={inviteRole}
-              onChange={(e) => setInviteRole(e.target.value as "OFFICER" | "COMMITTEE")}
+              onChange={(e) => setInviteRole(e.target.value as AssignableRole)}
               aria-label="Workspace role"
               className="h-10 rounded-lg border border-ink-200 bg-white px-3 font-code text-[9px] font-bold tracking-[0.14em] text-ink-700 outline-none"
             >
-              <option value="OFFICER">OFFICER</option>
-              <option value="COMMITTEE">COMMITTEE</option>
+              {(data.actorRole === "OWNER" ? ASSIGNABLE_ROLES : ASSIGNABLE_ROLES.filter((role) => role !== "ADMIN")).map(
+                (role) => (
+                  <option key={role} value={role}>
+                    {ROLE_LABELS[role].toUpperCase()}
+                  </option>
+                ),
+              )}
             </select>
             <button
               type="button"
@@ -6152,11 +6563,13 @@ function SettingsView({
   user,
   agent,
   onSignOut,
+  onOpenOversight,
   onToast,
 }: {
   user: AuthUser | null;
   agent: AgentStatus;
   onSignOut: () => void;
+  onOpenOversight: () => void;
   onToast: (m: string) => void;
 }) {
   const mode = agentModeOf(agent);
@@ -6219,7 +6632,9 @@ function SettingsView({
           </button>
         </div>
 
-        <TeamMembersSection user={user} onToast={onToast} />
+        {canDo(user?.role, "view_oversight") && (
+          <TeamMembersSection user={user} onToast={onToast} onOpenOversight={onOpenOversight} />
+        )}
 
         <div data-tour="settings-agent" className={`${cardClass} lg:col-span-2`}>
           <p className={labelClass}>AGENT CONNECTION</p>
@@ -6299,12 +6714,6 @@ const WALKTHROUGH: WalkthroughChapter[] = [
     ],
     tip: "Use the step rail to go back and correct details at any point before launch.",
     tour: [
-      {
-        target: "nav-new-run",
-        placement: "right",
-        title: "Every evaluation starts here",
-        body: "New evaluation opens the wizard over whatever screen you are on — the sidebar button, or the header button on the overview.",
-      },
       {
         target: "wiz-rail",
         action: "open-wizard",
@@ -6409,7 +6818,7 @@ const WALKTHROUGH: WalkthroughChapter[] = [
     title: "Review findings",
     summary: "Every issue raised across all evaluations, grouped by class and tied to its source.",
     steps: [
-      "Classes: DOCUMENT, COMPLIANCE, REGISTRY, PRICING, ARITHMETIC, DISCLOSURE and LOGISTICS.",
+      "Classes: DOCUMENT, COMPLIANCE, REGISTRY, PRICING, ARITHMETIC, DISCLOSURE, LOGISTICS and SECURITY.",
       "Each finding carries a page, clause or registry citation.",
       "A finding with no citation is marked unsourced and should not be relied on.",
       "Open a finding's run to see it in context.",
@@ -8393,6 +8802,7 @@ function RunsView({
   onToast,
   onNewRun,
   notes,
+  canDeleteDocuments = false,
 }: {
   runs: McRun[];
   query: string;
@@ -8402,6 +8812,7 @@ function RunsView({
   onToast: (m: string) => void;
   onNewRun: () => void;
   notes: Record<string, string[]>;
+  canDeleteDocuments?: boolean;
 }) {
   const queued = runs.filter((r) => r.status === "queued").length;
   const reading = runs.filter((r) => r.status === "running").length;
@@ -8449,7 +8860,16 @@ function RunsView({
           <StandingRuleCard />
         </div>
         <div className="min-w-0">
-          <RunRegister runs={runs} query={query} onQuery={onQuery} filter={filter} onFilter={onFilter} onToast={onToast} notes={notes} />
+          <RunRegister
+            runs={runs}
+            query={query}
+            onQuery={onQuery}
+            filter={filter}
+            onFilter={onFilter}
+            onToast={onToast}
+            notes={notes}
+            canDeleteDocuments={canDeleteDocuments}
+          />
         </div>
       </div>
     </ViewShell>
@@ -8460,6 +8880,7 @@ function GatesView({
   queue,
   ledger,
   firstName,
+  quorum,
   onSign,
   onReturn,
   onGoCommittee,
@@ -8468,6 +8889,7 @@ function GatesView({
   queue: GateItem[];
   ledger: LedgerRow[];
   firstName: string;
+  quorum: CommitteeData | null;
   onSign: (g: GateItem) => void;
   onReturn: (g: GateItem) => void;
   onGoCommittee: () => void;
@@ -8516,7 +8938,15 @@ function GatesView({
     >
       <div className="grid content-start gap-4 sm:gap-6">
         <div className="min-w-0">
-          <GateQueue queue={queue} ledger={ledger} firstName={firstName} onSign={onSign} onReturn={onReturn} />
+          <GateQueue
+            queue={queue}
+            ledger={ledger}
+            firstName={firstName}
+            quorum={quorum}
+            onSign={onSign}
+            onReturn={onReturn}
+            onOpenRoll={onGoCommittee}
+          />
         </div>
         <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
           <GavelProtocolCard />
@@ -8589,7 +9019,7 @@ export function Dashboard({
   onExit: () => void;
 }) {
   const mission = useMissionData();
-  const { runs, queue, ledger, verdicts, findings, notes: notesMap, refresh, reachable } = mission;
+  const { runs, queue, ledger, verdicts, findings, notes: notesMap, committee, refresh, reachable } = mission;
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<RunFilter>("all");
   const [active, setActive] = useState<SectionId>("mc-overview");
@@ -8642,6 +9072,22 @@ export function Dashboard({
     };
   }, [navOpen]);
 
+  /* Deep links from notifications and email: /#mc-gates opens Approvals. */
+  useEffect(() => {
+    const apply = () => {
+      const id = window.location.hash.replace(/^#/, "");
+      if (
+        NAV_GROUPS.some((g) => g.items.some((i) => i.id === id && !i.href)) &&
+        canOpenSection(user, id as SectionId)
+      ) {
+        setActive(id as SectionId);
+      }
+    };
+    apply();
+    window.addEventListener("hashchange", apply);
+    return () => window.removeEventListener("hashchange", apply);
+  }, [user]);
+
   /* ⌘K / Ctrl+K opens the command line from anywhere in the workspace. The
      launch wizard owns the desk while it is open, so the chord is inert then. */
   useEffect(() => {
@@ -8674,9 +9120,23 @@ export function Dashboard({
   const openFindings = findingRows.filter((r) => r.status === "OPEN").length;
 
   const switchTo = (id: SectionId) => {
+    if (!canOpenSection(user, id)) {
+      onToast("YOUR WORKSPACE ROLE DOES NOT OPEN THAT SECTION");
+      return;
+    }
     setNavOpen(false);
     setActive(id);
     requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+  };
+
+  /* One launch door for every button and tour action — a read-only role never
+     reaches the wizard, even when a chapter points at it. */
+  const openNewRun = () => {
+    if (!canDo(user?.role, "run_reviews")) {
+      onToast("YOUR WORKSPACE ROLE CANNOT LAUNCH AN EVALUATION");
+      return;
+    }
+    setModalOpen(true);
   };
 
   /* The palette's contents: two actions, then every section of the desk in the
@@ -8685,14 +9145,18 @@ export function Dashboard({
     {
       label: "Actions",
       entries: [
-        {
-          id: "new-evaluation",
-          label: "New evaluation",
-          icon: Plus,
-          hint: "LAUNCH",
-          keywords: "start run tender review upload",
-          run: () => setModalOpen(true),
-        },
+        ...(canDo(user?.role, "run_reviews")
+          ? [
+              {
+                id: "new-evaluation",
+                label: "New evaluation",
+                icon: Plus,
+                hint: "LAUNCH",
+                keywords: "start run tender review upload",
+                run: openNewRun,
+              },
+            ]
+          : []),
         {
           id: "back-to-site",
           label: "Back to site",
@@ -8703,7 +9167,7 @@ export function Dashboard({
         },
       ],
     },
-    ...NAV_GROUPS.map((group) => ({
+    ...navGroupsFor(user).map((group) => ({
       label: group.group,
       entries: group.items.map((item) => ({
         id: item.id,
@@ -8750,11 +9214,18 @@ export function Dashboard({
 
   /* Records the committee's decision on the sidecar; the UI follows what it returns. */
   const decideGate = async (g: GateItem, decision: "APPROVE" | "REJECT") => {
+    /* The signature comes first. A cancelled or refused step-up means the
+       gate never reaches the sidecar. */
+    const stepUp = await requestStepUp(g.id);
+    if (!stepUp) {
+      onToast("GATE NOT SIGNED — STEP-UP CANCELLED");
+      return false;
+    }
     try {
       const signer = user?.name.trim() ?? "";
       const res = await fetch(`/api/gates/${g.id}/decision?XTransformPort=3031`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "x-quorum-stepup": stepUp },
         body: JSON.stringify({
           decision,
           approver: signer,
@@ -8799,7 +9270,7 @@ export function Dashboard({
   const goTourStep = (i: number) => {
     if (!tour) return;
     const s = WALKTHROUGH[tour.ch]?.tour?.[i];
-    if (s?.action === "open-wizard") setModalOpen(true);
+    if (s?.action === "open-wizard") openNewRun();
     if (s?.tab) window.dispatchEvent(new CustomEvent("mc-committee-tab", { detail: s.tab }));
     setTour({ ...tour, step: i });
   };
@@ -8813,13 +9284,17 @@ export function Dashboard({
       return;
     }
     if (!chapter.tour?.length) return;
+    if (chapter.section && !canOpenSection(user, chapter.section)) {
+      onToast("YOUR WORKSPACE ROLE DOES NOT OPEN THIS CHAPTER");
+      return;
+    }
     setModalOpen(false);
     if (chapter.section) {
       setNavOpen(false);
       setActive(chapter.section);
       requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
     }
-    if (chapter.tour[0]?.action === "open-wizard") setModalOpen(true);
+    if (chapter.tour[0]?.action === "open-wizard") openNewRun();
     /* A step that lives in the rail needs the rail on screen — bring it back
        for the tour without touching the officer's saved preference. */
     if (chapter.tour.some((s) => s.target.startsWith("nav-"))) setNavCollapsed(false);
@@ -8845,6 +9320,24 @@ export function Dashboard({
   };
 
   const renderView = () => {
+    if (!canOpenSection(user, active)) {
+      return (
+        <ViewShell
+          fig="—"
+          title="Restricted"
+          sub={`Your workspace role${user?.role ? ` (${ROLE_LABELS[user.role]})` : ""} does not open this section. The server enforces the same boundary on every write.`}
+        >
+          <button
+            type="button"
+            onClick={() => switchTo("mc-overview")}
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-ink-950 px-4 font-code text-[9px] font-bold tracking-[0.16em] text-white transition-colors hover:bg-ink-800"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+            BACK TO OVERVIEW
+          </button>
+        </ViewShell>
+      );
+    }
     switch (active) {
       case "mc-runs":
         return (
@@ -8855,8 +9348,9 @@ export function Dashboard({
             filter={filter}
             onFilter={setFilter}
             onToast={onToast}
-            onNewRun={() => setModalOpen(true)}
+            onNewRun={openNewRun}
             notes={notesMap}
+            canDeleteDocuments={canDo(user?.role, "run_reviews")}
           />
         );
       case "mc-gates":
@@ -8865,6 +9359,7 @@ export function Dashboard({
             queue={queue}
             ledger={ledger}
             firstName={firstName}
+            quorum={committee}
             onSign={signGate}
             onReturn={returnGate}
             onGoCommittee={() => switchTo("mc-committee")}
@@ -8874,7 +9369,13 @@ export function Dashboard({
       case "mc-activity":
         return <FeedView onToast={onToast} />;
       case "mc-cycle":
-        return <CycleView user={user} onToast={onToast} />;
+        return (
+          <CycleView
+            user={user}
+            onToast={onToast}
+            canDeleteDocuments={canDo(user?.role, "run_reviews")}
+          />
+        );
       case "mc-findings":
         return <FindingsView rows={findingRows} onOpenRun={() => switchTo("mc-runs")} />;
       case "mc-reports":
@@ -8899,13 +9400,25 @@ export function Dashboard({
         return <RulesView firstName={firstName} onToast={onToast} onOpenActivity={() => switchTo("mc-activity")} />;
       case "mc-stack":
         return <StackConsole onToast={onToast} />;
+      case "mc-oversight":
+        return <OversightView actor={user} onToast={onToast} onOpenAudit={() => switchTo("mc-audit")} />;
+      case "mc-audit":
+        return <AuditView onToast={onToast} />;
       case "mc-settings":
-        return <SettingsView user={user} agent={agent} onSignOut={onSignOut} onToast={onToast} />;
+        return (
+          <SettingsView
+            user={user}
+            agent={agent}
+            onSignOut={onSignOut}
+            onOpenOversight={() => switchTo("mc-oversight")}
+            onToast={onToast}
+          />
+        );
       case "mc-walkthrough":
         return (
           <WalkthroughView
             onOpen={switchTo}
-            onNewRun={() => setModalOpen(true)}
+            onNewRun={openNewRun}
             onTour={startTour}
             done={toured}
           />
@@ -8954,7 +9467,7 @@ export function Dashboard({
                 counts={{ runs: runs.length, gates: queue.length, findings: openFindings }}
                 agent={agent}
                 onNavigate={switchTo}
-                onNewRun={() => setModalOpen(true)}
+                onNewRun={openNewRun}
                 onSignOut={onSignOut}
                 onExit={onExit}
               />
@@ -9020,7 +9533,7 @@ export function Dashboard({
                   onNavigate={switchTo}
                   onNewRun={() => {
                     setNavOpen(false);
-                    setModalOpen(true);
+                    openNewRun();
                   }}
                   onSignOut={onSignOut}
                   onExit={onExit}
@@ -9119,6 +9632,10 @@ export function Dashboard({
                 <span className="text-ink-300">·</span> Local
               </p>
               <AgentStatusBadge mode={agentMode} className="hidden md:inline-flex" />
+              <NotificationBell
+                onNavigate={(section) => switchTo(section as SectionId)}
+                onToast={onToast}
+              />
               {/* The master switcher rides the utility bar — the desk is one tab away */}
               <div className="hidden xl:inline-flex">
                 <MasterSwitcher active="quorum" />
@@ -9175,7 +9692,7 @@ export function Dashboard({
                 <button
                   type="button"
                   data-tour="ov-new-run"
-                  onClick={() => setModalOpen(true)}
+                  onClick={openNewRun}
                   className="focus-brand group relative inline-flex h-12 items-center gap-2.5 overflow-hidden rounded-full bg-brand-600 pl-5 pr-4 text-[14px] font-semibold text-white shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_16px_34px_-16px_rgba(217,38,22,0.9)] transition-colors hover:bg-brand-700"
                 >
                   <span
@@ -9237,13 +9754,17 @@ export function Dashboard({
               onFilter={setFilter}
               onToast={onToast}
               notes={notesMap}
+              canDeleteDocuments={canDo(user?.role, "run_reviews")}
             />
             <GateQueue
               queue={queue}
               ledger={ledger}
               firstName={firstName}
+              quorum={committee}
               onSign={signGate}
               onReturn={returnGate}
+              onOpenRoll={canDo(user?.role, "manage_meetings") ? () => switchTo("mc-committee") : undefined}
+              canSign={canDo(user?.role, "sign_gates")}
             />
           </div>
 
@@ -9285,7 +9806,11 @@ export function Dashboard({
         onClose={() => setModalOpen(false)}
         onLaunch={launchRun}
         pastRefs={runs.map((r) => r.id)}
+        canDeleteDocs={canDo(user?.role, "run_reviews")}
       />
+
+      {/* One step-up host for every gate card in the workspace. */}
+      <StepUpHost />
 
       {/* The guided walkthrough — a spotlight layer over the real pages. */}
       {tour && tourChapter && tourSteps?.length ? (

@@ -69,6 +69,9 @@ type MeetingDto = {
   scheduledBy: string;
   status: "SCHEDULED" | "CANCELLED";
   attendees?: { name: string }[];
+  seriesId?: string | null;
+  seriesIndex?: number;
+  seriesCount?: number;
 };
 
 type GateDto = {
@@ -130,6 +133,12 @@ function clockTime(iso: string): string | undefined {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime()) || (d.getHours() === 0 && d.getMinutes() === 0)) return undefined;
   return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+/* A record without a usable timestamp cannot sit on a day of the grid. It is
+   skipped rather than allowed to poison the sort or invent a date. */
+function validIso(value: unknown): value is string {
+  return typeof value === "string" && !Number.isNaN(new Date(value).getTime());
 }
 
 /** Countdown in the desk's voice: IN 5 D · TOMORROW · TODAY · 3 D OVERDUE. */
@@ -343,6 +352,7 @@ export function CalendarView({
     if (!now) return [];
     const out: CalEvent[] = [];
     for (const d of deadlines) {
+      if (!validIso(d.dueAt)) continue;
       const key = (d.kind || "DEADLINE").toUpperCase();
       const label = DEADLINE_LABEL[key] ?? "DEADLINE";
       out.push({
@@ -357,6 +367,7 @@ export function CalendarView({
       });
     }
     for (const s of sittings) {
+      if (!validIso(s.summonedAt)) continue;
       const live = s.status === "OPEN";
       const admitted = (s.attendance ?? []).filter((a) => a.admitted).length;
       out.push({
@@ -365,7 +376,7 @@ export function CalendarView({
         time: clockTime(s.summonedAt),
         tone: "sitting",
         kind: live ? "SITTING LIVE" : "COMMITTEE SITTING",
-        tender: s.room.toUpperCase(),
+        tender: (s.room || "SITTING").toUpperCase(),
         detail: s.title,
         live,
       });
@@ -377,14 +388,15 @@ export function CalendarView({
           time: clockTime(s.summonedAt),
           tone: "signed",
           kind: "DOOR RECORD",
-          tender: s.room.toUpperCase(),
+          tender: (s.room || "SITTING").toUpperCase(),
           detail: `${admitted} member${admitted === 1 ? "" : "s"} admitted to the sitting${s.agenda ? ` — ${s.agenda}` : ""}`,
         });
       }
     }
     for (const m of meetings) {
-      if (m.status !== "SCHEDULED") continue;
+      if (m.status !== "SCHEDULED" || !validIso(m.startsAt)) continue;
       const invited = (m.attendees ?? []).length;
+      const series = m.seriesCount && m.seriesCount > 1 ? `Week ${m.seriesIndex ?? 1} of ${m.seriesCount} · ` : "";
       out.push({
         id: `meeting-${m.id}`,
         iso: m.startsAt,
@@ -392,13 +404,14 @@ export function CalendarView({
         tone: "meeting",
         kind: "SCHEDULED MEETING",
         tender: m.title,
-        detail: `${m.durationMinutes} min with ${invited} player${invited === 1 ? "" : "s"} — called by ${m.scheduledBy}${
-          m.agenda ? ` · ${m.agenda}` : ""
-        }`,
+        detail: `${series}${m.durationMinutes} min with ${invited} player${invited === 1 ? "" : "s"} — called by ${
+          m.scheduledBy
+        }${m.agenda ? ` · ${m.agenda}` : ""}`,
       });
     }
     for (const g of gates) {
       if (g.status === "PENDING") {
+        if (!validIso(g.createdAt)) continue;
         out.push({
           id: `gate-${g.id}`,
           iso: g.createdAt,
@@ -408,7 +421,7 @@ export function CalendarView({
           tender: g.tenderId,
           detail: `${humanTool(g.tool)} — submitted, awaiting a named signature`,
         });
-      } else if (g.decidedAt) {
+      } else if (validIso(g.decidedAt)) {
         const returned = g.status === "REJECTED";
         out.push({
           id: `decided-${g.id}`,

@@ -40,6 +40,11 @@ export function getOrgFromToken(token: string | undefined | null): OrganizationR
     deleteOrgSessionByToken(token);
     return null;
   }
+  /* Suspension is enforced on every request, including an already-open tab. */
+  if (found.org.status === "SUSPENDED") {
+    deleteOrgSessionByToken(token);
+    return null;
+  }
   return found.org;
 }
 

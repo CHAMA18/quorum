@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { removeCommitteeMemberById, updateCommitteeMemberById } from "@/lib/committee";
+import { can } from "@/lib/permissions";
 
 /**
  * PATCH /api/committee/members/:id — update a registered member:
@@ -22,6 +23,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       /* Committee records carry the officer's name — an anonymous write has
          no name to carry, so it is refused rather than filed as "unknown". */
       return NextResponse.json({ error: "Sign in to make changes — committee records carry the officer's name." }, { status: 401 });
+    }
+    if (!can(user.role, "manage_committee")) {
+      return NextResponse.json({ error: "Only owners and admins can change the committee register." }, { status: 403 });
     }
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
 
@@ -47,6 +51,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       /* Committee records carry the officer's name — an anonymous write has
          no name to carry, so it is refused rather than filed as "unknown". */
       return NextResponse.json({ error: "Sign in to make changes — committee records carry the officer's name." }, { status: 401 });
+    }
+    if (!can(user.role, "manage_committee")) {
+      return NextResponse.json({ error: "Only owners and admins can change the committee register." }, { status: 403 });
     }
 
     const out = await removeCommitteeMemberById(id, user);

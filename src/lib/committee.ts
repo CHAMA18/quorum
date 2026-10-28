@@ -85,6 +85,10 @@ export interface ScheduledMeetingView {
   createdAt: string;
   status: "SCHEDULED" | "CANCELLED";
   attendees: MeetingAttendeeRow[];
+  /* Weekly series thread — 1 of 1 for a one-off meeting. */
+  seriesId: string | null;
+  seriesIndex: number;
+  seriesCount: number;
 }
 
 export interface CommitteeState {
@@ -112,6 +116,13 @@ export type MutationResult =
 
 const NOTES_CAP = 12_000;
 const SITTINGS_SHOWN = 6;
+
+/* Names are the roster's identity primitive — no email is stored on a member.
+   Collapse spacing/case so the signed-in gavel is not counted twice when the
+   same person also has a PRESENT row on the register. */
+function normalizePersonName(value: string): string {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
+}
 
 const DEFAULTS: Record<string, string> = {
   committee_seats: "9",
@@ -184,6 +195,9 @@ function meetingViewOf(m: ScheduledMeetingRow): ScheduledMeetingView {
     createdAt: m.createdAt.toISOString(),
     status: m.status,
     attendees: m.attendees.map((a) => ({ ...a })),
+    seriesId: m.seriesId ?? null,
+    seriesIndex: m.seriesIndex ?? 1,
+    seriesCount: m.seriesCount ?? 1,
   };
 }
 
@@ -278,10 +292,14 @@ export async function getCommitteeState(user: AuthUser | null): Promise<Committe
     office: r.office,
   }));
 
-  /* The signed-in officer always sits — they hold the gavel. */
+  /* The signed-in officer always sits — they hold the gavel. Count them once:
+     if the register already carries the same name as PRESENT, that row is
+     their seat, not a second one. */
   const you = user?.name?.trim() ? { name: user.name.trim() } : null;
-  const present =
-    members.filter((m) => m.status === "PRESENT").length + (you ? 1 : 0);
+  const presentMembers = members.filter((m) => m.status === "PRESENT");
+  const gavelAlreadyOnRoll =
+    !!you && presentMembers.some((m) => normalizePersonName(m.name) === normalizePersonName(you.name));
+  const present = presentMembers.length + (you && !gavelAlreadyOnRoll ? 1 : 0);
   const openSeats = Math.max(0, seats - present);
 
   /* Sittings — an open one re-reads the register into its door list. */
@@ -358,19 +376,24 @@ export interface ScheduleMeetingInput {
   agenda?: unknown;
   startsAt?: unknown;
   durationMinutes?: unknown;
+  /* 1 (or omitted) is a one-off meeting; 2–12 writes that many weekly
+     occurrences, each its own record with its own room. */
+  repeatWeeks?: unknown;
   memberIds?: unknown;
   playerIds?: unknown;
   externals?: unknown;
 }
 
 export type ScheduleMeetingResult =
-  | { ok: true; state: CommitteeState; meeting: ScheduledMeetingView }
+  | { ok: true; state: CommitteeState; meeting: ScheduledMeetingView; scheduledCount: number }
   | { ok: false; code: number; error: string };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const MEETING_LEAD_MS = 60_000;
 const MEETING_HORIZON_DAYS = 366;
 const ATTENDEE_CAP = 40;
+const SERIES_MAX = 12;
+const WEEK_MS = 7 * 86_400_000;
 
 function emailOf(v: unknown): string | null {
   if (typeof v !== "string") return null;
@@ -420,6 +443,16 @@ export async function scheduleMeeting(
     return { ok: false, code: 422, error: "A meeting runs between 15 and 480 minutes." };
   }
 
+  const rawRepeat = Number(input.repeatWeeks ?? 1);
+  const repeatWeeks = Number.isFinite(rawRepeat) ? Math.round(rawRepeat) : 1;
+  if (repeatWeeks < 1 || repeatWeeks > SERIES_MAX) {
+    return { ok: false, code: 422, error: "A weekly series runs between 1 and 12 meetings." };
+  }
+  const lastOccurrence = startsAt.getTime() + (repeatWeeks - 1) * WEEK_MS;
+  if (lastOccurrence > now + MEETING_HORIZON_DAYS * 86_400_000) {
+    return { ok: false, code: 422, error: "The series would run past a year — shorten the weekly run." };
+  }
+
   const agenda = String(input.agenda ?? "").trim().slice(0, 1000) || null;
 
   /* The owner always attends; everyone else is exactly who was named. */
@@ -467,26 +500,39 @@ export async function scheduleMeeting(
   }
 
   const at = new Date();
-  /* Minted now and never reused — the invitation can carry a real address
-     without waiting for a background job to create the room. */
-  const room = `quorum-meeting-${randomBytes(6).toString("hex")}`;
-  const row = dbCreateMeeting({
-    title,
-    agenda,
-    room,
-    joinUrl: `https://meet.jit.si/${room}`,
-    startsAt,
-    durationMinutes,
-    scheduledBy: actor.name.trim() || "unknown officer",
-    scheduledById: actor.id,
-    createdAt: at,
-    status: "SCHEDULED",
-    cancelledAt: null,
-    cancelledBy: null,
-    attendees,
-  });
+  const seriesId = repeatWeeks > 1 ? `ser_${randomBytes(4).toString("hex")}` : null;
+  const rows: ScheduledMeetingRow[] = [];
 
-  return { ok: true, state: await getCommitteeState(actor), meeting: meetingViewOf(row) };
+  /* One row per occurrence — each gets its own unlisted room and can be
+     cancelled on its own. The series fields are the thread between them. */
+  for (let i = 0; i < repeatWeeks; i += 1) {
+    const room = `quorum-meeting-${randomBytes(6).toString("hex")}`;
+    rows.push(
+      dbCreateMeeting({
+        title,
+        agenda,
+        room,
+        joinUrl: `https://meet.jit.si/${room}`,
+        startsAt: new Date(startsAt.getTime() + i * WEEK_MS),
+        durationMinutes,
+        scheduledBy: actor.name.trim() || "unknown officer",
+        scheduledById: actor.id,
+        createdAt: at,
+        status: "SCHEDULED",
+        cancelledAt: null,
+        cancelledBy: null,
+        attendees,
+        ...(seriesId ? { seriesId, seriesIndex: i + 1, seriesCount: repeatWeeks } : {}),
+      }),
+    );
+  }
+
+  return {
+    ok: true,
+    state: await getCommitteeState(actor),
+    meeting: meetingViewOf(rows[0]),
+    scheduledCount: rows.length,
+  };
 }
 
 export async function cancelScheduledMeeting(id: string, actor: AuthUser | null): Promise<MutationResult> {

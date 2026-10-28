@@ -9,6 +9,7 @@
  */
 
 import { createHash, createHmac, randomUUID } from "node:crypto";
+import { notifyWebSoon } from "./notify";
 import {
   gateSecret,
   appendLog,
@@ -142,6 +143,7 @@ function raiseCycleGate(input: {
   });
   state.gates.unshift(gate);
   saveState();
+  notifyWebSoon({ type: "GATE_WAITING", gateId: gate.id, tenderId: gate.tenderId, tool: gate.tool, requiredOffice: gate.requiredOffice });
   return gate;
 }
 
@@ -1120,9 +1122,13 @@ function coreDraftNotice(tenderId: string, fields: Record<string, unknown>) {
 }
 
 function corePipelineEntry(input: Record<string, unknown>) {
-  const ref = str(input.ref).trim().slice(0, 60);
+  const provided = str(input.ref).trim().slice(0, 60);
+  const ref = provided || nextPipelineRef(input);
   const title = str(input.title).trim().slice(0, 200);
   if (!ref || !title) throw new Error("ref and title are required for a pipeline entry");
+  const exists = [...state.pipeline.map((p) => p.ref), ...state.cycle.map((c) => c.tenderId), ...state.runs.map((r) => r.tenderId)]
+    .some((r) => r.toLowerCase() === ref.toLowerCase());
+  if (exists) throw new Error(`reference "${ref}" is already on record — wait for the system to issue the next one`);
   const entry = {
     id: `pip_${randomUUID().slice(0, 8)}`,
     ref,
@@ -1141,7 +1147,7 @@ function corePipelineEntry(input: Record<string, unknown>) {
     tool: "add_pipeline_entry",
     kind: "WRITES",
     runId: "cycle",
-    inputs: { ref, title },
+    inputs: { ref, title, generated: !provided },
     outputs: { pipelineId: entry.id },
     status: "OK",
     durationMs: 0,
@@ -1149,6 +1155,38 @@ function corePipelineEntry(input: Record<string, unknown>) {
   saveState();
   return { entry };
 }
+
+/**
+ * System-issued pipeline reference.
+ *
+ * Officers do not invent references: a tender reference is an identifier the
+ * register owns. The prefix follows the workspace currency (Zambia → ZM,
+ * Kenya → KE, Rwanda → RW), the year follows the expected publication date,
+ * and the sequence is the next free number across every live register —
+ * pipeline, cycle and review runs — so two planners cannot collide.
+ */
+export function nextPipelineRef(input: Record<string, unknown>): string {
+  const currency = str(input.currency).trim().toUpperCase();
+  const byCurrency: Record<string, string> = { ZMW: "ZM", KES: "KE", RWF: "RW", USD: "ZM" };
+  const prefix = (process.env.QUORUM_REF_PREFIX?.trim().toUpperCase() || byCurrency[currency] || "ZM").slice(0, 4);
+  const publication = str(input.expectedPublication ?? input.publication).trim();
+  const parsed = publication ? new Date(publication) : null;
+  const year = parsed && !Number.isNaN(parsed.getTime()) ? parsed.getUTCFullYear() : new Date().getUTCFullYear();
+  const matcher = new RegExp(`^${prefix}-${year}-(\\d{2,})$`, "i");
+  const used = new Set<number>();
+  for (const ref of [
+    ...state.pipeline.map((p) => p.ref),
+    ...state.cycle.map((c) => c.tenderId),
+    ...state.runs.map((r) => r.tenderId),
+  ]) {
+    const match = ref.match(matcher);
+    if (match) used.add(Number(match[1]));
+  }
+  let sequence = 1;
+  while (used.has(sequence)) sequence += 1;
+  return `${prefix}-${year}-${String(sequence).padStart(3, "0")}`;
+}
+
 
 function corePipelineLink(pipelineId: string, tenderId: string) {
   const entry = state.pipeline.find((p) => p.id === pipelineId);

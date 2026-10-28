@@ -95,10 +95,12 @@ scope. Requests are stored in the workspace's JSON store (`db/quorum-store.json`
 written atomically) and surface alongside the other enquiries — no email provider is
 required on either side. The promised response time is one working day.
 
-A pilot pack of live notices is reviewed exactly like the samples: the documents are
-dropped into the dossier, mirrored to Firebase Storage when available, and the agent
-reads them over the sandboxed filesystem MCP server — nothing about the pilot path is
-a second code path.
+A pilot pack is reviewed exactly like the samples: its documents are staged in the
+tender directory the sandboxed filesystem MCP server reads. The upload gate stores
+the original bytes in Cloudflare R2 behind the edge secret, and the server extracts
+PDF/DOCX/XLSX text into that same directory through the sidecar — so an uploaded pack
+follows the same review path as a sample, not a second code path. Scanned PDFs are
+reported as needing OCR rather than silently dropped.
 
 ## 5. Honest boundaries of the fit claim
 

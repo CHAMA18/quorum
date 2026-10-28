@@ -45,8 +45,8 @@ the graph. A stranger's client cannot:
 
 Rejection paths are replayable whole (`SUBMISSION/DEMO.md` §1:20–2:20 and the
 Part-2 clip): `POST /api/gates/:id/decision` without an approver →
-`422`; with an approver the roster does not know → `403` (or the roster's
-`503` fail-closed).
+`422`; with an approver the roster does not know → `403`; with a valid name
+but a short roll → `409` with the live count (or the roster's `503` fail-closed).
 
 ## 4. The audit surface is on the same protocol
 

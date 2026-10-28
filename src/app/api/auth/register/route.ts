@@ -6,6 +6,7 @@ import {
   updateInvite,
 } from "@/lib/db";
 import { clientKey, hashPassword, publicUser, rateLimit } from "@/lib/auth";
+import { isAssignableRole } from "@/lib/permissions";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -56,23 +57,35 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const passwordHash = await hashPassword(password);
-  const user = createUser({ name, email, password: passwordHash, organization: organization || null });
+  /* Resolve the invite BEFORE the account exists: its role is part of the
+     account's creation, not a label appended afterwards. An unknown,
+     expired or already-claimed code is simply ignored. */
+  const invite = inviteCode ? findInviteByCode(inviteCode) : null;
+  const usableInvite =
+    invite &&
+    invite.status === "PENDING" &&
+    Date.now() - invite.createdAt.getTime() <= 14 * 86_400_000
+      ? invite
+      : null;
 
-  /* If they brought a workspace invite code: claim it (PENDING + unexpired only). */
+  const passwordHash = await hashPassword(password);
+  const user = createUser({
+    name,
+    email,
+    password: passwordHash,
+    organization: organization || null,
+    ...(usableInvite && isAssignableRole(usableInvite.role) ? { role: usableInvite.role } : {}),
+  });
+
   let claimedInvite: { code: string; role: string } | null = null;
-  if (inviteCode) {
-    const invite = findInviteByCode(inviteCode);
-    if (invite && invite.status === "PENDING" && Date.now() - invite.createdAt.getTime() <= 14 * 86_400_000) {
-      updateInvite(invite.id, {
-        status: "CLAIMED",
-        claimedBy: user.id,
-        claimedByEmail: user.email,
-        claimedAt: new Date(),
-      });
-      claimedInvite = { code: invite.code, role: invite.role };
-    }
-    /* An unknown/expired/claimed code is not an error — registration still works as a standalone account. */
+  if (usableInvite) {
+    updateInvite(usableInvite.id, {
+      status: "CLAIMED",
+      claimedBy: user.id,
+      claimedByEmail: user.email,
+      claimedAt: new Date(),
+    });
+    claimedInvite = { code: usableInvite.code, role: usableInvite.role };
   }
 
   /* No session yet: the account opens only after the Firebase verification link is confirmed. */

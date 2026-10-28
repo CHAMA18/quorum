@@ -14,6 +14,33 @@ interface LiveEntry {
   runId?: string;
   status?: string;
   durationMs?: number;
+  /* Draft and plan log rows carry the model that actually answered. The
+     sidecar caps outputs to a JSON string; in-memory rows can be objects. */
+  outputs?: { model?: unknown; source?: unknown } | string;
+}
+
+function outputObject(outputs: LiveEntry["outputs"]): { model?: unknown; source?: unknown } {
+  if (!outputs) return {};
+  if (typeof outputs !== "string") return outputs;
+  try {
+    const parsed = JSON.parse(outputs) as unknown;
+    if (parsed && typeof parsed === "object") return parsed as { model?: unknown; source?: unknown };
+  } catch {
+    /* The sidecar caps long outputs, so a draft row can end mid-JSON. The
+       attribution fields are written first; recover them from the prefix. */
+  }
+  const model = /"model"\s*:\s*"([^"]+)"/.exec(outputs)?.[1];
+  const source = /"source"\s*:\s*"([^"]+)"/.exec(outputs)?.[1];
+  return model || source ? { model, source } : {};
+}
+
+interface ModelStatus {
+  configured?: boolean;
+  mode?: string;
+  model?: string | null;
+  providerLabel?: string;
+  endpoint?: string | null;
+  lastCall?: { tool?: string; model?: string; source?: string | null; at?: string } | null;
 }
 
 type RowKind = "read" | "write" | "gate";
@@ -92,6 +119,7 @@ function useCountUp(target: number, active: boolean, reduce: boolean | null) {
 export function AgentRun() {
   const [entries, setEntries] = useState<LiveEntry[]>([]);
   const [total, setTotal] = useState(0);
+  const [modelStatus, setModelStatus] = useState<ModelStatus | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const reduce = useReducedMotion();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -109,9 +137,16 @@ export function AgentRun() {
     let alive = true;
     const pull = async () => {
       try {
-        const res = await fetch("/api/log?limit=14&XTransformPort=3031");
+        const [res, statusRes] = await Promise.all([
+          fetch("/api/log?limit=14&XTransformPort=3031"),
+          fetch("/api/agent-status").catch(() => null),
+        ]);
         const j = (await res.json()) as { entries?: LiveEntry[]; total?: number };
+        const status = statusRes?.ok
+          ? ((await statusRes.json()) as { health?: { model?: ModelStatus } })
+          : null;
         if (!alive) return;
+        if (status?.health?.model) setModelStatus(status.health.model);
         const next = j.entries ?? [];
         const sig = next.map((e) => e.id ?? e.seq).join(",");
         const force = forceReplayRef.current;
@@ -146,6 +181,35 @@ export function AgentRun() {
   /* oldest-first so the run reads top to bottom */
   const rows = useMemo(() => [...entries].reverse(), [entries]);
   const atGateCount = rows.filter((e) => e.status === "PENDING_GATE").length;
+  const modelCall = useMemo(
+    () =>
+      entries.find((e) => {
+        if (e.tool !== "draft_redline" && e.tool !== "plan_review") return false;
+        const out = outputObject(e.outputs);
+        return (
+          out.source === "llm" &&
+          typeof out.model === "string" &&
+          out.model.trim().length > 0
+        );
+      }),
+    [entries],
+  );
+  const modelCallOutputs = modelCall ? outputObject(modelCall.outputs) : null;
+  const lastCall = modelStatus?.lastCall;
+  const answeredModel =
+    typeof modelCallOutputs?.model === "string"
+      ? modelCallOutputs.model
+      : lastCall?.source === "llm" && lastCall.model
+        ? lastCall.model
+        : null;
+  const modelLabel = answeredModel ?? modelStatus?.model ?? (modelStatus ? "template fallback" : "…");
+  const modelDetail = answeredModel
+    ? `Answered by ${modelStatus?.providerLabel ?? "the configured endpoint"}${modelCall?.tool ? ` · ${modelCall.tool}` : lastCall?.tool ? ` · ${lastCall.tool}` : ""}`
+    : !modelStatus
+      ? "Reading the configured drafting endpoint…"
+      : modelStatus.configured
+        ? `${modelStatus.providerLabel ?? "model"} is configured; no model-attributed call in the last 14 log rows`
+        : "No model configured — deterministic template drafting";
   const runId = rows.find((e) => e.runId)?.runId;
   const runTag = runId ? `RUN ${runId.replace(/^[^_]*_/, "").toUpperCase()}` : "RUN LIVE";
   const maxMs = Math.max(1, ...rows.map((e) => e.durationMs ?? 0));
@@ -227,8 +291,11 @@ export function AgentRun() {
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          <span className="hidden font-code text-[9px] tracking-[0.22em] text-ink-500 sm:block">
-            MCP · AUDIT · LIVE
+          <span
+            className="hidden max-w-[210px] truncate font-code text-[9px] tracking-[0.18em] text-ink-400 sm:block"
+            title={modelDetail}
+          >
+            MODEL · {modelLabel.toUpperCase()}
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-500/50 bg-brand-600/15 px-2 py-0.5 font-code text-[9px] font-bold tracking-[0.18em] text-brand-300">
             <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-brand-400" aria-hidden="true" />

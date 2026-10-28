@@ -39,6 +39,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { StoredDocsBrowser } from "@/components/quorum/stored-docs-browser";
 
 const SVC = "?XTransformPort=3031";
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -127,6 +128,55 @@ type PipelineDto = {
 };
 type DeadlineDto = { tenderId: string; kind: string; dueAt: string; ref?: string; overdue?: boolean };
 type MemberDto = { name: string; office?: string; status: string };
+
+/* A cycle row is written by several cores over time; a partially-written row
+   can omit any of its nested collections. Normalize once at ingest so every
+   tab reads real arrays instead of a maybe. */
+function normalizeCycle(raw: CycleDto): CycleDto {
+  const opening = raw.opening
+    ? { ...raw.opening, rows: Array.isArray(raw.opening.rows) ? raw.opening.rows : [] }
+    : undefined;
+  const matrix = raw.matrix
+    ? {
+        ...raw.matrix,
+        criteria: Array.isArray(raw.matrix.criteria) ? raw.matrix.criteria : [],
+        bids: (Array.isArray(raw.matrix.bids) ? raw.matrix.bids : []).map((bid) => ({
+          ...bid,
+          reasons: Array.isArray(bid.reasons) ? bid.reasons : [],
+          technicalScores: Array.isArray(bid.technicalScores) ? bid.technicalScores : [],
+        })),
+        ...(raw.matrix.med
+          ? {
+              med: {
+                ...raw.matrix.med,
+                attendees: Array.isArray(raw.matrix.med.attendees) ? raw.matrix.med.attendees : [],
+              },
+            }
+          : {}),
+      }
+    : undefined;
+  const contract = raw.contract
+    ? {
+        ...raw.contract,
+        milestones: Array.isArray(raw.contract.milestones) ? raw.contract.milestones : [],
+        variations: Array.isArray(raw.contract.variations) ? raw.contract.variations : [],
+        payments: Array.isArray(raw.contract.payments) ? raw.contract.payments : [],
+      }
+    : undefined;
+
+  return {
+    ...raw,
+    coi: Array.isArray(raw.coi) ? raw.coi : [],
+    alb: Array.isArray(raw.alb) ? raw.alb : [],
+    debriefs: Array.isArray(raw.debriefs) ? raw.debriefs : [],
+    complaints: Array.isArray(raw.complaints) ? raw.complaints : [],
+    clarifications: Array.isArray(raw.clarifications) ? raw.clarifications : [],
+    addenda: Array.isArray(raw.addenda) ? raw.addenda : [],
+    ...(opening ? { opening } : {}),
+    ...(matrix ? { matrix } : {}),
+    ...(contract ? { contract } : {}),
+  };
+}
 
 type CycleTab = "pipeline" | "deadlines" | "opening" | "evaluation" | "award" | "contract" | "complaints" | "analytics";
 
@@ -871,7 +921,14 @@ function VitalStrip({ cycle }: { cycle: CycleDto | null }) {
 
 /* ── the desk ───────────────────────────────────────────────────────────────── */
 
-export function CycleView({ onToast }: { user?: unknown; onToast: (m: string) => void }) {
+export function CycleView({
+  onToast,
+  canDeleteDocuments = false,
+}: {
+  user?: unknown;
+  onToast: (m: string) => void;
+  canDeleteDocuments?: boolean;
+}) {
   const [tenders, setTenders] = useState<{ ref: string; title: string }[]>([]);
   const [ref, setRef] = useState("");
   const [tab, setTab] = useState<CycleTab>("pipeline");
@@ -893,6 +950,10 @@ export function CycleView({ onToast }: { user?: unknown; onToast: (m: string) =>
      opening: the officer still records the register, but sees who bid
      electronically and for how much. */
   const [portalApps, setPortalApps] = useState<PortalAppRow[]>([]);
+  /* The register owns the reference: this is the next system-issued number,
+     refreshed when the publication year or currency changes. */
+  const [autoRef, setAutoRef] = useState("");
+  const [refLoading, setRefLoading] = useState(true);
   const set = (k: string, v: string) => setD((p) => ({ ...p, [k]: v }));
 
   const cycle = useMemo(() => cycles.find((c) => c.tenderId === ref) ?? null, [cycles, ref]);
@@ -909,6 +970,7 @@ export function CycleView({ onToast }: { user?: unknown; onToast: (m: string) =>
         fetch(`/api/applications${SVC}`).then((x) => x.json()),
       ]);
       const samples = (t.samples ?? []) as { ref: string; title?: string }[];
+      const cycleRows = ((c.cycles ?? []) as CycleDto[]).map(normalizeCycle);
       /* Live tenders the desk has seen (runs + cycles) join the curated packs —
          a manually staged probe tender is as real to the cycle as a sample. */
       const seen = new Set<string>();
@@ -919,12 +981,16 @@ export function CycleView({ onToast }: { user?: unknown; onToast: (m: string) =>
         list.push({ ref, title: title || ref });
       };
       for (const s of samples) push(s.ref, s.title || s.ref);
-      for (const cyc of (c.cycles ?? []) as CycleDto[]) push(cyc.tenderId);
+      for (const cyc of cycleRows) push(cyc.tenderId);
       for (const r of (rn.runs ?? []) as { tenderId: string }[]) push(r.tenderId);
       setTenders(list);
-      setCycles((c.cycles ?? []) as CycleDto[]);
+      setCycles(cycleRows);
       setPipeline((c.pipeline ?? []) as PipelineDto[]);
-      setDeadlines((dl.deadlines ?? []) as DeadlineDto[]);
+      setDeadlines(
+        ((dl.deadlines ?? []) as DeadlineDto[])
+          .map((d) => ({ ...d, kind: d.kind || "DEADLINE" }))
+          .filter((d) => typeof d.dueAt === "string" && !Number.isNaN(new Date(d.dueAt).getTime()))
+      );
       setAnalytics(an ?? null);
       setMembers(((cm.members ?? []) as MemberDto[]).filter((m) => m.status === "PRESENT"));
       setPortalApps(((ap.applications ?? []) as PortalAppRow[]).filter((a) => a.status === "RECEIVED"));
@@ -940,6 +1006,27 @@ export function CycleView({ onToast }: { user?: unknown; onToast: (m: string) =>
     const id = setInterval(() => void pull(), 5000);
     return () => clearInterval(id);
   }, [pull]);
+
+  const refreshNextRef = useCallback(async () => {
+    setRefLoading(true);
+    try {
+      const q = new URLSearchParams();
+      if (d.pipePub) q.set("publication", d.pipePub);
+      if (d.pipeCur) q.set("currency", d.pipeCur);
+      const query = q.toString();
+      const res = await fetch(`/api/pipeline/next-ref${query ? `?${query}&` : "?"}XTransformPort=3031`, { cache: "no-store" });
+      const data = (await res.json().catch(() => ({}))) as { ref?: string };
+      if (res.ok && data.ref) setAutoRef(data.ref);
+    } catch {
+      /* Backend still issues the reference on save; the field says so. */
+    } finally {
+      setRefLoading(false);
+    }
+  }, [d.pipePub, d.pipeCur]);
+
+  useEffect(() => {
+    void refreshNextRef();
+  }, [refreshNextRef, pipeline.length, cycles.length, tenders.length]);
 
   const act = async (path: string, body: unknown, okMsg: string): Promise<boolean> => {
     setBusy(true);
@@ -976,19 +1063,24 @@ export function CycleView({ onToast }: { user?: unknown; onToast: (m: string) =>
   const CURRENCIES = ["ZMW", "KES", "USD", "RWF"];
 
   const PipelineTab = (
-    <div className="grid gap-4 lg:grid-cols-2 lg:items-start xl:gap-5">
+    <div className="grid gap-4 xl:gap-5">
       <Card title="Plan a tender" sub="PRE-STAGES THE DESK — A PACK BEFORE ADVERTISEMENT">
         <div className="grid gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <PlanField label="Reference" hint="E.G. ZM-2027-014">
-              <input
-                className={cn(planInput, "font-code tracking-[0.06em]")}
-                value={d.pipeRef ?? ""}
-                onChange={(e) => set("pipeRef", e.target.value)}
-                placeholder="ZM-2027-014"
-                autoComplete="off"
-                spellCheck={false}
-              />
+            <PlanField label="Reference" hint="SYSTEM-GENERATED">
+              <div className="relative">
+                <input
+                  className={cn(planInput, "cursor-default bg-ink-50/60 pr-16 font-code tracking-[0.06em] text-ink-700 dark:bg-white/[0.025] dark:text-ink-300")}
+                  value={refLoading ? "Issuing…" : autoRef || "Issued on save"}
+                  readOnly
+                  aria-readonly="true"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <span className="pointer-events-none absolute right-2.5 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 rounded-full border border-ink-200/70 bg-white/80 px-1.5 py-0.5 font-code text-[7px] font-bold tracking-[0.14em] text-ink-400 dark:border-white/10 dark:bg-white/[0.05] dark:text-ink-400">
+                  <span className="h-1 w-1 rounded-full bg-brand-500" aria-hidden="true" /> AUTO
+                </span>
+              </div>
             </PlanField>
             <PlanField label="Publication">
               <input
@@ -1080,12 +1172,11 @@ export function CycleView({ onToast }: { user?: unknown; onToast: (m: string) =>
 
           <button
             type="button"
-            disabled={busy || !d.pipeRef || !d.pipeTitle}
+            disabled={busy || !d.pipeTitle}
             onClick={() =>
               act(
                 "/api/pipeline",
                 {
-                  ref: d.pipeRef,
                   title: d.pipeTitle,
                   office: d.pipeOffice || undefined,
                   budgetEstimate: Number(d.pipeEst) || undefined,
@@ -1093,7 +1184,11 @@ export function CycleView({ onToast }: { user?: unknown; onToast: (m: string) =>
                   expectedPublication: d.pipePub || undefined,
                 },
                 "PIPELINE ENTRY ADDED",
-              ).then((ok) => ok && setD((p) => ({ ...p, pipeRef: "", pipeTitle: "", pipeEst: "", pipePub: "" })))
+              ).then((ok) => {
+                if (!ok) return;
+                setD((p) => ({ ...p, pipeTitle: "", pipeEst: "", pipePub: "" }));
+                void refreshNextRef();
+              })
             }
             className="group relative mt-0.5 inline-flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-brand-600 text-[13.5px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_14px_30px_-16px_rgba(217,38,22,0.85)] transition-[background-color,box-shadow,transform] duration-200 hover:bg-brand-500 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_18px_36px_-16px_rgba(217,38,22,0.95)] active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fffdfb] disabled:cursor-not-allowed disabled:bg-ink-100 disabled:text-ink-400 disabled:shadow-none disabled:active:scale-100 dark:focus-visible:ring-offset-[#111318] dark:disabled:bg-white/[0.06] dark:disabled:text-ink-500"
           >
@@ -1135,7 +1230,7 @@ export function CycleView({ onToast }: { user?: unknown; onToast: (m: string) =>
             </span>
             <p className="mt-3.5 text-[13px] font-semibold text-ink-800">Nothing planned yet</p>
             <p className="mt-1.5 max-w-[36ch] text-[11.5px] leading-relaxed text-ink-400">
-              Stage the pack on the left. It waits here until the tender is advertised and the cycle begins.
+              Stage the pack above. It waits here until the tender is advertised and the cycle begins.
             </p>
           </div>
         ) : (
@@ -1905,6 +2000,11 @@ export function CycleView({ onToast }: { user?: unknown; onToast: (m: string) =>
             : null}
         </div>
       </Card>
+      <StoredDocsBrowser
+        tenderRef={ref}
+        canDelete={canDeleteDocuments}
+        title="STORED TENDER DOCUMENTS"
+      />
       <Card title="Consolidated procurement file" sub="ONE BUNDLE FOR THE AUDITORS — EVERY ARTIFACT, HASH AND SIGNATURE, WITH THE LOG-CHAIN VERDICT">
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink-100 bg-paper px-4 py-3.5">
           <div className="min-w-0">

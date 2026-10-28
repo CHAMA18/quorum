@@ -65,6 +65,15 @@ export interface Draft {
   latencyMs?: number;
 }
 
+export interface GateSignature {
+  algorithm: "ed25519";
+  keyId: string;
+  publicKeyPem: string;
+  payloadHash: string;
+  value: string;
+  signedAt: string;
+}
+
 export interface Gate {
   id: string;
   runId: string;
@@ -78,6 +87,12 @@ export interface Gate {
   note?: string;
   executedAt?: string;
   receipt?: { submissionId?: string; hash?: string; portal?: string; [k: string]: unknown };
+  /* The second signature: who re-authenticated for this decision, how, and
+     the one-time token id the sidecar consumed. */
+  stepUp?: { by: string; method: "password" | "totp"; at: string; jti: string; docHash: string };
+  /* Ed25519 over the canonical decision receipt. Verifiable offline with the
+     embedded public key; see /api/receipts/:gateId/verify. */
+  signature?: GateSignature;
   /* Office-aware approval (the cycle's statutory gates): when set, a roster
      member must HOLD this office to approve. The signed-in officer (the gavel)
      is the accounting officer and may always sign. */
@@ -664,6 +679,13 @@ export const DEFAULT_GUARDS: Guards = {
   updatedBy: null,
 };
 
+export interface StepUpUse {
+  jti: string;
+  gateId: string;
+  sub: string;
+  usedAt: string;
+}
+
 interface PersistShape {
   gates: Gate[];
   runs: Run[];
@@ -673,6 +695,7 @@ interface PersistShape {
   guards: Guards;
   cycle: TenderCycle[];
   pipeline: PipelineEntry[];
+  stepUpUses: StepUpUse[];
 }
 
 export const state: PersistShape = {
@@ -684,6 +707,7 @@ export const state: PersistShape = {
   guards: { ...DEFAULT_GUARDS },
   cycle: [],
   pipeline: [],
+  stepUpUses: [],
 };
 
 export async function loadState() {
@@ -724,6 +748,8 @@ export async function loadState() {
     state.cycle.push(...(raw.cycle ?? []));
     state.pipeline.length = 0;
     state.pipeline.push(...(raw.pipeline ?? []));
+    state.stepUpUses.length = 0;
+    state.stepUpUses.push(...(raw.stepUpUses ?? []));
     /* Merged over the defaults so a store written before the guards existed
        still boots with the carved settings. */
     const g = (raw.guards ?? {}) as Partial<Guards>;

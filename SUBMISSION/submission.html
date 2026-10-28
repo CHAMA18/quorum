@@ -92,9 +92,9 @@
     <div class="badges">
       <span class="badge red">Theme · Build for Your World</span>
       <span class="badge">Track · Indie developer</span>
-      <span class="badge">Live · quorum.chungu-chama.com</span>
+      <span class="badge">Live · quorum-edge.chungu424.workers.dev</span>
     </div>
-    <a class="cta" href="https://quorum.chungu-chama.com">Open the live product</a>
+    <a class="cta" href="https://quorum-edge.chungu424.workers.dev">Open the live product</a>
     <a class="cta ghost" href="#models">How Meta's models are used</a>
   </div>
 </header>
@@ -152,6 +152,16 @@
         <td><b style="color:var(--mut)">First-class option</b> in <code>.env.example</code> — set <code>LLM_BASE_URL</code> / <code>LLM_MODEL</code> / <code>LLM_API_KEY</code></td>
       </tr>
       <tr>
+        <td><span class="m">Muse Spark 1.3</span></td>
+        <td>The floating desk assistant: live read-only tools, plus Quorum's own operating manual for how the product works</td>
+        <td><b style="color:var(--mut)">Live</b> — returns model provenance with every answer</td>
+      </tr>
+      <tr>
+        <td><span class="m">Muse Voice Transcribe 1.0</span></td>
+        <td>The assistant's microphone: a WAV clip becomes the officer's sentence</td>
+        <td><b style="color:var(--mut)">Live</b> — speech replies use Deepgram Aura-2 via Cloudflare Workers AI, with MeloTTS and the browser voice as fallbacks</td>
+      </tr>
+      <tr>
         <td><span class="m">Muse Image</span></td>
         <td>Regenerates the five-chapter demo film (40 frames, Ken Burns assembly)</td>
         <td><b style="color:var(--mut)">Complete kit shipped:</b> <code>SUBMISSION/muse-film-kit/</code> — prompt pack, generator, ffmpeg assembler</td>
@@ -172,8 +182,8 @@
         <div class="kicker">The non-negotiable</div>
         <h2>One button the machine cannot press</h2>
         <p class="lead">Filing an award is irreversible, so the agent cannot do it. The gate refuses the operator until a
-          named approver on the committee roster signs. Only then is the bundle sealed with sha-256, filed to the e-GP
-          portal, and a receipt written. The demo's most interesting moment is the refusal.</p>
+          named approver on the committee roster signs and the roll is quorate. Only then is the bundle sealed with
+          sha-256, filed to the e-GP portal, and a receipt written. The demo's most interesting moment is the refusal.</p>
         <div class="stats">
           <div class="stat"><div class="v">49</div><div class="k">tests green</div></div>
           <div class="stat"><div class="v">5<i>+13</i></div><div class="k">MCP tools</div></div>
@@ -211,7 +221,7 @@
     <div class="kicker">Why it holds up</div>
     <h2>Proof, not promises</h2>
     <div class="grid g2" style="margin-top:22px">
-      <div class="card"><h3>Deployed, not mocked</h3><p><b>quorum.chungu-chama.com</b> runs on EC2 <b>af-south-1</b> (nginx, systemd, Route 53) — reproducible from the repo.</p></div>
+      <div class="card"><h3>Deployed, not mocked</h3><p><b>quorum-edge.chungu424.workers.dev</b> is a Cloudflare Worker HTTPS front door to the EC2 <b>af-south-1</b> origin (nginx, systemd) — reproducible from the repo.</p></div>
       <div class="card"><h3>Measured model path</h3><p>The Llama 3.2 drafting path is <b>measured in-repo</b> — cost formula, token counts and the Ollama setup are documented, not claimed.</p></div>
       <div class="card"><h3>Safety as tests</h3><p><b>49 green tests</b> enforce the rules: no citation, no finding; the halt-at-the-gate guarantee lives in the graph topology.</p></div>
       <div class="card"><h3>Tamper-evident record</h3><p><b>Append-only audit JSONL</b> captures every tool call — oversight bodies see who decided what, forever.</p></div>
@@ -226,7 +236,7 @@
     <div style="font-weight:800;color:var(--ink);font-size:16px">QUORUM<span style="color:var(--red)">.</span></div>
     <div>The agent prepares the file. The committee awards the tender.</div>
     <div class="footlinks">
-      <a href="https://quorum.chungu-chama.com">Live product</a>
+      <a href="https://quorum-edge.chungu424.workers.dev">Live product</a>
       <a href="https://github.com/CHAMA18">GitHub · CHAMA18</a>
       <a href="../META_HACKATHON.md">Submission brief (META_HACKATHON.md)</a>
       <a href="../README.md">Repository README</a>

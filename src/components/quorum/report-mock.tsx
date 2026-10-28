@@ -16,6 +16,17 @@ interface LiveFinding {
   citation: string;
 }
 
+interface LiveRunModel {
+  mode?: "llm" | "mixed" | "template";
+  planSource?: "heuristic" | "llm" | null;
+  planModel?: string | null;
+  draftLlm?: number;
+  draftTotal?: number;
+  models?: string[];
+  promptTokens?: number;
+  completionTokens?: number;
+}
+
 interface LiveRun {
   id: string;
   tenderId: string;
@@ -24,6 +35,7 @@ interface LiveRun {
   requirements: { id: string }[];
   findings: LiveFinding[];
   drafts: { id: string }[];
+  model?: LiveRunModel;
 }
 
 interface LiveLogEntry {
@@ -108,7 +120,7 @@ export function ReportMock() {
         if (!alive) return;
         const runs = runsJson.runs ?? [];
         /* Newest run that has produced findings; otherwise the newest run. */
-        setRun(runs.find((r) => r.findings.length > 0) ?? runs[0] ?? null);
+        setRun(runs.find((r) => (r.findings?.length ?? 0) > 0) ?? runs[0] ?? null);
         setLog(logJson.entries ?? []);
       } catch {
         /* sidecar unreachable — keep the last snapshot */
@@ -202,7 +214,7 @@ export function ReportMock() {
                 </div>
                 <p className="border-b border-ink-100 bg-paper px-5 py-2.5 font-code text-[9.5px] tracking-[0.14em] text-ink-400 sm:px-7">
                   {run
-                    ? `${run.requirements.length} REQUIREMENTS · ${findings.length} FINDINGS · ${run.drafts.length} DRAFTS · EVERY CLAIM CITED`
+                    ? `${run.requirements?.length ?? 0} REQUIREMENTS · ${findings.length} FINDINGS · ${run.drafts?.length ?? 0} DRAFTS · MODEL ${(run.model?.models?.length ? run.model.models.join(", ") : "template").toUpperCase()} · EVERY CLAIM CITED`
                     : "NO RUN YET · EVERY CLAIM CITED"}
                 </p>
 

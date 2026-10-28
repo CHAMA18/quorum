@@ -5,7 +5,12 @@ moment is a refusal: the gate rejecting the operator until a named human signs.*
 
 **Pre-flight (before recording):** `bun run dev` (web :3000) + `bun run mcp`
 (sidecar :3031) running; landing page open; Workspace open in a second tab;
-committee roster has at least one PRESENT member who is not the signed-in officer.
+the committee roll is quorate — the signed-in officer sits as the gavel, and
+enough roster members are marked PRESENT to meet the configured threshold
+(5 of 9 by default). A short roll is refused with HTTP 409, which is a useful
+demo beat but blocks the award moment. Confirm **Tools & models** shows
+`LLAMA3.2:3B · OLLAMA · LOCAL`; if it says `TEMPLATE FALLBACK`, start Ollama
+(`ollama serve`) and check `LLM_BASE_URL` / `LLM_MODEL` before recording.
 
 ---
 
@@ -49,9 +54,10 @@ curl -s -X POST localhost:3031/api/gates/<GATE_ID>/decision \
 ```
 
 **Say:** "This is the whole thesis. The agent prepared everything — and the only path
-to filing runs through a name the roster knows. Not a prompt, not a policy: the edge
-from the gate to filing does not exist in the graph. These refusals are HTTP status
-codes, not theatre." (503 fail-closed when the roster can't be read.)
+to filing runs through a name the roster knows, with a quorum present. Not a prompt,
+not a policy: the edge from the gate to filing does not exist in the graph. These
+refusals are HTTP status codes, not theatre." (503 fail-closed when the roster can't
+be read; 409 when the roll is short.)
 
 **Do (browser):** in the Approvals board, click **Award** on the run you just watched.
 The gate signs with **your session identity** — the named human on the record.
@@ -86,8 +92,9 @@ take goes wrong, re-run them — they are deterministic and mutate nothing.
 
 **Say:** "The committee gets a citations-first report: the review plan and why deep
 parsing was on, every finding with its evidence and file, the gate decision with the
-approver's name, the full audit trail, and an honest cost line — template mode, zero
-tokens, estimated spend $0."
+approver's name, the full audit trail, and a model-attribution line — Llama 3.2 wrote
+both drafts, with the token counts — plus an honest cost line. If the endpoint is down,
+the report says template mode and charges $0; it never claims model output it did not get."
 
 **Close:** "The agent prepares the file. The committee awards the tender. And every
 step in between is one append-only line you can replay."
@@ -100,5 +107,5 @@ step in between is one append-only line you can replay."
 | --- | --- |
 | Sidecar offline | "The web app self-heals it — `GET /api/mcp-ensure` respawns the sidecar; watch it come back." |
 | Firebase popup blocked | "Firebase is an optional mirror — the local scrypt session carries the demo." |
-| LLM not configured | "That's template mode, by design: compliance logic is code; the model only ever writes prose, and it says so on every draft." |
+| LLM not configured or Ollama down | "That's template mode, by design: compliance logic is code; the model only plans depth and writes prose, and every draft and the report label the fallback instead of claiming model output." |
 | A run shows `FAILED` | "That's the audit trail doing its job — the error is on the run, the log line has the reason, and nothing was filed." |

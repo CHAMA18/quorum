@@ -32,7 +32,32 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Check the highlighted fields.", errors }, { status: 400 });
   }
 
-  const updated = updateOrganization(org.id, body as Parameters<typeof updateOrganization>[1]);
+  /* Status, identity and registration are the desk's fields, not the
+     organization's. Passing the raw body here would let a suspended account
+     reactivate itself; only the allowlisted profile fields move. */
+  const patch: Parameters<typeof updateOrganization>[1] = {};
+  for (const key of [
+    "name",
+    "country",
+    "legalForm",
+    "taxPin",
+    "taxClearanceNo",
+    "taxClearanceExpiry",
+    "regulator",
+    "regulatorNo",
+    "contactName",
+    "phone",
+    "address",
+    "website",
+    "description",
+    "categories",
+  ] as const) {
+    if (body[key] !== undefined) {
+      (patch as Record<string, unknown>)[key] = body[key];
+    }
+  }
+
+  const updated = updateOrganization(org.id, patch);
   if (!updated) {
     return NextResponse.json({ error: "Organization not found." }, { status: 404 });
   }

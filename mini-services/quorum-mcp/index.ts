@@ -18,6 +18,14 @@
  *                                   review to read ({ docs: [{ name, text }] });
  *                                   written as 9x-*.md so buildPack treats
  *                                   typed entries exactly like uploaded text
+ *  POST /api/tender-uploads       → record an R2 tender upload (object key,
+ *                                   bytes, content type, staging outcome) in
+ *                                   the hash-chained audit spine
+ *  POST /api/tender-downloads      → record a signed tender download (tender,
+ *                                   object key, slice, user, link expiry) in
+ *                                   the same hash-chained audit spine
+ *  POST /api/tender-deletions      → record an operator's removal of a
+ *                                   stored tender object in that same spine
  *  GET  /api/gates                → gate queue + decisions
  *  POST /api/gates/:id/decision   → { decision: "APPROVE"|"REJECT", approver, note }
  *                                   The signed-in identity is ATTESTED — the gateway's HMAC seal or a
@@ -37,6 +45,7 @@ import {
   shaOf,
   state,
   toolLog,
+  verifyToolLogFile,
   type Gate,
   type Guards,
   type Run,
@@ -44,6 +53,8 @@ import {
   type SupplierApplication,
 } from "./store";
 import { handleReportRequest } from "./report";
+import { recordTenderDownload } from "./tender-downloads";
+import { recordTenderDeletion } from "./tender-deletions";
 import { listSampleTenders, readSampleDocument } from "./samples";
 import { ZAMBIA_METHODS } from "./methods";
 import { ZPPA_ROLL, ZPPA_SOURCE } from "./zppa";
@@ -53,6 +64,7 @@ import { connectMany, loadPortalLinks } from "./portal-links";
 import { disabledPortalIds, loadPortalState, setPortalsEnabled } from "./portal-state";
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { TENDERS_DIR } from "./engine";
+import { modelAttributionForRun, modelStatus } from "./model";
 import { parseClosingDate } from "./cycle";
 import {
   marketplaceEntries,
@@ -64,23 +76,74 @@ import {
   approverAllowed,
   bindEngine,
   executeFiling,
-  fetchRoster,
+  fetchQuorum,
   fsMcp,
   initFsMcp,
   listTenderDocs,
   mcpDraftRedline,
   mcpExtractRequirements,
   mcpFlagFinding,
+  quorumCheck,
   TOOLS,
   verifySessionActor,
 } from "./engine";
-import { cycleToolCall, executeCycleGateAction, handleCycleRoutes, preApprovalCheck } from "./cycle-routes";
+import { cycleToolCall, executeCycleGateAction, handleCycleRoutes, nextPipelineRef, preApprovalCheck } from "./cycle-routes";
+import { consumeStepUp, verifyStepUp } from "./step-up";
+import { signGate, verifyGateSignature } from "./receipts";
+import { notifyWebSoon } from "./notify";
 const PORT = 3031;
 
 /* An optional string field — trims, caps, and collapses empty to undefined. */
 function strOpt(v: unknown): string | undefined {
   const s = String(v ?? "").trim().slice(0, 200);
   return s.length > 0 ? s : undefined;
+}
+
+/* Log outputs are capped to a JSON string on disk; in-memory rows may still
+   be objects. Read both shapes without trusting either. */
+function logOutputObject(value: unknown): { model?: unknown; source?: unknown } {
+  if (value && typeof value === "object") return value as { model?: unknown; source?: unknown };
+  if (typeof value !== "string") return {};
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (parsed && typeof parsed === "object") return parsed as { model?: unknown; source?: unknown };
+  } catch {
+    /* Long outputs are capped mid-JSON; attribution is written first so it can
+       still be recovered from the surviving prefix. */
+  }
+  const model = /"model"\s*:\s*"([^"]+)"/.exec(value)?.[1];
+  const source = /"source"\s*:\s*"([^"]+)"/.exec(value)?.[1];
+  return model || source ? { model, source } : {};
+}
+
+/* The newest actual model answer, read from the append-only log. Health can
+   therefore show what answered — not just what the environment claims. */
+function latestModelCall() {
+  for (const entry of [...toolLog].reverse()) {
+    if (entry.tool !== "draft_redline" && entry.tool !== "plan_review") continue;
+    const outputs = logOutputObject(entry.outputs);
+    if (typeof outputs.model !== "string" || !outputs.model.trim()) continue;
+    const raw = outputs.model.trim();
+    /* Old rows encoded the call shape in the model string ("… (llm)"). Only
+       a row whose source was actually the model counts as a model answer. */
+    const source =
+      outputs.source === "llm" || (outputs.source == null && /\(llm\)/i.test(raw))
+        ? "llm"
+        : outputs.source === "template"
+          ? "template"
+          : null;
+    if (source !== "llm") continue;
+    const model = raw.replace(/\s*\((?:llm|template)[^)]*\).*$/i, "").trim();
+    if (!model) continue;
+    return {
+      tool: entry.tool,
+      model,
+      source,
+      at: entry.ts,
+      runId: entry.runId ?? null,
+    };
+  }
+  return null;
 }
 
 /* Engine refs → durable state */
@@ -91,6 +154,7 @@ bindEngine({
   raiseGate(g) {
     state.gates.unshift(g);
     saveState();
+    notifyWebSoon({ type: "GATE_WAITING", gateId: g.id, tenderId: g.tenderId, tool: g.tool, requiredOffice: g.requiredOffice });
   },
   guards: () => state.guards,
   registry: () => state.suppliers.map((s) => ({ name: s.name, status: s.status })),
@@ -123,6 +187,7 @@ async function raiseGateTool(args: { tenderId: string; bundle: Record<string, un
   });
   state.gates.unshift(gate);
   saveState();
+  notifyWebSoon({ type: "GATE_WAITING", gateId: gate.id, tenderId: gate.tenderId, tool: gate.tool });
   return { gate: gateId, status: "gate_pending", note: "Irreversible action held for a named human. POST /api/gates/:id/decision." };
 }
 
@@ -212,20 +277,44 @@ async function handleRpc(body: {
 
 /* ── Gate decisions — the named human, logged ────────────────────────────── */
 
-async function decideGate(id: string, decision: string, approver: string, note?: string, signedInAs?: string) {
+async function decideGate(id: string, decision: string, approver: string, note?: string, signedInAs?: string, stepUpToken?: string) {
   const gate = state.gates.find((g) => g.id === id);
   if (!gate) return { error: "gate not found", code: 404 };
   if (gate.status !== "PENDING") return { error: `gate already ${gate.status}`, code: 409 };
   const name = approver?.trim();
   if (!name || name.length < 3) return { error: "A named human is required — provide the approving officer's full name.", code: 422 };
+  if (decision !== "APPROVE" && decision !== "REJECT") {
+    return { error: "Decision must be APPROVE or REJECT.", code: 422 };
+  }
+
+  /* The e-signature: a session alone is not enough for an irreversible act.
+     The web app issues a short-lived, single-use token bound to this gate's
+     inputs and this officer. Verify it before reading the roll (so a stale
+     session cannot probe the committee) and consume it only after every
+     precondition has passed, immediately before state changes. */
+  const actor = signedInAs?.trim() ?? "";
+  if (!actor) {
+    return { error: "This gate requires an attested session and a fresh step-up signature.", code: 401 };
+  }
+  const step = verifyStepUp(stepUpToken, { gateId: id, inputs: gate.inputs, actor });
+  if (!step.ok) {
+    appendLog({ actor: "quorum-mcp", server: "quorum-mcp", tool: "gate_decision", kind: "GATE_DECISION", runId: gate.runId, inputs: { gateId: id, decision, approver: name }, outputs: { refused: step.reason }, status: "ERROR", durationMs: 0 });
+    return { error: step.reason, code: 403 };
+  }
+
+  /* Read the roll now: authorization is answered first (a name nobody knows is
+     403, not a quorum debate), then the quorum, then any gate-specific
+     precondition. The short-roll refusal is 409 with the live count; an
+     unreadable roll is 503 and nothing changes. */
+  const quorum = await fetchQuorum();
+  if (!quorum) {
+    appendLog({ actor: "quorum-mcp", server: "quorum-mcp", tool: "gate_decision", kind: "GATE_DECISION", runId: gate.runId, inputs: { gateId: id, decision, approver: name }, outputs: { refused: "committee roster unavailable" }, status: "ERROR", durationMs: 0 });
+    return { error: "The committee roster could not be read — approval refused.", code: 503 };
+  }
 
   /* Approval only by a name on the committee roster (or the signed-in officer). Checked before anything changes. */
   if (decision !== "REJECT") {
-    const roster = await fetchRoster();
-    if (!roster) {
-      appendLog({ actor: "quorum-mcp", server: "quorum-mcp", tool: "gate_decision", kind: "GATE_DECISION", runId: gate.runId, inputs: { gateId: id, decision, approver: name }, outputs: { refused: "committee roster unavailable" }, status: "ERROR", durationMs: 0 });
-      return { error: "The committee roster could not be read — approval refused.", code: 503 };
-    }
+    const roster = quorum.members;
     const verdict = approverAllowed(name, signedInAs?.trim(), roster);
     if (!verdict.ok) {
       appendLog({ actor: "quorum-mcp", server: "quorum-mcp", tool: "gate_decision", kind: "GATE_DECISION", runId: gate.runId, inputs: { gateId: id, decision, approver: name }, outputs: { refused: verdict.reason }, status: "ERROR", durationMs: 0 });
@@ -239,12 +328,36 @@ async function decideGate(id: string, decision: string, approver: string, note?:
     }
   }
 
+  /* A gate decision is a committee act. The roll must carry before any state
+     changes, including a return. The count is recomputed from the member rows
+     and the attested gavel, never trusted from the published `present` field. */
+  const roll = quorumCheck(quorum, signedInAs?.trim());
+  if (!roll.ok) {
+    appendLog({ actor: "quorum-mcp", server: "quorum-mcp", tool: "gate_decision", kind: "GATE_DECISION", runId: gate.runId, inputs: { gateId: id, decision, approver: name }, outputs: { refused: roll.reason, quorum: roll }, status: "ERROR", durationMs: 0 });
+    return { error: roll.reason, code: 409, quorum: roll };
+  }
+
+  /* Every precondition has passed. Burn the one-time token before the gate
+     changes state; a replay from a second tab now loses the race. */
+  if (!consumeStepUp(step.payload)) {
+    appendLog({ actor: "quorum-mcp", server: "quorum-mcp", tool: "gate_decision", kind: "GATE_DECISION", runId: gate.runId, inputs: { gateId: id, decision, approver: name }, outputs: { refused: "step-up token already consumed" }, status: "ERROR", durationMs: 0 });
+    return { error: "This step-up signature was already used. Re-authenticate for a fresh one.", code: 409 };
+  }
+
   gate.approver = name;
   gate.note = note?.trim() || undefined;
   gate.decidedAt = new Date().toISOString();
+  gate.stepUp = {
+    by: step.payload.name,
+    method: step.payload.method,
+    at: new Date(step.payload.iat).toISOString(),
+    jti: step.payload.jti,
+    docHash: step.payload.docHash,
+  };
 
   if (decision === "REJECT") {
     gate.status = "REJECTED";
+    gate.signature = signGate(gate);
     appendLog({
       actor: name,
       server: "quorum-mcp",
@@ -252,7 +365,7 @@ async function decideGate(id: string, decision: string, approver: string, note?:
       kind: "GATE_DECISION",
       runId: gate.runId,
       inputs: { gateId: id, decision, note: gate.note },
-      outputs: { status: "REJECTED — submission returned to the agent" },
+      outputs: { status: "REJECTED — submission returned to the agent", stepUp: { method: step.payload.method, jti: step.payload.jti } },
       status: "OK",
       durationMs: 0,
     });
@@ -263,6 +376,7 @@ async function decideGate(id: string, decision: string, approver: string, note?:
       run.progress.push(`✗ ${name} returned the submission — back to the agent`);
     }
     saveState();
+    notifyWebSoon({ type: "GATE_DECIDED", gateId: gate.id, tenderId: gate.tenderId, tool: gate.tool, actor: name, outcome: "REJECTED", note: gate.note });
     return { gate };
   }
 
@@ -275,6 +389,7 @@ async function decideGate(id: string, decision: string, approver: string, note?:
   gate.status = "EXECUTED";
   gate.executedAt = new Date().toISOString();
   gate.receipt = out.receipt ?? undefined;
+  gate.signature = signGate(gate);
   const run = state.runs.find((r) => r.id === gate.runId);
   if (run) {
     run.status = "FILED";
@@ -282,6 +397,7 @@ async function decideGate(id: string, decision: string, approver: string, note?:
     run.progress.push(`✓ ${name} signed the gate — bundle filed · ${gate.receipt?.submissionId ?? "receipt pending"}`);
   }
   saveState();
+  notifyWebSoon({ type: "GATE_DECIDED", gateId: gate.id, tenderId: gate.tenderId, tool: gate.tool, actor: name, outcome: "EXECUTED", note: gate.note });
   return { gate };
 }
 
@@ -362,6 +478,8 @@ Bun.serve({
         uptimeSec: Math.round(performance.now() / 1000),
         fsMcp: { status: fsMcp.status, tools: fsMcp.tools },
         graphs: ["review_graph (8 nodes)", "filing_graph (2 nodes)"],
+        /* Configured endpoint + the newest real model answer in the log. */
+        model: { ...modelStatus(), lastCall: latestModelCall() },
         counts: { toolCalls: toolLog.length, runs: state.runs.length, gates: state.gates.length, pendingGates: state.gates.filter((g) => g.status === "PENDING").length },
         auditSpine: {
           logWriteFailing: auditHealth.logWriteFailing,
@@ -376,6 +494,7 @@ Bun.serve({
     if (path === "/api/tools") return json({ tools: TOOLS });
 
     if (path === "/api/architecture") {
+      const model = modelStatus();
       return json({
         stack: [
           {
@@ -395,8 +514,10 @@ Bun.serve({
           },
           {
             layer: "MODEL",
-            name: "OpenAI-compatible endpoint (LLM_BASE_URL)",
-            detail: "Designed for open weights served in-region, so procurement data stays in-country. The current build uses a hosted endpoint or the template fallback."
+            name: model.configured ? `${model.model} · ${model.providerLabel}` : "Template fallback (no model configured)",
+            detail: model.configured
+              ? `OpenAI-compatible at ${model.endpoint}. Every draft records the exact model string the endpoint returns; the key is never exposed.`
+              : "No drafting endpoint on this host. Redlines come from the deterministic template and every draft says so."
           },
           {
             layer: "AUDIT",
@@ -413,8 +534,58 @@ Bun.serve({
     }
 
     if (path === "/api/log") {
-      const limit = Math.min(Number(url.searchParams.get("limit") ?? 80), 300);
-      return json({ entries: [...toolLog].reverse().slice(0, limit), total: toolLog.length });
+      const limit = Math.min(Number(url.searchParams.get("limit") ?? 80), 500);
+      const q = (url.searchParams.get("q") ?? "").trim().toLowerCase();
+      const runId = url.searchParams.get("runId") ?? "";
+      const actor = (url.searchParams.get("actor") ?? "").trim().toLowerCase();
+      const tool = url.searchParams.get("tool") ?? "";
+      const status = url.searchParams.get("status") ?? "";
+      const kind = url.searchParams.get("kind") ?? "";
+      const from = url.searchParams.get("from") ?? "";
+      const to = url.searchParams.get("to") ?? "";
+      const filtered = [...toolLog].reverse().filter((e) => {
+        if (runId && e.runId !== runId) return false;
+        if (actor && !e.actor.toLowerCase().includes(actor)) return false;
+        if (tool && e.tool !== tool) return false;
+        if (status && e.status !== status) return false;
+        if (kind && e.kind !== kind) return false;
+        if (from && e.ts < from) return false;
+        if (to && e.ts > to) return false;
+        if (q && !JSON.stringify(e).toLowerCase().includes(q)) return false;
+        return true;
+      });
+      return json({
+        entries: filtered.slice(0, limit),
+        total: filtered.length,
+        allTotal: toolLog.length,
+        filters: { q, runId, actor, tool, status, kind, from, to },
+      });
+    }
+
+    if (path === "/api/log/verify" && req.method === "GET") {
+      return json(await verifyToolLogFile());
+    }
+
+    /* Receipt verification is deliberately offline-friendly: the signature
+       carries its public key, so a downloaded receipt can be checked without
+       this service. This endpoint is the same check for the UI. */
+    if (/^\/api\/(?:gates|receipts)\/[^/]+\/verify$/.test(path) && req.method === "GET") {
+      const id = decodeURIComponent(path.split("/")[3] ?? "");
+      const gate = state.gates.find((g) => g.id === id);
+      if (!gate) return json({ error: "gate not found" }, 404);
+      const verdict = verifyGateSignature(gate);
+      return json({
+        gateId: gate.id,
+        tenderId: gate.tenderId,
+        status: gate.status,
+        approver: gate.approver ?? null,
+        decidedAt: gate.decidedAt ?? null,
+        receipt: gate.receipt ?? null,
+        stepUp: gate.stepUp ?? null,
+        signature: gate.signature ?? null,
+        signatureValid: verdict.ok,
+        reason: verdict.reason ?? null,
+      });
     }
 
     if (path === "/api/runs" && req.method === "GET") {
@@ -425,6 +596,9 @@ Bun.serve({
         const gate = r.gateId ? state.gates.find((g) => g.id === r.gateId) : undefined;
         return {
           ...r,
+          /* Stored facts, not the current env: plan source/model, draft
+             source/model and token counts. The UI prints this verbatim. */
+          model: modelAttributionForRun(r),
           seal: gate?.receipt?.hash ?? null,
           sealedBy: gate?.approver ?? null,
           decidedAt: gate?.decidedAt ?? null,
@@ -593,6 +767,96 @@ Bun.serve({
         durationMs: 0,
       });
       return json({ files: written }, 201);
+    }
+
+    /* Record an R2 tender upload in the hash-chained audit spine. The web
+       route calls this after the edge gate confirms the PUT — including when
+       extraction found no text or staging was refused. The object key, size
+       and content type are the durable facts; staging is an outcome, not a
+       precondition for a record. */
+    if (path === "/api/tender-uploads" && req.method === "POST") {
+      const body = await readBody(req);
+      const tenderId = String(body.tenderId ?? "").trim();
+      const key = String(body.key ?? "").trim();
+      const bytes = Number(body.bytes);
+      const parts = key.split("/");
+      const safeKey =
+        /^[A-Za-z0-9._-]+$/.test(tenderId) &&
+        key.length > 0 &&
+        key.length <= 512 &&
+        !/[\\\u0000-\u001f]/.test(key) &&
+        parts.length >= 3 &&
+        parts[0] === "tenders" &&
+        parts[1] === tenderId &&
+        parts.every((part) => part.length > 0 && part !== "." && part !== "..");
+      if (!safeKey) {
+        return json({ error: "key must live under tenders/<tenderId>/ with no traversal" }, 422);
+      }
+      if (!Number.isFinite(bytes) || bytes <= 0 || bytes > 10 * 1024 * 1024) {
+        return json({ error: "bytes must be between 1 and 10485760" }, 422);
+      }
+      const strings = (value: unknown, max: number, take: number): string[] =>
+        Array.isArray(value)
+          ? value
+              .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
+              .slice(0, take)
+              .map((v) => v.slice(0, max))
+          : [];
+      const pages = Number(body.pages);
+      const chars = Number(body.chars);
+      const note = typeof body.note === "string" ? body.note.slice(0, 220) : undefined;
+      const reason = typeof body.reason === "string" ? body.reason.slice(0, 220) : undefined;
+      const entry = appendLog({
+        actor: attestedActor || "web-app",
+        server: "quorum-mcp",
+        tool: "tender_upload",
+        kind: "WRITES",
+        inputs: {
+          tenderId,
+          key,
+          bytes,
+          contentType: String(body.contentType ?? "").trim().slice(0, 120),
+          filename: String(body.filename ?? "").trim().slice(0, 200),
+        },
+        outputs: {
+          stored: true,
+          staged: body.staged === true,
+          extracted: body.extracted === true,
+          kind: body.kind === "notice" || body.kind === "bid" ? body.kind : undefined,
+          pages: Number.isFinite(pages) && pages > 0 ? pages : undefined,
+          sheets: strings(body.sheets, 80, 20),
+          chars: Number.isFinite(chars) && chars >= 0 ? chars : undefined,
+          note,
+          reason,
+          files: strings(body.files, 120, 20),
+        },
+        status: "OK",
+        durationMs: Math.max(0, Math.min(600_000, Number(body.durationMs) || 0)),
+      });
+      return json({ entry }, 201);
+    }
+
+    /* Record a signed tender download in the same hash-chained spine. The web
+       route calls this only after the session, the link's HMAC, its expiry and
+       the edge gate have all passed. A ranged request records the exact slice
+       that was served, so a resumed or paged read is distinguishable from the
+       full object. The audit is a record of delivery, not a precondition for
+       it: if this append cannot be reached, the document still streams and the
+       response says so. */
+    if (path === "/api/tender-downloads" && req.method === "POST") {
+      const body = await readBody(req);
+      const recorded = recordTenderDownload(body, attestedActor);
+      return recorded.status === 201
+        ? json({ entry: recorded.entry }, 201)
+        : json({ error: recorded.error }, 422);
+    }
+
+    if (path === "/api/tender-deletions" && req.method === "POST") {
+      const body = await readBody(req);
+      const recorded = recordTenderDeletion(body, attestedActor);
+      return recorded.status === 201
+        ? json({ entry: recorded.entry }, 201)
+        : json({ error: recorded.error }, 422);
     }
 
     if (path === "/api/sample-tenders") {
@@ -1118,13 +1382,26 @@ Bun.serve({
         String(body.approver ?? ""),
         body.note ? String(body.note) : undefined,
         attestedActor || undefined,
+        req.headers.get("x-quorum-stepup") ?? undefined,
       );
       if (out.error) return json(out, out.code ?? 400);
       return json(out);
     }
 
     if (path === "/api/gates") {
-      return json({ gates: state.gates });
+      return json({
+        gates: state.gates.map((g) => ({ ...g, signatureValid: g.signature ? verifyGateSignature(g).ok : false })),
+      });
+    }
+
+    /* The register issues the next reference before the planner types anything. */
+    if (path === "/api/pipeline/next-ref" && req.method === "GET") {
+      return json({
+        ref: nextPipelineRef({
+          expectedPublication: url.searchParams.get("publication") ?? undefined,
+          currency: url.searchParams.get("currency") ?? undefined,
+        }),
+      });
     }
 
     /* ── The tender cycle — solicitation to closure (waves 1-3) ───────── */

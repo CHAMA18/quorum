@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "fs";
 import path from "path";
+import { isWorkspaceRole, type WorkspaceRole } from "@/lib/permissions";
 
 /**
  * Quorum's web-app store: one JSON file, no ORM, no native dependencies.
@@ -22,8 +23,31 @@ export interface UserRow {
   password: string; // scrypt:salt:hash, or "oauth:google" for Google-only accounts
   emailVerified: boolean;
   organization: string | null;
+  /* Workspace authority. OWNER is unique and cannot be removed by an ADMIN. */
+  role: WorkspaceRole;
+  status: "ACTIVE" | "SUSPENDED";
+  /* Step-up authentication: an optional RFC 6238 secret. The secret is only
+     trusted once `totpEnabled` is true (the officer has proved one code). */
+  totpSecret?: string;
+  totpEnabled?: boolean;
+  /* Optional for WhatsApp delivery; email is always the account address. */
+  phone?: string;
   createdAt: Date;
   updatedAt: Date;
+}
+
+/* Every step-up issuance is recorded, even when the gate is never signed. The
+   sidecar records the consumption; this row records the human re-auth event. */
+export interface StepUpLogRow {
+  id: string;
+  userId: string;
+  userName: string;
+  gateId: string;
+  docHash: string;
+  method: "password" | "totp";
+  jti: string;
+  issuedAt: Date;
+  expiresAt: Date;
 }
 
 export interface SessionRow {
@@ -31,6 +55,67 @@ export interface SessionRow {
   token: string;
   userId: string;
   expiresAt: Date;
+  createdAt: Date;
+}
+
+export type NotificationKind =
+  | "GATE_WAITING"
+  | "GATE_DECIDED"
+  | "STEP_UP"
+  | "DEADLINE"
+  | "RUN_FAILED"
+  | "INVITE"
+  | "SYSTEM";
+
+export interface NotificationRow {
+  id: string;
+  userId: string;
+  kind: NotificationKind;
+  title: string;
+  body: string;
+  /* In-app destination: a workspace section id (e.g. mc-gates) or a URL. */
+  href: string | null;
+  entityType: string | null;
+  entityId: string | null;
+  dedupeKey: string;
+  readAt: Date | null;
+  createdAt: Date;
+}
+
+export type DeliveryChannel = "email" | "whatsapp";
+export type DeliveryStatus = "SENT" | "SKIPPED" | "FAILED";
+
+export interface NotificationDeliveryRow {
+  id: string;
+  notificationId: string;
+  userId: string;
+  channel: DeliveryChannel;
+  status: DeliveryStatus;
+  detail: string;
+  createdAt: Date;
+}
+
+/* A small, durable record of governance actions. This is separate from the
+   sidecar's hash-chained tool log: role and organization changes happen in the
+   Next app, and oversight must be able to read them there. */
+export type OversightAction =
+  | "ROLE_CHANGED"
+  | "USER_SUSPENDED"
+  | "USER_REACTIVATED"
+  | "SESSIONS_REVOKED"
+  | "ORG_SUSPENDED"
+  | "ORG_REACTIVATED"
+  | "INVITE_REVOKED";
+
+export interface OversightEventRow {
+  id: string;
+  actorId: string;
+  actorName: string;
+  action: OversightAction;
+  targetType: "USER" | "ORGANIZATION" | "INVITE";
+  targetId: string;
+  targetName: string;
+  detail: string;
   createdAt: Date;
 }
 
@@ -112,6 +197,11 @@ export interface ScheduledMeetingRow {
   cancelledAt: Date | null;
   cancelledBy: string | null;
   attendees: MeetingAttendeeRow[];
+  /* A weekly series writes one row per occurrence. The series fields are the
+     thread between them; a one-off meeting simply has none. */
+  seriesId?: string;
+  seriesIndex?: number;
+  seriesCount?: number;
 }
 
 export type InviteStatus = "PENDING" | "CLAIMED" | "REVOKED";
@@ -191,6 +281,10 @@ interface StoreShape {
   organizations: OrganizationRow[];
   orgSessions: OrgSessionRow[];
   orgPasswordResets: OrgPasswordResetRow[];
+  stepUpLogs: StepUpLogRow[];
+  notifications: NotificationRow[];
+  notificationDeliveries: NotificationDeliveryRow[];
+  oversightEvents: OversightEventRow[];
 }
 
 /**
@@ -228,7 +322,7 @@ function resolveStoreFile(): string {
 
 const FILE = resolveStoreFile();
 const LEGACY_FILE = path.join(process.cwd(), "db", "quorum-store.json");
-const DATE_FIELDS = ["createdAt", "updatedAt", "expiresAt", "claimedAt", "usedAt"] as const;
+const DATE_FIELDS = ["createdAt", "updatedAt", "expiresAt", "claimedAt", "usedAt", "readAt"] as const;
 
 function revive<T>(rows: unknown): T[] {
   if (!Array.isArray(rows)) return [];
@@ -305,6 +399,9 @@ function reviveMeetings(rows: unknown): ScheduledMeetingRow[] {
         email: typeof a.email === "string" && a.email.trim() ? a.email : null,
         source: a.source === "COMMITTEE" ? "COMMITTEE" : a.source === "EXTERNAL" ? "EXTERNAL" : "PLAYER",
       })),
+      ...(typeof r.seriesId === "string" && r.seriesId ? { seriesId: r.seriesId } : {}),
+      ...(typeof r.seriesIndex === "number" ? { seriesIndex: r.seriesIndex } : {}),
+      ...(typeof r.seriesCount === "number" ? { seriesCount: r.seriesCount } : {}),
     };
   });
 }
@@ -322,6 +419,10 @@ function load(): StoreShape {
     organizations: [],
     orgSessions: [],
     orgPasswordResets: [],
+    stepUpLogs: [],
+    notifications: [],
+    notificationDeliveries: [],
+    oversightEvents: [],
   };
   if (!existsSync(FILE)) {
     /* One-time migration: a pre-fix build kept the store inside
@@ -351,6 +452,10 @@ function load(): StoreShape {
     organizations: revive<OrganizationRow>(raw.organizations),
     orgSessions: revive<OrgSessionRow>(raw.orgSessions),
     orgPasswordResets: revive<OrgPasswordResetRow>(raw.orgPasswordResets),
+    stepUpLogs: revive<StepUpLogRow>(raw.stepUpLogs),
+    notifications: revive<NotificationRow>(raw.notifications),
+    notificationDeliveries: revive<NotificationDeliveryRow>(raw.notificationDeliveries),
+    oversightEvents: revive<OversightEventRow>(raw.oversightEvents),
   };
 }
 
@@ -366,6 +471,43 @@ if (!Array.isArray(store.scheduledMeetings)) store.scheduledMeetings = [];
 if (!Array.isArray(store.organizations)) store.organizations = [];
 if (!Array.isArray(store.orgSessions)) store.orgSessions = [];
 if (!Array.isArray(store.orgPasswordResets)) store.orgPasswordResets = [];
+if (!Array.isArray(store.stepUpLogs)) store.stepUpLogs = [];
+if (!Array.isArray(store.notifications)) store.notifications = [];
+if (!Array.isArray(store.notificationDeliveries)) store.notificationDeliveries = [];
+if (!Array.isArray(store.oversightEvents)) store.oversightEvents = [];
+
+/* Backfill roles for stores written before workspace authority existed. The
+   earliest account owns the workspace; later accounts inherit the role on a
+   claimed invite where one exists, otherwise they are officers. The migration
+   is idempotent and writes once, so a reload cannot shuffle authority. */
+let rolesMigrated = false;
+if (store.users.length > 0) {
+  const earliest = [...store.users].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0];
+  for (const user of store.users) {
+    if (!isWorkspaceRole(user.role)) {
+      const claimed = store.invites.find(
+        (inv) => inv.claimedByEmail === user.email && inv.claimedByEmail !== null
+      );
+      user.role = isWorkspaceRole(claimed?.role)
+        ? claimed.role
+        : user.id === earliest.id
+          ? "OWNER"
+          : "OFFICER";
+      rolesMigrated = true;
+    }
+    if (user.status !== "SUSPENDED") {
+      if (user.status !== "ACTIVE") {
+        user.status = "ACTIVE";
+        rolesMigrated = true;
+      }
+    }
+  }
+  if (!store.users.some((u) => u.role === "OWNER")) {
+    earliest.role = "OWNER";
+    rolesMigrated = true;
+  }
+}
+if (rolesMigrated) persist();
 
 function persist(): void {
   mkdirSync(path.dirname(FILE), { recursive: true });
@@ -397,9 +539,14 @@ export function createUser(data: {
   password: string;
   organization?: string | null;
   emailVerified?: boolean;
+  role?: WorkspaceRole;
+  status?: "ACTIVE" | "SUSPENDED";
 }): UserRow {
   if (findUserByEmail(data.email)) throw new Error(`User already exists: ${data.email}`);
   const at = now();
+  /* The first account owns the workspace. An invite can grant any other
+     non-owner role, but it can never make the first account a non-owner. */
+  const role: WorkspaceRole = store.users.length === 0 ? "OWNER" : data.role ?? "OFFICER";
   const user: UserRow = {
     id: newId(),
     name: data.name,
@@ -407,12 +554,76 @@ export function createUser(data: {
     password: data.password,
     emailVerified: data.emailVerified ?? false,
     organization: data.organization ?? null,
+    role,
+    status: data.status ?? "ACTIVE",
     createdAt: at,
     updatedAt: at,
   };
   store.users.push(user);
   persist();
   return user;
+}
+
+export function updateUserRole(id: string, role: WorkspaceRole): UserRow | null {
+  const user = findUserById(id);
+  if (!user) return null;
+  user.role = role;
+  user.updatedAt = now();
+  persist();
+  return user;
+}
+
+export function setUserStatus(id: string, status: "ACTIVE" | "SUSPENDED"): UserRow | null {
+  const user = findUserById(id);
+  if (!user) return null;
+  user.status = status;
+  user.updatedAt = now();
+  persist();
+  return user;
+}
+
+export function deleteSessionsForUser(userId: string): number {
+  const before = store.sessions.length;
+  store.sessions = store.sessions.filter((s) => s.userId !== userId);
+  const removed = before - store.sessions.length;
+  if (removed > 0) persist();
+  return removed;
+}
+
+export function countSessionsForUser(userId: string): number {
+  const nowMs = Date.now();
+  return store.sessions.filter((s) => s.userId === userId && s.expiresAt.getTime() > nowMs).length;
+}
+
+/* ── Oversight events — governance actions, durable and readable ─────────── */
+
+export function recordOversightEvent(data: {
+  actorId: string;
+  actorName: string;
+  action: OversightAction;
+  targetType: "USER" | "ORGANIZATION" | "INVITE";
+  targetId: string;
+  targetName: string;
+  detail: string;
+}): OversightEventRow {
+  const row: OversightEventRow = {
+    id: `evt_${randomUUID().slice(0, 10)}`,
+    ...data,
+    detail: data.detail.slice(0, 700),
+    createdAt: now(),
+  };
+  store.oversightEvents.push(row);
+  if (store.oversightEvents.length > 2000) {
+    store.oversightEvents.splice(0, store.oversightEvents.length - 2000);
+  }
+  persist();
+  return row;
+}
+
+export function listOversightEvents(take = 40): OversightEventRow[] {
+  return [...store.oversightEvents]
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, take);
 }
 
 export function markUserVerified(id: string): UserRow | null {
@@ -432,6 +643,142 @@ export function updateUserPassword(id: string, passwordHash: string): UserRow | 
   user.updatedAt = now();
   persist();
   return user;
+}
+
+/** Enable or replace the authenticator secret (the caller verifies a code first). */
+export function setUserTotp(id: string, secret: string | null, enabled: boolean): UserRow | null {
+  const user = findUserById(id);
+  if (!user) return null;
+  if (secret) user.totpSecret = secret;
+  if (secret === null) delete user.totpSecret;
+  user.totpEnabled = enabled;
+  user.updatedAt = now();
+  persist();
+  return user;
+}
+
+export function recordStepUpIssued(data: {
+  userId: string;
+  userName: string;
+  gateId: string;
+  docHash: string;
+  method: "password" | "totp";
+  jti: string;
+  expiresAt: Date;
+}): StepUpLogRow {
+  const row: StepUpLogRow = {
+    id: newId(),
+    ...data,
+    issuedAt: now(),
+  };
+  store.stepUpLogs.push(row);
+  /* Keep the local audit slice bounded; the sidecar's hash-chained log is the
+     durable record. */
+  if (store.stepUpLogs.length > 5000) store.stepUpLogs.splice(0, store.stepUpLogs.length - 5000);
+  persist();
+  return row;
+}
+
+export function listStepUpLogs(take = 100): StepUpLogRow[] {
+  return [...store.stepUpLogs].sort((a, b) => b.issuedAt.getTime() - a.issuedAt.getTime()).slice(0, take);
+}
+
+/* ── Notifications — the desk's attention layer ─────────────────────────── */
+
+export function findNotificationByDedupe(userId: string, dedupeKey: string): NotificationRow | null {
+  return store.notifications.find((n) => n.userId === userId && n.dedupeKey === dedupeKey) ?? null;
+}
+
+export function createNotification(data: {
+  userId: string;
+  kind: NotificationKind;
+  title: string;
+  body: string;
+  href?: string | null;
+  entityType?: string | null;
+  entityId?: string | null;
+  dedupeKey: string;
+}): { row: NotificationRow; created: boolean } {
+  const existing = findNotificationByDedupe(data.userId, data.dedupeKey);
+  if (existing) return { row: existing, created: false };
+  const row: NotificationRow = {
+    id: `ntf_${randomUUID().slice(0, 10)}`,
+    userId: data.userId,
+    kind: data.kind,
+    title: data.title.slice(0, 160),
+    body: data.body.slice(0, 700),
+    href: data.href ?? null,
+    entityType: data.entityType ?? null,
+    entityId: data.entityId ?? null,
+    dedupeKey: data.dedupeKey,
+    readAt: null,
+    createdAt: now(),
+  };
+  store.notifications.push(row);
+  /* Keep local history bounded; this is an attention inbox, not the audit log. */
+  if (store.notifications.length > 5000) store.notifications.splice(0, store.notifications.length - 5000);
+  persist();
+  return { row, created: true };
+}
+
+export function listNotifications(userId: string, opts?: { unreadOnly?: boolean; take?: number }): NotificationRow[] {
+  const take = Math.min(Math.max(opts?.take ?? 40, 1), 200);
+  return store.notifications
+    .filter((n) => n.userId === userId && (!opts?.unreadOnly || n.readAt === null))
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, take);
+}
+
+export function countUnreadNotifications(userId: string): number {
+  return store.notifications.filter((n) => n.userId === userId && n.readAt === null).length;
+}
+
+export function markNotificationRead(userId: string, id: string): NotificationRow | null {
+  const row = store.notifications.find((n) => n.id === id && n.userId === userId);
+  if (!row) return null;
+  if (!row.readAt) {
+    row.readAt = now();
+    persist();
+  }
+  return row;
+}
+
+export function markAllNotificationsRead(userId: string): number {
+  const at = now();
+  let changed = 0;
+  for (const row of store.notifications) {
+    if (row.userId === userId && !row.readAt) {
+      row.readAt = at;
+      changed += 1;
+    }
+  }
+  if (changed) persist();
+  return changed;
+}
+
+export function recordNotificationDelivery(data: {
+  notificationId: string;
+  userId: string;
+  channel: DeliveryChannel;
+  status: DeliveryStatus;
+  detail: string;
+}): NotificationDeliveryRow {
+  const row: NotificationDeliveryRow = {
+    id: `ndl_${randomUUID().slice(0, 10)}`,
+    ...data,
+    detail: data.detail.slice(0, 500),
+    createdAt: now(),
+  };
+  store.notificationDeliveries.push(row);
+  if (store.notificationDeliveries.length > 5000) {
+    store.notificationDeliveries.splice(0, store.notificationDeliveries.length - 5000);
+  }
+  persist();
+  return row;
+}
+
+export function listNotificationDeliveries(take = 100): NotificationDeliveryRow[] {
+  return [...store.notificationDeliveries].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, take);
 }
 
 /* ── Sessions ───────────────────────────────────────────────────────────── */
@@ -648,6 +995,15 @@ export function updateScheduledMeeting(
 
 /* ── Organizations — the supplier side of the desk ──────────────────────── */
 
+export function listOrganizations(): OrganizationRow[] {
+  return [...store.organizations].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export function countOrgSessionsForOrg(orgId: string): number {
+  const nowMs = Date.now();
+  return store.orgSessions.filter((s) => s.orgId === orgId && s.expiresAt.getTime() > nowMs).length;
+}
+
 export function findOrganizationByEmail(email: string): OrganizationRow | null {
   return store.organizations.find((o) => o.email === email) ?? null;
 }
@@ -769,6 +1125,18 @@ export function deleteOrgSessionsByOrg(orgId: string): number {
   const removed = before - store.orgSessions.length;
   if (removed > 0) persist();
   return removed;
+}
+
+export function setOrganizationStatus(
+  orgId: string,
+  status: "ACTIVE" | "SUSPENDED",
+): OrganizationRow | null {
+  const org = findOrganizationById(orgId);
+  if (!org) return null;
+  org.status = status;
+  org.updatedAt = now();
+  persist();
+  return org;
 }
 
 /* ── Organization passphrase resets — one-time codes, hashed at rest ───────

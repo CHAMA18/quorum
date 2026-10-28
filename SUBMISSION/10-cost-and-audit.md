@@ -53,7 +53,14 @@ is measured, not claimed (`data/eval/report.json`, `identicalAcrossRuns`).
 ## 3. The audit surface (what an auditor would read)
 
 1. **`data/tool-log.jsonl`** — append-only, every call: seq, timestamp, actor,
-   tool, READ/WRITES/IRREVERSIBLE kind, inputs, outputs, status, duration.
+   tool, READ/WRITES/IRREVERSIBLE kind, inputs, outputs, status, duration. Tender
+   uploads add a `tender_upload` line with the R2 object key, byte size, content
+   type and whether the extracted text was staged for review; signed downloads
+   add a `tender_download` READ line with the exact bytes or range served, the
+   signed-in user and the link expiry. A download whose append fails still
+   streams, and the response says `x-quorum-audit: unavailable`. An operator
+   removal adds a `tender_delete` WRITES line with the object key, user and
+   filename; the browser shows the audit number with the confirmation.
 2. **Per-run sourced report** — `GET :3031/api/runs/:id/report` (9.9 KB for the
    run above), findings with file-level citations, the gate decision, and the run's
    own audit trail.

@@ -29,6 +29,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { attestSignature } from "@/lib/sidecar-attest";
+import { canMutateSidecar } from "@/lib/permissions";
 
 const ALLOWED_PORTS = new Set(["3031"]);
 const UPSTREAM_HOST = "127.0.0.1";
@@ -53,6 +54,16 @@ async function proxy(req: NextRequest) {
 
   const url = new URL(req.url);
 
+  /* Role enforcement at the public door. The sidecar still enforces its own
+     named-human and roster rules; this stops a read-only role from reaching a
+     mutating sidecar tool at all. */
+  if (MUTATING.has(req.method) && session && !canMutateSidecar(session.role, req.method, url.pathname)) {
+    return NextResponse.json(
+      { error: `Your workspace role (${session.role}) cannot perform this action.` },
+      { status: 403 },
+    );
+  }
+
   /* The applications list names every bidder and its bid amount. It is an
      officer-desk read only: suppliers reach their own rows through the
      org-session routes, which attest directly to the sidecar. */
@@ -71,6 +82,10 @@ async function proxy(req: NextRequest) {
     const forward: Record<string, string> = {};
     const contentType = req.headers.get("content-type");
     if (contentType) forward["content-type"] = contentType;
+    /* The browser's step-up token for an irreversible gate decision. The
+       sidecar verifies and consumes it; the gateway never mints one. */
+    const stepUp = req.headers.get("x-quorum-stepup");
+    if (stepUp) forward["x-quorum-stepup"] = stepUp;
     if (actor) {
       forward["x-quorum-actor"] = actor;
       const ts = Date.now();

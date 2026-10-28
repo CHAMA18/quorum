@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { cancelScheduledMeeting } from "@/lib/committee";
+import { can } from "@/lib/permissions";
 
 /**
  * DELETE /api/committee/meetings/:id — take a meeting off the diary.
@@ -16,6 +17,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const user = await getUserFromToken(token).catch(() => null);
     if (!user) {
       return NextResponse.json({ error: "Sign in to cancel a meeting." }, { status: 401 });
+    }
+    if (!can(user.role, "manage_meetings")) {
+      return NextResponse.json({ error: "Your workspace role cannot cancel a committee meeting." }, { status: 403 });
     }
 
     const out = await cancelScheduledMeeting(id, user);

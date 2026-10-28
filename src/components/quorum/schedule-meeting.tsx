@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { ArrowUpRight, CalendarPlus, Check, Copy, Users, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +39,10 @@ export type ScheduledMeeting = {
   createdAt: string;
   status: "SCHEDULED" | "CANCELLED";
   attendees: ScheduledMeetingAttendee[];
+  /* Weekly series thread — 1 of 1 for a one-off meeting. */
+  seriesId?: string | null;
+  seriesIndex?: number;
+  seriesCount?: number;
 };
 
 export type MeetingMember = {
@@ -53,6 +57,8 @@ export type MeetingDraft = {
   agenda: string;
   startsAt: string;
   durationMinutes: number;
+  /* 1 = one-off; 2–12 writes a weekly series, one record per occurrence. */
+  repeatWeeks: number;
   memberIds: string[];
   playerIds: string[];
   externals: { name: string; email: string }[];
@@ -115,6 +121,8 @@ export function ScheduleMeetingDialog({
   const [date, setDate] = useState(initial.date);
   const [time, setTime] = useState(initial.time);
   const [duration, setDuration] = useState("60");
+  const [repeat, setRepeat] = useState<"NONE" | "WEEKLY">("NONE");
+  const [weeks, setWeeks] = useState("4");
   const [memberIds, setMemberIds] = useState<string[]>([]);
   const [playerIds, setPlayerIds] = useState<string[]>([]);
   const [externals, setExternals] = useState<{ name: string; email: string }[]>([]);
@@ -192,6 +200,20 @@ export function ScheduleMeetingDialog({
 
   const invited = memberIds.length + playerIds.length + externals.length;
   const minutes = Number(duration);
+  const occurrences = repeat === "WEEKLY" ? Number(weeks) : 1;
+
+  /* The last date in a weekly run — shown before the owner commits, so the
+     series end is a stated date rather than mental arithmetic. */
+  const lastDate = (() => {
+    if (repeat !== "WEEKLY") return null;
+    const start = new Date(`${date}T${time || "00:00"}`);
+    if (Number.isNaN(start.getTime())) return null;
+    const count = Number(weeks);
+    if (!Number.isFinite(count) || count < 2) return null;
+    start.setDate(start.getDate() + (Math.min(12, Math.round(count)) - 1) * 7);
+    return start.toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short" });
+  })();
+
   const submission = () => {
     if (busy) return;
     if (title.trim().length < 3) {
@@ -211,6 +233,10 @@ export function ScheduleMeetingDialog({
       setLocalErr("A meeting runs between 15 and 480 minutes.");
       return;
     }
+    if (repeat === "WEEKLY" && (!Number.isInteger(occurrences) || occurrences < 2 || occurrences > 12)) {
+      setLocalErr("A weekly series runs between 2 and 12 meetings.");
+      return;
+    }
     if (invited === 0) {
       setLocalErr("Name at least one other player — the owner is already on the list.");
       return;
@@ -221,6 +247,7 @@ export function ScheduleMeetingDialog({
       agenda: agenda.trim(),
       startsAt: when.toISOString(),
       durationMinutes: Math.round(minutes),
+      repeatWeeks: repeat === "WEEKLY" ? occurrences : 1,
       memberIds,
       playerIds,
       externals,
@@ -314,7 +341,7 @@ export function ScheduleMeetingDialog({
             />
           </label>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <label className="block">
               <span className="font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-400">DATE</span>
               <input
@@ -342,7 +369,7 @@ export function ScheduleMeetingDialog({
                 className="mt-1.5 h-10 w-full rounded-xl border border-ink-200 bg-white px-3 text-[12.5px] text-ink-950 outline-none transition focus:border-ink-950"
               />
             </label>
-            <label className="col-span-2 block sm:col-span-1">
+            <label className="block">
               <span className="font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-400">MINUTES</span>
               <input
                 type="number"
@@ -358,6 +385,47 @@ export function ScheduleMeetingDialog({
                 className="mt-1.5 h-10 w-full rounded-xl border border-ink-200 bg-white px-3 text-[12.5px] tabular text-ink-950 outline-none transition focus:border-ink-950"
               />
             </label>
+            <label className="col-span-2 block sm:col-span-1">
+              <span className="font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-400">REPEAT</span>
+              <select
+                value={repeat}
+                onChange={(e) => {
+                  setRepeat(e.target.value === "WEEKLY" ? "WEEKLY" : "NONE");
+                  setLocalErr(null);
+                }}
+                className="mt-1.5 h-10 w-full rounded-xl border border-ink-200 bg-white px-2.5 text-[12.5px] text-ink-950 outline-none transition focus:border-ink-950"
+              >
+                <option value="NONE">Does not repeat</option>
+                <option value="WEEKLY">Weekly</option>
+              </select>
+            </label>
+            {repeat === "WEEKLY" && (
+              <div className="col-span-2 flex flex-wrap items-end justify-between gap-3 rounded-xl border border-ink-100 bg-paper/50 px-3.5 py-3 sm:col-span-4">
+                <label className="block">
+                  <span className="font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-400">
+                    NUMBER OF WEEKLY MEETINGS
+                  </span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={2}
+                    max={12}
+                    step={1}
+                    value={weeks}
+                    onChange={(e) => {
+                      setWeeks(e.target.value);
+                      setLocalErr(null);
+                    }}
+                    aria-label="Number of weekly meetings, 2 to 12"
+                    className="mt-1.5 h-9 w-24 rounded-lg border border-ink-200 bg-white px-3 text-[12.5px] tabular text-ink-950 outline-none transition focus:border-ink-950"
+                  />
+                </label>
+                <p className="max-w-[36ch] text-[11.5px] leading-relaxed text-ink-500">
+                  Every 7 days.{lastDate ? ` Last meeting ${lastDate}.` : ""} Each week gets its own diary record and
+                  its own room, so a night can be moved or cancelled on its own.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="rounded-xl border border-ink-100 bg-paper/50 p-3.5">
@@ -665,6 +733,9 @@ export function ScheduledMeetingsPanel({
                   </p>
                   <p className="mt-0.5 truncate font-code text-[6.5px] tracking-[0.14em] text-ink-400">
                     SCHEDULED BY {m.scheduledBy.toUpperCase()} · JITSI ROOM
+                    {m.seriesCount && m.seriesCount > 1
+                      ? ` · WEEKLY ${m.seriesIndex ?? 1}/${m.seriesCount}`
+                      : ""}
                   </p>
                 </div>
                 <div className="ml-auto flex shrink-0 flex-wrap items-center gap-2">

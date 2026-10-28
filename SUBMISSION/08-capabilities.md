@@ -27,7 +27,7 @@ Each capability below is mapped to the exact place in the system that implements
 ## The honest boundaries
 
 - **Planning is structural, not spontaneous.** The agent doesn't invent a plan per run — and we argue that's the *stronger* agentic claim for procurement: the graph makes the plan auditable and makes the missing-edge safety guarantee possible. Anything the model improvised could never promise "the edge to filing does not exist".
-- **The generative layer is currently the template fallback on the live deployment.** With no `LLM_BASE_URL` configured, `draft_redline` drafts from the deterministic template; capabilities and agency are unaffected, prose quality is. Wiring an in-region open-weights endpoint upgrades that layer only.
+- **The live demo drafts with Llama 3.2.** `LLM_BASE_URL` points at `llama3.2:3b` on Ollama; the Meta Model API is the same path with a hosted endpoint. Attribution is recorded per call — each draft stores the exact model string the endpoint returned and its `source`, `/api/runs` returns the run's plan/draft/token attribution, `/api/health` names the configured endpoint and newest actual answer, and the sourced report prints a **Model attribution** table. When inference is unreachable, the deterministic template takes over and is labelled `source: "template"` — never passed off as model output. Capabilities and agency are unaffected; prose quality is.
 - **"Recommendation generation" never crosses into "decision".** Every recommendation stops at the gate — the agent frames the decision; the named human makes it.
 
 ---
