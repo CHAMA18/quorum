@@ -2,7 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { FileSearch, Scale, ShieldAlert } from "lucide-react";
-import { Eyebrow, Reveal } from "@/components/quorum/reveal";
+import { Reveal, SpecBar } from "@/components/quorum/reveal";
 import { Aurora, Parallax, Spotlight } from "@/components/quorum/motion-kit";
 
 const GUARANTEES = [
@@ -42,8 +42,13 @@ export function RuleBand() {
       <div className="relative mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
         <div className="grid gap-10 lg:grid-cols-12">
           <Reveal className="lg:col-span-4">
-            <Eyebrow tone="light">One rule — not negotiable</Eyebrow>
-            <div className="mt-6 inline-flex items-center gap-3 rounded-2xl border border-white/12 bg-white/[0.05] px-5 py-4 backdrop-blur">
+            <SpecBar
+              index="03"
+              label="One rule — not negotiable"
+              meta="Quorum prepares the file · the committee signs"
+              tone="light"
+            />
+            <div className="mt-6 inline-flex items-center gap-3 rounded-[10px] border border-white/12 bg-white/[0.05] px-5 py-4 backdrop-blur">
               <Scale className="h-6 w-6 shrink-0 text-brand-400" aria-hidden="true" />
               <p className="font-code text-[11px] font-semibold leading-relaxed tracking-[0.18em] text-ink-200">
                 AGENT PREPARES
@@ -86,8 +91,8 @@ export function RuleBand() {
                   transition={{ delay: 0.16 + i * 0.12, duration: 0.7, ease: EASE }}
                   className="h-full"
                 >
-                  <Spotlight className="h-full rounded-2xl">
-                    <div className="h-full rounded-2xl border border-white/10 bg-white/[0.04] p-5 transition-colors duration-300 group-hover:border-brand-500/40">
+                  <Spotlight className="h-full rounded-[10px]">
+                    <div className="h-full rounded-[10px] border border-white/10 bg-white/[0.04] p-5 transition-colors duration-300 group-hover:border-brand-500/40">
                       <g.icon className="h-5 w-5 text-brand-400" aria-hidden="true" />
                       <p className="mt-3 text-[13.5px] font-medium leading-relaxed text-ink-200">{g.text}</p>
                     </div>

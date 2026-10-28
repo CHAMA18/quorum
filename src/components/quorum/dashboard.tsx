@@ -10,11 +10,14 @@ import {
   Building2,
   Cable,
   CalendarClock,
+  CalendarDays,
+  CalendarPlus,
   Check,
   ChevronDown,
   CircleAlert,
   CircleCheck,
   CloudUpload,
+  Command as CommandIcon,
   Copy,
   Database,
   Download,
@@ -52,12 +55,21 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
+import { CalendarView } from "@/components/quorum/calendar-view";
 import { CycleView } from "@/components/quorum/cycle-view";
+import { SpecBar } from "@/components/quorum/reveal";
 import { QuorumLogo } from "@/components/quorum/logo";
 import { MasterSwitcher } from "@/components/quorum/master-switcher";
 import { StackConsole } from "@/components/quorum/stack-console";
 import { TenderPackPreview, type TenderPackRow } from "@/components/quorum/tender-pack-preview";
 import { TourLayer, type TourStep } from "@/components/quorum/tour";
+import {
+  ScheduleMeetingDialog,
+  ScheduledMeetingsPanel,
+  type MeetingDraft,
+  type ScheduledMeeting,
+} from "@/components/quorum/schedule-meeting";
+import { WorkspacePalette, type PaletteGroup } from "@/components/quorum/workspace-palette";
 import type { AuthUser } from "@/lib/auth-types";
 import { uploadTenderDocument } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
@@ -375,6 +387,7 @@ type SectionId =
   | "mc-sources"
   | "mc-ledger"
   | "mc-committee"
+  | "mc-calendar"
   | "mc-suppliers"
   | "mc-rules"
   | "mc-stack"
@@ -411,6 +424,7 @@ const NAV_GROUPS: {
     items: [
       { id: "mc-ledger", label: "Award history", icon: Gavel },
       { id: "mc-committee", label: "Committee", icon: Users },
+      { id: "mc-calendar", label: "Calendar", icon: CalendarDays },
     ],
   },
   {
@@ -545,22 +559,23 @@ function useAgentStatus(): AgentStatus {
 
 function AgentStatusBadge({ mode, className }: { mode: AgentMode; className?: string }) {
   const label =
-    mode === "online" ? "AGENT · ONLINE" : mode === "offline" ? "AGENT · OFFLINE" : "AGENT · LINKING";
+    mode === "online" ? "Agent · online" : mode === "offline" ? "Agent · offline" : "Agent · linking";
   return (
     <span
-      className={cn(
-        "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-code text-[8.5px] font-semibold tracking-[0.18em]",
-        mode === "online" && "border-ink-200 bg-white text-ink-700",
-        mode === "offline" && "border-ink-200 bg-white text-ink-400",
-        mode === "linking" && "border-ink-200 bg-white text-ink-500",
-        className
-      )}
       role="status"
       aria-label={`Agent status: ${mode}`}
+      className={cn(
+        "inline-flex h-9 items-center gap-2 rounded-full border px-3 type-micro",
+        mode === "online" &&
+          "border-brand-500/30 bg-brand-500/[0.06] text-brand-700 dark:border-brand-500/35 dark:text-brand-300",
+        mode === "offline" && "border-ink-200 bg-white text-ink-400 dark:border-white/10 dark:bg-white/[0.04]",
+        mode === "linking" && "border-ink-200 bg-white text-ink-500 dark:border-white/10 dark:bg-white/[0.04]",
+        className
+      )}
     >
-      <span className="relative flex h-1.5 w-1.5">
+      <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
         {mode === "online" && (
-          <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-brand-500" aria-hidden="true" />
+          <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-brand-500" />
         )}
         <span
           className={cn(
@@ -569,7 +584,6 @@ function AgentStatusBadge({ mode, className }: { mode: AgentMode; className?: st
             mode === "offline" && "bg-ink-300",
             mode === "linking" && "animate-pulse bg-ink-400"
           )}
-          aria-hidden="true"
         />
       </span>
       {label}
@@ -616,41 +630,70 @@ function AgentFeed() {
   }, []);
 
   return (
-    <div data-tour="agent-feed" className="overflow-hidden rounded-2xl border border-white/10 bg-night-2 shadow-[0_28px_70px_rgba(11,12,15,0.35)]">
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-        <div className="flex items-center gap-1.5" aria-hidden="true">
-          <span className="h-2.5 w-2.5 rounded-full bg-brand-600/90" />
-          <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
-          <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
-        </div>
-        <p className="flex items-center gap-2 font-code text-[9px] font-semibold tracking-[0.22em] text-ink-400">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-brand-500" aria-hidden="true" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-600" aria-hidden="true" />
+    <div
+      data-tour="agent-feed"
+      className="relative overflow-hidden rounded-[16px] border border-white/10 bg-night-2 shadow-[0_2px_4px_rgba(0,0,0,0.5),0_40px_85px_-45px_rgba(0,0,0,0.85)]"
+    >
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.045] via-transparent to-white/[0.015]"
+      />
+      <span aria-hidden="true" className="lit-top pointer-events-none absolute inset-x-0 top-0 h-px" />
+
+      {/* Chrome — the same console as the landing's live run, one desk over */}
+      <div className="relative flex items-center justify-between gap-3 border-b border-white/[0.09] px-5 py-3.5">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex gap-1.5" aria-hidden="true">
+            <span className="h-2.5 w-2.5 rounded-full bg-ink-700" />
+            <span className="h-2.5 w-2.5 rounded-full bg-ink-700" />
+            <span className="h-2.5 w-2.5 rounded-full bg-brand-500" />
           </span>
-          AGENT ACTIVITY · LIVE
+          <span className="type-micro text-ink-200">Agent activity</span>
+        </div>
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-brand-500/50 bg-brand-600/15 px-2 py-0.5 font-code text-[9px] font-bold tracking-[0.18em] text-brand-300">
+          <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-brand-400" aria-hidden="true" />
+          LIVE
+        </span>
+      </div>
+
+      <div className="relative">
+        <div
+          data-tour="agent-feed-stream"
+          className="mask-tail h-[248px] overflow-hidden px-5 py-4 font-code text-[11px] leading-[2] sm:text-[11.5px]"
+          role="img"
+          aria-label="Live agent activity log"
+        >
+          {feed.map((line, i) => (
+            <p
+              key={`${i}-${line.text}`}
+              className={cn(
+                "grid grid-cols-[1.1rem_1fr] gap-x-2",
+                line.kind === "step" && "text-white/55",
+                line.kind === "ok" && "font-semibold text-white",
+                line.kind === "gate" && "text-brand-300"
+              )}
+            >
+              <span className="text-right text-white/30 tabular" aria-hidden="true">
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <span className="truncate">{line.text}</span>
+            </p>
+          ))}
+          {feed.length === 0 && <p className="text-white/55">▸ waiting for the agent&apos;s first step…</p>}
+        </div>
+        <p
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-3 left-5 flex items-center gap-2 font-code text-[12px] text-brand-400"
+        >
+          <span>$</span>
+          <span className="animate-caret-blink inline-block h-3.5 w-[7px] bg-brand-400/90" />
         </p>
       </div>
-      <div
-        data-tour="agent-feed-stream"
-        className="min-h-[190px] px-4 py-4 font-code text-[10.5px] leading-[2] sm:text-[11.5px]"
-        role="img"
-        aria-label="Live agent activity log"
-      >
-        {feed.map((line, i) => (
-          <p
-            key={`${i}-${line.text}`}
-            className={cn(
-              line.kind === "step" && "text-ink-400",
-              line.kind === "ok" && "font-semibold text-white",
-              line.kind === "gate" && "text-brand-300"
-            )}
-          >
-            {line.text}
-          </p>
-        ))}
-        {feed.length === 0 && <p className="text-ink-400">▸ waiting for the agent's first step…</p>}
-        <span className="mt-1 inline-block h-3.5 w-[7px] animate-pulse bg-brand-500" aria-hidden="true" />
+
+      {/* Footer — what the tail is, so the panel is never just decoration */}
+      <div className="relative flex items-center justify-between gap-3 border-t border-white/[0.09] bg-white/[0.03] px-5 py-3">
+        <p className="type-micro text-white/55">quorum-mcp · tail</p>
+        <p className="type-micro text-white/50">Every tool call logged</p>
       </div>
     </div>
   );
@@ -658,32 +701,56 @@ function AgentFeed() {
 
 /* ── Small pieces ────────────────────────────────────────────────────────── */
 
+/* One chip vocabulary for every run state — same height, same tracking, same
+   signal colour meaning as the rest of the product. */
 function StatusChip({ status }: { status: RunStatus }) {
+  const base =
+    "inline-flex h-6 items-center gap-1.5 rounded-full border px-2.5 font-code text-[8.5px] font-bold tracking-[0.16em] tabular";
   if (status === "running")
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 font-code text-[8.5px] font-bold tracking-[0.16em] text-brand-700">
-        <span className="relative flex h-1.5 w-1.5">
-          <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-brand-500" aria-hidden="true" />
-          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-600" aria-hidden="true" />
+      <span
+        className={cn(
+          base,
+          "border-brand-500/30 bg-brand-50 text-brand-700 dark:border-brand-500/35 dark:bg-brand-500/10 dark:text-brand-300"
+        )}
+      >
+        <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
+          <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-brand-500" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-600" />
         </span>
         IN PROGRESS
       </span>
     );
   if (status === "queued")
     return (
-      <span className="inline-flex items-center rounded-full border border-ink-200 px-2.5 py-1 font-code text-[8.5px] font-bold tracking-[0.16em] text-ink-500">
+      <span
+        className={cn(
+          base,
+          "border-ink-200 bg-white text-ink-500 dark:border-white/10 dark:bg-white/[0.04]"
+        )}
+      >
         QUEUED
       </span>
     );
   if (status === "gate")
     return (
-      <span className="group inline-flex items-center gap-1 rounded-full border border-brand-500/40 bg-transparent px-2.5 py-1 font-code text-[8.5px] font-bold tracking-[0.16em] text-brand-700 transition-colors hover:bg-brand-50">
+      <span
+        className={cn(
+          base,
+          "border-brand-500/40 text-brand-700 transition-colors hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-500/10"
+        )}
+      >
         <Gavel className="h-2.5 w-2.5" aria-hidden="true" />
         NEEDS APPROVAL
       </span>
     );
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-ink-950 px-2.5 py-1 font-code text-[8.5px] font-bold tracking-[0.16em] text-white">
+    <span
+      className={cn(
+        base,
+        "border-ink-950 bg-ink-950 text-white dark:border-white/15 dark:bg-white/10"
+      )}
+    >
       <CircleCheck className="h-2.5 w-2.5" aria-hidden="true" />
       COMPLETED
     </span>
@@ -707,6 +774,7 @@ function Spark({ data, tone = "ink" }: { data: number[]; tone?: "ink" | "brand" 
 }
 
 function StatCard({
+  index,
   label,
   value,
   suffix,
@@ -716,6 +784,9 @@ function StatCard({
   pulse,
   delay,
 }: {
+  /* The cell's own number in the band — the same spec-sheet indexing the
+     landing's contract table uses, so the two read as one system. */
+  index: string;
   label: string;
   value: number;
   suffix?: string;
@@ -735,16 +806,26 @@ function StatCard({
       transition={{ duration: 0.6, delay, ease: EASE }}
       className={cn(
         /* Flat editorial cell — the stat band wrapper owns the frame, the
-           hairlines and the rounding; featured cell keeps the night fill. */
-        "relative h-full overflow-hidden p-5",
-        featured ? "bg-night text-white" : "bg-white"
+           hairlines and the rounding; the featured cell keeps the night fill. */
+        "relative h-full overflow-hidden p-5 transition-colors duration-300 lg:p-6",
+        featured
+          ? "bg-night text-white"
+          : "bg-paper hover:bg-white dark:hover:bg-white/[0.03]"
       )}
     >
-      {featured && <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />}
-      <div className="relative">
+      {featured && (
+        <>
+          <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand-500/70 to-transparent"
+          />
+        </>
+      )}
+      <div className="relative flex h-full flex-col">
         <div className="flex items-center justify-between gap-2">
-          <p className={cn("font-code text-[9px] font-semibold tracking-[0.22em]", featured ? "text-ink-300" : "text-ink-400")}>
-            {label}
+          <p className={cn("type-micro", featured ? "text-ink-300" : "text-ink-400")}>
+            {index} · {label}
           </p>
           {pulse && (
             <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
@@ -753,12 +834,16 @@ function StatCard({
             </span>
           )}
         </div>
-        <p className="mt-3 flex items-baseline gap-1 font-display text-[40px] font-black leading-none tracking-[-0.02em] tabular">
+        <p className="type-num mt-5 flex items-baseline gap-1 text-[42px] lg:text-[46px]">
           {n}
-          {suffix && <span className={cn("text-[22px]", featured ? "text-brand-400" : "text-brand-600")}>{suffix}</span>}
+          {suffix && (
+            <span className={cn("text-[24px]", featured ? "text-brand-400" : "text-brand-600")}>
+              {suffix}
+            </span>
+          )}
         </p>
-        <div className="mt-3 flex items-end justify-between gap-3">
-          <p className={cn("font-code text-[8.5px] leading-[1.7] tracking-[0.14em]", featured ? "text-ink-400" : "text-ink-400")}>
+        <div className="mt-auto flex items-end justify-between gap-3 pt-5">
+          <p className={cn("type-micro leading-[1.9]", featured ? "text-ink-400" : "text-ink-500")}>
             {sub}
           </p>
           {spark && <Spark data={spark} tone={featured ? "brand" : "ink"} />}
@@ -1153,7 +1238,7 @@ function NewRunModal({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 14, scale: 0.98 }}
             transition={{ duration: 0.32, ease: EASE }}
-            className="max-h-[min(92dvh,900px)] w-full max-w-3xl overflow-y-auto rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_40px_100px_rgba(11,12,15,0.45)] sm:rounded-[28px] sm:p-8 lg:p-10"
+            className="max-h-[min(92dvh,900px)] w-full max-w-3xl overflow-y-auto rounded-[12px] panel panel-lift p-5 sm:rounded-[16px] sm:p-8 lg:p-10"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4">
@@ -1183,7 +1268,7 @@ function NewRunModal({
             </div>
 
             {/* Step rail — 01 details · 02 documents · 03 scope */}
-            <div data-tour="wiz-rail" className="mt-6 rounded-2xl border border-ink-100 bg-paper/70 px-3 py-3 sm:mt-7 sm:px-5 sm:py-4">
+            <div data-tour="wiz-rail" className="mt-6 rounded-[10px] border border-ink-100 bg-paper/70 px-3 py-3 sm:mt-7 sm:px-5 sm:py-4">
               <ol className="flex items-center gap-2 sm:gap-3" aria-label="Evaluation setup, three steps">
               {WIZARD_STEPS.map((label, i) => {
                 const state = i === step ? "current" : i < step ? "done" : "todo";
@@ -1198,7 +1283,7 @@ function NewRunModal({
                         "flex min-w-0 items-center gap-1.5 font-code text-[8px] font-bold tracking-[0.12em] transition-colors sm:gap-2 sm:text-[9px] sm:tracking-[0.16em]",
                         state === "current" && "text-brand-700",
                         state === "done" && "text-ink-900 hover:text-brand-700",
-                        state === "todo" && "cursor-default text-ink-300"
+                        state === "todo" && "cursor-default text-ink-400"
                       )}
                     >
                       {state === "done" ? (
@@ -1208,7 +1293,7 @@ function NewRunModal({
                           className={cn(
                             "grid h-4 w-4 shrink-0 place-items-center rounded-full border text-[7.5px]",
                             state === "current" && "border-brand-600 bg-brand-50 text-brand-700",
-                            state === "todo" && "border-ink-200 text-ink-300"
+                            state === "todo" && "border-ink-200 text-ink-400"
                           )}
                           aria-hidden="true"
                         >
@@ -1294,7 +1379,7 @@ function NewRunModal({
                           autoComplete="off"
                           aria-required="true"
                           aria-invalid={Boolean(detailsError && !ref.trim())}
-                          className="h-12 w-full rounded-xl border border-ink-200 bg-white px-4 font-code text-[13px] tracking-[0.04em] text-ink-900 outline-none transition-all placeholder:font-sans placeholder:tracking-normal placeholder:text-ink-300 read-only:cursor-default read-only:focus:ring-0 read-only:focus:ring-offset-0 sm:h-[52px]"
+                          className="h-12 w-full rounded-xl border border-ink-200 bg-white px-4 font-code text-[13px] tracking-[0.04em] text-ink-900 outline-none transition-all placeholder:font-sans placeholder:tracking-normal placeholder:text-ink-400 read-only:cursor-default read-only:focus:ring-0 read-only:focus:ring-offset-0 sm:h-[52px]"
                         />
                         {refSource !== "" && !detailsError && (
                           <p className="mt-1.5 flex items-center gap-1.5 font-code text-[8px] tracking-[0.14em] text-ink-400" aria-live="polite">
@@ -1323,7 +1408,7 @@ function NewRunModal({
                           placeholder="Use the title exactly as published"
                           aria-required="true"
                           aria-invalid={Boolean(detailsError && !title.trim())}
-                          className="h-12 w-full rounded-xl border border-ink-200 bg-white px-4 text-[13.5px] text-ink-900 outline-none transition-all placeholder:text-ink-300 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10 sm:h-[52px]"
+                          className="h-12 w-full rounded-xl border border-ink-200 bg-white px-4 text-[13.5px] text-ink-900 outline-none transition-all placeholder:text-ink-400 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10 sm:h-[52px]"
                         />
                         {titleSource === "sample" && (
                           <p className="mt-1.5 flex items-center gap-1.5 font-code text-[8px] tracking-[0.14em] text-ink-400" aria-live="polite">
@@ -1344,7 +1429,7 @@ function NewRunModal({
                             <p className="font-code text-[9px] font-semibold tracking-[0.18em] text-ink-500">SOURCE FORMAT</p>
                             <p className="mt-1 text-[11.5px] text-ink-400">Choose the format of the original procurement record.</p>
                           </div>
-                          <span className="font-code text-[8px] tracking-[0.12em] text-ink-300">REQUIRED</span>
+                          <span className="font-code text-[8px] tracking-[0.12em] text-ink-400">REQUIRED</span>
                         </div>
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3" role="group" aria-label="Source format">
                           {["OCDS", "PDF PACK", "EMAIL BAG"].map((f) => (
@@ -1470,7 +1555,7 @@ function NewRunModal({
                           }}
                           aria-label="Tender document upload area"
                           className={cn(
-                            "relative mt-2 grid min-h-40 place-items-center rounded-2xl border-2 border-dashed px-4 py-7 text-center transition-all sm:min-h-48 sm:py-9",
+                            "relative mt-2 grid min-h-40 place-items-center rounded-[10px] border-2 border-dashed px-4 py-7 text-center transition-all sm:min-h-48 sm:py-9",
                             dragging ? "scale-[1.005] border-brand-500 bg-brand-50 shadow-[0_0_0_4px_rgba(217,38,22,0.06)]" : "border-ink-200 bg-paper/60 hover:border-ink-400 hover:bg-paper"
                           )}
                         >
@@ -1494,7 +1579,7 @@ function NewRunModal({
                           <p className="mt-2 font-code text-[8px] tracking-[0.14em] text-ink-400">
                             NOTICE · BIDS · OCDS JSON · PRICE SCHEDULES · EMAILS — UP TO 12 FILES
                           </p>
-                          <p className="mt-1.5 font-code text-[7.5px] tracking-[0.12em] text-ink-300">
+                          <p className="mt-1.5 font-code text-[7.5px] tracking-[0.12em] text-ink-400">
                             REAL FILES MIRROR TO FIREBASE STORAGE · PROJECT “PUBLIC-TENDER”
                           </p>
                           <button
@@ -1529,7 +1614,7 @@ function NewRunModal({
                               <li key={d.id} className="flex items-center gap-2.5 rounded-xl border border-ink-100 bg-white px-3 py-2.5">
                                 <FileText className="h-3.5 w-3.5 shrink-0 text-ink-400" aria-hidden="true" />
                                 <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-ink-800">{d.name}</span>
-                                <span className="shrink-0 font-code text-[8px] tracking-[0.08em] text-ink-300">{d.size}</span>
+                                <span className="shrink-0 font-code text-[8px] tracking-[0.08em] text-ink-400">{d.size}</span>
                                 <DocStatusChip status={d.status} />
                                 {d.storage && <StorageChip storage={d.storage} />}
                                 <button
@@ -1540,7 +1625,7 @@ function NewRunModal({
                                     docsRef.current = docsRef.current.filter((item) => item.id !== d.id);
                                     setDocs(docsRef.current);
                                   }}
-                                  className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-ink-300 transition-colors hover:bg-brand-50 hover:text-brand-700"
+                                  className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-ink-400 transition-colors hover:bg-brand-50 hover:text-brand-700"
                                 >
                                   <X className="h-3.5 w-3.5" aria-hidden="true" />
                                 </button>
@@ -1570,7 +1655,7 @@ function NewRunModal({
                                   onClick={() => setChecks((prev) => ({ ...prev, [c.id]: !prev[c.id] }))}
                                   aria-pressed={on}
                                   className={cn(
-                                    "flex w-full items-start gap-3.5 rounded-2xl border px-4 py-3.5 text-left transition-all sm:px-5 sm:py-4",
+                                    "flex w-full items-start gap-3.5 rounded-[10px] border px-4 py-3.5 text-left transition-all sm:px-5 sm:py-4",
                                     on ? "border-ink-950 bg-paper shadow-[0_2px_8px_rgba(11,12,15,0.04)]" : "border-ink-200 bg-white hover:border-ink-400 hover:bg-paper/60"
                                   )}
                                 >
@@ -1709,9 +1794,14 @@ function SidebarContent({
 }) {
   return (
     <div className="flex h-full flex-col">
-      <div className="px-6 pb-6 pt-7">
+      <div className="relative flex items-center overflow-hidden px-5 pb-5 pt-6">
         <QuorumLogo variant="light" />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute -left-10 top-0 h-24 w-40 rounded-full bg-brand-600/[0.13] blur-3xl"
+        />
       </div>
+      <div className="mx-5 h-px bg-gradient-to-r from-white/[0.12] via-white/[0.06] to-transparent" aria-hidden="true" />
 
       <nav
         aria-label="Workspace sections"
@@ -1719,23 +1809,34 @@ function SidebarContent({
       >
         {NAV_GROUPS.map((group, gi) => (
           <div key={group.group} className={cn(gi > 0 && "mt-4", gi === 0 && "pt-1")}>
-            <p className="px-3 pb-2 font-code text-[8px] font-semibold tracking-[0.3em] text-ink-600">{group.group}</p>
-            <ul className="space-y-1">
+            <p className="flex items-center gap-2.5 px-3 pb-2">
+              <span className="font-code text-[8px] font-semibold uppercase tracking-[0.24em] text-ink-600">
+                {group.group}
+              </span>
+              <span className="h-px flex-1 bg-white/[0.055]" aria-hidden="true" />
+            </p>
+            <ul className="space-y-0.5">
               {group.items.map((item) => {
                 const Icon = item.icon;
                 const isActive = active === item.id;
                 const badge = item.badge ? counts[item.badge] : null;
                 const itemClass = cn(
-                  "group relative flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors",
-                  isActive ? "bg-white/10 text-white" : "text-ink-400 hover:bg-white/5 hover:text-ink-100"
+                  "focus-brand group relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-[background-color,color] duration-200",
+                  isActive
+                    ? "bg-gradient-to-r from-white/[0.085] to-white/[0.035] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_1px_2px_rgba(0,0,0,0.35)] ring-1 ring-inset ring-white/[0.07]"
+                    : "text-ink-400 hover:bg-white/[0.04] hover:text-ink-100"
                 );
                 return (
                   <li key={item.id}>
                     {item.href ? (
                       /* An item that lives at its own URL — leaving the workspace on purpose. */
                       <a href={item.href} className={itemClass}>
-                        <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                        <span className="flex-1 font-code text-[10px] font-semibold uppercase tracking-[0.18em]">
+                        <Icon
+                          className="h-[15px] w-[15px] shrink-0 text-ink-500 transition-colors group-hover:text-ink-300"
+                          aria-hidden="true"
+                          strokeWidth={1.8}
+                        />
+                        <span className="flex-1 truncate text-[12.5px] font-medium tracking-[-0.005em]">
                           {item.label}
                         </span>
                         <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-ink-500" aria-hidden="true" />
@@ -1750,19 +1851,28 @@ function SidebarContent({
                         {isActive && (
                           <motion.span
                             layoutId="mc-nav-rail"
-                            className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-brand-500"
+                            className="absolute -left-2.5 top-1/2 h-4 w-[2.5px] -translate-y-1/2 rounded-full bg-brand-500 shadow-[0_0_14px_rgba(232,56,42,0.65)]"
                             aria-hidden="true"
                           />
                         )}
-                        <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                        <span className="flex-1 font-code text-[10px] font-semibold uppercase tracking-[0.18em]">
+                        <Icon
+                          className={cn(
+                            "h-[15px] w-[15px] shrink-0 transition-colors",
+                            isActive ? "text-brand-400" : "text-ink-500 group-hover:text-ink-300"
+                          )}
+                          aria-hidden="true"
+                          strokeWidth={1.8}
+                        />
+                        <span className="flex-1 truncate text-[12.5px] font-medium tracking-[-0.005em]">
                           {item.label}
                         </span>
                         {badge !== null && badge > 0 && (
                           <span
                             className={cn(
-                              "grid h-5 min-w-5 place-items-center rounded-full px-1.5 font-code text-[9px] font-bold",
-                              item.id === "mc-gates" ? "bg-brand-600 text-white" : "bg-white/10 text-ink-200"
+                              "grid h-[18px] min-w-[18px] place-items-center rounded-full px-1.5 font-code text-[8.5px] font-bold tabular",
+                              item.id === "mc-gates"
+                                ? "bg-brand-600 text-white shadow-[0_0_12px_rgba(232,56,42,0.45)]"
+                                : "bg-white/[0.09] text-ink-600 ring-1 ring-inset ring-white/10"
                             )}
                           >
                             {badge}
@@ -1778,26 +1888,56 @@ function SidebarContent({
         ))}
       </nav>
 
-      <div className="px-3 pb-1">
+      <div className="px-3 pb-3">
+        <div className="mb-3 h-px bg-white/[0.07]" aria-hidden="true" />
         <button
           type="button"
           data-tour="nav-new-run"
           onClick={onNewRun}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-3 py-3 text-[13px] font-semibold text-white shadow-[0_10px_26px_rgba(217,38,22,0.28)] transition-all hover:bg-brand-700"
+          className="focus-brand group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-brand-600 px-3 py-3 text-[13px] font-semibold text-white shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_14px_30px_-14px_rgba(217,38,22,0.9)] transition-colors hover:bg-brand-700"
         >
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          New evaluation
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full"
+          />
+          <Plus className="relative h-4 w-4" aria-hidden="true" />
+          <span className="relative">New evaluation</span>
         </button>
       </div>
 
-      <div className="px-3 pb-5 pt-4">
+      <div className="border-t border-white/[0.07] px-3 pb-5 pt-4">
+        {/* The rail reports the sidecar it is talking to, not just a brand */}
+        <div className="mb-3 flex items-center gap-2.5 px-1" aria-label={`Agent ${agentModeOf(agent)}`}>
+          <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
+            <span
+              className={cn(
+                "absolute inline-flex h-full w-full animate-ping-slow rounded-full",
+                agentModeOf(agent) === "online" ? "bg-brand-500" : "bg-ink-500"
+              )}
+            />
+            <span
+              className={cn(
+                "relative inline-flex h-1.5 w-1.5 rounded-full",
+                agentModeOf(agent) === "online" ? "bg-brand-500" : "bg-ink-500"
+              )}
+            />
+          </span>
+          <span className="type-micro text-ink-500">
+            {agentModeOf(agent) === "online"
+              ? "Agent online"
+              : agentModeOf(agent) === "linking"
+                ? "Agent linking"
+                : "Agent offline"}
+          </span>
+          <span className="ml-auto type-micro text-ink-600">mcp · 3031</span>
+        </div>
         <div>
           <ThemeModeRow />
         </div>
 
-        <div className="mt-3 flex items-center gap-3 rounded-xl px-2 py-2">
+        <div className="mt-3 flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.03] px-2.5 py-2">
           <span
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-600 font-code text-[10px] font-bold text-white"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-600 font-code text-[10px] font-bold text-white ring-2 ring-brand-500/25"
             aria-hidden="true"
           >
             {initialsOf(user?.name ?? "Quorum")}
@@ -1884,18 +2024,23 @@ function RunRegister({
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.15, ease: EASE }}
-        className="overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-[0_1px_2px_rgba(11,12,15,0.04)]"
+        className="overflow-hidden rounded-[12px] panel"
       >
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 px-5 py-4">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-200/70 px-5 py-4 dark:border-white/10">
           <div>
-            <h2 id="mc-runs-h" className="font-display text-[17px] font-black tracking-[-0.01em] text-ink-950">
+            <h2 id="mc-runs-h" className="type-title text-ink-950">
               Recent evaluations
             </h2>
-            <p className="mt-0.5 font-code text-[8.5px] tracking-[0.2em] text-ink-400">
-              LAST 7 DAYS · {filtered.length} OF {runs.length} EVALUATIONS
+            <p className="mt-1 type-micro text-ink-400">
+              Last 7 days · {filtered.length} of {runs.length} evaluations
             </p>
           </div>
-          <div data-tour="run-filters" className="flex items-center gap-1.5" role="group" aria-label="Filter evaluations">
+          <div
+            data-tour="run-filters"
+            role="group"
+            aria-label="Filter evaluations"
+            className="flex items-center gap-1 rounded-full border border-ink-200/70 bg-paper-2/70 p-1 dark:border-white/10 dark:bg-white/[0.04]"
+          >
             {RUN_FILTERS.map((f) => (
               <button
                 key={f.id}
@@ -1903,13 +2048,21 @@ function RunRegister({
                 onClick={() => onFilter(f.id)}
                 aria-pressed={filter === f.id}
                 className={cn(
-                  "h-7 rounded-full border px-3 font-code text-[8.5px] font-bold tracking-[0.14em] transition-all",
+                  "focus-brand relative h-7 rounded-full px-3 font-code text-[8.5px] font-bold tracking-[0.14em] transition-colors duration-200",
                   filter === f.id
-                    ? "border-ink-950 bg-ink-950 text-white"
-                    : "border-ink-200 bg-white text-ink-500 hover:border-ink-400"
+                    ? "text-white"
+                    : "text-ink-500 hover:text-ink-900 dark:text-ink-400 dark:hover:text-white"
                 )}
               >
-                {f.label}
+                {filter === f.id && (
+                  <motion.span
+                    layoutId="run-filter-ink"
+                    aria-hidden="true"
+                    className="absolute inset-0 rounded-full bg-ink-950 dark:bg-white/10 dark:ring-1 dark:ring-white/10"
+                    transition={{ type: "spring", stiffness: 420, damping: 34, mass: 0.6 }}
+                  />
+                )}
+                <span className="relative">{f.label}</span>
               </button>
             ))}
           </div>
@@ -1920,15 +2073,17 @@ function RunRegister({
           <table className="w-full min-w-[660px] border-collapse text-left">
             <caption className="sr-only">Recent evaluations with their status, findings and citations</caption>
             <thead>
-              <tr className="border-b border-ink-100 bg-paper/60">
-                {["EVALUATION", "BIDS", "ISSUES", "SOURCED", "STATUS", "TIME", ""].map((h, i) => (
+              <tr className="border-b border-ink-200/70 bg-paper-2/70 dark:border-white/10 dark:bg-white/[0.02]">
+                {["Evaluation", "Bids", "Issues", "Sourced", "Status", "Time", ""].map((h, i) => (
                   <th
                     key={i}
                     scope="col"
                     className={cn(
-                      "px-4 py-2.5 font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400",
+                      "px-4 py-3 type-micro font-semibold text-ink-400",
                       i === 0 && "pl-5",
-                      i === 6 && "w-8"
+                      i === 6 && "w-10",
+                      (i === 1 || i === 2 || i === 3) && "text-right",
+                      i === 5 && "text-right"
                     )}
                   >
                     {h}
@@ -1944,8 +2099,8 @@ function RunRegister({
                   <Fragment key={run.uid ?? run.id}>
                     <tr
                       className={cn(
-                        "cursor-pointer border-b border-ink-50 transition-colors hover:bg-paper",
-                        isOpen && "bg-paper"
+                        "cursor-pointer border-b border-ink-100/70 transition-colors last:border-b-0 hover:bg-paper-2/60 dark:border-white/[0.06] dark:hover:bg-white/[0.02]",
+                        isOpen && "bg-paper-2/50 dark:bg-white/[0.02]"
                       )}
                       tabIndex={0}
                       onClick={() => setExpanded(!isOpen ? run.uid ?? run.id : null)}
@@ -1969,30 +2124,32 @@ function RunRegister({
                         </p>
                         <p className="mt-0.5 max-w-[240px] truncate text-[12.5px] font-medium text-ink-600">{run.title}</p>
                       </td>
-                      <td className="px-4 py-3.5 text-[13px] font-semibold text-ink-800 tabular">
+                      <td className="px-4 py-3.5 text-right text-[13px] font-semibold text-ink-800 tabular">
                         {run.bids ?? "—"}
                       </td>
-                      <td className="px-4 py-3.5">
+                      <td className="px-4 py-3.5 text-right">
                         {run.findings > 0 ? (
                           <span className="inline-flex items-center gap-1.5 text-[13px] font-bold text-brand-700 tabular">
                             <CircleAlert className="h-3.5 w-3.5" aria-hidden="true" />
                             {run.findings}
                           </span>
                         ) : (
-                          <span className="text-[13px] text-ink-300 tabular">0</span>
+                          <span className="text-[13px] text-ink-400 tabular">0</span>
                         )}
                       </td>
-                      <td className="px-4 py-3.5 text-[13px] font-semibold text-ink-800 tabular">
+                      <td className="px-4 py-3.5 text-right text-[13px] font-semibold text-ink-800 tabular">
                         {run.status === "running" || run.status === "queued" ? "—" : `${run.citations}/${run.findings}`}
                       </td>
                       <td className="px-4 py-3.5">
                         <StatusChip status={run.status} />
                       </td>
-                      <td className="px-4 py-3.5 font-code text-[9px] tracking-[0.12em] text-ink-500">{run.startedAt}</td>
+                      <td className="px-4 py-3.5 text-right font-code text-[9px] tracking-[0.12em] text-ink-500 tabular">
+                        {run.startedAt}
+                      </td>
                       <td className="pr-4">
                         <ChevronDown
                           className={cn(
-                            "h-4 w-4 text-ink-300 transition-transform duration-300",
+                            "h-4 w-4 text-ink-400 transition-transform duration-300",
                             isOpen && "rotate-180 text-ink-600"
                           )}
                           aria-hidden="true"
@@ -2000,7 +2157,7 @@ function RunRegister({
                       </td>
                     </tr>
                     {isOpen && (
-                      <tr className="border-b border-ink-50 bg-paper">
+                      <tr className="border-b border-ink-100 bg-paper">
                         <td colSpan={7} className="px-5 py-4">
                           <div className="rounded-xl border border-ink-100 bg-white p-4">
                             {run.status === "running" || run.status === "queued" ? (
@@ -2088,7 +2245,7 @@ function RunRegister({
                                 <Copy className="h-3 w-3" aria-hidden="true" />
                                 COPY AUDIT TRAIL
                               </button>
-                              <span className="ml-auto font-code text-[8px] tracking-[0.16em] text-ink-300">
+                              <span className="ml-auto font-code text-[8px] tracking-[0.16em] text-ink-400">
                                 BUYER · {run.buyer.toUpperCase()}
                               </span>
                             </div>
@@ -2156,30 +2313,38 @@ export function GateQueue({
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.22, ease: EASE }}
-        className="flex h-full flex-col overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-[0_1px_2px_rgba(11,12,15,0.04)]"
+        className="flex h-full flex-col overflow-hidden rounded-[12px] panel"
       >
-        <header className="flex items-center justify-between gap-3 border-b border-ink-100 px-5 py-4">
+        <header className="flex items-center justify-between gap-3 border-b border-ink-200/70 px-5 py-4 dark:border-white/10">
           <div>
-            <h2 id="mc-gates-h" className="flex items-center gap-2 font-display text-[17px] font-black tracking-[-0.01em] text-ink-950">
+            <h2 id="mc-gates-h" className="flex items-center gap-2 type-title text-ink-950">
               <Gavel className="h-4 w-4 text-brand-600" aria-hidden="true" />
-              Approvals
+              Decision queue
             </h2>
-            <p className="mt-0.5 font-code text-[8.5px] tracking-[0.2em] text-ink-400">
-              {queue.length === 0 ? "NOTHING TO APPROVE RIGHT NOW" : `${queue.length} WAITING FOR A DECISION`}
+            <p className="mt-1 type-micro text-ink-400">
+              {queue.length === 0 ? "Nothing to approve right now" : `${queue.length} waiting for a decision`}
             </p>
           </div>
           <span
             aria-live="polite"
             className={cn(
-              "rounded-full px-2.5 py-1 font-code text-[8.5px] font-bold tracking-[0.16em]",
-              queue.length === 0 ? "bg-ink-950 text-white" : "bg-brand-600 text-white"
+              "inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 font-code text-[8.5px] font-bold tracking-[0.16em] tabular",
+              queue.length === 0
+                ? "border-ink-950 bg-ink-950 text-white dark:border-white/15"
+                : "border-brand-500/40 bg-brand-500/[0.08] text-brand-700 dark:text-brand-300"
             )}
           >
+            {queue.length > 0 && (
+              <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
+                <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-brand-500" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-600" />
+              </span>
+            )}
             {queue.length === 0 ? "ALL CLEAR" : "ACTION NEEDED"}
           </span>
         </header>
 
-        <div className="grid flex-1 items-start gap-3 px-4 py-4 sm:grid-cols-2 2xl:grid-cols-3" aria-live="polite">
+        <div className="grid flex-1 grid-cols-1 items-start gap-3 px-4 py-4" aria-live="polite">
           <AnimatePresence initial={false}>
             {queue.map((g) => (
               <motion.article
@@ -2189,7 +2354,7 @@ export function GateQueue({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, x: 32, transition: { duration: 0.3 } }}
                 transition={{ duration: 0.4, ease: EASE }}
-                className="rounded-xl border border-ink-100 bg-paper p-4"
+                className="rounded-[10px] border border-ink-200/70 bg-paper p-4 transition-colors duration-300 hover:bg-white dark:border-white/10 dark:hover:bg-white/[0.03]"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -2208,13 +2373,13 @@ export function GateQueue({
                     </span>
                   )}
                 </div>
-                <dl className="mt-3 grid grid-cols-2 gap-2 font-code text-[8.5px] tracking-[0.12em] text-ink-500">
+                <dl className="mt-3.5 grid grid-cols-2 gap-2 border-t border-ink-200/70 pt-3.5 font-code text-[8.5px] tracking-[0.12em] text-ink-500 dark:border-white/10">
                   <div>
-                    <dt className="text-ink-300">PROPOSED SUPPLIER</dt>
+                    <dt className="text-ink-500">PROPOSED SUPPLIER</dt>
                     <dd className="mt-0.5 font-semibold text-ink-800">{g.supplier}</dd>
                   </div>
                   <div>
-                    <dt className="text-ink-300">{g.factLabel}</dt>
+                    <dt className="text-ink-500">{g.factLabel}</dt>
                     <dd className={cn("mt-0.5 font-semibold", g.valueMissing ? "text-brand-700" : "text-ink-800")}>
                       {g.factText}
                     </dd>
@@ -2230,7 +2395,7 @@ export function GateQueue({
                         ? "A contract always has a contract value — record the award value before this is signed."
                         : undefined
                     }
-                    className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand-600 text-[12.5px] font-bold tracking-[0.02em] text-white transition-all hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="focus-brand inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full bg-brand-600 text-[12.5px] font-bold tracking-[0.02em] text-white shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_12px_26px_-14px_rgba(217,38,22,0.9)] transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Stamp className="h-3.5 w-3.5" aria-hidden="true" />
                     Award
@@ -2238,13 +2403,13 @@ export function GateQueue({
                   <button
                     type="button"
                     onClick={() => act(g, "RETURNED")}
-                    className="inline-flex h-9 flex-1 items-center justify-center rounded-lg border border-ink-300 text-[12.5px] font-semibold text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950"
+                    className="focus-brand inline-flex h-10 flex-1 items-center justify-center rounded-full border border-ink-200/80 text-[12.5px] font-semibold text-ink-700 transition-colors hover:border-ink-400 hover:bg-white hover:text-ink-950 dark:border-white/12 dark:hover:bg-white/[0.04]"
                   >
                     Return for review
                   </button>
                 </div>
-                <p className="mt-2.5 font-code text-[7.5px] tracking-[0.18em] text-ink-300">
-                  FILE SUBMITTED {g.ago} · EVERY FLAG CITED
+                <p className="mt-3 type-micro text-ink-400">
+                  File submitted {g.ago} · every flag cited
                 </p>
               </motion.article>
             ))}
@@ -2258,9 +2423,9 @@ export function GateQueue({
               transition={{ duration: 0.4, ease: EASE }}
               className="grid place-items-center rounded-xl border border-dashed border-ink-200 px-4 py-10 text-center"
             >
-              <CircleCheck className="h-7 w-7 text-ink-300" aria-hidden="true" />
-              <p className="mt-3 font-display text-[15px] font-black text-ink-900">Nothing needs a decision.</p>
-              <p className="mt-1 max-w-[220px] text-[12.5px] leading-relaxed text-ink-500">
+              <CircleCheck className="h-7 w-7 text-ink-400" aria-hidden="true" />
+              <p className="mt-3 type-title text-ink-900">Nothing needs a decision.</p>
+              <p className="mt-1.5 max-w-[240px] text-[12.5px] leading-relaxed text-ink-500">
                 No tender is waiting on you or the committee. The agent keeps preparing new files in the meantime.
               </p>
             </motion.div>
@@ -2268,8 +2433,8 @@ export function GateQueue({
         </div>
 
         {/* Ledger */}
-        <div data-tour="gate-ledger" className="border-t border-ink-100 px-5 py-4">
-          <p className="font-code text-[8.5px] font-semibold tracking-[0.22em] text-ink-400">DECISION HISTORY</p>
+        <div data-tour="gate-ledger" className="border-t border-ink-200/70 px-5 py-4 dark:border-white/10">
+          <p className="type-micro text-ink-400">Decision history</p>
           <ul className="mt-2.5 space-y-2">
             <AnimatePresence initial={false}>
               {ledger.slice(0, 4).map((row) => (
@@ -2292,7 +2457,7 @@ export function GateQueue({
               ))}
             </AnimatePresence>
             {ledger.length === 0 && (
-              <li className="font-code text-[8.5px] tracking-[0.12em] text-ink-300">NO DECISIONS YET</li>
+              <li className="font-code text-[8.5px] tracking-[0.12em] text-ink-400">NO DECISIONS YET</li>
             )}
           </ul>
         </div>
@@ -2548,7 +2713,7 @@ function OcpDatasetRow({
               {d.stale ? "NO LONGER UPDATED" : "UPDATING"}
             </span>
             {!enabled && (
-              <span className="rounded-full bg-ink-400 px-2 py-0.5 font-code text-[7px] font-bold tracking-[0.14em] text-white">
+              <span className="rounded-full bg-ink-500 px-2 py-0.5 font-code text-[7px] font-bold tracking-[0.14em] text-white">
                 OFF
               </span>
             )}
@@ -2679,15 +2844,15 @@ function PortalSync() {
     }
   }
   return (
-    <div className="rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
+    <div className="rounded-[12px] panel p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
       <div className="flex items-center justify-between">
         <h3 className="font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">Connected portals</h3>
-        <span className="font-code text-[8px] tracking-[0.2em] text-ink-400">
+        <span className="type-micro text-ink-400">
           {data
-            ? `${countries.length} COUNTRIES · ${datasets.length} DATASETS`
+            ? `${countries.length} countries · ${datasets.length} datasets`
             : failed
-              ? "REGISTRY UNREACHABLE"
-              : "READING THE REGISTRY…"}
+              ? "Registry unreachable"
+              : "Reading the registry…"}
         </span>
       </div>
       {data ? (
@@ -2700,15 +2865,15 @@ function PortalSync() {
               />
               <span className="min-w-0 flex-1">
                 <span className="flex items-baseline justify-between gap-2">
-                  <span className="truncate font-code text-[9.5px] font-semibold tracking-[0.14em] text-ink-800">
-                    {c.country.toUpperCase()}
+                  <span className="truncate type-micro text-ink-800">{c.country}</span>
+                  <span className="shrink-0 type-micro text-ink-400 tabular">
+                    retr. {c.lastRetrieved}
                   </span>
-                  <span className="shrink-0 font-code text-[8px] tracking-[0.14em] text-ink-400">RETR. {c.lastRetrieved}</span>
                 </span>
-                <span className="mt-0.5 block font-code text-[7.5px] tracking-[0.16em] text-ink-400">
-                  {c.datasets} {c.datasets === 1 ? "DATASET" : "DATASETS"}
-                  {(linkedByCountry.get(c.country) ?? 0) > 0 ? ` · ${linkedByCountry.get(c.country)} LINKED` : ""}
-                  {c.stale > 0 ? ` · ${c.stale} NOT UPDATED` : ""}
+                <span className="mt-1 block type-micro text-ink-400 tabular">
+                  {c.datasets} {c.datasets === 1 ? "dataset" : "datasets"}
+                  {(linkedByCountry.get(c.country) ?? 0) > 0 ? ` · ${linkedByCountry.get(c.country)} linked` : ""}
+                  {c.stale > 0 ? ` · ${c.stale} not updated` : ""}
                 </span>
               </span>
             </li>
@@ -2726,10 +2891,10 @@ function PortalSync() {
           ? `OCP DATA REGISTRY · RETRIEVED ${codeDate(data.source.retrieved)}`
           : "OCP DATA REGISTRY · data.open-contracting.org"}
       </p>
-      <div className="mt-4 flex items-center gap-2.5 rounded-xl bg-sand px-3.5 py-3">
+      <div className="mt-4 flex items-center gap-2.5 rounded-[10px] border border-ink-200/70 bg-sand/70 px-3.5 py-3 dark:border-white/10">
         <ShieldCheck className="h-4 w-4 shrink-0 text-brand-700" aria-hidden="true" />
-        <p className="font-code text-[7.5px] leading-[1.8] tracking-[0.14em] text-ink-600">
-          ACTIVITY LOG LOCKED AGAINST EDITS · CAN RUN ON YOUR OWN SERVERS
+        <p className="type-micro leading-[1.9] text-ink-600">
+          Activity log locked against edits · can run on your own servers
         </p>
       </div>
     </div>
@@ -2743,41 +2908,148 @@ function ViewShell({
   title,
   sub,
   action,
+  summary,
   children,
 }: {
   fig: string;
   title: string;
   sub: string;
   action?: ReactNode;
+  /* The dossier strip under the header — the screen's instrument reading. */
+  summary?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-5">
+      <SpecBar index={fig} label="Workspace" meta={title} />
+      <div className="mt-6 flex flex-wrap items-end justify-between gap-5">
         <div className="min-w-0">
-          <p className="flex items-center gap-2.5 font-code text-[10px] font-semibold uppercase tracking-[0.3em] text-ink-500">
-            <span className="inline-block h-[2px] w-6 bg-brand-600" aria-hidden="true" />
-            FIG. {fig}
-          </p>
-          <h1 className="mt-4 font-display text-[30px] font-black leading-[1.05] tracking-[-0.02em] text-ink-950 sm:text-[38px]">
+          <h1 className="type-display text-[30px] text-ink-950 sm:text-[38px]">
             {title}
             <span className="text-brand-600">.</span>
           </h1>
-          <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-ink-600">{sub}</p>
+          <p className="type-lede mt-3 max-w-[56ch] text-ink-600">{sub}</p>
         </div>
-        {action}
+        {action ? <div className="shrink-0 pb-1.5">{action}</div> : null}
       </div>
-      <div className="mt-8">{children}</div>
+      {summary ? <div className="mt-6">{summary}</div> : null}
+      <div className={summary ? "mt-4" : "mt-9"}>{children}</div>
     </div>
+  );
+}
+
+/** A quiet status pill for a section header — live, clear, or idle. */
+function DeskStatus({ tone, children }: { tone: "live" | "clear" | "idle"; children: ReactNode }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex h-8 items-center gap-2 rounded-full border px-3 font-code text-[8.5px] font-bold tracking-[0.16em]",
+        tone === "live" &&
+          "border-brand-500/35 bg-brand-500/[0.06] text-brand-700 dark:border-brand-500/40 dark:text-brand-300",
+        tone === "clear" &&
+          "border-emerald-500/30 bg-emerald-500/[0.06] text-emerald-700 dark:border-emerald-400/30 dark:text-emerald-300",
+        tone === "idle" &&
+          "border-ink-200 bg-[#fffdfb] text-ink-500 dark:border-white/10 dark:bg-white/[0.03] dark:text-ink-400",
+      )}
+    >
+      <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
+        {tone === "live" ? (
+          <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-brand-500" />
+        ) : null}
+        <span
+          className={cn(
+            "relative inline-flex h-1.5 w-1.5 rounded-full",
+            tone === "live" ? "bg-brand-600" : tone === "clear" ? "bg-emerald-500" : "bg-ink-400",
+          )}
+        />
+      </span>
+      {children}
+    </span>
+  );
+}
+
+/**
+ * StageStrip — the desk's distribution rail.
+ *
+ * The tender cycle owns the *progression* rail (seven stages, one active).
+ * A queue has a different shape: it is a set of loads across stages or
+ * offices. Same grammar — hairline cells, a count, a label, a share meter —
+ * so the two screens read as one instrument.
+ */
+function StageStrip({
+  label,
+  meta,
+  items,
+}: {
+  label: string;
+  meta?: ReactNode;
+  items: { key: string; label: string; count: number; caption: string; tone?: "brand" | "emerald" | "idle" }[];
+}) {
+  const total = items.reduce((sum, item) => sum + item.count, 0);
+  return (
+    <section className="panel overflow-hidden rounded-[12px]" aria-label={label}>
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 pb-3.5 pt-4">
+        <p className="eyebrow">{label}</p>
+        {meta ? (
+          <div className="font-code text-[8.5px] font-bold tracking-[0.16em] text-ink-400 tabular">{meta}</div>
+        ) : null}
+      </div>
+      <div className="grid grid-cols-2 gap-px border-t border-ink-100/80 bg-ink-100/70 sm:grid-cols-4 dark:border-white/[0.06] dark:bg-white/[0.07]">
+        {items.map((item) => {
+          const share = total > 0 ? Math.round((item.count / total) * 100) : 0;
+          const tone = item.tone ?? "idle";
+          return (
+            <div key={item.key} className="flex min-h-[112px] min-w-0 flex-col bg-[#fffdfb] px-5 py-3.5 dark:bg-[#12141a]">
+              <div className="flex items-baseline justify-between gap-2">
+                <p
+                  className={cn(
+                    "font-display text-[24px] font-bold leading-none tracking-[-0.025em] tabular",
+                    tone === "emerald" && "text-emerald-600 dark:text-emerald-400",
+                    tone === "brand" && "text-brand-600 dark:text-brand-400",
+                    tone === "idle" && "text-ink-900",
+                  )}
+                >
+                  {item.count}
+                </p>
+                <span className="font-code text-[8px] font-bold tracking-[0.08em] text-ink-400 tabular">
+                  {share}%
+                </span>
+              </div>
+              <p className="eyebrow mt-2 text-[8px] tracking-[0.16em]">{item.label.toUpperCase()}</p>
+              <p className="mt-1 truncate text-[10.5px] leading-tight text-ink-400">{item.caption}</p>
+              <div className="mt-auto pt-3" aria-hidden="true">
+                <span className="block h-[2px] overflow-hidden rounded-full bg-ink-100 dark:bg-white/[0.08]">
+                  <motion.span
+                    className={cn(
+                      "block h-full rounded-full",
+                      tone === "emerald" && "bg-emerald-500",
+                      tone === "brand" && "bg-brand-500",
+                      tone === "idle" && "bg-ink-300 dark:bg-white/25",
+                    )}
+                    initial={false}
+                    animate={{ width: `${share}%` }}
+                    transition={{ duration: 0.6, ease: EASE }}
+                  />
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
 function StandingRuleCard() {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-ink-950 bg-night p-5 text-white shadow-[0_22px_55px_rgba(11,12,15,0.3)]">
+    <div className="relative overflow-hidden rounded-[12px] border border-ink-950 bg-night p-5 text-white shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_28px_60px_-30px_rgba(11,12,15,0.6)]">
       <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand-500/70 to-transparent"
+      />
       <div className="relative">
-        <h3 className="font-display text-[15px] font-black tracking-[-0.01em]">The standing rule</h3>
+        <h3 className="type-title">The standing rule</h3>
         <p className="mt-3 font-code text-[9px] leading-[2] tracking-[0.16em] text-ink-300">
           QUORUM PREPARES THE FILE.
           <br />
@@ -2799,7 +3071,7 @@ function StandingRuleCard() {
 
 function NewRunCard({ onNewRun }: { onNewRun: () => void }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-ink-950 bg-night p-5 text-white shadow-[0_22px_55px_rgba(11,12,15,0.3)]">
+    <div className="relative overflow-hidden rounded-[12px] border border-ink-950 bg-night p-5 text-white shadow-[0_22px_55px_rgba(11,12,15,0.3)]">
       <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
       <div className="relative">
         <h3 className="font-display text-[15px] font-black tracking-[-0.01em]">Put the agent in a file</h3>
@@ -2821,7 +3093,7 @@ function NewRunCard({ onNewRun }: { onNewRun: () => void }) {
 
 function GavelProtocolCard() {
   return (
-    <div className="rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
+    <div className="rounded-[12px] panel p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
       <h3 className="font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">The gavel protocol</h3>
       <ol className="mt-4 space-y-3">
         {[
@@ -2914,7 +3186,7 @@ function FindingsView({ rows, onOpenRun }: { rows: FindingRow[]; onOpenRun: () =
     >
       <div className="grid grid-cols-1 gap-4 sm:gap-6">
         <div className="min-w-0">
-          <div className="overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
+          <div className="overflow-hidden rounded-[12px] panel shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
             <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 px-5 py-4">
               <div>
                 <h2 className="font-display text-[17px] font-black tracking-[-0.01em] text-ink-950">All findings</h2>
@@ -2950,7 +3222,7 @@ function FindingsView({ rows, onOpenRun }: { rows: FindingRow[]; onOpenRun: () =
                       <th
                         key={h}
                         scope="col"
-                        className="px-4 py-2.5 font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400"
+                        className="px-4 py-2.5 font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400 first:pl-5 first:pr-4 last:pr-5"
                       >
                         {h}
                       </th>
@@ -2970,7 +3242,7 @@ function FindingsView({ rows, onOpenRun }: { rows: FindingRow[]; onOpenRun: () =
                         }
                       }}
                       aria-label={`Show details for evaluation ${row.run}`}
-                      className="cursor-pointer border-b border-ink-50 transition-colors hover:bg-paper"
+                      className="cursor-pointer border-b border-ink-100 transition-colors hover:bg-paper"
                     >
                       <td className="max-w-[280px] py-3.5 pl-5 pr-4">
                         <p className="text-[13px] font-semibold text-ink-900">{row.note}</p>
@@ -3001,7 +3273,7 @@ function FindingsView({ rows, onOpenRun }: { rows: FindingRow[]; onOpenRun: () =
           </div>
         </div>
         <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
-          <div className="relative overflow-hidden rounded-2xl border border-ink-950 bg-night p-5 text-white shadow-[0_22px_55px_rgba(11,12,15,0.3)]">
+          <div className="relative overflow-hidden rounded-[12px] border border-ink-950 bg-night p-5 text-white shadow-[0_22px_55px_rgba(11,12,15,0.3)]">
             <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
             <div className="relative">
               <h3 className="font-display text-[15px] font-black tracking-[-0.01em]">The invariant</h3>
@@ -3016,7 +3288,7 @@ function FindingsView({ rows, onOpenRun }: { rows: FindingRow[]; onOpenRun: () =
               </p>
             </div>
           </div>
-          <div className="rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
+          <div className="rounded-[12px] panel p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
             <h3 className="font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">Class map</h3>
             <ul className="mt-4 space-y-2.5">
               {Object.entries(classCounts)
@@ -3155,7 +3427,7 @@ function PackPreviewModal({
             transition={{ duration: 0.28, ease: EASE }}
             onClick={(e) => e.stopPropagation()}
             onKeyDown={trapTab}
-            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_30px_80px_rgba(11,12,15,0.35)] sm:p-7"
+            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[12px] panel panel-lift p-5 sm:p-7"
           >
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
@@ -3180,7 +3452,7 @@ function PackPreviewModal({
             </div>
 
             {/* The sheet — a draft of the sealed document, marked as such */}
-            <div className="relative mt-5 overflow-hidden rounded-2xl border border-ink-100 bg-paper p-5 sm:p-6">
+            <div className="relative mt-5 overflow-hidden rounded-[10px] border border-ink-100 bg-paper p-5 sm:p-6">
               <span
                 aria-hidden="true"
                 className="pointer-events-none absolute -right-2 top-7 rotate-12 select-none font-display text-[64px] font-black leading-none tracking-[-0.02em] text-ink-950/[0.05]"
@@ -3252,7 +3524,7 @@ function PackPreviewModal({
                     },
                   ].map((item) => (
                     <li key={item.n} className="flex items-baseline gap-2.5">
-                      <span className="font-code text-[8px] font-bold tracking-[0.14em] text-ink-300">{item.n}</span>
+                      <span className="font-code text-[8px] font-bold tracking-[0.14em] text-ink-400">{item.n}</span>
                       <span className="min-w-0">
                         <span className="text-[12.5px] font-semibold text-ink-900">{item.t}</span>
                         <span className="text-[12px] text-ink-500"> — {item.d}</span>
@@ -3305,7 +3577,7 @@ function PackPreviewModal({
                   <button
                     type="button"
                     disabled
-                    className="inline-flex h-8 cursor-not-allowed items-center gap-1.5 rounded-lg border border-ink-100 px-3 font-code text-[8px] font-bold tracking-[0.16em] text-ink-300"
+                    className="inline-flex h-8 cursor-not-allowed items-center gap-1.5 rounded-lg border border-ink-100 px-3 font-code text-[8px] font-bold tracking-[0.16em] text-ink-400"
                   >
                     <Lock className="h-3 w-3" aria-hidden="true" />
                     UNLOCKS ON SIGNATURE
@@ -3410,7 +3682,7 @@ function ReportPacksView({
       title="Reports"
       sub="The sourced report is the deliverable — findings, citations and the audit hash, bound to each evaluation. A pack seals the moment the committee signs; after that it is evidence, not a document."
     >
-      <div data-tour="reports-intro" className="relative overflow-hidden rounded-2xl border border-ink-950 bg-night p-5 text-white shadow-[0_22px_55px_rgba(11,12,15,0.3)] sm:p-6">
+      <div data-tour="reports-intro" className="relative overflow-hidden rounded-[12px] border border-ink-950 bg-night p-5 text-white shadow-[0_22px_55px_rgba(11,12,15,0.3)] sm:p-6">
         <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -3437,7 +3709,7 @@ function ReportPacksView({
         )}
       </div>
 
-      <div data-tour="reports-list" className="mt-4 grid grid-cols-1 gap-4 sm:mt-6 sm:grid-cols-2">
+      <div data-tour="reports-list" className="mt-4 grid grid-cols-1 gap-4 sm:mt-6 sm:grid-cols-2 sm:gap-6">
         {packs.map((run, i) => {
           const assembling = run.status === "gate";
           const v = verdicts[run.id];
@@ -3454,7 +3726,7 @@ function ReportPacksView({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.05 * i, ease: EASE }}
-              className="flex flex-col rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]"
+              className="flex flex-col rounded-[12px] panel p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]"
             >
               <div className="flex items-center justify-between gap-3">
                 <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-950">{run.id}</p>
@@ -3474,17 +3746,17 @@ function ReportPacksView({
                 )}
               </div>
               <p className="mt-1.5 truncate text-[13.5px] font-semibold text-ink-700">{run.title}</p>
-              <dl className="mt-4 grid grid-cols-3 gap-2 border-y border-ink-50 py-3 font-code text-[8px] tracking-[0.14em]">
+              <dl className="mt-4 grid grid-cols-3 gap-2 border-y border-ink-100 py-3 font-code text-[8px] tracking-[0.14em]">
                 <div>
-                  <dt className="text-ink-300">FINDINGS</dt>
+                  <dt className="text-ink-500">FINDINGS</dt>
                   <dd className="mt-1 text-[13px] font-bold text-ink-950 tabular">{run.findings}</dd>
                 </div>
                 <div>
-                  <dt className="text-ink-300">CITED</dt>
+                  <dt className="text-ink-500">CITED</dt>
                   <dd className="mt-1 text-[13px] font-bold text-ink-950 tabular">{run.citations}</dd>
                 </div>
                 <div>
-                  <dt className="text-ink-300">UNSOURCED</dt>
+                  <dt className="text-ink-500">UNSOURCED</dt>
                   <dd className="mt-1 text-[13px] font-bold text-brand-700 tabular">{run.unsourced}</dd>
                 </div>
               </dl>
@@ -3497,7 +3769,7 @@ function ReportPacksView({
                   </>
                 )}
               </p>
-              <div data-tour="report-download" className="mt-4 flex items-center gap-2 pt-1">
+              <div data-tour="report-download" className="mt-auto flex items-center gap-2 pt-4">
                 {assembling ? (
                   <button
                     type="button"
@@ -3583,7 +3855,7 @@ type SourceRequestRow = {
 function RequestsPanel({ requests }: { requests: SourceRequestRow[] }) {
   if (requests.length === 0) return null;
   return (
-    <div className="mb-4 overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
+    <div className="mb-4 overflow-hidden rounded-[12px] panel shadow-[0_1px_2px_rgba(11,12,15,0.04)] sm:mb-6">
       <header className="flex items-center justify-between gap-3 border-b border-ink-100 px-5 py-4">
         <div>
           <h2 className="font-display text-[17px] font-black tracking-[-0.01em] text-ink-950">Source requests</h2>
@@ -3594,7 +3866,7 @@ function RequestsPanel({ requests }: { requests: SourceRequestRow[] }) {
       </header>
       <ul>
         {requests.map((r) => (
-          <li key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-ink-50 px-5 py-3.5 last:border-b-0">
+          <li key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-ink-100 px-5 py-3.5 last:border-b-0">
             <span className="min-w-0 w-full sm:w-auto sm:flex-1">
               <span className="block truncate font-code text-[10px] font-bold tracking-[0.12em] text-ink-950">{r.name}</span>
               <span className="mt-0.5 block font-code text-[7.5px] tracking-[0.18em] text-ink-400">
@@ -3789,7 +4061,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.05 * i, ease: EASE }}
-            className="rounded-2xl border border-ink-100 bg-white p-4 shadow-[0_1px_2px_rgba(11,12,15,0.04)]"
+            className="rounded-[12px] panel p-4 shadow-[0_1px_2px_rgba(11,12,15,0.04)]"
           >
             <p className="font-code text-[9.5px] font-bold tracking-[0.18em] text-ink-900">{s}</p>
             <p className="mt-1.5 font-code text-[7px] tracking-[0.18em] text-ink-400">STANDARD {String(i + 1).padStart(2, "0")}</p>
@@ -3800,7 +4072,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
       <div className="mt-4 grid content-start gap-4 sm:mt-6 sm:gap-6">
         <div className="min-w-0">
           <RequestsPanel requests={requests} />
-          <div data-tour="sources-portals" className="overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
+          <div data-tour="sources-portals" className="overflow-hidden rounded-[12px] panel shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
             <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 px-5 py-4">
               <div>
                 <h2 className="font-display text-[17px] font-black tracking-[-0.01em] text-ink-950">Connected portals</h2>
@@ -3882,7 +4154,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
                     );
                   };
                   return (
-                    <li key={c.country} className="border-b border-ink-50 last:border-b-0">
+                    <li key={c.country} className="border-b border-ink-100 last:border-b-0">
                       <div className="flex w-full items-center gap-3 px-5 py-4">
                         <button
                           type="button"
@@ -3923,7 +4195,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
                                 {status}
                               </span>
                               {offInCountry > 0 && (
-                                <span className="rounded-full bg-ink-400 px-2 py-0.5 font-code text-[7px] font-bold tracking-[0.16em] text-white">
+                                <span className="rounded-full bg-ink-500 px-2 py-0.5 font-code text-[7px] font-bold tracking-[0.16em] text-white">
                                   {offInCountry === rows.length ? "ALL OFF" : `${offInCountry} OFF`}
                                 </span>
                               )}
@@ -4014,14 +4286,14 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
           </div>
         </div>
         <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
-          <div className="rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
+          <div className="rounded-[12px] panel p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
             <h3 className="font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">Why sources matter</h3>
             <p className="mt-3 text-[12.5px] leading-relaxed text-ink-600">
               A price is not “high” until the framework median says so. A bidder is not “related” until the registry says
               so. Quorum cites the source — or it does not speak.
             </p>
           </div>
-          <div className="flex items-start gap-3 rounded-2xl border border-ink-100 bg-sand p-5">
+          <div className="flex items-start gap-3 rounded-[10px] border border-ink-100 bg-sand p-5">
             <ShieldCheck className="h-4 w-4 shrink-0 text-brand-700" aria-hidden="true" />
             <p className="font-code text-[7.5px] leading-[1.9] tracking-[0.14em] text-ink-600">
               AUDIT LOGS sha256-SEALED · ON-PREM READY · NO TRACKERS
@@ -4050,7 +4322,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12, scale: 0.98 }}
               transition={{ duration: 0.28, ease: EASE }}
-              className="w-full max-w-lg rounded-2xl border border-ink-100 bg-white p-6 shadow-[0_40px_100px_rgba(11,12,15,0.45)] sm:p-8"
+              className="w-full max-w-lg rounded-[12px] panel panel-lift p-6 sm:p-8"
               onClick={(e) => e.stopPropagation()}
             >
               <p className="flex items-center gap-2.5 font-code text-[9px] font-semibold uppercase tracking-[0.28em] text-ink-500">
@@ -4087,7 +4359,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
                     autoComplete="off"
                     aria-required="true"
                     aria-invalid={Boolean(reqError && !reqName.trim())}
-                    className="h-12 w-full rounded-xl border border-ink-200 bg-white px-4 text-[13.5px] text-ink-900 outline-none transition-all placeholder:text-ink-300 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
+                    className="h-12 w-full rounded-xl border border-ink-200 bg-white px-4 text-[13.5px] text-ink-900 outline-none transition-all placeholder:text-ink-400 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
                   />
                 </div>
                 <div>
@@ -4123,7 +4395,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
                     onChange={(e) => setReqNote(e.target.value)}
                     rows={3}
                     placeholder="What it must supply, and why — optionally."
-                    className="w-full resize-none rounded-xl border border-ink-200 bg-white px-4 py-3 text-[13.5px] text-ink-900 outline-none transition-all placeholder:text-ink-300 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
+                    className="w-full resize-none rounded-xl border border-ink-200 bg-white px-4 py-3 text-[13.5px] text-ink-900 outline-none transition-all placeholder:text-ink-400 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
                   />
                 </div>
                 {reqError && (
@@ -4194,7 +4466,7 @@ function AwardLedgerView({
                 initial={{ opacity: 0, y: 18 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.05 * i, ease: EASE }}
-                className="rounded-2xl border border-ink-100 bg-white p-4 shadow-[0_1px_2px_rgba(11,12,15,0.04)]"
+                className="rounded-[12px] panel p-4 shadow-[0_1px_2px_rgba(11,12,15,0.04)]"
               >
                 <p className="font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400">{s.label}</p>
                 <p className="mt-2 font-display text-[28px] font-black leading-none tracking-[-0.02em] tabular">{s.value}</p>
@@ -4202,7 +4474,7 @@ function AwardLedgerView({
             ))}
           </div>
 
-          <div data-tour="ledger-rows" className="overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
+          <div data-tour="ledger-rows" className="overflow-hidden rounded-[12px] panel shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[560px] border-collapse text-left">
                 <caption className="sr-only">Award history — decisions signed at the approval gate</caption>
@@ -4212,7 +4484,7 @@ function AwardLedgerView({
                       <th
                         key={h}
                         scope="col"
-                        className="px-4 py-2.5 font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400"
+                        className="px-4 py-2.5 font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400 first:pl-5 first:pr-4 last:pr-5"
                       >
                         {h}
                       </th>
@@ -4223,7 +4495,7 @@ function AwardLedgerView({
                   {ledger.map((row) => (
                     <tr
                       key={row.id ?? `${row.tender}-${row.at}-${row.action}`}
-                      className="border-b border-ink-50 transition-colors last:border-b-0 hover:bg-paper"
+                      className="border-b border-ink-100 transition-colors last:border-b-0 hover:bg-paper"
                     >
                       <td className="py-3.5 pl-5 pr-4 font-code text-[10px] font-bold tracking-[0.08em] text-ink-950">
                         {row.tender}
@@ -4263,7 +4535,7 @@ function AwardLedgerView({
         </div>
 
         <div className="grid content-start gap-4 sm:gap-6 lg:grid-cols-2">
-          <div className="relative overflow-hidden rounded-2xl border border-ink-950 bg-night p-5 text-white shadow-[0_22px_55px_rgba(11,12,15,0.3)]">
+          <div className="relative overflow-hidden rounded-[12px] border border-ink-950 bg-night p-5 text-white shadow-[0_22px_55px_rgba(11,12,15,0.3)]">
             <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
             <div className="relative">
               <h3 className="font-display text-[15px] font-black tracking-[-0.01em]">The gavel has no autoplay</h3>
@@ -4328,6 +4600,7 @@ type CommitteeData = {
   lastSummonsAt: string | null;
   sitting: SittingView | null;
   sittings: SittingView[];
+  meetings: ScheduledMeeting[];
 };
 
 const NUMBER_WORDS = [
@@ -4460,6 +4733,10 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
   const [memberBusy, setMemberBusy] = useState(false);
   const [memberErr, setMemberErr] = useState<string | null>(null);
   const [armRemove, setArmRemove] = useState<string | null>(null);
+  const [meetOpen, setMeetOpen] = useState(false);
+  const [meetBusy, setMeetBusy] = useState(false);
+  const [meetErr, setMeetErr] = useState<string | null>(null);
+  const [meetCancelBusy, setMeetCancelBusy] = useState<string | null>(null);
   const notesRef = useRef("");
   const deskRef = useRef<HTMLDivElement | null>(null);
   const closeArmRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -4706,6 +4983,54 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
     }
   };
 
+  /* Schedule a meeting with the committee, the workspace, or named outside
+     players. The room is minted server-side; the returned state is the whole
+     diary, so the desk re-renders from the record rather than guessing. */
+  const scheduleMeeting = async (draft: MeetingDraft) => {
+    if (meetBusy) return;
+    setMeetBusy(true);
+    setMeetErr(null);
+    try {
+      const res = await fetch("/api/committee/meetings", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(draft),
+      });
+      const d = (await res.json()) as (CommitteeData & { scheduled?: ScheduledMeeting }) | { error: string };
+      if (!res.ok || "error" in d) throw new Error("error" in d ? d.error : "failed");
+      setData(d);
+      setMeetOpen(false);
+      const when = new Date(draft.startsAt)
+        .toLocaleString("en-GB", { weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+        .toUpperCase();
+      onToast(`MEETING SCHEDULED — ${when} · THE ROOM IS MINTED`);
+    } catch (err) {
+      setMeetErr(
+        err instanceof Error && err.message !== "failed"
+          ? err.message
+          : "THE MEETING COULD NOT BE SCHEDULED — RETRY"
+      );
+    } finally {
+      setMeetBusy(false);
+    }
+  };
+
+  const cancelMeeting = async (id: string) => {
+    if (meetCancelBusy) return;
+    setMeetCancelBusy(id);
+    try {
+      const res = await fetch(`/api/committee/meetings/${id}`, { method: "DELETE" });
+      const d = (await res.json()) as CommitteeData | { error: string };
+      if (!res.ok || "error" in d) throw new Error("failed");
+      setData(d);
+      onToast("MEETING CANCELLED — THE DIARY AND THE CALENDAR DROP IT");
+    } catch {
+      onToast("THE CANCELLATION FAILED — RETRY");
+    } finally {
+      setMeetCancelBusy(null);
+    }
+  };
+
   /* Roll-call order: the chair opens, the gavel sits second, then the rest.
      Excused members close the roll. Everything here comes from /api/committee —
      stored members plus the signed-in officer; nothing is hardcoded. */
@@ -4740,17 +5065,30 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
           : "The roll-call is being read from the committee record — the seats, the presence, and the quorum the law asks for before an award counts."
       }
       action={
-        <button
-          type="button"
-          onClick={() => {
-            setMemberErr(null);
-            setMemberOpen(true);
-          }}
-          className="inline-flex h-10 items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 font-code text-[9px] font-bold tracking-[0.18em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950"
-        >
-          <UserPlus className="h-3.5 w-3.5" aria-hidden="true" />
-          REGISTER A MEMBER
-        </button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setMeetErr(null);
+              setMeetOpen(true);
+            }}
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-ink-950 px-4 font-code text-[9px] font-bold tracking-[0.18em] text-white transition-colors hover:bg-brand-600"
+          >
+            <CalendarPlus className="h-3.5 w-3.5" aria-hidden="true" />
+            SCHEDULE MEETING
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMemberErr(null);
+              setMemberOpen(true);
+            }}
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 font-code text-[9px] font-bold tracking-[0.18em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950"
+          >
+            <UserPlus className="h-3.5 w-3.5" aria-hidden="true" />
+            REGISTER A MEMBER
+          </button>
+        </div>
       }
     >
       <div className="grid grid-cols-1 gap-4 sm:gap-6">
@@ -4761,7 +5099,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
           className={cn("min-w-0", tab !== "roll" && "hidden")}
         >
           {loadErr ? (
-            <div className="rounded-2xl border border-dashed border-ink-200 p-8 text-center">
+            <div className="rounded-[10px] border border-dashed border-ink-200 p-8 text-center">
               <p className="font-code text-[10px] font-bold tracking-[0.22em] text-ink-500">
                 COMMITTEE ROLL UNAVAILABLE
               </p>
@@ -4779,7 +5117,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
           ) : !data ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3" aria-busy="true" aria-label="Reading the committee roll">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-[104px] animate-pulse rounded-2xl border border-ink-100 bg-ink-50/60" />
+                <div key={i} className="h-[104px] animate-pulse rounded-[10px] border border-ink-100 bg-ink-50/60" />
               ))}
             </div>
           ) : (
@@ -4787,7 +5125,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
             {/* Convening strip — the quorum's live state, on the default tab.
                 Summon is idempotent: an open sitting lands on the desk, never
                 minted twice. */}
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-4 rounded-2xl border border-ink-100 bg-white px-5 py-4 sm:mb-6">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-4 rounded-[12px] panel px-5 py-4 sm:mb-6">
               <div className="min-w-0">
                 <p className="font-code text-[9px] font-bold tracking-[0.22em] text-ink-950">
                   CONVENING — {roll.length} OF {data.seats} PRESENT
@@ -4825,6 +5163,16 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                 </button>
               </div>
             </div>
+            <ScheduledMeetingsPanel
+              meetings={data.meetings}
+              onSchedule={() => {
+                setMeetErr(null);
+                setMeetOpen(true);
+              }}
+              onCancel={(id) => void cancelMeeting(id)}
+              cancelBusy={meetCancelBusy}
+              onToast={onToast}
+            />
             <div data-tour="committee-roll" className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3 2xl:grid-cols-4">
               {roll.map((m, i) => (
                 <motion.div
@@ -4833,7 +5181,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: 0.05 * i, ease: EASE }}
                   className={cn(
-                    "rounded-2xl border bg-white p-4 shadow-[0_1px_2px_rgba(11,12,15,0.04)]",
+                    "rounded-[10px] border bg-white p-4 shadow-[0_1px_2px_rgba(11,12,15,0.04)]",
                     m.you ? "border-brand-300 ring-2 ring-brand-600/15" : m.excused ? "border-ink-100 bg-ink-50/50" : "border-ink-100"
                   )}
                 >
@@ -4858,7 +5206,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                       m.you
                         ? "bg-brand-600 text-white"
                         : m.excused
-                          ? "border border-ink-200 bg-white text-ink-400"
+                          ? "border border-ink-200 bg-white text-ink-500"
                           : "bg-ink-50 text-ink-700"
                     )}
                   >
@@ -4894,7 +5242,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                       <button
                         type="button"
                         onClick={() => void setMemberFlag(m.id!, { status: m.excused ? "PRESENT" : "EXCUSED" })}
-                        className="whitespace-nowrap font-code text-[7px] font-bold tracking-[0.16em] text-ink-400 transition-colors hover:text-ink-950"
+                        className="whitespace-nowrap font-code text-[7px] font-bold tracking-[0.16em] text-ink-500 transition-colors hover:text-ink-950"
                       >
                         {m.excused ? "RETURN TO THE ROLL" : "EXCUSE"}
                       </button>
@@ -4904,7 +5252,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                         onClick={() => void removeMember(m.id!)}
                         className={cn(
                           "whitespace-nowrap font-code text-[7px] font-bold tracking-[0.16em] transition-colors",
-                          armRemove === m.id ? "text-brand-600" : "text-ink-400 hover:text-brand-600"
+                          armRemove === m.id ? "text-brand-600" : "text-ink-500 hover:text-brand-600"
                         )}
                       >
                         {armRemove === m.id ? "TAP AGAIN — REMOVE" : "REMOVE"}
@@ -4919,7 +5267,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.5, delay: 0.3 + 0.05 * i, ease: EASE }}
-                  className="grid place-items-center rounded-2xl border border-dashed border-ink-200 p-4 text-center"
+                  className="grid place-items-center rounded-[10px] border border-dashed border-ink-200 p-4 text-center"
                 >
                   <div>
                     {/* Numbered voids — each open seat knows its place at the
@@ -4931,7 +5279,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                       {roll.length + i + 1}
                     </span>
                     <p className="mt-2.5 font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400">SEAT OPEN</p>
-                    <p className="mt-1 font-code text-[7px] tracking-[0.18em] text-ink-300">AWAITS THE QUORUM CALL</p>
+                    <p className="mt-1 font-code text-[7px] tracking-[0.18em] text-ink-400">AWAITS THE QUORUM CALL</p>
                   </div>
                 </motion.div>
               ))}
@@ -4946,7 +5294,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
           aria-labelledby="committee-tab-quorum"
           className={cn("grid content-start gap-4 sm:gap-6", tab === "quorum" && "max-w-xl", tab !== "quorum" && "hidden")}
         >
-          <div data-tour="committee-quorum" className="relative overflow-hidden rounded-2xl border border-ink-950 bg-night p-5 text-white shadow-[0_22px_55px_rgba(11,12,15,0.3)]">
+          <div data-tour="committee-quorum" className="relative overflow-hidden rounded-[12px] border border-ink-950 bg-night p-5 text-white shadow-[0_22px_55px_rgba(11,12,15,0.3)]">
             <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
             <div className="relative">
               <div className="flex items-center justify-between gap-4">
@@ -5028,7 +5376,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
         </div>
 
         {data && !deskSitting && (
-          <div className="mt-3 rounded-2xl border border-dashed border-ink-200 bg-white/60 p-6 text-center sm:p-10">
+          <div className="mt-3 rounded-[10px] border border-dashed border-ink-200 bg-white/60 p-6 text-center sm:p-10">
             <p className="font-code text-[9px] font-bold tracking-[0.24em] text-ink-500">NO SITTING HAS BEEN SUMMONED</p>
             <p className="mx-auto mt-2 max-w-xl text-[13px] leading-relaxed text-ink-500">
               A summons mints the room — a fresh, unlisted Jitsi address that no other meeting has ever used — and
@@ -5040,7 +5388,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                 value={agenda}
                 onChange={(e) => setAgenda(e.target.value)}
                 placeholder="Agenda — optional, e.g. 'Award decision: GRZ/2026/041'"
-                className="h-10 min-w-0 flex-1 rounded-xl border border-ink-200 bg-white px-3.5 text-[12.5px] text-ink-950 outline-none transition placeholder:text-ink-300 focus:border-ink-950"
+                className="h-10 min-w-0 flex-1 rounded-xl border border-ink-200 bg-white px-3.5 text-[12.5px] text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950"
                 aria-label="Optional agenda for the sitting"
               />
               <button
@@ -5062,7 +5410,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
         {data && deskSitting && (
           <>
             {!openSitting ? (
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-ink-100 bg-white px-4 py-3">
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-[12px] panel px-4 py-3">
                 <p className="font-code text-[8px] font-bold tracking-[0.18em] text-ink-500">
                   NO SITTING IS OPEN — THE DESK SHOWS A SEALED RECORD
                 </p>
@@ -5071,7 +5419,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                     value={agenda}
                     onChange={(e) => setAgenda(e.target.value)}
                     placeholder="Agenda (optional)"
-                    className="h-9 w-48 min-w-0 rounded-lg border border-ink-200 bg-white px-3 text-[12px] text-ink-950 outline-none transition placeholder:text-ink-300 focus:border-ink-950"
+                    className="h-9 w-48 min-w-0 rounded-lg border border-ink-200 bg-white px-3 text-[12px] text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950"
                     aria-label="Optional agenda for the next sitting"
                   />
                   <button
@@ -5086,7 +5434,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                 </div>
               </div>
             ) : deskSitting.id !== openSitting.id ? (
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-ink-100 bg-white px-4 py-3">
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-[12px] panel px-4 py-3">
                 <p className="font-code text-[8px] font-bold tracking-[0.18em] text-ink-500">
                   READING HISTORY — A SITTING IS OPEN
                 </p>
@@ -5100,10 +5448,10 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
               </div>
             ) : null}
 
-            <div className="mt-3 grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="mt-3 grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
               {/* Left — the room and the minutes */}
-              <div className="grid min-w-0 content-start gap-4 sm:gap-5">
-                <div className="relative overflow-hidden rounded-2xl border border-ink-950 bg-night p-5 text-white shadow-[0_22px_55px_rgba(11,12,15,0.3)] sm:p-6">
+              <div className="grid min-w-0 content-start gap-4 sm:gap-6">
+                <div className="relative overflow-hidden rounded-[12px] border border-ink-950 bg-night p-5 text-white shadow-[0_22px_55px_rgba(11,12,15,0.3)] sm:p-6">
                   <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
                   <div className="relative">
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -5182,7 +5530,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                   </div>
                 </div>
 
-                <div className="overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
+                <div className="overflow-hidden rounded-[12px] panel shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
                   <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 px-5 py-4">
                     <div>
                       <h3 className="font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">The minutes — captured here</h3>
@@ -5198,7 +5546,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                           : notesState === "idle" && notesSavedAt
                             ? "bg-ink-50 text-ink-600"
                             : notesState === "idle"
-                              ? "border border-ink-200 bg-white text-ink-400"
+                              ? "border border-ink-200 bg-white text-ink-500"
                               : "border border-ink-200 bg-white text-ink-500"
                       )}
                     >
@@ -5230,7 +5578,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                           : "Sealed — the minutes above are the final text."
                       }
                       className={cn(
-                        "min-h-[240px] w-full resize-y rounded-xl border border-ink-200 bg-paper px-4 py-3 text-[13.5px] leading-relaxed text-ink-950 outline-none transition placeholder:text-ink-300 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10",
+                        "min-h-[240px] w-full resize-y rounded-xl border border-ink-200 bg-paper px-4 py-3 text-[13.5px] leading-relaxed text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10",
                         deskSitting.status !== "OPEN" && "cursor-not-allowed bg-ink-50/60 text-ink-600"
                       )}
                       aria-label="The minutes of the sitting"
@@ -5283,7 +5631,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
 
               {/* Right — the door */}
               <aside className="min-w-0">
-                <div className="overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
+                <div className="overflow-hidden rounded-[12px] panel shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
                   <header className="border-b border-ink-100 px-5 py-4">
                     <div className="flex items-center justify-between gap-3">
                       <h3 className="font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">The door</h3>
@@ -5339,7 +5687,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                           <span
                             className={cn(
                               "shrink-0 rounded-full px-2.5 py-1 font-code text-[7.5px] font-bold tracking-[0.16em]",
-                              a.admitted ? "bg-ink-50 text-ink-700" : "border border-ink-200 text-ink-300"
+                              a.admitted ? "bg-ink-50 text-ink-700" : "border border-ink-200 text-ink-500"
                             )}
                           >
                             {a.admitted ? "ADMITTED" : "ABSENT"}
@@ -5364,7 +5712,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
             </div>
 
             {data.sittings.length > 1 && (
-              <div className="mt-4 overflow-hidden rounded-2xl border border-ink-100 bg-white sm:mt-5">
+              <div className="mt-4 overflow-hidden rounded-[12px] panel sm:mt-5">
                 <header className="flex items-center justify-between gap-3 border-b border-ink-100 px-5 py-3.5">
                   <h3 className="font-code text-[9px] font-bold tracking-[0.22em] text-ink-500">THE SITTING REGISTER</h3>
                   <span className="font-code text-[7.5px] tracking-[0.18em] text-ink-400">{data.sittings.length} MOST RECENT</span>
@@ -5393,7 +5741,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                         <span
                           className={cn(
                             "ml-auto shrink-0 rounded-full px-2.5 py-1 font-code text-[7.5px] font-bold tracking-[0.16em]",
-                            s.status === "OPEN" ? "bg-brand-600 text-white" : "border border-ink-200 text-ink-400"
+                            s.status === "OPEN" ? "bg-brand-600 text-white" : "border border-ink-200 text-ink-500"
                           )}
                         >
                           {s.status === "OPEN" ? "OPEN" : "SEALED"}
@@ -5408,6 +5756,21 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
         )}
       </div>
       </div>
+
+      {/* Schedule-a-meeting dialog — the owner names the day and the players */}
+      <AnimatePresence>
+        {meetOpen && (
+          <ScheduleMeetingDialog
+            members={data?.members ?? []}
+            busy={meetBusy}
+            error={meetErr}
+            onClose={() => {
+              if (!meetBusy) setMeetOpen(false);
+            }}
+            onSubmit={(draft) => void scheduleMeeting(draft)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Register-a-member dialog — the register is what opens the door */}
       <AnimatePresence>
@@ -5432,7 +5795,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
               exit={{ opacity: 0, y: 12 }}
               transition={{ duration: 0.28, ease: EASE }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_30px_80px_rgba(11,12,15,0.35)] sm:p-7"
+              className="w-full max-w-lg rounded-[12px] panel panel-lift p-5 sm:p-7"
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -5463,7 +5826,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                     value={memberDraft.name}
                     onChange={(e) => setMemberDraft((d) => ({ ...d, name: e.target.value }))}
                     placeholder="e.g. Mwansa Chileshe"
-                    className="mt-1.5 h-10 w-full rounded-xl border border-ink-200 bg-white px-3.5 text-[13px] text-ink-950 outline-none transition placeholder:text-ink-300 focus:border-ink-950"
+                    className="mt-1.5 h-10 w-full rounded-xl border border-ink-200 bg-white px-3.5 text-[13px] text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950"
                   />
                 </label>
                 <label className="block">
@@ -5472,7 +5835,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                     value={memberDraft.role}
                     onChange={(e) => setMemberDraft((d) => ({ ...d, role: e.target.value }))}
                     placeholder="e.g. DIRECTOR OF PROCUREMENT · FINANCE"
-                    className="mt-1.5 h-10 w-full rounded-xl border border-ink-200 bg-white px-3.5 text-[13px] text-ink-950 outline-none transition placeholder:text-ink-300 focus:border-ink-950"
+                    className="mt-1.5 h-10 w-full rounded-xl border border-ink-200 bg-white px-3.5 text-[13px] text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950"
                   />
                 </label>
                 <label className="flex items-center gap-2.5 rounded-xl border border-ink-100 bg-paper/60 px-3.5 py-3">
@@ -5605,7 +5968,7 @@ function TeamMembersSection({ user, onToast }: { user: AuthUser | null; onToast:
     }
   };
 
-  const cardClass = "rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]";
+  const cardClass = "rounded-[12px] panel p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]";
   const labelClass = "font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400";
   const titleClass = "mt-1.5 font-display text-[15px] font-black tracking-[-0.01em] text-ink-950";
 
@@ -5668,7 +6031,7 @@ function TeamMembersSection({ user, onToast }: { user: AuthUser | null; onToast:
               onChange={(e) => setInviteEmail(e.target.value)}
               placeholder="colleague@authority.go.ke (optional note)"
               aria-label="Colleague email (optional)"
-              className="h-10 min-w-0 flex-1 rounded-lg border border-ink-200 bg-white px-3 text-[13px] text-ink-950 outline-none transition-colors placeholder:text-ink-300 focus:border-ink-400"
+              className="h-10 min-w-0 flex-1 rounded-lg border border-ink-200 bg-white px-3 text-[13px] text-ink-950 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-400"
             />
             <select
               value={inviteRole}
@@ -5721,7 +6084,7 @@ function TeamMembersSection({ user, onToast }: { user: AuthUser | null; onToast:
                   {inv.role}
                 </span>
                 {inv.email && <span className="truncate text-[11.5px] text-ink-400">for {inv.email}</span>}
-                <span className="truncate text-[10px] text-ink-300">
+                <span className="truncate text-[10px] text-ink-400">
                   {inv.status === "CLAIMED"
                     ? `claimed by ${inv.claimedByEmail ?? "a member"}`
                     : inv.status === "REVOKED"
@@ -5810,7 +6173,7 @@ function SettingsView({
     { label: "Tool calls logged", value: health ? health.counts.toolCalls.toLocaleString("en-US") : "—" },
   ];
 
-  const cardClass = "rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]";
+  const cardClass = "rounded-[12px] panel p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]";
   const labelClass = "font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400";
   const titleClass = "mt-1.5 font-display text-[15px] font-black tracking-[-0.01em] text-ink-950";
 
@@ -6173,6 +6536,34 @@ const WALKTHROUGH: WalkthroughChapter[] = [
     ],
   },
   {
+    section: "mc-calendar",
+    title: "Read the committee calendar",
+    summary: "Every date the desk answers to — statutory clocks, committee sittings and gate signatures — on one grid.",
+    steps: [
+      "Statutory clocks come from each tender's own cycle record: closing, ALB response, standstill end, milestones, complaint responses.",
+      "A sitting lands on the day it was summoned; while the room is open it reads live.",
+      "Select any day for its agenda, or jump the grid straight to a clock from the rail.",
+    ],
+    tip: "An overdue clock stays on the grid in red — the record writes the dates, and this page never moves one.",
+    tour: [
+      {
+        target: "cal-month",
+        title: "The month, on the record",
+        body: "One cell per day, one chip per item: statutory clocks, sittings, files at the gate and signatures. Today is ringed; overdue dates stay red.",
+      },
+      {
+        target: "cal-agenda",
+        title: "One day, read in full",
+        body: "Select a day and its agenda opens beside the grid — every clock with its countdown, every sitting with its door record, every decision with the name that signed it.",
+      },
+      {
+        target: "cal-clocks",
+        title: "The next clocks",
+        body: "The open statutory dates, soonest first. Select one and the month turns to the day it falls on. Export the month to .ics and it lands in any diary.",
+      },
+    ],
+  },
+  {
     section: "mc-stack",
     title: "Inspect tools and models",
     summary: "The sidecar's tools, the agent graphs and the LLM endpoint behind them.",
@@ -6327,7 +6718,7 @@ function WalkthroughView({
         </button>
       }
     >
-      <ol className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3" aria-label="Chapters">
+      <ol className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3" aria-label="Chapters">
         {WALKTHROUGH.map((ch, i) => {
           const Icon = ch.section ? SECTION_ICON[ch.section] : Library;
           return (
@@ -6344,7 +6735,7 @@ function WalkthroughView({
                 {done.includes(i) ? (
                   <CircleCheck className="h-3.5 w-3.5 shrink-0 text-brand-600" aria-label="Chapter toured" />
                 ) : (
-                  <Play className="h-3.5 w-3.5 shrink-0 text-ink-300 transition-colors group-hover:text-brand-600" aria-hidden="true" />
+                  <Play className="h-3.5 w-3.5 shrink-0 text-ink-400 transition-colors group-hover:text-brand-600" aria-hidden="true" />
                 )}
               </button>
             </li>
@@ -6352,7 +6743,7 @@ function WalkthroughView({
         })}
       </ol>
 
-      <div className="mt-8 space-y-4 sm:space-y-5">
+      <div className="mt-6 space-y-4 sm:mt-8 sm:space-y-6">
         {WALKTHROUGH.map((ch, i) => {
           const Icon = ch.section ? SECTION_ICON[ch.section] : Library;
           const no = String(i + 1).padStart(2, "0");
@@ -6360,7 +6751,7 @@ function WalkthroughView({
             <article
               key={`${ch.section ?? ch.href}-${i}`}
               id={`wt-${i + 1}`}
-              className="scroll-mt-24 rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)] sm:p-7"
+              className="scroll-mt-24 rounded-[12px] panel p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)] sm:p-7"
             >
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="flex min-w-0 items-start gap-4">
@@ -6486,7 +6877,7 @@ const SUPPLIER_CATEGORIES = [
 const SUPPLIER_REGULATORS = ["NCC", "NHCC", "ERB", "ZPPA", "ZEMA", "Other"] as const;
 
 const SUPPLIER_INPUT =
-  "w-full rounded-xl border border-ink-200 bg-white px-3.5 py-2.5 text-[13px] text-ink-900 outline-none transition-colors placeholder:text-ink-300 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10";
+  "w-full rounded-xl border border-ink-200 bg-white px-3.5 py-2.5 text-[13px] text-ink-900 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10";
 
 type SupplierDraft = {
   name: string;
@@ -7023,7 +7414,7 @@ function AddSupplierModal({
             transition={{ duration: 0.28, ease: EASE }}
             onClick={(e) => e.stopPropagation()}
             onKeyDown={trapTab}
-            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_30px_80px_rgba(11,12,15,0.35)] sm:p-7"
+            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[12px] panel panel-lift p-5 sm:p-7"
           >
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
@@ -7049,7 +7440,7 @@ function AddSupplierModal({
             </div>
 
             {/* The published ZPPA record, offered as a head start */}
-            <div className="mt-5 rounded-2xl border border-ink-100 bg-paper/70">
+            <div className="mt-5 rounded-[10px] border border-ink-100 bg-paper/70">
               <button
                 type="button"
                 onClick={() => setRollOpen((v) => !v)}
@@ -7103,7 +7494,7 @@ function AddSupplierModal({
                     <>
                       <label className="relative block">
                         <Search
-                          className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-300"
+                          className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400"
                           aria-hidden="true"
                         />
                         <input
@@ -7112,7 +7503,7 @@ function AddSupplierModal({
                           onChange={(e) => setRollQuery(e.target.value)}
                           placeholder="Search by firm or PACRA number…"
                           aria-label="Search the ZPPA record"
-                          className="h-9 w-full rounded-xl border border-ink-200 bg-white pl-9 pr-3 text-[12.5px] text-ink-900 outline-none transition-colors placeholder:text-ink-300 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
+                          className="h-9 w-full rounded-xl border border-ink-200 bg-white pl-9 pr-3 text-[12.5px] text-ink-900 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
                         />
                       </label>
 
@@ -7120,7 +7511,7 @@ function AddSupplierModal({
                         {shown.map((e) => {
                           const on = alreadyOn(e);
                           return (
-                            <li key={e.regNo} className="border-b border-ink-50 last:border-b-0">
+                            <li key={e.regNo} className="border-b border-ink-100 last:border-b-0">
                               <button
                                 type="button"
                                 disabled={on}
@@ -7426,10 +7817,10 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
         </div>
       }
     >
-      <div className="space-y-5">
+      <div className="space-y-4 sm:space-y-6">
         {/* The roll — given the full width of the workspace so every column shows */}
         <div className="min-w-0">
-          <div data-tour="suppliers-roll" className="overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
+          <div data-tour="suppliers-roll" className="overflow-hidden rounded-[12px] panel shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
             <header className="border-b border-ink-100 px-5 py-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -7440,7 +7831,7 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
                 </div>
                 <label className="relative block">
                   <Search
-                    className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-300"
+                    className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400"
                     aria-hidden="true"
                   />
                   <input
@@ -7449,7 +7840,7 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Name, TIN, registration…"
                     aria-label="Search suppliers"
-                    className="h-9 w-52 rounded-full border border-ink-200 bg-paper pl-9 pr-3 text-[12.5px] text-ink-900 outline-none transition-colors placeholder:text-ink-300 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
+                    className="h-9 w-52 rounded-full border border-ink-200 bg-paper pl-9 pr-3 text-[12.5px] text-ink-900 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
                   />
                 </label>
               </div>
@@ -7471,7 +7862,7 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
                       )}
                     >
                       {t.label}
-                      <span className={cn("tabular", on ? "text-brand-400" : "text-ink-300")}>{t.n}</span>
+                      <span className={cn("tabular", on ? "text-brand-400" : "text-ink-400")}>{t.n}</span>
                     </button>
                   );
                 })}
@@ -7500,13 +7891,13 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
                   {filtered.map((s) => {
                     const standing = clearanceStanding(s.taxClearanceExpiry);
                     return (
-                      <tr key={s.id} className="border-b border-ink-50 last:border-b-0 hover:bg-paper/60">
+                      <tr key={s.id} className="border-b border-ink-100 last:border-b-0 hover:bg-paper/60">
                         <td className="px-5 py-4 align-top">
                           <p className="text-[13.5px] font-semibold leading-snug text-ink-950">{s.name}</p>
                           <p className="mt-1 font-code text-[8.5px] tracking-[0.14em] text-ink-400">
                             REG {s.registrationNo}
                           </p>
-                          <p className="mt-1 font-code text-[7.5px] tracking-[0.14em] text-ink-300">
+                          <p className="mt-1 font-code text-[7.5px] tracking-[0.14em] text-ink-400">
                             ADDED BY {(s.addedBy || "—").toUpperCase()} · {shortDateOf(s.createdAt)}
                           </p>
                         </td>
@@ -7598,7 +7989,7 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
                                 onClick={() => setConfirmDelete(s.id)}
                                 title={`Remove ${s.name}`}
                                 aria-label={`Remove ${s.name}`}
-                                className="grid h-8 w-8 place-items-center rounded-lg text-ink-300 transition-colors hover:bg-brand-50 hover:text-brand-700"
+                                className="grid h-8 w-8 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-brand-50 hover:text-brand-700"
                               >
                                 <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                               </button>
@@ -7678,7 +8069,7 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
               exit={{ opacity: 0, y: 12 }}
               transition={{ duration: 0.28, ease: EASE }}
               onClick={(e) => e.stopPropagation()}
-              className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_30px_80px_rgba(11,12,15,0.35)] sm:p-7"
+              className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-[12px] panel panel-lift p-5 sm:p-7"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
@@ -7932,7 +8323,7 @@ function RulesView({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.05 * i, ease: EASE }}
-            className="rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]"
+            className="rounded-[12px] panel p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]"
           >
             <p className="font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400">GUARD {g.no}</p>
             <h3 className="mt-1.5 font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">{g.title}</h3>
@@ -7945,7 +8336,7 @@ function RulesView({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2, ease: EASE }}
-          className="rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]"
+          className="rounded-[12px] panel p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]"
         >
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -7965,7 +8356,7 @@ function RulesView({
 
       <div className="mt-4 grid grid-cols-1 gap-4 sm:mt-6 sm:gap-6 lg:grid-cols-2">
         <StandingRuleCard />
-        <div data-tour="rules-audit" className="flex items-start gap-3 rounded-2xl border border-ink-100 bg-sand p-5">
+        <div data-tour="rules-audit" className="flex items-start gap-3 rounded-[10px] border border-ink-100 bg-sand p-5">
           <ShieldCheck className="h-4 w-4 shrink-0 text-brand-700" aria-hidden="true" />
           <div className="min-w-0">
             <p className="font-code text-[7.5px] leading-[1.9] tracking-[0.14em] text-ink-600">
@@ -8012,11 +8403,45 @@ function RunsView({
   onNewRun: () => void;
   notes: Record<string, string[]>;
 }) {
+  const queued = runs.filter((r) => r.status === "queued").length;
+  const reading = runs.filter((r) => r.status === "running").length;
+  const atGate = runs.filter((r) => r.status === "gate").length;
+  const decided = runs.filter((r) => r.status === "complete").length;
+  const findings = runs.reduce((sum, r) => sum + r.findings, 0);
+  const sourced = runs.reduce((sum, r) => sum + r.citations, 0);
+  const coverage = findings > 0 ? Math.round((sourced / findings) * 100) : null;
+  const live = reading + atGate;
+
   return (
     <ViewShell
       fig="05"
       title="Evaluations"
       sub="Every file the agent has opened — live, queued, at a gate or decided. Expand an evaluation for its top findings and its audit trail."
+      action={
+        <DeskStatus tone={live > 0 ? "live" : runs.length > 0 ? "clear" : "idle"}>
+          {live > 0
+            ? `${reading} reading · ${atGate} at a gate`
+            : runs.length > 0
+              ? "Agent idle"
+              : "Desk empty"}
+        </DeskStatus>
+      }
+      summary={
+        <StageStrip
+          label="Review pipeline"
+          meta={
+            runs.length > 0
+              ? `${runs.length} FILE${runs.length === 1 ? "" : "S"} ON THE DESK${coverage !== null ? ` · ${coverage}% SOURCED` : ""}`
+              : "NO FILES OPENED"
+          }
+          items={[
+            { key: "queued", label: "Queued", count: queued, caption: "WAITING FOR THE AGENT" },
+            { key: "reading", label: "Reading", count: reading, caption: "AGENT IN THE FILES", tone: reading ? "brand" : "idle" },
+            { key: "gate", label: "At a gate", count: atGate, caption: "A HUMAN MUST DECIDE", tone: atGate ? "brand" : "idle" },
+            { key: "decided", label: "Decided", count: decided, caption: "SIGNED AND FILED", tone: decided ? "emerald" : "idle" },
+          ]}
+        />
+      }
     >
       <div className="grid grid-cols-1 gap-4 sm:gap-6">
         <div className="grid content-start gap-4 sm:grid-cols-2 sm:gap-6">
@@ -8048,11 +8473,46 @@ function GatesView({
   onGoCommittee: () => void;
   onToast: (m: string) => void;
 }) {
+  const officeOrder = ["PROCUREMENT_UNIT", "EVALUATION_COMMITTEE", "ACCOUNTING_OFFICER", "OVERSIGHT"] as const;
+  const officeRole: Record<string, string> = {
+    PROCUREMENT_UNIT: "COMPETITIVE PROCESS",
+    EVALUATION_COMMITTEE: "SCORES AND CERTIFIES",
+    ACCOUNTING_OFFICER: "SIGNS THE AWARD",
+    OVERSIGHT: "AUDIT AND ASSURANCE",
+  };
+  const unassigned = queue.filter((g) => !g.requiredOffice).length;
+
   return (
     <ViewShell
       fig="06"
       title="Approvals"
       sub="The stop only a human can pass. The agent assembles the file and halts; the committee reads the cited flags and decides — by name, on the record."
+      action={
+        <DeskStatus tone={queue.length > 0 ? "live" : "clear"}>
+          {queue.length > 0 ? `${queue.length} waiting on a signature` : "All clear"}
+        </DeskStatus>
+      }
+      summary={
+        <StageStrip
+          label="Decision authority"
+          meta={
+            <>
+              {queue.length} WAITING · {ledger.length} ON THE RECORD
+              {unassigned > 0 ? ` · ${unassigned} UNASSIGNED` : ""}
+            </>
+          }
+          items={officeOrder.map((office) => {
+            const count = queue.filter((g) => g.requiredOffice === office).length;
+            return {
+              key: office,
+              label: MEMBER_OFFICE_LABELS[office],
+              count,
+              caption: officeRole[office],
+              tone: count > 0 ? ("brand" as const) : ("idle" as const),
+            };
+          })}
+        />
+      }
     >
       <div className="grid content-start gap-4 sm:gap-6">
         <div className="min-w-0">
@@ -8063,7 +8523,7 @@ function GatesView({
           <button
             type="button"
             onClick={onGoCommittee}
-            className="group relative overflow-hidden rounded-2xl border border-ink-950 bg-night p-5 text-left text-white shadow-[0_22px_55px_rgba(11,12,15,0.3)] transition-transform hover:-translate-y-0.5"
+            className="group relative overflow-hidden rounded-[12px] border border-ink-950 bg-night p-5 text-left text-white shadow-[0_22px_55px_rgba(11,12,15,0.3)] transition-transform hover:-translate-y-0.5"
           >
             <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
             <div className="relative">
@@ -8096,7 +8556,7 @@ function FeedView({ onToast }: { onToast: (m: string) => void }) {
         </div>
         <div className="grid content-start gap-4 sm:gap-6">
           <PortalSync />
-          <div className="relative overflow-hidden rounded-2xl border border-ink-950 bg-night p-5 text-white shadow-[0_22px_55px_rgba(11,12,15,0.3)]">
+          <div className="relative overflow-hidden rounded-[12px] border border-ink-950 bg-night p-5 text-white shadow-[0_22px_55px_rgba(11,12,15,0.3)]">
             <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
             <div className="relative">
               <h3 className="font-display text-[15px] font-black tracking-[-0.01em]">Citation policy</h3>
@@ -8152,6 +8612,7 @@ export function Dashboard({
     }
   }, []);
   const [modalOpen, setModalOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [now, setNow] = useState<Date | null>(null);
 
   /* The guided walkthrough: which chapter and step is spotlit right now, and
@@ -8181,6 +8642,19 @@ export function Dashboard({
     };
   }, [navOpen]);
 
+  /* ⌘K / Ctrl+K opens the command line from anywhere in the workspace. The
+     launch wizard owns the desk while it is open, so the chord is inert then. */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "k") return;
+      e.preventDefault();
+      if (modalOpen) return;
+      setPaletteOpen((prev) => !prev);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [modalOpen]);
+
   const firstName = firstNameOf(user);
   const hour = now?.getHours() ?? 10;
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
@@ -8204,6 +8678,55 @@ export function Dashboard({
     setActive(id);
     requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
   };
+
+  /* The palette's contents: two actions, then every section of the desk in the
+     same order as the rail, carrying the same live counts as the sidebar. */
+  const paletteGroups: PaletteGroup[] = [
+    {
+      label: "Actions",
+      entries: [
+        {
+          id: "new-evaluation",
+          label: "New evaluation",
+          icon: Plus,
+          hint: "LAUNCH",
+          keywords: "start run tender review upload",
+          run: () => setModalOpen(true),
+        },
+        {
+          id: "back-to-site",
+          label: "Back to site",
+          icon: ArrowLeft,
+          hint: "LEAVE",
+          keywords: "home landing exit",
+          run: onExit,
+        },
+      ],
+    },
+    ...NAV_GROUPS.map((group) => ({
+      label: group.group,
+      entries: group.items.map((item) => ({
+        id: item.id,
+        label: item.label,
+        icon: item.icon,
+        badge:
+          item.badge === "runs"
+            ? runs.length
+            : item.badge === "gates"
+              ? queue.length
+              : item.badge === "findings"
+                ? openFindings
+                : undefined,
+        hint: item.href ? "OPENS PAGE" : undefined,
+        current: !item.href && active === item.id,
+        keywords: item.id.replace(/-/g, " "),
+        run: () => {
+          if (item.href) window.location.href = item.href;
+          else switchTo(item.id as SectionId);
+        },
+      })),
+    })),
+  ];
 
   const launchRun = async (ref: string, title: string, format: string, docs: number, checks: number) => {
     let res: Response;
@@ -8370,6 +8893,8 @@ export function Dashboard({
         return <AwardLedgerView ledger={ledger} awaiting={queue.length} onToast={onToast} />;
       case "mc-committee":
         return <CommitteeView user={user} onToast={onToast} />;
+      case "mc-calendar":
+        return <CalendarView onToast={onToast} onGoCommittee={() => switchTo("mc-committee")} />;
       case "mc-rules":
         return <RulesView firstName={firstName} onToast={onToast} onOpenActivity={() => switchTo("mc-activity")} />;
       case "mc-stack":
@@ -8393,7 +8918,7 @@ export function Dashboard({
   };
 
   return (
-    <div className="min-h-screen bg-paper font-body text-ink-900 antialiased">
+    <div className="desk-canvas min-h-screen font-body text-ink-900 antialiased">
       <a
         href="#mc-main"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[90] focus:rounded-lg focus:bg-ink-950 focus:px-4 focus:py-2 focus:text-[13px] focus:font-semibold focus:text-white"
@@ -8409,7 +8934,7 @@ export function Dashboard({
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
             transition={{ duration: 0.32, ease: EASE }}
-            className="fixed inset-y-0 left-0 z-40 hidden w-[264px] flex-col border-r border-white/5 bg-night lg:flex"
+            className="fixed inset-y-0 left-0 z-40 hidden w-[264px] flex-col border-r border-white/[0.08] bg-night shadow-[24px_0_60px_-40px_rgba(0,0,0,0.9)] lg:flex"
             aria-label="Workspace sidebar"
           >
             <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-50" aria-hidden="true" />
@@ -8439,22 +8964,17 @@ export function Dashboard({
       </AnimatePresence>
 
       {/* Mobile top bar */}
-      <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-white/10 bg-night px-4 py-3 lg:hidden">
+      <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-white/[0.07] bg-night px-4 py-3 lg:hidden">
         <QuorumLogo variant="light" />
         <div className="flex items-center gap-2.5">
-          <span className="hidden items-center gap-2 font-code text-[8.5px] tracking-[0.2em] text-ink-300 sm:flex">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-brand-500" aria-hidden="true" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-600" aria-hidden="true" />
-            </span>
-            AGENT ONLINE
-          </span>
+          {/* Reports the sidecar's real state — never a hardcoded "online" */}
+          <AgentStatusBadge mode={agentMode} className="hidden sm:inline-flex" />
           <button
             type="button"
             onClick={() => setNavOpen(true)}
             aria-label="Open workspace menu"
             aria-expanded={navOpen}
-            className="grid h-10 w-10 place-items-center rounded-full border border-white/15 text-white"
+            className="focus-brand grid h-10 w-10 place-items-center rounded-full border border-white/15 text-white transition-colors hover:border-brand-500"
           >
             <Menu className="h-5 w-5" aria-hidden="true" />
           </button>
@@ -8514,15 +9034,13 @@ export function Dashboard({
       {/* Main column — shifts with the sidebar */}
       <div
         className={cn(
-          "transition-[padding] duration-300 ease-out",
+          "desk-sheet transition-[padding] duration-300 ease-out",
           navCollapsed ? "lg:pl-0" : "lg:pl-[264px]"
         )}
       >
-        {/* Sticky utility bar */}
-        <div className="sticky top-0 z-30 border-b border-ink-100 bg-paper/85 backdrop-blur-xl">
-          <div
-            className="mx-auto flex h-14 w-full items-center justify-between gap-4 px-4 sm:px-6 lg:px-8"
-          >
+        {/* Sticky utility bar — the desk's instrument strip */}
+        <div className="sticky top-0 z-30 border-b border-ink-200/70 bg-paper/80 backdrop-blur-xl supports-[backdrop-filter]:bg-paper/65 dark:border-white/[0.08]">
+          <div className="mx-auto flex h-[58px] w-full max-w-[1500px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
               {navCollapsed && (
                 <button
@@ -8530,22 +9048,58 @@ export function Dashboard({
                   onClick={() => setNavCollapsedPersisted(false)}
                   aria-label="Expand sidebar"
                   title="Expand the sidebar"
-                  className="hidden h-9 w-9 shrink-0 place-items-center rounded-lg border border-ink-200 bg-white text-ink-600 transition-colors hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 lg:grid"
+                  className="focus-brand hidden h-10 w-10 shrink-0 place-items-center rounded-full border border-ink-200/80 bg-white text-ink-600 transition-colors hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 lg:grid dark:border-white/10 dark:bg-white/[0.04]"
                 >
                   <PanelLeftOpen className="h-4 w-4" aria-hidden="true" />
                 </button>
               )}
-              <p className="truncate font-code text-[9px] font-semibold tracking-[0.22em] text-ink-400">
-                WORKSPACE <span className="text-ink-200">/</span>{" "}
-                <span className="text-ink-900">
+              <p className="flex min-w-0 items-center gap-3">
+                <span className="relative flex h-1.5 w-1.5 shrink-0" aria-hidden="true">
+                  <span
+                    className={cn(
+                      "absolute inline-flex h-full w-full animate-ping-slow rounded-full",
+                      agentMode === "online" ? "bg-brand-500" : "bg-ink-400"
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      "relative inline-flex h-1.5 w-1.5 rounded-full",
+                      agentMode === "online" ? "bg-brand-600" : "bg-ink-400"
+                    )}
+                  />
+                </span>
+                <span className="font-code text-[8px] font-semibold uppercase tracking-[0.24em] text-ink-400">
+                  Workspace
+                </span>
+                <span className="text-[11px] text-ink-300 dark:text-ink-600" aria-hidden="true">
+                  /
+                </span>
+                <span className="truncate text-[13px] font-semibold tracking-[-0.01em] text-ink-950">
                   {SECTION_LABEL[active] ?? "Overview"}
                 </span>
               </p>
             </div>
-            <div className="flex items-center gap-3 sm:gap-4">
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <button
+                type="button"
+                onClick={() => setPaletteOpen(true)}
+                aria-label="Jump to a workspace section"
+                aria-keyshortcuts="Meta+K Control+K"
+                title="Jump to… (⌘K)"
+                className="focus-brand inline-flex h-9 shrink-0 items-center gap-2 rounded-lg px-2 text-ink-500 transition-colors hover:bg-ink-950/[0.045] hover:text-ink-900 dark:text-ink-400 dark:hover:bg-white/[0.06] dark:hover:text-white"
+              >
+                <CommandIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                <span className="hidden font-code text-[8px] font-bold tracking-[0.16em] xl:inline">JUMP TO</span>
+                <kbd
+                  aria-hidden="true"
+                  className="hidden rounded-[4px] border border-ink-200/80 px-1 py-[1px] font-code text-[8px] font-bold leading-none text-ink-400 lg:inline dark:border-white/10"
+                >
+                  ⌘K
+                </kbd>
+              </button>
               <div className="relative hidden sm:block">
                 <Search
-                  className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-300"
+                  className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400"
                   aria-hidden="true"
                 />
                 <input
@@ -8554,15 +9108,15 @@ export function Dashboard({
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search evaluations…"
                   aria-label="Search evaluations by reference, title or buyer"
-                  className="h-9 w-44 rounded-full border border-ink-200 bg-white pl-9 pr-3 text-[12.5px] text-ink-900 outline-none transition-all placeholder:text-ink-300 focus:w-56 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10 lg:w-52"
+                  className="focus-brand h-9 w-48 rounded-lg border border-ink-200/80 bg-[#fffdfb] pl-9 pr-3.5 text-[12.5px] text-ink-900 shadow-[inset_0_1px_1px_rgba(11,12,15,0.03)] outline-none transition-[width,border-color,background-color] duration-300 placeholder:text-ink-400 focus:w-64 focus:border-ink-950 focus:ring-[3px] focus:ring-ink-950/[0.07] dark:border-white/[0.1] dark:bg-white/[0.04] dark:focus:border-white/35 dark:focus:ring-white/[0.06] lg:w-52"
                 />
               </div>
               <p
-                className="hidden items-center gap-2 font-code text-[9px] tracking-[0.2em] text-ink-500 md:flex"
+                className="hidden items-center gap-2 type-micro text-ink-500 xl:flex"
                 aria-label="Local time"
               >
                 <LiveClock />
-                <span className="text-ink-200">·</span> LOCAL
+                <span className="text-ink-300">·</span> Local
               </p>
               <AgentStatusBadge mode={agentMode} className="hidden md:inline-flex" />
               {/* The master switcher rides the utility bar — the desk is one tab away */}
@@ -8575,7 +9129,7 @@ export function Dashboard({
 
         <main
           id="mc-main"
-          className="mx-auto w-full px-4 pb-14 pt-8 sm:px-6 lg:px-8"
+          className="mx-auto w-full max-w-[1500px] px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pt-7"
         >
           <AnimatePresence mode="wait" initial={false}>
             {active === "mc-overview" ? (
@@ -8585,7 +9139,7 @@ export function Dashboard({
             <div
               data-tour="ov-sidecar-down"
               role="status"
-              className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3"
+              className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[10px] border border-brand-500/30 bg-brand-500/[0.07] px-4 py-3"
             >
               <span className="inline-flex h-2 w-2 shrink-0 animate-pulse rounded-full bg-brand-600" aria-hidden="true" />
               <p className="text-[12.5px] font-medium text-brand-900">
@@ -8600,37 +9154,36 @@ export function Dashboard({
           <section id="mc-overview" aria-labelledby="mc-greeting" className="scroll-mt-20">
             <div className="flex flex-wrap items-end justify-between gap-5">
               <div className="min-w-0">
-                <p className="flex items-center gap-2.5 font-code text-[10px] font-semibold uppercase tracking-[0.3em] text-ink-500">
-                  <span className="inline-block h-[2px] w-6 bg-brand-600" aria-hidden="true" />
-                  FIG. 04 — Workspace
-                </p>
+                <SpecBar index="04" label="Workspace" meta="Overview · live from quorum-mcp" />
                 <h1
                   id="mc-greeting"
-                  className="mt-4 font-display text-[34px] font-black leading-[1.02] tracking-[-0.025em] text-ink-950 sm:text-[44px]"
+                  className="type-display mt-6 text-[34px] text-ink-950 sm:text-[44px]"
                 >
                   {greeting},{" "}
-                  <span className="font-editorial font-normal tracking-normal text-brand-600">
+                  <span className="font-editorial text-[1.04em] font-normal tracking-normal text-brand-600 dark:text-brand-400">
                     {firstName}
                   </span>
-                  <span className="text-brand-600">.</span>
+                  <span className="text-brand-600 dark:text-brand-400">.</span>
                 </h1>
-                <p className="mt-3 max-w-xl text-[14.5px] leading-relaxed text-ink-600">
+                <p className="type-lede mt-4 max-w-[52ch] text-ink-600">
                   The agent has been in the files since 06:00. Everything below is cited — and the gavel
                   stays with you.
                 </p>
               </div>
-              <div className="flex flex-col items-start gap-3 sm:items-end">
-                <p className="font-code text-[9px] tracking-[0.2em] text-ink-400">
-                  {now ? dateLine(now) : "—"}
-                </p>
+              <div className="flex flex-col items-start gap-3.5 sm:items-end">
+                <p className="type-micro text-ink-400">{now ? dateLine(now) : "—"}</p>
                 <button
                   type="button"
                   data-tour="ov-new-run"
                   onClick={() => setModalOpen(true)}
-                  className="group inline-flex h-11 items-center gap-2 rounded-xl bg-brand-600 px-5 text-[14px] font-semibold text-white shadow-[0_10px_26px_rgba(217,38,22,0.28)] transition-all hover:bg-brand-700"
+                  className="focus-brand group relative inline-flex h-12 items-center gap-2.5 overflow-hidden rounded-full bg-brand-600 pl-5 pr-4 text-[14px] font-semibold text-white shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_16px_34px_-16px_rgba(217,38,22,0.9)] transition-colors hover:bg-brand-700"
                 >
-                  <Plus className="h-4 w-4" aria-hidden="true" />
-                  New evaluation
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full"
+                  />
+                  <Plus className="relative h-4 w-4" aria-hidden="true" />
+                  <span className="relative">New evaluation</span>
                 </button>
               </div>
             </div>
@@ -8638,29 +9191,33 @@ export function Dashboard({
             {/* Stats — a hairline-divided editorial band, not floating cards */}
             <div
               data-tour="ov-stats"
-              className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-ink-100 bg-ink-100 xl:grid-cols-4"
+              className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-[12px] border border-ink-200/70 bg-ink-200/60 xl:grid-cols-4 dark:border-white/10 dark:bg-white/10"
             >
               <StatCard
-                label="EVALUATIONS IN PROGRESS"
+                index="01"
+                label="Evaluations in progress"
                 value={activeRuns}
                 sub={activeRuns > 0 ? "AGENT IS READING A TENDER" : "AGENT IS IDLE — START AN EVALUATION"}
                 delay={0.05}
               />
               <StatCard
-                label="ISSUES FOUND"
+                index="02"
+                label="Issues found"
                 value={findingsTotal}
                 sub={unsourcedTotal > 0 ? `${unsourcedTotal} STILL AWAIT A SOURCE` : "EACH ONE LINKED TO A SOURCE"}
                 delay={0.12}
               />
               <StatCard
-                label="SOURCES CONFIRMED"
+                index="03"
+                label="Sources confirmed"
                 value={citationPct}
                 suffix="%"
                 sub={`${unsourcedTotal} CLAIM${unsourcedTotal === 1 ? "" : "S"} WITHOUT A SOURCE`}
                 delay={0.19}
               />
               <StatCard
-                label="APPROVALS WAITING"
+                index="04"
+                label="Approvals waiting"
                 value={queue.length}
                 sub={queue.length > 0 ? "THE COMMITTEE NEEDS TO DECIDE" : "NO DECISIONS NEEDED"}
                 featured
@@ -8702,8 +9259,8 @@ export function Dashboard({
           </div>
 
           {/* Bottom strip */}
-          <p className="mt-10 border-t border-ink-100 pt-5 text-center font-code text-[8px] tracking-[0.24em] text-ink-400">
-            QUORUM · WORKSPACE · SESSION {initialsOf(user?.name ?? "Q")} · AUDIT-GRADE LOGS · NO TRACKERS
+          <p className="mt-12 border-t border-ink-200/70 pt-5 text-center type-micro text-ink-400 dark:border-white/10">
+            Quorum · workspace · session {initialsOf(user?.name ?? "Q")} · audit-grade logs · no trackers
           </p>
               </motion.div>
             ) : (
@@ -8720,6 +9277,8 @@ export function Dashboard({
           </AnimatePresence>
         </main>
       </div>
+
+      <WorkspacePalette open={paletteOpen} onOpenChange={setPaletteOpen} groups={paletteGroups} />
 
       <NewRunModal
         open={modalOpen}

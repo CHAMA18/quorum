@@ -641,7 +641,7 @@ function docChapterText(ch: DocChapter): string {
 function DocCallout({ tone, title, text }: { tone: DocCalloutTone; title: string; text: string }) {
   if (tone === "rule") {
     return (
-      <div className="relative overflow-hidden rounded-2xl border border-ink-950 bg-night p-5 text-white shadow-[0_18px_45px_rgba(11,12,15,0.25)]">
+      <div className="relative overflow-hidden rounded-[10px] border border-ink-950 bg-night p-5 text-white shadow-[0_18px_45px_rgba(11,12,15,0.25)]">
         <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
         <div className="relative">
           <p className="font-code text-[8px] font-bold tracking-[0.28em] text-brand-400">{title.toUpperCase()}</p>
@@ -721,7 +721,7 @@ function DocMethodsBoard() {
     return (
       <div className="space-y-3" aria-label="Loading the method register">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="h-24 animate-pulse rounded-2xl bg-ink-50" />
+          <div key={i} className="h-24 animate-pulse rounded-[10px] bg-ink-50" />
         ))}
       </div>
     );
@@ -729,7 +729,7 @@ function DocMethodsBoard() {
 
   if (offline || !methods || methods.length === 0) {
     return (
-      <div className="rounded-2xl border border-brand-200 bg-brand-50 p-5">
+      <div className="rounded-[10px] border border-brand-200 bg-brand-50 p-5">
         <p className="flex items-center gap-2 font-code text-[8px] font-bold tracking-[0.22em] text-brand-700">
           <CircleAlert className="h-3.5 w-3.5" aria-hidden="true" />
           THE AGENT'S METHOD REGISTER IS NOT REACHABLE — SUMMARY BELOW
@@ -756,10 +756,10 @@ function DocMethodsBoard() {
   return (
     <div className="space-y-4">
       {methods.map((m) => (
-        <div key={m.id} className="rounded-2xl border border-ink-100 bg-white p-5">
+        <div key={m.id} className="rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <h4 className="font-display text-[16px] font-black tracking-[-0.01em] text-ink-950">{m.name}</h4>
+              <h4 className="font-display text-[16px] font-extrabold tracking-[-0.01em] text-ink-950">{m.name}</h4>
               <p className="mt-0.5 font-code text-[8px] tracking-[0.16em] text-ink-400">{m.legalBasis.toUpperCase()}</p>
             </div>
             {m.valueBand && (
@@ -1041,7 +1041,7 @@ export function DocumentationView() {
             <span className="inline-block h-[2px] w-6 bg-brand-600" aria-hidden="true" />
             {DOC_CHAPTERS.length} CHAPTERS · THE COMPLETE HANDBOOK
           </p>
-          <h1 className="mt-4 font-display text-[30px] font-black leading-[1.05] tracking-[-0.02em] text-ink-950 sm:text-[38px]">
+          <h1 className="type-display mt-5 text-[30px] text-ink-950 sm:text-[38px]">
             Documentation<span className="text-brand-600">.</span>
           </h1>
           <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-ink-600">
@@ -1053,7 +1053,7 @@ export function DocumentationView() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[264px_minmax(0,1fr)]">
         {/* The chapter rail */}
         <nav aria-label="Documentation chapters" data-tour="docs-rail" className="lg:sticky lg:top-20 lg:self-start">
-          <div className="rounded-2xl border border-ink-100 bg-white p-4 shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
+          <div className="rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-4 shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
             <label data-tour="docs-search" className="relative block">
               <Search
                 className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-300"
@@ -1122,13 +1122,13 @@ export function DocumentationView() {
               <article
                 key={ch.id}
                 id={`docs-${ch.id}`}
-                className="scroll-mt-24 rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)] sm:p-7"
+                className="scroll-mt-24 rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)] sm:p-7"
               >
                 <p className="flex items-center gap-2.5 font-code text-[9px] font-bold tracking-[0.26em] text-brand-700">
                   <span className="inline-block h-[2px] w-5 bg-brand-600" aria-hidden="true" />
                   CHAPTER {no} · {ch.kicker.toUpperCase()}
                 </p>
-                <h2 className="mt-3 font-display text-[22px] font-black tracking-[-0.015em] text-ink-950 sm:text-[26px]">
+                <h2 className="type-display mt-3 text-[22px] text-ink-950 sm:text-[26px]">
                   {ch.title}
                 </h2>
                 <p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-ink-600">{ch.lead}</p>
@@ -1163,7 +1163,7 @@ export function DocumentationView() {
               exit={{ opacity: 0, y: 10 }}
               transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
               onClick={(e) => e.stopPropagation()}
-              className="flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-ink-950 shadow-[0_40px_120px_rgba(0,0,0,0.6)]"
+              className="flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded-[10px] border border-white/10 bg-ink-950 shadow-[0_40px_120px_rgba(0,0,0,0.6)]"
             >
               <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
                 <p className="min-w-0 truncate font-code text-[8.5px] font-bold tracking-[0.2em] text-ink-300">

@@ -32,6 +32,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SpecBar } from "@/components/quorum/reveal";
 
 const SVC = "/api";
 
@@ -322,12 +323,12 @@ function OfficerSelect({
             {initialsOf(selected.name)}
           </span>
         ) : (
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-dashed border-ink-200 text-ink-300" aria-hidden="true">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-dashed border-ink-200 text-ink-400" aria-hidden="true">
             <UserRound className="h-3 w-3" />
           </span>
         )}
         <span className="min-w-0 flex-1">
-          <span className={cn("block truncate text-[13px] font-semibold", selected ? "text-ink-950" : "text-ink-300 font-normal")}>
+          <span className={cn("block truncate text-[13px] font-semibold", selected ? "text-ink-950" : "text-ink-400 font-normal")}>
             {selected ? selected.name : "Select the approving officer"}
           </span>
         </span>
@@ -421,7 +422,7 @@ function OfficerSelect({
               )}
               {!unavailable && options.length > 0 && (
                 <p className="flex items-start gap-1.5 border-t border-ink-100 px-2.5 pb-0.5 pt-2 text-[10.5px] leading-relaxed text-ink-500">
-                  <ShieldCheck className="mt-0.5 h-3 w-3 shrink-0 text-ink-300" aria-hidden="true" />
+                  <ShieldCheck className="mt-0.5 h-3 w-3 shrink-0 text-ink-400" aria-hidden="true" />
                   Only PRESENT members — or the officer holding the gavel — can sign. Excused seats stay on the roll
                   but cannot approve.
                 </p>
@@ -581,11 +582,11 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
     <div className="space-y-8">
       {/* header */}
       <section aria-labelledby="mc-stack-h">
-        <MonoLabel>SYSTEM — THE STACK, LIVE</MonoLabel>
-        <h1 id="mc-stack-h" className="mt-3 font-display text-[32px] font-black leading-[1.04] tracking-[-0.02em] text-ink-950 sm:text-[40px]">
+        <SpecBar index="Stack" label="The stack, live" meta="Read from the services themselves" />
+        <h1 id="mc-stack-h" className="type-display mt-6 text-[32px] text-ink-950 sm:text-[40px]">
           Every claim, wired to a real service.
         </h1>
-        <p className="mt-3 max-w-2xl text-[14.5px] leading-relaxed text-ink-600">
+        <p className="type-lede mt-4 max-w-[62ch] text-ink-600">
           This console talks to <span className="font-code text-[13px] text-ink-900">quorum-mcp</span> — our own MCP
           server — as it runs. Five tools, three of which change state. Documents are read by the official filesystem
           MCP server. The graph is LangGraph.js, and it halts at the gate. Every call lands in the audit log below.
@@ -633,11 +634,11 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: i * 0.06, ease: EASE }}
-              className="rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_1px_0_rgba(11,12,15,0.04)]"
+              className="rounded-[12px] panel p-5 shadow-[0_1px_0_rgba(11,12,15,0.04)]"
             >
               <div className="flex items-center justify-between gap-3">
                 <MonoLabel className="text-ink-500">{c.layer}</MonoLabel>
-                <span className="font-code text-[9px] text-ink-300">{String(i + 1).padStart(2, "0")}</span>
+                <span className="font-code text-[9px] text-ink-400">{String(i + 1).padStart(2, "0")}</span>
               </div>
               <p className="mt-2.5 break-words font-code text-[12.5px] font-bold tracking-tight text-ink-950">{c.name}</p>
               <p className="mt-2 text-[12.5px] leading-relaxed text-ink-600">{c.detail}</p>
@@ -648,10 +649,10 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
 
       {/* tools + launcher */}
       <section aria-label="MCP tools" className="grid grid-cols-1 gap-4 lg:grid-cols-5">
-        <div data-tour="stack-tools" className="rounded-2xl border border-ink-100 bg-white p-5 lg:col-span-3">
+        <div data-tour="stack-tools" className="rounded-[12px] panel p-5 lg:col-span-3">
           <div className="flex items-center justify-between gap-3">
             <MonoLabel>OUR OWN MCP SERVER — FIVE TOOLS</MonoLabel>
-            <MonoLabel className="text-ink-300">POST /mcp · JSON-RPC 2.0</MonoLabel>
+            <MonoLabel className="text-ink-400">POST /mcp · JSON-RPC 2.0</MonoLabel>
           </div>
           <ul className="mt-4 space-y-2.5">
             {tools.map((t) => (
@@ -666,7 +667,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
           </ul>
         </div>
         <div className="flex flex-col gap-4 lg:col-span-2">
-          <div data-tour="stack-graphs" className="rounded-2xl border border-ink-100 bg-night p-5 text-white">
+          <div data-tour="stack-graphs" className="rounded-[10px] border border-ink-100 bg-night p-5 text-white">
             <MonoLabel className="text-ink-300">RUN THE GRAPH — LIVE</MonoLabel>
             <p className="mt-2.5 text-[13px] leading-relaxed text-ink-200">
               Fire <span className="font-code text-[11.5px] text-white">review_graph</span> at the MRI tender. Reads via
@@ -682,7 +683,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
               {busy ? "INVOKING GRAPH…" : "RUN FULL REVIEW"}
             </button>
           </div>
-          <div className="min-h-0 flex-1 rounded-2xl border border-ink-100 bg-white p-5">
+          <div className="min-h-0 flex-1 rounded-[12px] panel p-5">
             <MonoLabel>LATEST RUN — GRAPH TRACE</MonoLabel>
             {lastRun ? (
               <div className="mt-3 max-h-56 overflow-y-auto pr-1 [scrollbar-width:thin]">
@@ -730,7 +731,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
       <section aria-label="Human gates">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <MonoLabel>GATES — THE ONLY IRREVERSIBLE TOOL, HELD FOR A NAMED HUMAN</MonoLabel>
-          <MonoLabel className="text-ink-300">{pending.length} PENDING</MonoLabel>
+          <MonoLabel className="text-ink-400">{pending.length} PENDING</MonoLabel>
         </div>
         <div className="mt-4 space-y-3">
           <AnimatePresence initial={false}>
@@ -744,7 +745,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.98 }}
-                  className="overflow-hidden rounded-2xl border-2 border-brand-500/70 bg-white"
+                  className="overflow-hidden rounded-[10px] border-2 border-brand-500/70 bg-white"
                 >
                   <div className="flex flex-wrap items-center gap-2 border-b border-brand-100 bg-brand-50 px-4 py-2.5 sm:px-5">
                     <KindChip kind="IRREVERSIBLE" />
@@ -793,7 +794,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                         value={draft.note}
                         onChange={(e) => setApproverDraft((p) => ({ ...p, [g.id]: { ...draft, note: e.target.value } }))}
                         placeholder="Why this may proceed — or why not"
-                        className="mt-1.5 h-10 w-full rounded-xl border border-ink-200 bg-white px-3 text-[13px] text-ink-950 outline-none transition-all placeholder:text-ink-300 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
+                        className="mt-1.5 h-10 w-full rounded-xl border border-ink-200 bg-white px-3 text-[13px] text-ink-950 outline-none transition-all placeholder:text-ink-400 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
                       />
                       <div className="mt-3.5 flex flex-wrap gap-2.5">
                         <button
@@ -826,15 +827,15 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
             })}
           </AnimatePresence>
           {pending.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-ink-200 bg-white px-5 py-6 text-center">
-              <ShieldCheck className="mx-auto h-5 w-5 text-ink-300" aria-hidden="true" />
+            <div className="rounded-[10px] border border-dashed border-ink-200 bg-white px-5 py-6 text-center">
+              <ShieldCheck className="mx-auto h-5 w-5 text-ink-400" aria-hidden="true" />
               <p className="mt-2 text-[13px] text-ink-500">
                 Nothing waits on a human right now. Run the graph — filing always stops here first.
               </p>
             </div>
           )}
           {decided.length > 0 && (
-            <div className="rounded-2xl border border-ink-100 bg-white p-4 sm:p-5">
+            <div className="rounded-[12px] panel p-4 sm:p-5">
               <MonoLabel>DECIDED — WITH RECEIPTS</MonoLabel>
               <ul className="mt-3 space-y-2">
                 {decided.slice(0, 4).map((g) => (
@@ -871,11 +872,11 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
       <section aria-label="Tool call audit log" data-tour="stack-log" ref={logAnchor}>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <MonoLabel>TOOL LOG — EVERY CALL, APPEND-ONLY</MonoLabel>
-          <MonoLabel className="text-ink-300">
+          <MonoLabel className="text-ink-400">
             {health?.counts.toolCalls ?? log.length} ENTRIES · JSONL ON DISK
           </MonoLabel>
         </div>
-        <div className="mt-4 max-h-[26rem] overflow-y-auto rounded-2xl border border-ink-100 bg-white [scrollbar-width:thin]">
+        <div className="mt-4 max-h-[26rem] overflow-y-auto rounded-[12px] panel [scrollbar-width:thin]">
           <table className="w-full border-collapse text-left">
             <thead className="sticky top-0 z-10 bg-paper/95 backdrop-blur">
               <tr className="border-b border-ink-100">
@@ -890,7 +891,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
               {log.map((e) => (
                 <Fragment key={e.id}>
                   <tr
-                    className="cursor-pointer border-b border-ink-50 transition-colors hover:bg-brand-50/40"
+                    className="cursor-pointer border-b border-ink-100 transition-colors hover:bg-brand-50/40"
                     onClick={() => setExpanded((p) => (p === e.id ? null : e.id))}
                     aria-expanded={expanded === e.id}
                   >
@@ -908,13 +909,13 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                     </td>
                     <td className="px-3.5 py-2.5 text-right">
                       <ChevronDown
-                        className={cn("ml-auto h-3.5 w-3.5 text-ink-300 transition-transform", expanded === e.id && "rotate-180")}
+                        className={cn("ml-auto h-3.5 w-3.5 text-ink-400 transition-transform", expanded === e.id && "rotate-180")}
                         aria-hidden="true"
                       />
                     </td>
                   </tr>
                   {expanded === e.id && (
-                    <tr className="border-b border-ink-50 bg-night">
+                    <tr className="border-b border-white/10 bg-night">
                       <td colSpan={6} className="px-4 py-3.5">
                         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                           <div>

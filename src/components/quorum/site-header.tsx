@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUpRight, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
@@ -21,6 +21,46 @@ function initialsOf(name: string): string {
   return parts.map((p) => p[0]?.toUpperCase() ?? "").join("") || "Q";
 }
 
+/**
+ * Section spy — which band the reader is currently inside.
+ *
+ * The header reports position instead of guessing it: on every scroll frame
+ * (rAF-coalesced) each nav target is measured against a probe line just under
+ * the bar, and the last one above that line wins. Sections that do not exist
+ * yet are skipped silently, so the rail stays correct while the page grows.
+ */
+function useSectionSpy(hrefs: string[]) {
+  const [active, setActive] = useState("");
+  const ref = useRef(0);
+
+  useEffect(() => {
+    const probe = 132; // px from the viewport top — just past the bar
+    const measure = () => {
+      ref.current = 0;
+      let current = "";
+      for (const href of hrefs) {
+        const el = document.querySelector<HTMLElement>(href);
+        if (!el) continue;
+        if (el.getBoundingClientRect().top - probe <= 0) current = href;
+      }
+      setActive((prev) => (prev === current ? prev : current));
+    };
+    const onScroll = () => {
+      if (!ref.current) ref.current = requestAnimationFrame(measure);
+    };
+    measure();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (ref.current) cancelAnimationFrame(ref.current);
+    };
+  }, [hrefs.join("|")]);
+
+  return active;
+}
+
 export function SiteHeader({
   user,
   authReady,
@@ -38,6 +78,9 @@ export function SiteHeader({
 }) {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const [hovered, setHovered] = useState<string | null>(null);
+  const activeSection = useSectionSpy(NAV.map((n) => n.href));
+  const lit = hovered ?? activeSection;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -71,58 +114,92 @@ export function SiteHeader({
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 w-full border-b bg-paper/85 backdrop-blur-xl transition-all duration-300",
-        scrolled ? "border-ink-100 shadow-[0_1px_24px_rgba(11,12,15,0.07)]" : "border-transparent"
+        "sticky top-0 z-50 w-full border-b backdrop-blur-xl transition-[background-color,border-color,box-shadow] duration-500",
+        scrolled
+          ? "border-ink-200/80 bg-paper/80 shadow-[0_18px_44px_-40px_rgba(11,12,15,0.55)] dark:border-white/10 dark:bg-night/80"
+          : "border-transparent bg-paper/60"
       )}
     >
-      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-        <Link href="/" aria-label="Quorum home" onClick={() => setOpen(false)}>
+      <div className="mx-auto grid h-[68px] w-full max-w-7xl grid-cols-[1fr_auto] items-center gap-3 px-4 sm:px-6 lg:grid-cols-[1fr_auto_1fr] lg:px-8">
+        <Link
+          href="/"
+          aria-label="Quorum home"
+          onClick={() => setOpen(false)}
+          className="focus-brand justify-self-start rounded-xl"
+        >
           <QuorumLogo />
         </Link>
 
-        <nav aria-label="Primary" className="hidden items-center gap-1 lg:flex">
-          {NAV.map((item) => (
-            <a
-              key={item.label}
-              href={item.href}
-              className="group relative rounded-full px-3.5 py-2 text-[14px] font-medium text-ink-600 transition-colors hover:text-ink-950"
-            >
-              {item.label}
-              <span
-                aria-hidden="true"
-                className="absolute inset-x-3.5 bottom-1 h-px origin-left scale-x-0 bg-brand-500 transition-transform duration-300 group-hover:scale-x-100"
-              />
-            </a>
-          ))}
+        {/* Section rail — a centred segmented control whose ink follows the
+            reader: it slides to the hovered label, and settles on the band
+            currently in view so the header doubles as a position indicator. */}
+        <nav
+          aria-label="Primary"
+          onMouseLeave={() => setHovered(null)}
+          className="relative hidden items-center rounded-full border border-ink-200/70 bg-white/70 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur lg:flex lg:justify-self-center dark:border-white/10 dark:bg-white/[0.04] dark:shadow-none"
+        >
+          {NAV.map((item) => {
+            const isLit = lit === item.href;
+            const isCurrent = activeSection === item.href;
+            return (
+              <a
+                key={item.label}
+                href={item.href}
+                aria-current={isCurrent ? "true" : undefined}
+                onMouseEnter={() => setHovered(item.href)}
+                onFocus={() => setHovered(item.href)}
+                onBlur={() => setHovered(null)}
+                className={cn(
+                  "focus-brand relative rounded-full px-4 py-2 text-[13.5px] font-medium transition-colors duration-300",
+                  isLit ? "text-white" : "text-ink-600 hover:text-ink-950 dark:text-ink-400 dark:hover:text-white"
+                )}
+              >
+                {isLit && (
+                  <motion.span
+                    layoutId="nav-rail-ink"
+                    aria-hidden="true"
+                    className="absolute inset-0 rounded-full bg-ink-950 dark:bg-white/10 dark:ring-1 dark:ring-white/10"
+                    transition={{ type: "spring", stiffness: 420, damping: 34, mass: 0.6 }}
+                  />
+                )}
+                <span className="relative">{item.label}</span>
+              </a>
+            );
+          })}
         </nav>
 
-        {/* Desktop actions */}
-        <div className="hidden items-center gap-2.5 lg:flex">
-          <ThemeToggle />
+        {/* Actions */}
+        <div className="hidden items-center gap-2 justify-self-end lg:flex">
+          <ThemeToggle className="h-10 w-10 rounded-full" />
           {!authReady ? (
             <div className="h-10 w-[196px] animate-pulse rounded-full bg-ink-100/70" aria-hidden="true" />
           ) : user ? (
             <>
-              <span className="flex h-10 items-center gap-2.5 rounded-full border border-ink-200 bg-white py-1 pl-1 pr-4">
+              <span className="flex h-10 items-center gap-2.5 rounded-full border border-ink-200/80 bg-white py-1 pl-1 pr-3.5 dark:border-white/10 dark:bg-white/[0.04]">
                 <span
-                  className="grid h-8 w-8 place-items-center rounded-full bg-ink-950 font-code text-[10px] font-bold text-white"
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ink-950 font-code text-[10px] font-bold text-white ring-2 ring-brand-500/25"
                   aria-hidden="true"
                 >
                   {initialsOf(user.name)}
                 </span>
-                <span className="max-w-[168px] truncate text-[13px] font-semibold text-ink-900">
-                  {user.name}
+                <span className="min-w-0 leading-none">
+                  <span className="block max-w-[150px] truncate text-[13px] font-semibold text-ink-900">
+                    {user.name}
+                  </span>
+                  <span className="mt-1 block max-w-[150px] truncate type-micro text-ink-400">
+                    {user.organization ?? "Officer desk"}
+                  </span>
                 </span>
               </span>
               <button
                 type="button"
                 onClick={onDashboard}
-                className="group inline-flex h-10 items-center gap-1.5 rounded-full bg-ink-950 px-4 text-[13px] font-semibold text-white transition-all hover:bg-brand-600"
+                className="focus-brand group inline-flex h-10 items-center gap-2 rounded-full bg-ink-950 pl-4 pr-3 text-[13px] font-semibold text-white shadow-[0_10px_28px_-14px_rgba(11,12,15,0.8)] transition-colors hover:bg-brand-600"
               >
                 <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
                 Workspace
                 <ArrowUpRight
-                  className="h-3.5 w-3.5 opacity-60 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                  className="h-3.5 w-3.5 opacity-70 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
                   aria-hidden="true"
                 />
               </button>
@@ -131,7 +208,7 @@ export function SiteHeader({
                 onClick={onSignOut}
                 aria-label={`Sign out ${user.name}`}
                 title="Sign out"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-ink-200 bg-white text-ink-600 transition-all hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700"
+                className="focus-brand inline-flex h-10 w-10 items-center justify-center rounded-full border border-ink-200/80 bg-white text-ink-600 transition-colors hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-brand-500/10"
               >
                 <LogOut className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -142,11 +219,11 @@ export function SiteHeader({
               <button
                 type="button"
                 onClick={onDashboard}
-                className="group inline-flex h-10 items-center gap-1.5 px-2 text-[13.5px] font-bold text-ink-950 transition-colors hover:text-brand-600"
+                className="focus-brand group inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-[13.5px] font-semibold text-ink-950 transition-colors hover:text-brand-600"
               >
                 Enter workspace
                 <ArrowUpRight
-                  className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                  className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
                   aria-hidden="true"
                 />
               </button>
@@ -156,7 +233,7 @@ export function SiteHeader({
 
         <button
           type="button"
-          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-ink-200 bg-white text-ink-900 lg:hidden"
+          className="focus-brand inline-flex h-11 w-11 items-center justify-center justify-self-end rounded-full border border-ink-200/80 bg-white text-ink-900 lg:hidden dark:border-white/10 dark:bg-white/[0.04]"
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
           aria-controls="mobile-menu"
@@ -174,49 +251,48 @@ export function SiteHeader({
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-            className="overflow-hidden border-t border-ink-100 bg-paper lg:hidden"
+            className="overflow-hidden border-t border-ink-100 bg-paper lg:hidden dark:border-white/10"
           >
-            <nav aria-label="Mobile" className="flex flex-col gap-1 px-4 py-4">
-              {NAV.map((item) => (
+            <nav aria-label="Mobile" className="flex flex-col px-4 py-3 sm:px-6">
+              {NAV.map((item, i) => (
                 <a
                   key={item.label}
                   href={item.href}
                   onClick={() => setOpen(false)}
-                  className="flex items-center justify-between rounded-xl px-4 py-3.5 text-[16px] font-semibold text-ink-800 transition-colors hover:bg-ink-50"
+                  className="focus-brand flex items-center gap-3.5 border-b border-ink-100 py-4 last:border-b-0 dark:border-white/10"
                 >
-                  {item.label}
-                  <ArrowUpRight className="h-4 w-4 text-ink-300" aria-hidden="true" />
+                  <span className="type-micro text-brand-600 dark:text-brand-400">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span className="text-[17px] font-semibold text-ink-900">{item.label}</span>
+                  <ArrowUpRight className="ml-auto h-4 w-4 text-ink-300" aria-hidden="true" />
                 </a>
               ))}
 
+              <div className="flex items-center justify-between gap-3 pb-1 pt-4">
+                <MasterSwitcher active="quorum" />
+                <ThemeToggle className="h-10 w-10 rounded-full" />
+              </div>
+
               {!authReady ? (
-                <div className="mt-2 h-12 animate-pulse rounded-xl bg-ink-100/70" aria-hidden="true" />
+                <div className="mt-4 h-12 animate-pulse rounded-xl bg-ink-100/70" aria-hidden="true" />
               ) : user ? (
-                <div className="mt-2 space-y-2">
-                  <div className="flex justify-center">
-                    <MasterSwitcher active="quorum" />
-                  </div>
-                  <div className="flex items-center gap-2.5 rounded-xl border border-ink-200 bg-white px-4 py-3">
+                <div className="mt-4 space-y-2.5">
+                  <div className="flex items-center gap-3 rounded-[10px] border border-ink-200/80 bg-white px-4 py-3 dark:border-white/10 dark:bg-white/[0.04]">
                     <span
                       className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ink-950 font-code text-[10px] font-bold text-white"
                       aria-hidden="true"
                     >
                       {initialsOf(user.name)}
                     </span>
-                    <span className="min-w-0 flex-1 truncate text-[14.5px] font-semibold text-ink-900">
-                      {user.name}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[14.5px] font-semibold text-ink-900">
+                        {user.name}
+                      </span>
+                      <span className="mt-0.5 block truncate type-micro text-ink-400">
+                        {user.organization ?? "Officer desk"}
+                      </span>
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOpen(false);
-                        onSignOut();
-                      }}
-                      className="inline-flex h-9 items-center gap-1.5 rounded-full border border-ink-200 px-3.5 text-[12.5px] font-semibold text-ink-700 transition-all hover:border-brand-300 hover:text-brand-700"
-                    >
-                      <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
-                      Sign out
-                    </button>
                   </div>
                   <button
                     type="button"
@@ -224,27 +300,35 @@ export function SiteHeader({
                       setOpen(false);
                       onDashboard();
                     }}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-ink-950 px-4 py-3.5 text-[15px] font-semibold text-white"
+                    className="focus-brand flex w-full items-center justify-center gap-2 rounded-xl bg-ink-950 px-4 py-3.5 text-[15px] font-semibold text-white"
                   >
                     <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
                     Workspace
                     <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      onSignOut();
+                    }}
+                    className="focus-brand inline-flex w-full items-center justify-center gap-2 rounded-xl border border-ink-200 px-4 py-3.5 text-[15px] font-semibold text-ink-700 transition-colors hover:border-brand-300 hover:text-brand-700 dark:border-white/10"
+                  >
+                    <LogOut className="h-4 w-4" aria-hidden="true" />
+                    Sign out
+                  </button>
                 </div>
               ) : (
-                <>
-                  <div className="mt-2 flex justify-center">
-                    <MasterSwitcher active="quorum" />
-                  </div>
+                <div className="mt-4 grid gap-2.5">
                   <button
                     type="button"
                     onClick={() => {
                       setOpen(false);
                       onGetStarted();
                     }}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-brand-600 text-[15px] font-semibold text-white"
+                    className="focus-brand inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-brand-600 text-[15px] font-semibold text-white"
                   >
-                    Get started
+                    Start your first run
                     <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
                   </button>
                   <button
@@ -253,11 +337,11 @@ export function SiteHeader({
                       setOpen(false);
                       onSignIn();
                     }}
-                    className="inline-flex h-12 items-center justify-center rounded-xl border border-ink-200 bg-white text-[15px] font-semibold text-ink-900"
+                    className="focus-brand inline-flex h-12 items-center justify-center rounded-xl border border-ink-200 bg-white text-[15px] font-semibold text-ink-900 dark:border-white/10 dark:bg-white/[0.04]"
                   >
                     Sign in
                   </button>
-                </>
+                </div>
               )}
             </nav>
           </motion.div>

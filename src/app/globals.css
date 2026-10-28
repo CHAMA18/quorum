@@ -65,9 +65,11 @@
 
   /* Surfaces */
   --color-paper: #fafaf8;
+  --color-paper-2: #f4f2ec;
   --color-sand: #f2f0eb;
   --color-night: #0c0d10;
   --color-night-2: #14161b;
+  --color-night-3: #1c1f27;
 
   /* Typography */
   --font-display: var(--font-archivo), "Arial Black", ui-sans-serif, sans-serif;
@@ -264,7 +266,7 @@
 }
 
 :root {
-  --radius: 0.75rem;
+  --radius: 0.5rem;
   --background: #fafaf8;
   --foreground: #16181d;
   --card: #ffffff;
@@ -322,8 +324,8 @@
 
   --color-ink-50: #14161b;
   --color-ink-100: #1a1d24;
-  --color-ink-200: #262a33;
-  --color-ink-300: #343a45;
+  --color-ink-200: #2a2f39;
+  --color-ink-300: #3b424e;
   --color-ink-400: #7d8491;
   --color-ink-500: #9aa0ab;
   --color-ink-600: #b3b8c1;
@@ -338,7 +340,7 @@
  * dark in both themes, so their text must keep reading as light-on-dark.
  * Scoping the ink variables to these elements leaves their children unchanged.
  */
-:is(.bg-ink-700, .bg-ink-800, .bg-ink-900, .bg-ink-950, .bg-night, .bg-night-2) {
+:is(.bg-ink-700, .bg-ink-800, .bg-ink-900, .bg-ink-950, .bg-night, .bg-night-2, .bg-night-3) {
   --color-ink-50: #f5f5f6;
   --color-ink-100: #e9eaec;
   --color-ink-200: #d3d5da;
@@ -465,6 +467,139 @@
   .tabular {
     font-variant-numeric: tabular-nums;
   }
+
+  /* ── Type scale ─────────────────────────────────────────────────────────
+     One scale for every screen. Sizes are fluid but bounded, so hierarchy
+     holds from 360px to 1600px without per-component numbers, and weight /
+     tracking are set once instead of re-typed in every headline. */
+  .type-display {
+    font-family: var(--font-display);
+    font-weight: 900;
+    letter-spacing: -0.035em;
+    line-height: 0.96;
+    text-wrap: balance;
+  }
+  .type-display-xl {
+    font-size: clamp(2.4rem, 1.1rem + 4.8vw, 4rem);
+  }
+  .type-display-lg {
+    font-size: clamp(2rem, 1.2rem + 2.9vw, 3.1rem);
+  }
+  .type-display-md {
+    font-size: clamp(1.45rem, 1.15rem + 1.2vw, 2rem);
+  }
+  .type-title {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(1.125rem, 1rem + 0.5vw, 1.375rem);
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+  .type-lede {
+    font-size: clamp(1rem, 0.95rem + 0.3vw, 1.0625rem);
+    line-height: 1.68;
+    text-wrap: pretty;
+  }
+  .type-label {
+    font-family: var(--font-code);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+  .type-micro {
+    font-family: var(--font-code);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+  }
+  .type-num {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+
+  /* ── Craft surfaces ─────────────────────────────────────────────────────
+     Light is always modelled rather than flat: a lit top edge, a soft body
+     shadow, and a tight contact shadow. Panels that are dark in both themes
+     use .lit-top so their edge still catches light. */
+  .lift-1 {
+    box-shadow:
+      0 1px 1px rgba(11, 12, 15, 0.04),
+      0 6px 18px -10px rgba(11, 12, 15, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  }
+  .lift-2 {
+    box-shadow:
+      0 1px 2px rgba(11, 12, 15, 0.05),
+      0 22px 48px -22px rgba(11, 12, 15, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  }
+  .dark .lift-1 {
+    box-shadow:
+      0 1px 1px rgba(0, 0, 0, 0.5),
+      0 8px 24px -14px rgba(0, 0, 0, 0.7),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+  .dark .lift-2 {
+    box-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.55),
+      0 28px 60px -28px rgba(0, 0, 0, 0.85),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+  .lit-top {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  /* ── Rules and fades ────────────────────────────────────────────────────
+     The drafting-sheet vocabulary: vertical rules that fade at both ends
+     frame the canvas, horizontal rules divide bands, and masks replace
+     overlay gradients so the fades cost no extra paint layers. */
+  .rule-v {
+    background: linear-gradient(
+      180deg,
+      transparent,
+      var(--rule-c, rgba(11, 12, 15, 0.12)) 12%,
+      var(--rule-c, rgba(11, 12, 15, 0.12)) 88%,
+      transparent
+    );
+  }
+  .rule-x {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--rule-c, rgba(11, 12, 15, 0.14)) 12%,
+      var(--rule-c, rgba(11, 12, 15, 0.14)) 88%,
+      transparent
+    );
+  }
+  .dark :is(.rule-v, .rule-x) {
+    --rule-c: rgba(255, 255, 255, 0.13);
+  }
+  .mask-x {
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+  }
+  .mask-b {
+    -webkit-mask-image: linear-gradient(180deg, #000 68%, transparent);
+    mask-image: linear-gradient(180deg, #000 68%, transparent);
+  }
+  /* Terminal tail: old lines recede at the top, new lines fade in at the
+     bottom, so a log taller than its viewport never ends in a cut line.
+     The top fade is deliberately shallow — a short log must not open dimmed. */
+  .mask-tail {
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 3.5%, #000 78%, transparent 100%);
+    mask-image: linear-gradient(180deg, transparent 0%, #000 3.5%, #000 78%, transparent 100%);
+  }
+
+  /* Keyboard focus, brand-consistent and always visible on any surface. */
+  .focus-brand:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
   /* Editorial accent voice — the italic serif for single highlighted phrases.
      Must reference the next/font variable directly: a @theme font token
      indirection to a body-scoped variable collapses when resolved at :root,
@@ -502,5 +637,151 @@
     background-image:
       linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
       linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  }
+
+  /* ── Desk surfaces ──────────────────────────────────────────────────────
+     The workspace is a lit instrument, not a stack of rectangles. A panel
+     owns three things: a hairline edge, the highlight where light lands on
+     its top bevel, and a body shadow that lifts it off the canvas. Dark
+     mode keeps the same physics with the light source inverted, so the two
+     themes read as one object under two lamps. */
+  .panel {
+    background-color: #fffefa;
+    background-image: linear-gradient(180deg, #ffffff 0%, #fcfbf7 100%);
+    border: 1px solid rgba(11, 12, 15, 0.09);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      0 1px 2px rgba(11, 12, 15, 0.04),
+      0 22px 44px -34px rgba(11, 12, 15, 0.42);
+  }
+  .dark .panel {
+    background-color: #111318;
+    background-image: linear-gradient(180deg, #16181f 0%, #101218 100%);
+    border-color: rgba(255, 255, 255, 0.075);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.055),
+      0 1px 2px rgba(0, 0, 0, 0.5),
+      0 32px 64px -42px rgba(0, 0, 0, 0.92);
+  }
+
+  /* Panels that float above the desk — modals, drawers, command bars. */
+  .panel-lift {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.85),
+      0 2px 6px rgba(11, 12, 15, 0.06),
+      0 48px 110px -30px rgba(11, 12, 15, 0.5);
+  }
+  .dark .panel-lift {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.07),
+      0 2px 6px rgba(0, 0, 0, 0.6),
+      0 60px 120px -30px rgba(0, 0, 0, 1);
+  }
+
+  /* A recessed well: inputs, list rows, anything that sits *into* the panel. */
+  .panel-inset {
+    background-color: #f8f7f3;
+    border: 1px solid rgba(11, 12, 15, 0.08);
+    box-shadow: inset 0 1px 2px rgba(11, 12, 15, 0.035);
+  }
+  .dark .panel-inset {
+    background-color: #0b0d12;
+    border-color: rgba(255, 255, 255, 0.07);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.55);
+  }
+
+  /* The workspace canvas: one warm signal glow at the top-left, a second
+     cooler wash at the far edge, and a measured dot grid beneath. Ambient
+     only — it never competes with a panel. */
+  .desk-canvas {
+    background-color: #f6f5f1;
+    background-image:
+      radial-gradient(920px 420px at 14% -10%, rgba(232, 56, 42, 0.055), transparent 64%),
+      radial-gradient(760px 520px at 100% 0%, rgba(22, 24, 29, 0.045), transparent 58%);
+  }
+  .dark .desk-canvas {
+    background-color: #08090c;
+    background-image:
+      radial-gradient(1040px 480px at 12% -14%, rgba(232, 56, 42, 0.13), transparent 62%),
+      radial-gradient(900px 560px at 102% -2%, rgba(120, 132, 160, 0.07), transparent 58%);
+  }
+  /* Light-mode desk copy sits on warm paper, so the low end of the ink scale
+     is lifted to keep 9–13px secondary text above 4.5:1. Dark keeps its own
+     ramp. The sidebar and night panels opt out via the ink-scope rule above. */
+  .desk-sheet {
+    --color-ink-300: #9aa0ab;
+    --color-ink-400: #6a707c;
+  }
+  .dark .desk-sheet {
+    --color-ink-300: #3b424e;
+    --color-ink-400: #7d8491;
+  }
+  .dot-grid {
+    background-image: radial-gradient(rgba(11, 12, 15, 0.11) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+  .dark .dot-grid {
+    background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+  }
+
+  /* The engineering caption above a heading — one weight, one tracking,
+     one colour, everywhere in the desk. */
+  .eyebrow {
+    font-family: var(--font-code);
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    line-height: 1;
+    text-transform: uppercase;
+    color: var(--color-ink-500);
+  }
+
+  /* Fields that sit in a dark panel need their own lift or they disappear. */
+  .field {
+    height: 2.5rem;
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(11, 12, 15, 0.14);
+    background-color: #ffffff;
+    padding: 0 0.75rem;
+    font-size: 13px;
+    color: #16181d;
+    outline: none;
+    transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+    box-shadow: inset 0 1px 1px rgba(11, 12, 15, 0.03);
+  }
+  .field::placeholder {
+    color: #878d98;
+  }
+  .field:hover {
+    border-color: rgba(11, 12, 15, 0.26);
+  }
+  .field:focus {
+    border-color: #16181d;
+    box-shadow: 0 0 0 3px rgba(22, 24, 29, 0.08);
+  }
+  .dark .field {
+    border-color: rgba(255, 255, 255, 0.13);
+    background-color: #0b0d12;
+    color: #f1f2f4;
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.45);
+  }
+  .dark .field::placeholder {
+    color: #6a707c;
+  }
+  .dark .field:hover {
+    border-color: rgba(255, 255, 255, 0.22);
+  }
+  .dark .field:focus {
+    border-color: rgba(255, 255, 255, 0.45);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.07);
+  }
+
+  /* Dark scrollbars: the platform default is a white bar on a black desk. */
+  .dark * {
+    scrollbar-color: #2b303a transparent;
+  }
+  .dark *::-webkit-scrollbar-thumb {
+    background: #2b303a;
   }
 }

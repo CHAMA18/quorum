@@ -2,7 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { Workflow, ShieldCheck } from "lucide-react";
-import { Eyebrow, Reveal } from "@/components/quorum/reveal";
+import { Reveal, SpecBar } from "@/components/quorum/reveal";
 import { Aurora, Spotlight } from "@/components/quorum/motion-kit";
 
 const DOES = [
@@ -69,16 +69,16 @@ export function InsideRun() {
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
             <Reveal>
-              <Eyebrow>Inside the run</Eyebrow>
+              <SpecBar index="06" label="Inside the run" meta="Same standard, every tender" />
             </Reveal>
             <Reveal delay={0.06}>
-              <h2 className="mt-4 max-w-2xl font-display text-[34px] font-black leading-[1.06] tracking-[-0.025em] text-ink-950 sm:text-[44px]">
+              <h2 className="type-display mt-6 max-w-2xl text-[34px] text-ink-950 sm:text-[44px]">
                 Every run, the same standard. By default.
               </h2>
             </Reveal>
           </div>
           <Reveal delay={0.12}>
-            <p className="flex max-w-sm items-start gap-2.5 rounded-2xl border border-brand-200 bg-brand-50 px-4 py-3.5 text-[13.5px] font-semibold leading-snug text-brand-800">
+            <p className="flex max-w-sm items-start gap-2.5 rounded-[10px] border border-brand-200 bg-brand-50 px-4 py-3.5 text-[13.5px] font-semibold leading-snug text-brand-800">
               <ShieldCheck className="mt-0.5 h-4.5 w-4.5 shrink-0 text-brand-600" aria-hidden="true" />
               Nothing below is an enterprise upsell — it ships in every run.
             </p>
@@ -88,10 +88,10 @@ export function InsideRun() {
         <div className="mt-12 grid gap-6 lg:grid-cols-2">
           {/* What it does */}
           <Reveal className="h-full">
-            <Spotlight className="h-full rounded-3xl">
-              <article className="flex h-full flex-col rounded-3xl border border-ink-100 bg-white p-6 shadow-[0_20px_50px_rgba(11,12,15,0.06)] transition-shadow duration-300 hover:shadow-[0_28px_60px_rgba(11,12,15,0.10)] sm:p-8">
+            <Spotlight className="h-full rounded-[16px]">
+              <article className="flex h-full flex-col rounded-[16px] border border-ink-100 bg-white p-6 shadow-[0_20px_50px_rgba(11,12,15,0.06)] transition-shadow duration-300 hover:shadow-[0_28px_60px_rgba(11,12,15,0.10)] sm:p-8">
                 <header className="flex items-center gap-4 border-b border-ink-100 pb-5">
-                  <span className="grid h-12 w-12 place-items-center rounded-2xl bg-ink-950 transition-transform duration-500 group-hover:rotate-6">
+                  <span className="grid h-12 w-12 place-items-center rounded-[10px] bg-ink-950 transition-transform duration-500 group-hover:rotate-6">
                     <Workflow className="h-5.5 w-5.5 text-brand-400" aria-hidden="true" />
                   </span>
                   <div>
@@ -132,10 +132,10 @@ export function InsideRun() {
 
           {/* What you get */}
           <Reveal delay={0.1} className="h-full">
-            <Spotlight className="h-full rounded-3xl">
-              <article className="flex h-full flex-col rounded-3xl border border-ink-100 bg-white p-6 shadow-[0_20px_50px_rgba(11,12,15,0.06)] transition-shadow duration-300 hover:shadow-[0_28px_60px_rgba(217,38,22,0.14)] sm:p-8">
+            <Spotlight className="h-full rounded-[16px]">
+              <article className="flex h-full flex-col rounded-[16px] border border-ink-100 bg-white p-6 shadow-[0_20px_50px_rgba(11,12,15,0.06)] transition-shadow duration-300 hover:shadow-[0_28px_60px_rgba(217,38,22,0.14)] sm:p-8">
                 <header className="flex items-center gap-4 border-b border-ink-100 pb-5">
-                  <span className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-600 transition-transform duration-500 group-hover:-rotate-6">
+                  <span className="grid h-12 w-12 place-items-center rounded-[10px] bg-brand-600 transition-transform duration-500 group-hover:-rotate-6">
                     <ShieldCheck className="h-5.5 w-5.5 text-white" aria-hidden="true" />
                   </span>
                   <div>

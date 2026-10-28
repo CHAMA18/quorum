@@ -96,15 +96,20 @@ function ConsoleSidebar({
         aria-hidden="true"
         className="pointer-events-none absolute -top-24 left-1/2 h-44 w-56 -translate-x-1/2 rounded-full bg-brand-500/[0.06] blur-3xl dark:bg-brand-500/[0.10]"
       />
-      <div className={cn("relative mb-2 flex items-center", collapsed ? "justify-center" : "justify-between px-3")}>
-        {!collapsed ? <p className="font-code text-[8px] font-semibold tracking-[0.3em] text-ink-500 dark:text-ink-600">CONSOLE</p> : null}
+      <div className={cn("relative mb-3 flex items-center", collapsed ? "justify-center" : "justify-between px-3")}>
+        {!collapsed ? (
+          <p className="flex items-center gap-2.5 type-micro text-ink-400 dark:text-ink-600">
+            Console
+            <span aria-hidden="true" className="h-px w-8 bg-ink-200 dark:bg-white/12" />
+          </p>
+        ) : null}
         {onToggleCollapse ? (
           <button
             type="button"
             onClick={onToggleCollapse}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="grid h-8 w-8 place-items-center rounded-lg text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50 dark:text-ink-400 dark:hover:bg-white/10 dark:hover:text-white"
+            className="focus-brand grid h-8 w-8 place-items-center rounded-full text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-900 dark:text-ink-500 dark:hover:bg-white/10 dark:hover:text-white"
           >
             {collapsed ? <PanelLeftOpen className="h-4 w-4" aria-hidden="true" /> : <PanelLeftClose className="h-4 w-4" aria-hidden="true" />}
           </button>
@@ -123,31 +128,39 @@ function ConsoleSidebar({
                   title={collapsed ? t.label : undefined}
                   aria-label={collapsed ? `${t.label}${t.badge ? `, ${t.badge}` : ""}` : undefined}
                   className={cn(
-                    "group relative flex w-full items-center rounded-xl py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50",
+                    "focus-brand group relative flex w-full items-center rounded-xl py-2.5 text-left transition-colors duration-200",
                     collapsed ? "justify-center px-2" : "gap-3 px-3",
                     isActive
-                      ? "bg-brand-500/10 text-brand-700 dark:bg-white/10 dark:text-white"
-                      : "text-ink-600 hover:bg-ink-100/80 hover:text-ink-950 dark:text-ink-400 dark:hover:bg-white/5 dark:hover:text-ink-100",
+                      ? "bg-ink-950/[0.06] text-ink-950 ring-1 ring-inset ring-ink-950/[0.06] dark:bg-white/[0.07] dark:text-white dark:ring-white/10"
+                      : "text-ink-600 hover:bg-ink-100/70 hover:text-ink-950 dark:text-ink-400 dark:hover:bg-white/[0.04] dark:hover:text-ink-100",
                   )}
                 >
                   {isActive ? (
                     <motion.span
                       layoutId="org-nav-rail"
-                      className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-brand-500"
+                      className="absolute -left-3 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-brand-500 shadow-[0_0_12px_rgba(232,56,42,0.5)]"
                       aria-hidden="true"
                     />
                   ) : null}
-                  <t.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  <t.icon
+                    className={cn(
+                      "h-4 w-4 shrink-0 transition-colors",
+                      isActive
+                        ? "text-brand-600 dark:text-brand-400"
+                        : "text-ink-400 group-hover:text-ink-600 dark:text-ink-500 dark:group-hover:text-ink-300",
+                    )}
+                    aria-hidden="true"
+                  />
                   <span className={cn("text-[12.5px] font-semibold tracking-[-0.005em]", collapsed ? "sr-only" : "flex-1")}>
                     {t.label}
                   </span>
                   {t.badge !== undefined && t.badge > 0 ? (
                     <span
                       className={cn(
-                        "grid h-5 min-w-5 place-items-center rounded-full px-1.5 font-code text-[9px] font-bold",
+                        "grid h-5 min-w-5 place-items-center rounded-full px-1.5 font-code text-[9px] font-bold tabular",
                         collapsed
                           ? "absolute right-1 top-1 h-4 min-w-4 border border-paper bg-brand-600 px-1 text-[8px] text-white dark:border-night"
-                          : "bg-ink-100 text-ink-700 dark:bg-white/10 dark:text-ink-200",
+                          : "bg-ink-200/60 text-ink-700 ring-1 ring-inset ring-ink-950/[0.04] dark:bg-white/[0.08] dark:text-ink-300 dark:ring-white/10",
                       )}
                     >
                       {t.badge}
@@ -160,12 +173,15 @@ function ConsoleSidebar({
         </ul>
       </nav>
 
-      <div className="relative mt-4 space-y-2 border-t border-ink-200 pt-3 dark:border-white/[0.06]">
+      <div className="relative mt-4 space-y-2 border-t border-ink-200/70 pt-3.5 dark:border-white/10">
         <div
           title={collapsed ? `${orgStatus} · org:${orgName} · REG ${registrationNo}` : undefined}
-          className={cn("rounded-xl border border-ink-200 bg-white px-3 py-2.5 dark:border-white/10 dark:bg-white/[0.03]", collapsed && "flex justify-center")}
+          className={cn(
+            "rounded-[10px] border border-ink-200/70 bg-paper-2/50 px-3 py-3 dark:border-white/10 dark:bg-white/[0.03]",
+            collapsed && "flex justify-center",
+          )}
         >
-          <p className={cn("flex items-center gap-2 font-code text-[8.5px] font-semibold tracking-[0.18em] text-ink-700 dark:text-ink-300", collapsed && "justify-center")}>
+          <p className={cn("flex items-center gap-2 type-micro text-ink-700 dark:text-ink-300", collapsed && "justify-center")}>
             <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
               {live ? (
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-70" />
@@ -177,14 +193,23 @@ function ConsoleSidebar({
             {!collapsed ? orgStatus : <span className="sr-only">{orgStatus}</span>}
           </p>
           {!collapsed ? (
-            <>
-              <p className="mt-1.5 truncate font-code text-[8px] leading-[1.7] tracking-[0.12em] text-ink-500">
-                ATTESTED AS org:{orgName}
-              </p>
-              <p className="mt-0.5 truncate font-code text-[8px] leading-[1.7] tracking-[0.12em] text-ink-500">
-                REG · {registrationNo}
-              </p>
-            </>
+            <dl className="mt-2.5 space-y-1">
+              <div className="flex items-baseline gap-2">
+                <dt className="type-micro shrink-0 text-ink-400">Attested as</dt>
+                <dd
+                  title={`org:${orgName}`}
+                  className="min-w-0 flex-1 truncate text-right font-code text-[9px] text-ink-600 dark:text-ink-400"
+                >
+                  org:{orgName}
+                </dd>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <dt className="type-micro shrink-0 text-ink-400">Reg</dt>
+                <dd className="min-w-0 flex-1 truncate text-right font-code text-[9px] text-ink-600 tabular dark:text-ink-400">
+                  {registrationNo}
+                </dd>
+              </div>
+            </dl>
           ) : null}
         </div>
 
@@ -195,11 +220,15 @@ function ConsoleSidebar({
           aria-label={collapsed ? "Officer desk" : undefined}
           title={collapsed ? "Officer desk" : undefined}
           className={cn(
-            "flex w-full items-center rounded-xl py-2 text-[11.5px] font-semibold text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-950 dark:text-ink-400 dark:hover:bg-white/5 dark:hover:text-white",
+            "focus-brand flex w-full items-center rounded-xl py-2.5 transition-colors hover:bg-ink-100/70 hover:text-ink-950 dark:text-ink-400 dark:hover:bg-white/[0.04] dark:hover:text-white",
             collapsed ? "justify-center px-2" : "justify-between gap-2 px-3",
           )}
         >
-          {!collapsed ? "Officer desk" : <span className="sr-only">Officer desk</span>}
+          {!collapsed ? (
+            <span className="type-micro text-ink-500">Officer desk</span>
+          ) : (
+            <span className="sr-only">Officer desk</span>
+          )}
           <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
         </Link>
         <button
@@ -208,11 +237,12 @@ function ConsoleSidebar({
           aria-label={collapsed ? "Sign out" : undefined}
           title={collapsed ? "Sign out" : undefined}
           className={cn(
-            "flex w-full items-center rounded-xl py-2 text-[11.5px] font-semibold text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-950 dark:text-ink-400 dark:hover:bg-white/5 dark:hover:text-white",
-            collapsed ? "justify-center px-2" : "gap-2 px-3",
+            "focus-brand flex w-full items-center rounded-xl py-2.5 transition-colors hover:bg-ink-100/70 hover:text-ink-950 dark:text-ink-400 dark:hover:bg-white/[0.04] dark:hover:text-white",
+            collapsed ? "justify-center px-2" : "gap-2.5 px-3",
           )}
         >
-          <LogOut className="h-3.5 w-3.5" aria-hidden="true" /> {!collapsed ? "Sign out" : null}
+          <LogOut className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
+          {!collapsed ? <span className="type-micro text-ink-500">Sign out</span> : null}
         </button>
       </div>
     </div>
@@ -267,7 +297,7 @@ function SearchPalette({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -8, scale: 0.985 }}
         transition={{ duration: 0.2, ease: EASE }}
-        className="relative mx-auto mt-[9vh] w-full max-w-xl overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-[0_40px_100px_rgba(0,0,0,0.45)] dark:border-white/10 dark:bg-night-2"
+        className="relative mx-auto mt-[9vh] w-full max-w-xl overflow-hidden rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.45)] dark:border-white/10 dark:bg-night-2"
       >
         <div className="flex items-center gap-2.5 border-b border-ink-100 px-4 dark:border-white/10">
           <Search className="h-4 w-4 shrink-0 text-ink-400" aria-hidden="true" />
@@ -429,7 +459,7 @@ function ApplyDialog({
         initial={{ opacity: 0, y: 18, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.26, ease: EASE }}
-        className="w-full max-w-[520px] overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-[0_36px_90px_rgba(0,0,0,0.4)] dark:border-white/10 dark:bg-night-2"
+        className="w-full max-w-[520px] overflow-hidden rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 shadow-[0_36px_90px_rgba(0,0,0,0.4)] dark:border-white/10 dark:bg-night-2"
       >
         {filed ? (
           <div className="space-y-4 p-7 text-center">
@@ -619,13 +649,13 @@ function ProfileEditor({ org, onSaved, focusField }: { org: PublicOrg; onSaved: 
 
   return (
     <div className="space-y-4">
-      <section className="rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)] sm:p-6 dark:border-white/[0.07] dark:bg-night-2/80">
+      <section className="rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)] sm:p-6 dark:border-white/[0.07] dark:bg-night-2/80">
         <div className="mb-5 flex items-start gap-3">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-500/10 text-brand-700 dark:text-brand-300">
             <Building2 className="h-4 w-4" aria-hidden="true" />
           </span>
           <div>
-            <h2 className="text-[14px] font-bold text-ink-950 dark:text-white">Registered entity</h2>
+            <h2 className="font-display text-[14px] font-extrabold tracking-[-0.01em] text-ink-950 dark:text-white">Registered entity</h2>
             <p className="mt-0.5 text-[12px] leading-relaxed text-ink-500">The name and jurisdiction used on every application.</p>
           </div>
         </div>
@@ -648,12 +678,12 @@ function ProfileEditor({ org, onSaved, focusField }: { org: PublicOrg; onSaved: 
         </div>
       </section>
 
-      <section className="rounded-2xl border border-ink-100 bg-ink-50/70 p-5 sm:p-6 dark:border-white/[0.07] dark:bg-white/[0.025]">
+      <section className="rounded-[10px] border border-ink-100 bg-ink-50/70 p-5 sm:p-6 dark:border-white/[0.07] dark:bg-white/[0.025]">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-ink-500" aria-hidden="true" />
-              <h2 className="text-[14px] font-bold text-ink-950 dark:text-white">Legal identity</h2>
+              <h2 className="font-display text-[14px] font-extrabold tracking-[-0.01em] text-ink-950 dark:text-white">Legal identity</h2>
             </div>
             <p className="mt-1 text-[12px] text-ink-500">Your account identifiers are fixed and cannot be edited here.</p>
           </div>
@@ -662,11 +692,11 @@ function ProfileEditor({ org, onSaved, focusField }: { org: PublicOrg; onSaved: 
           </span>
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-xl border border-ink-100 bg-white px-4 py-3 dark:border-white/[0.06] dark:bg-night-2">
+          <div className="rounded-[10px] border border-ink-200/70 bg-white dark:border-white/10 px-4 py-3 dark:border-white/[0.06] dark:bg-night-2">
             <p className="font-code text-[9px] font-semibold uppercase tracking-[0.14em] text-ink-500">Registration number</p>
             <p ref={(node) => { fieldRefs.current["registration no"] = node; }} tabIndex={-1} className="mt-1.5 break-all font-code text-[13px] font-semibold text-ink-950 outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50 dark:text-white">{org.registrationNo}</p>
           </div>
-          <div className="rounded-xl border border-ink-100 bg-white px-4 py-3 dark:border-white/[0.06] dark:bg-night-2">
+          <div className="rounded-[10px] border border-ink-200/70 bg-white dark:border-white/10 px-4 py-3 dark:border-white/[0.06] dark:bg-night-2">
             <p className="font-code text-[9px] font-semibold uppercase tracking-[0.14em] text-ink-500">Login email</p>
             <p className="mt-1.5 break-all text-[13px] font-semibold text-ink-950 dark:text-white">{org.email}</p>
           </div>
@@ -676,13 +706,13 @@ function ProfileEditor({ org, onSaved, focusField }: { org: PublicOrg; onSaved: 
         </p>
       </section>
 
-      <section className="rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)] sm:p-6 dark:border-white/[0.07] dark:bg-night-2/80">
+      <section className="rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)] sm:p-6 dark:border-white/[0.07] dark:bg-night-2/80">
         <div className="mb-5 flex items-start gap-3">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-500/10 text-brand-700 dark:text-brand-300">
             <CircleCheck className="h-4 w-4" aria-hidden="true" />
           </span>
           <div>
-            <h2 className="text-[14px] font-bold text-ink-950 dark:text-white">Statutory record</h2>
+            <h2 className="font-display text-[14px] font-extrabold tracking-[-0.01em] text-ink-950 dark:text-white">Statutory record</h2>
             <p className="mt-0.5 text-[12px] leading-relaxed text-ink-500">The credentials the procurement desk uses to verify your organization.</p>
           </div>
         </div>
@@ -728,13 +758,13 @@ function ProfileEditor({ org, onSaved, focusField }: { org: PublicOrg; onSaved: 
         </div>
       </section>
 
-      <section className="rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)] sm:p-6 dark:border-white/[0.07] dark:bg-night-2/80">
+      <section className="rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)] sm:p-6 dark:border-white/[0.07] dark:bg-night-2/80">
         <div className="mb-5 flex items-start gap-3">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-500/10 text-brand-700 dark:text-brand-300">
             <UserRound className="h-4 w-4" aria-hidden="true" />
           </span>
           <div>
-            <h2 className="text-[14px] font-bold text-ink-950 dark:text-white">Contact &amp; presence</h2>
+            <h2 className="font-display text-[14px] font-extrabold tracking-[-0.01em] text-ink-950 dark:text-white">Contact &amp; presence</h2>
             <p className="mt-0.5 text-[12px] leading-relaxed text-ink-500">How the desk can reach your team and understand what you supply.</p>
           </div>
         </div>
@@ -765,13 +795,13 @@ function ProfileEditor({ org, onSaved, focusField }: { org: PublicOrg; onSaved: 
         </div>
       </section>
 
-      <section className="rounded-2xl border border-ink-100 bg-white p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)] sm:p-6 dark:border-white/[0.07] dark:bg-night-2/80">
+      <section className="rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)] sm:p-6 dark:border-white/[0.07] dark:bg-night-2/80">
         <div className="mb-5 flex items-start gap-3">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-500/10 text-brand-700 dark:text-brand-300">
             <LayoutGrid className="h-4 w-4" aria-hidden="true" />
           </span>
           <div>
-            <h2 className="text-[14px] font-bold text-ink-950 dark:text-white">Supply categories</h2>
+            <h2 className="font-display text-[14px] font-extrabold tracking-[-0.01em] text-ink-950 dark:text-white">Supply categories</h2>
             <p className="mt-0.5 text-[12px] leading-relaxed text-ink-500">Help the desk match your capabilities to relevant opportunities.</p>
           </div>
         </div>
@@ -832,7 +862,7 @@ function ProfileEditor({ org, onSaved, focusField }: { org: PublicOrg; onSaved: 
         </div>
       ) : null}
 
-      <div className="sticky bottom-3 z-20 flex flex-col gap-3 rounded-2xl border border-ink-200/80 bg-paper/95 p-3 shadow-[0_12px_36px_rgba(11,12,15,0.12)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between sm:px-4 dark:border-white/10 dark:bg-night/90 dark:shadow-[0_12px_36px_rgba(0,0,0,0.35)]">
+      <div className="sticky bottom-3 z-20 flex flex-col gap-3 rounded-[10px] border border-ink-200/80 bg-paper/95 p-3 shadow-[0_12px_36px_rgba(11,12,15,0.12)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between sm:px-4 dark:border-white/10 dark:bg-night/90 dark:shadow-[0_12px_36px_rgba(0,0,0,0.35)]">
         <div className="min-h-9">
           <p className="text-[12px] font-semibold text-ink-800 dark:text-ink-200">Keep your supplier record current</p>
           <AnimatePresence mode="wait">
@@ -1022,12 +1052,10 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
                 <QuorumLogo tagline={false} />
               </span>
             </Link>
-            <span className="hidden h-8 w-px bg-ink-200 sm:block dark:bg-white/10" />
+            <span className="hidden h-9 w-px bg-ink-200/80 sm:block dark:bg-white/10" />
             <div className="hidden min-w-0 sm:block">
-              <p className="font-code text-[8.5px] font-semibold tracking-[0.22em] text-brand-700 dark:text-brand-400">
-                SUPPLIER PORTAL
-              </p>
-              <p className="flex items-center gap-1.5 truncate text-[13.5px] font-bold text-ink-950 dark:text-white">
+              <p className="type-micro text-brand-700 dark:text-brand-400">Supplier portal</p>
+              <p className="mt-0.5 flex items-center gap-1.5 truncate text-[13.5px] font-semibold tracking-[-0.01em] text-ink-950 dark:text-white">
                 <span
                   className={cn(
                     "h-1.5 w-1.5 shrink-0 rounded-full",
@@ -1044,11 +1072,11 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
             <button
               type="button"
               onClick={() => setPaletteOpen(true)}
-              className="hidden h-9 items-center gap-2 rounded-lg border border-ink-100 bg-white/70 px-3 text-left text-[12px] text-ink-500 transition-colors hover:border-ink-200 hover:text-ink-900 md:flex dark:border-white/[0.08] dark:bg-white/[0.03] dark:text-ink-500 dark:hover:border-white/20 dark:hover:text-white"
+              className="focus-brand hidden h-10 items-center gap-2.5 rounded-full border border-ink-200/80 bg-white/70 px-3.5 text-left text-[12.5px] text-ink-500 transition-colors hover:border-ink-300 hover:text-ink-900 md:flex dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-400 dark:hover:border-white/20 dark:hover:text-white"
             >
               <Search className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               <span>Search tenders, applications…</span>
-              <kbd className="ml-5 rounded border border-ink-100 bg-sand px-1.5 py-0.5 font-code text-[9px] font-semibold text-ink-500 dark:border-white/10 dark:bg-white/[0.05] dark:text-ink-500">
+              <kbd className="ml-4 rounded-md border border-ink-200/80 bg-paper-2/70 px-1.5 py-0.5 font-code text-[9px] font-semibold tracking-[0.08em] text-ink-500 dark:border-white/10 dark:bg-white/[0.06] dark:text-ink-400">
                 ⌘K
               </kbd>
             </button>
@@ -1063,10 +1091,10 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
 
             <span
               className={cn(
-                "hidden items-center gap-1.5 rounded-full border px-2.5 py-1 font-code text-[9px] font-bold tracking-[0.16em] sm:inline-flex",
+                "hidden h-9 items-center gap-2 rounded-full border px-3 type-micro sm:inline-flex",
                 org.status === "ACTIVE"
-                  ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                  : "border-brand-500/25 bg-brand-500/10 text-brand-700 dark:text-brand-300",
+                  ? "border-emerald-500/25 bg-emerald-500/[0.08] text-emerald-700 dark:text-emerald-300"
+                  : "border-brand-500/30 bg-brand-500/[0.08] text-brand-700 dark:text-brand-300",
               )}
             >
               <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
@@ -1189,14 +1217,14 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
                     <p className="font-code text-[9px] font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-400">
                       The register&apos;s view
                     </p>
-                    <h1 className="mt-2 text-[26px] font-bold tracking-[-0.03em] text-ink-950 dark:text-white sm:text-[30px]">
+                    <h1 className="type-display mt-2 text-[26px] text-ink-950 dark:text-white sm:text-[30px]">
                       Organization profile
                     </h1>
                     <p className="mt-2 max-w-[64ch] text-[13px] leading-relaxed text-ink-500 sm:text-[13.5px]">
                       Keep your organization&apos;s record accurate. The procurement desk uses these details to verify your identity and match you with relevant opportunities.
                     </p>
                   </div>
-                  <div className="w-full shrink-0 rounded-2xl border border-ink-100 bg-white p-4 shadow-[0_1px_2px_rgba(11,12,15,0.04)] sm:w-[230px] dark:border-white/[0.07] dark:bg-night-2/80">
+                  <div className="w-full shrink-0 rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-4 shadow-[0_1px_2px_rgba(11,12,15,0.04)] sm:w-[230px] dark:border-white/[0.07] dark:bg-night-2/80">
                     <div className="flex items-center justify-between gap-3">
                       <span className="font-code text-[9px] font-semibold uppercase tracking-[0.15em] text-ink-500">Record health</span>
                       <span className="font-code text-[10px] font-bold tabular text-ink-700 dark:text-ink-200">{profile.filled}/{profile.total}</span>
@@ -1235,7 +1263,7 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
                     <p className="font-code text-[9px] font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-400">
                       The board
                     </p>
-                    <h1 className="mt-1.5 flex items-center gap-2.5 text-[22px] font-bold tracking-[-0.02em] text-ink-950 dark:text-white">
+                    <h1 className="type-display mt-2 flex items-center gap-2.5 text-[22px] text-ink-950 dark:text-white">
                       Opportunities
                       {tenders !== null ? (
                         <span className="rounded-full border border-ink-100 bg-sand/80 px-2 py-0.5 font-code text-[9.5px] font-semibold text-ink-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-600">
@@ -1268,12 +1296,12 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
                     {[0, 1, 2, 3].map((i) => (
                       <div
                         key={i}
-                        className="h-[196px] animate-pulse rounded-2xl border border-ink-100 bg-ink-50/60 dark:border-white/[0.07] dark:bg-white/[0.03]"
+                        className="h-[196px] animate-pulse rounded-[10px] border border-ink-100 bg-ink-50/60 dark:border-white/[0.07] dark:bg-white/[0.03]"
                       />
                     ))}
                   </div>
                 ) : tenders.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-ink-200 px-6 py-16 text-center dark:border-white/15">
+                  <div className="rounded-[10px] border border-dashed border-ink-200 px-6 py-16 text-center dark:border-white/15">
                     <p className="text-[14px] font-semibold text-ink-700 dark:text-ink-700">
                       No tender packs are staged on the desk yet
                     </p>
@@ -1292,7 +1320,7 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
                           key={t.ref}
                           id={`tender-${t.ref}`}
                           className={cn(
-                            "flex scroll-mt-40 flex-col rounded-2xl border bg-white p-5 transition-all duration-300 dark:bg-night-2/80",
+                            "flex scroll-mt-40 flex-col rounded-[10px] border bg-white p-5 transition-all duration-300 dark:bg-night-2/80",
                             spotlight === t.ref
                               ? "border-brand-500 shadow-[0_0_0_3px_rgba(232,56,42,0.14)] dark:border-brand-500/60"
                               : "border-ink-100 hover:border-ink-200 dark:border-white/[0.07] dark:hover:border-white/15",
@@ -1389,7 +1417,7 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
                     <p className="font-code text-[9px] font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-400">
                       The record
                     </p>
-                    <h1 className="mt-1.5 flex items-center gap-2.5 text-[22px] font-bold tracking-[-0.02em] text-ink-950 dark:text-white">
+                    <h1 className="type-display mt-2 flex items-center gap-2.5 text-[22px] text-ink-950 dark:text-white">
                       Applications
                       {applications !== null ? (
                         <span className="rounded-full border border-ink-100 bg-sand/80 px-2 py-0.5 font-code text-[9.5px] font-semibold text-ink-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-600">
@@ -1430,7 +1458,7 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
                   </div>
                 ) : null}
 
-                <section className="overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-[0_1px_2px_rgba(11,12,15,0.04)] dark:border-white/[0.07] dark:bg-night-2/80">
+                <section className="overflow-hidden rounded-[12px] panel dark:border-white/[0.07] dark:bg-night-2/80">
                   <div className="flex items-center justify-between gap-3 border-b border-ink-100 px-5 py-3.5 dark:border-white/[0.06]">
                     <p className="font-code text-[9.5px] font-semibold uppercase tracking-[0.16em] text-ink-400">
                       Filing times in UTC · newest first

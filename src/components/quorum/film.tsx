@@ -21,6 +21,7 @@ import {
   Volume,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SpecBar } from "@/components/quorum/reveal";
 
 const RATE = 0.8; // deliberate, cinematic pacing
 const INTRO_MS = 7000;
@@ -398,11 +399,13 @@ export function Film() {
         {/* header */}
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div className="min-w-0">
-            <p className="flex items-center gap-2.5 font-code text-[11px] font-semibold uppercase tracking-[0.28em] text-ink-300">
-              <span className="inline-block h-[2px] w-6 bg-brand-500" aria-hidden="true" />
-              Reel 01 — Generated cinema
-            </p>
-            <h2 className="mt-4 max-w-3xl font-display text-[36px] font-black leading-[1.02] tracking-[-0.025em] sm:text-[56px]">
+            <SpecBar
+              index="05"
+              label="Reel 01 — generated cinema"
+              meta="Every frame model-generated"
+              tone="light"
+            />
+            <h2 className="type-display mt-6 max-w-3xl text-[36px] sm:text-[56px]">
               THE TWENTY-MINUTE
               <br />
               TENDER<span className="text-brand-500">.</span>
@@ -431,7 +434,7 @@ export function Film() {
         {/* stage */}
         <div
           ref={stageRef}
-          className="relative mt-10 overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_40px_120px_rgba(0,0,0,0.6)]"
+          className="relative mt-10 overflow-hidden rounded-[10px] border border-white/10 bg-black shadow-[0_40px_120px_rgba(0,0,0,0.6)]"
         >
           <div className="relative aspect-[2.39/1] w-full">
             {/* designed poster — always the bedrock layer */}

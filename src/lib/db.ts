@@ -86,6 +86,34 @@ export interface SittingRow {
   attendance: SittingAttendanceRow[]; // the door list — the register, frozen into the sitting
 }
 
+/* A scheduled meeting is a future sitting: the owner sets the day, names the
+   players, and the room is minted at scheduling time so the invitation can
+   carry a real, unlisted address. Nothing here is inferred — the attendee
+   list is exactly who was named. */
+export interface MeetingAttendeeRow {
+  key: string; // committee:<id>, player:<id>, external:<slug>
+  name: string;
+  email: string | null;
+  source: "COMMITTEE" | "PLAYER" | "EXTERNAL";
+}
+
+export interface ScheduledMeetingRow {
+  id: string;
+  title: string;
+  agenda: string | null;
+  room: string; // the Jitsi room slug — minted once, for this meeting only
+  joinUrl: string;
+  startsAt: Date;
+  durationMinutes: number;
+  scheduledBy: string;
+  scheduledById: string;
+  createdAt: Date;
+  status: "SCHEDULED" | "CANCELLED";
+  cancelledAt: Date | null;
+  cancelledBy: string | null;
+  attendees: MeetingAttendeeRow[];
+}
+
 export type InviteStatus = "PENDING" | "CLAIMED" | "REVOKED";
 
 export interface InviteRow {
@@ -157,6 +185,7 @@ interface StoreShape {
   contacts: ContactRow[];
   committeeMembers: CommitteeMemberRow[];
   sittings: SittingRow[];
+  scheduledMeetings: ScheduledMeetingRow[];
   settings: Record<string, string>;
   invites: InviteRow[];
   organizations: OrganizationRow[];
@@ -247,6 +276,39 @@ function reviveSittings(rows: unknown): SittingRow[] {
   });
 }
 
+/* Meeting rows carry dates at the top level and no dates inside attendees,
+   so one dedicated revival keeps the record honest across a reload. */
+function reviveMeetings(rows: unknown): ScheduledMeetingRow[] {
+  if (!Array.isArray(rows)) return [];
+  const asDate = (v: unknown): Date | null =>
+    typeof v === "string" ? new Date(v) : v instanceof Date ? v : null;
+  return rows.map((raw) => {
+    const r = raw as Record<string, unknown>;
+    const attendees = Array.isArray(r.attendees) ? (r.attendees as Record<string, unknown>[]) : [];
+    return {
+      id: String(r.id ?? ""),
+      title: String(r.title ?? "Meeting"),
+      agenda: typeof r.agenda === "string" && r.agenda.trim() ? r.agenda : null,
+      room: String(r.room ?? ""),
+      joinUrl: String(r.joinUrl ?? ""),
+      startsAt: asDate(r.startsAt) ?? new Date(),
+      durationMinutes: Number(r.durationMinutes) || 60,
+      scheduledBy: String(r.scheduledBy ?? "unknown officer"),
+      scheduledById: String(r.scheduledById ?? ""),
+      createdAt: asDate(r.createdAt) ?? new Date(),
+      status: r.status === "CANCELLED" ? "CANCELLED" : "SCHEDULED",
+      cancelledAt: asDate(r.cancelledAt),
+      cancelledBy: typeof r.cancelledBy === "string" ? r.cancelledBy : null,
+      attendees: attendees.map((a) => ({
+        key: String(a.key ?? ""),
+        name: String(a.name ?? ""),
+        email: typeof a.email === "string" && a.email.trim() ? a.email : null,
+        source: a.source === "COMMITTEE" ? "COMMITTEE" : a.source === "EXTERNAL" ? "EXTERNAL" : "PLAYER",
+      })),
+    };
+  });
+}
+
 function load(): StoreShape {
   const empty: StoreShape = {
     users: [],
@@ -254,6 +316,7 @@ function load(): StoreShape {
     contacts: [],
     committeeMembers: [],
     sittings: [],
+    scheduledMeetings: [],
     settings: {},
     invites: [],
     organizations: [],
@@ -282,6 +345,7 @@ function load(): StoreShape {
     contacts: revive<ContactRow>(raw.contacts),
     committeeMembers: revive<CommitteeMemberRow>(raw.committeeMembers),
     sittings: reviveSittings(raw.sittings),
+    scheduledMeetings: reviveMeetings(raw.scheduledMeetings),
     settings: (raw.settings as Record<string, string>) ?? {},
     invites: revive<InviteRow>(raw.invites),
     organizations: revive<OrganizationRow>(raw.organizations),
@@ -298,6 +362,7 @@ globalForStore.__quorumStore = store;
 /* A hot reload keeps the old store object alive across a schema addition —
    backfill new collections so the store is never half-shaped. */
 if (!Array.isArray(store.sittings)) store.sittings = [];
+if (!Array.isArray(store.scheduledMeetings)) store.scheduledMeetings = [];
 if (!Array.isArray(store.organizations)) store.organizations = [];
 if (!Array.isArray(store.orgSessions)) store.orgSessions = [];
 if (!Array.isArray(store.orgPasswordResets)) store.orgPasswordResets = [];
@@ -544,6 +609,37 @@ export function createSitting(data: Omit<SittingRow, "id">): SittingRow {
 
 export function updateSitting(id: string, patch: Partial<Omit<SittingRow, "id">>): SittingRow | null {
   const row = findSittingById(id);
+  if (!row) return null;
+  Object.assign(row, patch);
+  persist();
+  return row;
+}
+
+/* ── Scheduled meetings — future sittings with a named guest list ───────── */
+
+export function listScheduledMeetings(take = 50): ScheduledMeetingRow[] {
+  return store.scheduledMeetings
+    .filter((m) => m.status === "SCHEDULED")
+    .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())
+    .slice(-take);
+}
+
+export function findScheduledMeetingById(id: string): ScheduledMeetingRow | null {
+  return store.scheduledMeetings.find((m) => m.id === id) ?? null;
+}
+
+export function createScheduledMeeting(data: Omit<ScheduledMeetingRow, "id">): ScheduledMeetingRow {
+  const row: ScheduledMeetingRow = { id: `mtg_${randomUUID().slice(0, 8)}`, ...data };
+  store.scheduledMeetings.push(row);
+  persist();
+  return row;
+}
+
+export function updateScheduledMeeting(
+  id: string,
+  patch: Partial<Omit<ScheduledMeetingRow, "id">>,
+): ScheduledMeetingRow | null {
+  const row = findScheduledMeetingById(id);
   if (!row) return null;
   Object.assign(row, patch);
   persist();

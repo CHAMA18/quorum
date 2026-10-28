@@ -287,7 +287,7 @@ export function TenderPackPreview({
             transition={{ duration: 0.28, ease: EASE }}
             onClick={(e) => e.stopPropagation()}
             onKeyDown={trapTab}
-            className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-[0_30px_80px_rgba(11,12,15,0.35)]"
+            className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[12px] panel shadow-[0_30px_80px_rgba(11,12,15,0.35)]"
           >
             {/* ── header ── */}
             <div className="flex items-start justify-between gap-4 border-b border-ink-100 px-5 py-4 sm:px-7 sm:py-5">

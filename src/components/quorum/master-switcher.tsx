@@ -73,10 +73,14 @@ export function MasterSwitcher({
             className={cn(
               "relative rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-500/60",
               floating ? "px-3.5 py-2" : "px-3 py-1.5",
+              /* The active pill inverts against the surface beneath it, so the
+                 label is pinned to the pill's own colour rather than to the
+                 ink scale: ink-950 flips to near-white under .dark, which is
+                 exactly how a white pill ends up with an invisible label. */
               isActive
                 ? floating
-                  ? "text-ink-950"
-                  : "text-white dark:text-ink-950"
+                  ? "text-night"
+                  : "text-paper dark:text-night"
                 : floating
                   ? "text-white/60 transition-colors hover:text-white"
                   : "text-ink-500 transition-colors hover:text-ink-950 dark:text-ink-400 dark:hover:text-white",

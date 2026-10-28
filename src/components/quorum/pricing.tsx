@@ -2,7 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Check } from "lucide-react";
-import { Eyebrow, Reveal } from "@/components/quorum/reveal";
+import { Reveal, SpecBar } from "@/components/quorum/reveal";
 import { Aurora, Spotlight } from "@/components/quorum/motion-kit";
 import { cn } from "@/lib/utils";
 
@@ -39,10 +39,10 @@ export function Pricing() {
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
             <Reveal>
-              <Eyebrow>Pricing</Eyebrow>
+              <SpecBar index="09" label="Pricing" meta="Pilot tier · free for three tenders" />
             </Reveal>
             <Reveal delay={0.06}>
-              <h2 className="mt-4 max-w-2xl font-display text-[34px] font-black leading-[1.06] tracking-[-0.025em] text-ink-950 sm:text-[44px]">
+              <h2 className="type-display mt-6 max-w-2xl text-[34px] text-ink-950 sm:text-[44px]">
                 Pay per tender, or per committee.
               </h2>
             </Reveal>
@@ -58,10 +58,10 @@ export function Pricing() {
         <div className="mt-14 grid items-stretch gap-6">
           {TIERS.map((tier, i) => (
             <Reveal key={tier.name} delay={0.08 * i} className="h-full">
-              <Spotlight className="h-full rounded-3xl">
+              <Spotlight className="h-full rounded-[16px]">
               <article
                 className={cn(
-                  "relative flex h-full flex-col rounded-3xl p-7 transition-all duration-500 hover:-translate-y-1 sm:p-8",
+                  "relative flex h-full flex-col rounded-[16px] p-7 transition-all duration-500 hover:-translate-y-1 sm:p-8",
                   tier.featured
                     ? "border-2 border-brand-600 bg-white shadow-[0_28px_70px_rgba(217,38,22,0.18)] hover:shadow-[0_36px_80px_rgba(217,38,22,0.26)]"
                     : "border border-ink-100 bg-white shadow-[0_16px_40px_rgba(11,12,15,0.05)] hover:shadow-[0_24px_54px_rgba(11,12,15,0.10)]"

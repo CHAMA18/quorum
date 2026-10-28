@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useReducedMotion } from "framer-motion";
-import { Eyebrow, Reveal } from "@/components/quorum/reveal";
+import { Reveal, SpecBar } from "@/components/quorum/reveal";
 import { WordReveal } from "@/components/quorum/motion-kit";
 
 interface LiveRun {
@@ -117,10 +117,10 @@ export function ProofBand() {
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
             <Reveal>
-              <Eyebrow tone="light">Live from this workspace</Eyebrow>
+              <SpecBar index="08" label="Live from this workspace" tone="light" />
             </Reveal>
             <Reveal delay={0.06}>
-              <h2 className="mt-4 max-w-2xl font-display text-[34px] font-black leading-[1.06] tracking-[-0.025em] text-white sm:text-[44px]">
+              <h2 className="type-display mt-6 max-w-2xl text-[34px] text-white sm:text-[44px]">
                 <WordReveal text="What the agent has actually done." stagger={0.06} />
               </h2>
             </Reveal>

@@ -148,7 +148,7 @@ function GateTerminal({ grantedFirstName }: { grantedFirstName: string | null })
   }, []);
 
   return (
-    <div className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-night-2/90 shadow-[0_36px_90px_rgba(0,0,0,0.5)]">
+    <div className="w-full max-w-md overflow-hidden rounded-[10px] border border-white/10 bg-night-2/90 shadow-[0_36px_90px_rgba(0,0,0,0.5)]">
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
         <p className="font-code text-[9px] font-semibold tracking-[0.22em] text-ink-400">
           OFFICER GATE · LIVE AUDIT
@@ -216,7 +216,7 @@ function StoryPanel({ grantedFirstName }: { grantedFirstName: string | null }) {
       </div>
 
       <div className="relative max-w-xl space-y-6">
-        <h1 className="font-display text-[42px] font-black leading-[1.04] tracking-tight text-white">
+        <h1 className="type-display text-[42px] text-white">
           The agent reads the file.
           <br />
           <span className="text-brand-500">You</span> still award the tender.
@@ -255,12 +255,12 @@ function StoryPanel({ grantedFirstName }: { grantedFirstName: string | null }) {
 
 function MobileBrandBand() {
   return (
-    <div className="relative mb-5 overflow-hidden rounded-2xl bg-night p-5 lg:hidden">
+    <div className="relative mb-5 overflow-hidden rounded-[10px] bg-night p-5 lg:hidden">
       <div className="pointer-events-none absolute inset-0 bg-grid-dark opacity-60" aria-hidden="true" />
       <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-brand-600/20 blur-[70px]" aria-hidden="true" />
       <div className="relative">
         <p className="font-code text-[9px] font-semibold tracking-[0.22em] text-brand-300">OFFICER DESK</p>
-        <h2 className="mt-1.5 font-display text-[22px] font-black leading-[1.1] tracking-tight text-white">
+        <h2 className="type-display mt-2 text-[22px] text-white">
           The agent reads. <span className="text-brand-500">You</span> award.
         </h2>
         <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-400">
@@ -316,8 +316,7 @@ function VerifyPanel({
       <div className="flex items-baseline justify-between">
         <p className="font-code text-[9px] font-semibold tracking-[0.2em] text-ink-400">OFFICER ACCESS</p>
         <p className="font-code text-[9px] font-semibold tracking-[0.2em] text-ink-400">FIG. 03 — VERIFY</p>
-      </div>
-      <h2 className="mt-4 font-display text-[26px] font-black leading-[1.06] tracking-[-0.02em] text-ink-950 dark:text-white">
+      </div>          <h2 className="type-display mt-5 text-[26px] text-ink-950 dark:text-white">
         Check your inbox<span className="text-brand-600">.</span>
       </h2>
       <p className="mt-2.5 text-[13.5px] leading-relaxed text-ink-600 dark:text-ink-300">
@@ -401,7 +400,7 @@ function SuccessPanel({
         transition={{ type: "spring", stiffness: 240, damping: 16, delay: 0.18 }}
         className="mx-auto inline-block rounded-lg border-[3px] border-brand-600 px-6 py-3 shadow-[0_20px_50px_rgba(217,38,22,0.28)]"
       >
-        <p className="font-display text-[19px] font-black tracking-[0.1em] text-brand-600 sm:text-[22px]">
+        <p className="type-display text-[19px] tracking-[0.1em] text-brand-600 sm:text-[22px]">
           ACCESS GRANTED
         </p>
       </motion.div>
@@ -411,7 +410,7 @@ function SuccessPanel({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.55, delay: 0.34, ease: EASE }}
       >
-        <h2 className="mt-7 font-display text-[24px] font-black leading-[1.1] tracking-[-0.01em] text-ink-950 dark:text-white">
+        <h2 className="type-display mt-7 text-[24px] text-ink-950 dark:text-white">
           {mode === "register" ? (
             <>
               Account opened<span className="text-brand-600">.</span>
@@ -465,7 +464,7 @@ function SuccessPanel({
           Back to the site
         </button>
 
-        <dl className="mx-auto mt-7 grid max-w-sm grid-cols-3 divide-x divide-ink-100 rounded-2xl border border-ink-100 bg-white py-4 dark:bg-night-2">
+        <dl className="mx-auto mt-7 grid max-w-sm grid-cols-3 divide-x divide-ink-100 rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 py-4 dark:bg-night-2">
           {[
             ["SESSION", "HTTPONLY"],
             ["PASSWORD", "SCRYPT"],
@@ -843,7 +842,7 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
               <span className="font-code text-[9.5px] font-semibold tracking-[0.2em] text-brand-700 dark:text-brand-400">OFFICER PORTAL · /</span>
             </div>
 
-            <div className="rounded-2xl border border-ink-100 bg-white p-6 shadow-[0_16px_48px_rgba(11,12,15,0.08)] sm:p-8 dark:bg-night-2">
+            <div className="rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-6 shadow-[0_16px_48px_rgba(11,12,15,0.08)] sm:p-8 dark:bg-night-2">
               <AnimatePresence mode="wait">
                 {status === "success" && granted ? (
                   <SuccessPanel

@@ -2,7 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { CirclePause, ScrollText } from "lucide-react";
-import { Eyebrow, Reveal } from "@/components/quorum/reveal";
+import { Reveal, SpecBar } from "@/components/quorum/reveal";
 import { Aurora, Parallax, WordReveal } from "@/components/quorum/motion-kit";
 
 const TASKS = [
@@ -34,10 +34,10 @@ export function Overview() {
           {/* Copy */}
           <div className="min-w-0 lg:col-span-5">
             <Reveal>
-              <Eyebrow>Overview</Eyebrow>
+              <SpecBar index="02" label="Overview" meta="The same job · two clocks" />
             </Reveal>
             <Reveal delay={0.06}>
-              <h2 className="mt-4 font-display text-[34px] font-black leading-[1.06] tracking-[-0.025em] text-ink-950 sm:text-[44px]">
+              <h2 className="type-display mt-6 text-[34px] text-ink-950 sm:text-[44px]">
                 <WordReveal text="The same job. Two very different clocks." stagger={0.055} />
               </h2>
             </Reveal>
@@ -50,7 +50,7 @@ export function Overview() {
               </p>
             </Reveal>
             <Reveal delay={0.18}>
-              <div className="mt-8 flex items-start gap-4 rounded-2xl border border-brand-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(217,38,22,0.12)]">
+              <div className="mt-8 flex items-start gap-4 rounded-[10px] border border-brand-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(217,38,22,0.12)]">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 ring-1 ring-brand-200">
                   <ScrollText className="h-5 w-5 text-brand-600" aria-hidden="true" />
                 </span>
@@ -68,7 +68,7 @@ export function Overview() {
 
           {/* Timeline visual */}
           <Reveal delay={0.1} className="min-w-0 lg:col-span-7">
-            <div className="rounded-3xl border border-ink-100 bg-white p-6 shadow-[0_24px_60px_rgba(11,12,15,0.08)] sm:p-8">
+            <div className="rounded-[16px] border border-ink-100 bg-white p-6 shadow-[0_24px_60px_rgba(11,12,15,0.08)] sm:p-8">
               <div className="flex items-center justify-between gap-4">
                 <p className="font-code text-[10px] font-semibold tracking-[0.26em] text-ink-500">
                   ONE TENDER, END TO END

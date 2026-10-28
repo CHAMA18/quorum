@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ArrowRight, Check, Gauge, Send } from "lucide-react";
-import { Eyebrow, Reveal } from "@/components/quorum/reveal";
+import { Reveal } from "@/components/quorum/reveal";
 import type { AuthUser } from "@/lib/auth-types";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -92,12 +92,15 @@ export function GetStarted({
           {/* Statement */}
           <div className="lg:col-span-7">
             <Reveal>
-              <Eyebrow tone="light" className="text-white/80">
-                Getting started
-              </Eyebrow>
+              {/* This band is solid signal red, so the rule runs in white and
+                  the index stays legible rather than tinted on red. */}
+              <div>
+                <span aria-hidden="true" className="block h-px w-full bg-white/25" />
+                <p className="mt-3 type-micro text-white/75">10 · Getting started</p>
+              </div>
             </Reveal>
             <Reveal delay={0.08}>
-              <h2 className="mt-5 font-display text-[36px] font-black leading-[1.04] tracking-[-0.025em] text-white sm:text-[52px]">
+              <h2 className="type-display mt-6 text-[36px] text-white sm:text-[52px]">
                 Start with one tender. Scale when the file convinces you.
               </h2>
             </Reveal>
@@ -143,7 +146,7 @@ export function GetStarted({
 
           {/* First-run readiness checklist */}
           <Reveal delay={0.14} className="lg:col-span-5">
-            <div className="rounded-3xl bg-white p-6 shadow-[0_32px_80px_rgba(11,12,15,0.35)] sm:p-8">
+            <div className="rounded-[16px] bg-white p-6 shadow-[0_32px_80px_rgba(11,12,15,0.35)] sm:p-8">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-50 ring-1 ring-brand-200">
@@ -244,10 +247,10 @@ export function GetStarted({
 
         {/* Pilot request form */}
         <Reveal delay={0.1}>
-          <div className="mx-auto mt-12 w-full max-w-4xl rounded-3xl bg-white p-6 shadow-[0_32px_80px_rgba(11,12,15,0.35)] sm:p-8">
+          <div className="mx-auto mt-12 w-full max-w-4xl rounded-[16px] bg-white p-6 shadow-[0_32px_80px_rgba(11,12,15,0.35)] sm:p-8">
             {state === "sent" ? (
               <div className="flex flex-col items-center gap-4 py-6 text-center" aria-live="polite">
-                <span className="grid h-14 w-14 place-items-center rounded-2xl bg-brand-600 text-white">
+                <span className="grid h-14 w-14 place-items-center rounded-[10px] bg-brand-600 text-white">
                   <Check className="h-7 w-7" strokeWidth={3} aria-hidden="true" />
                 </span>
                 <div>

@@ -303,8 +303,8 @@ export function TourLayer({
             height: box.height + PAD * 2,
           }}
         >
-          <div className="absolute inset-0 rounded-2xl border-[1.5px] border-brand-500/90 shadow-[0_0_0_9999px_rgba(11,12,15,0.72),0_18px_60px_rgba(11,12,15,0.45)]" />
-          <div className={cn("absolute inset-0 rounded-2xl", !reduced && "animate-tour-pulse")} aria-hidden="true" />
+          <div className="absolute inset-0 rounded-[10px] border-[1.5px] border-brand-500/90 shadow-[0_0_0_9999px_rgba(11,12,15,0.72),0_18px_60px_rgba(11,12,15,0.45)]" />
+          <div className={cn("absolute inset-0 rounded-[10px]", !reduced && "animate-tour-pulse")} aria-hidden="true" />
           <div className="absolute -left-[3px] top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-full bg-brand-600" aria-hidden="true" />
           {/* Clicks on the highlighted control advance instead of firing it. */}
           <button
@@ -312,7 +312,7 @@ export function TourLayer({
             tabIndex={-1}
             aria-label="Continue the walkthrough"
             onClick={advance}
-            className="pointer-events-auto absolute inset-0 cursor-pointer rounded-2xl"
+            className="pointer-events-auto absolute inset-0 cursor-pointer rounded-[10px]"
           />
         </div>
       )}
@@ -344,12 +344,12 @@ export function TourLayer({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, transition: { duration: 0.12 } }}
             transition={{ duration: 0.28, ease: EASE }}
-            className="fixed z-[96] rounded-2xl border border-ink-100 bg-white shadow-[0_30px_80px_rgba(11,12,15,0.45)] outline-none"
+            className="fixed z-[96] rounded-[12px] panel shadow-[0_30px_80px_rgba(11,12,15,0.45)] outline-none"
             style={{ top: layout.y, left: layout.x, width: layout.width }}
             aria-live="polite"
           >
             {/* Progress rail */}
-            <div className="absolute inset-x-0 top-0 h-[3px] overflow-hidden rounded-t-2xl bg-ink-100" aria-hidden="true">
+            <div className="absolute inset-x-0 top-0 h-[3px] overflow-hidden rounded-t-[12px] bg-ink-100" aria-hidden="true">
               <div
                 className="h-full rounded-full bg-brand-600 transition-[width] duration-300"
                 style={{ width: `${((index + 1) / steps.length) * 100}%` }}
@@ -366,7 +366,7 @@ export function TourLayer({
                   type="button"
                   onClick={onClose}
                   aria-label="End the walkthrough"
-                  className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-ink-300 transition-colors hover:bg-paper hover:text-ink-700"
+                  className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-ink-500 transition-colors hover:bg-paper hover:text-ink-700"
                 >
                   <X className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
@@ -423,7 +423,7 @@ export function TourLayer({
                 </div>
               </div>
 
-              <p className="mt-2.5 font-code text-[7.5px] tracking-[0.18em] text-ink-300">
+              <p className="mt-2.5 font-code text-[7.5px] tracking-[0.18em] text-ink-500">
                 CLICK THE HIGHLIGHT OR PRESS → TO CONTINUE · ESC TO EXIT
               </p>
             </div>

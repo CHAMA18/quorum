@@ -277,7 +277,7 @@ function AuditPulse() {
   }, []);
 
   return (
-    <div className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-night-2/90 shadow-[0_36px_90px_rgba(0,0,0,0.5)]">
+    <div className="w-full max-w-md overflow-hidden rounded-[10px] border border-white/10 bg-night-2/90 shadow-[0_36px_90px_rgba(0,0,0,0.5)]">
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
         <p className="font-code text-[9px] font-semibold tracking-[0.22em] text-ink-400">
           SUPPLIER REGISTER · LIVE AUDIT
@@ -778,11 +778,11 @@ function OnTheRegister({ orgName, onEnter }: { orgName: string; onEnter: () => v
         transition={{ type: "spring", stiffness: 240, damping: 16, delay: 0.18 }}
         className="mx-auto inline-block rounded-lg border-[3px] border-brand-600 px-6 py-3 shadow-[0_20px_50px_rgba(217,38,22,0.28)]"
       >
-        <p className="font-display text-[19px] font-black tracking-[0.1em] text-brand-600 sm:text-[22px]">ON THE REGISTER</p>
+        <p className="type-display text-[19px] tracking-[0.1em] text-brand-600 sm:text-[22px]">ON THE REGISTER</p>
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.34, ease: EASE }}>
-        <h2 className="mt-7 font-display text-[24px] font-black leading-[1.1] tracking-[-0.01em] text-ink-950 dark:text-white">
+        <h2 className="type-display mt-7 text-[24px] text-ink-950 dark:text-white">
           {orgName} <span className="text-brand-600">is on the record.</span>
         </h2>
         <p className="mx-auto mt-2.5 max-w-sm text-[13.5px] leading-relaxed text-ink-600 dark:text-ink-300">
@@ -1226,7 +1226,7 @@ function SignIn({ onDone }: { onDone: () => void }) {
             transition={{ type: "spring", stiffness: 240, damping: 16, delay: 0.12 }}
             className="mx-auto inline-block rounded-lg border-[3px] border-brand-600 px-5 py-2.5 shadow-[0_16px_40px_rgba(217,38,22,0.24)]"
           >
-            <p className="font-display text-[16px] font-black tracking-[0.1em] text-brand-600">PASSWORD REPLACED</p>
+            <p className="type-display text-[16px] tracking-[0.1em] text-brand-600">PASSWORD REPLACED</p>
           </motion.div>
           <p className="text-[13.5px] leading-relaxed text-ink-600 dark:text-ink-300">
             The new password is live on the register and every open session for{" "}
@@ -1321,7 +1321,7 @@ export function OrgAuthScreen() {
         </div>
 
         <div className="relative max-w-xl space-y-6">
-          <h1 className="font-display text-[42px] font-black leading-[1.04] tracking-tight text-white">
+          <h1 className="type-display text-[42px] text-white">
             The supplier side
             <br />
             of the desk<span className="text-brand-500">.</span>
@@ -1368,12 +1368,12 @@ export function OrgAuthScreen() {
         <div className="flex flex-1 items-center justify-center px-4 pb-10 pt-4 lg:px-12">
           <div className="w-full max-w-[480px]">
             {/* Mobile brand band — the door's identity, compact */}
-            <div className="relative mb-5 overflow-hidden rounded-2xl bg-night p-5 lg:hidden">
+            <div className="relative mb-5 overflow-hidden rounded-[10px] bg-night p-5 lg:hidden">
               <div className="pointer-events-none absolute inset-0 bg-grid-dark opacity-60" aria-hidden="true" />
               <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-brand-600/20 blur-[70px]" aria-hidden="true" />
               <div className="relative">
                 <p className="font-code text-[9px] font-semibold tracking-[0.22em] text-brand-300">SUPPLIER PORTAL</p>
-                <h2 className="mt-1.5 font-display text-[22px] font-black leading-[1.1] tracking-tight text-white">
+                <h2 className="type-display mt-2 text-[22px] text-white">
                   The supplier side of the desk<span className="text-brand-500">.</span>
                 </h2>
                 <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-400">
@@ -1389,11 +1389,11 @@ export function OrgAuthScreen() {
             </div>
 
             {registeredName ? (
-              <div className="rounded-2xl border border-ink-100 bg-white p-6 shadow-[0_16px_48px_rgba(11,12,15,0.08)] sm:p-8 dark:border-white/10 dark:bg-night-2">
+              <div className="rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-6 shadow-[0_16px_48px_rgba(11,12,15,0.08)] sm:p-8 dark:border-white/10 dark:bg-night-2">
                 <OnTheRegister orgName={registeredName} onEnter={onDone} />
               </div>
             ) : existingOrg ? (
-              <div className="rounded-2xl border border-ink-100 bg-white p-6 shadow-[0_16px_48px_rgba(11,12,15,0.08)] dark:border-white/10 dark:bg-night-2">
+              <div className="rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-6 shadow-[0_16px_48px_rgba(11,12,15,0.08)] dark:border-white/10 dark:bg-night-2">
                 <p className="font-code text-[9.5px] font-semibold tracking-[0.18em] text-brand-700 dark:text-brand-400">SESSION ALREADY OPEN</p>
                 <p className="mt-2 text-[15px] font-semibold text-ink-950 dark:text-white">{existingOrg.name}</p>
                 <p className="mt-1 text-[13px] text-ink-500 dark:text-ink-400">
@@ -1409,7 +1409,7 @@ export function OrgAuthScreen() {
                 </div>
               </div>
             ) : (
-              <div className="rounded-2xl border border-ink-100 bg-white p-6 shadow-[0_16px_48px_rgba(11,12,15,0.08)] sm:p-8 dark:border-white/10 dark:bg-night-2">
+              <div className="rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-6 shadow-[0_16px_48px_rgba(11,12,15,0.08)] sm:p-8 dark:border-white/10 dark:bg-night-2">
                 <div className="mb-6">
                   <ThemedLogo />
                 </div>

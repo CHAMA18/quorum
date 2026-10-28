@@ -39,16 +39,23 @@ export function Aurora({
   );
 }
 
-/** Thin red bar pinned to the top edge — fills as the visitor scrolls. */
+/**
+ * The instrument scale pinned to the top edge: a measured hairline the reader
+ * reads position from, with the signal-red run drawn along it as they scroll.
+ * The base tick line stays faint on the dark ticker band in both themes, so
+ * the red fill always reads as progress rather than as decoration.
+ */
 export function ScrollProgress() {
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, { stiffness: 140, damping: 30, restDelta: 0.001 });
   return (
-    <motion.div
-      aria-hidden="true"
-      style={{ scaleX }}
-      className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[2px] origin-left bg-gradient-to-r from-brand-500 via-brand-400 to-brand-600 shadow-[0_0_12px_rgba(232,56,42,0.7)]"
-    />
+    <div aria-hidden="true" className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[2px]">
+      <span className="absolute inset-x-0 top-0 h-px bg-white/[0.08]" />
+      <motion.span
+        style={{ scaleX }}
+        className="absolute inset-x-0 top-0 h-[2px] origin-left rounded-r-full bg-gradient-to-r from-brand-700 via-brand-500 to-[#ff7f68] shadow-[0_0_16px_rgba(232,56,42,0.55)]"
+      />
+    </div>
   );
 }
 

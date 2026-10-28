@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseAnalytics } from "@/components/quorum/firebase-analytics";
 import { ThemeProvider } from "@/components/quorum/theme-toggle";
+import { MuseAssistant } from "@/components/quorum/muse-assistant";
 
 // Self-hosted via next/font — zero runtime requests to Google, so the page
 // can never hang on external font CDNs.
@@ -87,6 +88,9 @@ export default function RootLayout({
       >
         <ThemeProvider>
           {children}
+          {/* The voice assistant bubble rides above every screen — landing,
+              workspace, docs and org portal alike. */}
+          <MuseAssistant />
           <FirebaseAnalytics />
           <Toaster />
         </ThemeProvider>

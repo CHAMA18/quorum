@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ArrowRight, CirclePause, FileText, PenLine } from "lucide-react";
-import { Eyebrow, Reveal } from "@/components/quorum/reveal";
+import { Reveal, SpecBar } from "@/components/quorum/reveal";
 import { cn } from "@/lib/utils";
 
 type TabId = "report" | "flags" | "audit";
@@ -141,10 +141,10 @@ export function ReportMock() {
           {/* Copy */}
           <div className="min-w-0 lg:col-span-4">
             <Reveal>
-              <Eyebrow>The output</Eyebrow>
+              <SpecBar index="07" label="The output" meta="Every finding cited" />
             </Reveal>
             <Reveal delay={0.06}>
-              <h2 className="mt-4 font-display text-[34px] font-black leading-[1.06] tracking-[-0.025em] text-ink-950 sm:text-[44px]">
+              <h2 className="type-display mt-6 text-[34px] text-ink-950 sm:text-[44px]">
                 What lands in the committee pack.
               </h2>
             </Reveal>
@@ -179,7 +179,7 @@ export function ReportMock() {
 
           {/* Document sheet */}
           <Reveal delay={0.1} className="min-w-0 lg:col-span-8">
-            <div className="relative rounded-2xl border border-ink-200/70 bg-white shadow-[0_32px_80px_rgba(11,12,15,0.14)]">
+            <div className="relative rounded-[10px] border border-ink-200/70 bg-white shadow-[0_32px_80px_rgba(11,12,15,0.14)]">
               {/* Punched holes for the pack metaphor */}
               <div className="absolute left-3 top-0 hidden h-full flex-col justify-center gap-16 sm:flex" aria-hidden="true">
                 <span className="h-3 w-3 rounded-full bg-sand ring-1 ring-ink-200" />

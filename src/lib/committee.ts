@@ -1,16 +1,23 @@
 import { randomBytes } from "node:crypto";
 import {
   createCommitteeMember as dbCreateMember,
+  createScheduledMeeting as dbCreateMeeting,
   createSitting as dbCreateSitting,
   deleteCommitteeMember as dbDeleteMember,
+  findScheduledMeetingById,
   findSittingById,
+  findUserById,
   getSetting,
   listCommitteeMembers,
+  listScheduledMeetings,
   listSittings,
   setSetting,
   updateCommitteeMember as dbUpdateMember,
+  updateScheduledMeeting as dbUpdateMeeting,
   updateSitting as dbUpdateSitting,
   type CommitteeMemberRow,
+  type MeetingAttendeeRow,
+  type ScheduledMeetingRow,
   type SittingAttendanceRow,
   type SittingRow,
 } from "@/lib/db";
@@ -66,6 +73,20 @@ export interface CommitteeSittingView {
   attendance: SittingAttendanceView[];
 }
 
+export interface ScheduledMeetingView {
+  id: string;
+  title: string;
+  agenda: string | null;
+  joinUrl: string;
+  startsAt: string;
+  durationMinutes: number;
+  scheduledBy: string;
+  scheduledById: string;
+  createdAt: string;
+  status: "SCHEDULED" | "CANCELLED";
+  attendees: MeetingAttendeeRow[];
+}
+
 export interface CommitteeState {
   seats: number;
   required: number;
@@ -78,6 +99,8 @@ export interface CommitteeState {
   sitting: CommitteeSittingView | null;
   /** The sitting register, most recent first. */
   sittings: CommitteeSittingView[];
+  /** Meetings on the diary — scheduled ahead, soonest first. */
+  meetings: ScheduledMeetingView[];
 }
 
 /** A summon result says whether this call actually minted a new room. */
@@ -145,6 +168,22 @@ function viewOf(s: SittingRow): CommitteeSittingView {
       admittedAt: isoOf(a.admittedAt),
       admittedBy: a.admittedBy,
     })),
+  };
+}
+
+function meetingViewOf(m: ScheduledMeetingRow): ScheduledMeetingView {
+  return {
+    id: m.id,
+    title: m.title,
+    agenda: m.agenda,
+    joinUrl: m.joinUrl,
+    startsAt: m.startsAt.toISOString(),
+    durationMinutes: m.durationMinutes,
+    scheduledBy: m.scheduledBy,
+    scheduledById: m.scheduledById,
+    createdAt: m.createdAt.toISOString(),
+    status: m.status,
+    attendees: m.attendees.map((a) => ({ ...a })),
   };
 }
 
@@ -251,6 +290,10 @@ export async function getCommitteeState(user: AuthUser | null): Promise<Committe
   if (openSitting) syncDoor(openSitting, user);
   const recent = sittings.slice(0, SITTINGS_SHOWN).map(viewOf);
 
+  /* The diary — scheduled meetings, soonest first. Cancelled meetings leave
+     both the desk and the calendar; the meeting record itself is kept. */
+  const meetings = listScheduledMeetings(50).map(meetingViewOf);
+
   return {
     seats,
     required,
@@ -261,6 +304,7 @@ export async function getCommitteeState(user: AuthUser | null): Promise<Committe
     lastSummonsAt: summonsRaw || null,
     sitting: openSitting ? viewOf(openSitting) : recent[0] ?? null,
     sittings: recent,
+    meetings,
   };
 }
 
@@ -305,6 +349,165 @@ export async function recordSummons(user: AuthUser | null, agenda?: string): Pro
 
   const after = await getCommitteeState(user);
   return { ...after, minted: true };
+}
+
+/* ── Scheduling — the owner names the day and the players, the room mints ── */
+
+export interface ScheduleMeetingInput {
+  title?: unknown;
+  agenda?: unknown;
+  startsAt?: unknown;
+  durationMinutes?: unknown;
+  memberIds?: unknown;
+  playerIds?: unknown;
+  externals?: unknown;
+}
+
+export type ScheduleMeetingResult =
+  | { ok: true; state: CommitteeState; meeting: ScheduledMeetingView }
+  | { ok: false; code: number; error: string };
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const MEETING_LEAD_MS = 60_000;
+const MEETING_HORIZON_DAYS = 366;
+const ATTENDEE_CAP = 40;
+
+function emailOf(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const email = v.trim().toLowerCase().slice(0, 160);
+  return EMAIL_RE.test(email) ? email : null;
+}
+
+function stringList(v: unknown, cap: number): string[] {
+  if (!Array.isArray(v)) return [];
+  return v.filter((x): x is string => typeof x === "string" && x.trim().length > 0).slice(0, cap);
+}
+
+function externalSlug(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "guest";
+}
+
+export async function scheduleMeeting(
+  input: ScheduleMeetingInput,
+  actor: AuthUser | null,
+): Promise<ScheduleMeetingResult> {
+  await ensureCommittee();
+
+  if (!actor?.id) {
+    return { ok: false, code: 401, error: "Sign in to schedule a meeting — the diary carries the officer's name." };
+  }
+
+  const title = String(input.title ?? "").trim().slice(0, 140);
+  if (title.length < 3) {
+    return { ok: false, code: 422, error: "Give the meeting a title of at least three characters." };
+  }
+
+  const startsAt = new Date(String(input.startsAt ?? ""));
+  if (Number.isNaN(startsAt.getTime())) {
+    return { ok: false, code: 422, error: "Pick a real date and start time for the meeting." };
+  }
+  const now = Date.now();
+  if (startsAt.getTime() < now + MEETING_LEAD_MS) {
+    return { ok: false, code: 422, error: "Pick a start time at least a minute ahead — a meeting cannot travel backwards." };
+  }
+  if (startsAt.getTime() > now + MEETING_HORIZON_DAYS * 86_400_000) {
+    return { ok: false, code: 422, error: "Keep the meeting within the next year — the diary holds real dates, not forecasts." };
+  }
+
+  const rawDuration = Number(input.durationMinutes ?? 60);
+  const durationMinutes = Number.isFinite(rawDuration) ? Math.round(rawDuration) : 60;
+  if (durationMinutes < 15 || durationMinutes > 480) {
+    return { ok: false, code: 422, error: "A meeting runs between 15 and 480 minutes." };
+  }
+
+  const agenda = String(input.agenda ?? "").trim().slice(0, 1000) || null;
+
+  /* The owner always attends; everyone else is exactly who was named. */
+  const attendees: MeetingAttendeeRow[] = [];
+  const seen = new Set<string>();
+  const add = (a: MeetingAttendeeRow) => {
+    if (attendees.length >= ATTENDEE_CAP) return;
+    const key = a.email ? `email:${a.email.toLowerCase()}` : `name:${a.name.trim().toLowerCase()}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    attendees.push(a);
+  };
+
+  add({
+    key: `officer:${actor.id}`,
+    name: actor.name.trim() || "Procurement officer",
+    email: emailOf(actor.email),
+    source: "PLAYER",
+  });
+
+  const register = listCommitteeMembers();
+  for (const id of stringList(input.memberIds, ATTENDEE_CAP)) {
+    const member = register.find((m) => m.id === id);
+    if (!member) continue;
+    add({ key: `committee:${member.id}`, name: member.name, email: null, source: "COMMITTEE" });
+  }
+
+  for (const id of stringList(input.playerIds, ATTENDEE_CAP)) {
+    const player = findUserById(id);
+    if (!player || player.id === actor.id) continue;
+    add({ key: `player:${player.id}`, name: player.name, email: emailOf(player.email), source: "PLAYER" });
+  }
+
+  const externals = Array.isArray(input.externals) ? input.externals.slice(0, 20) : [];
+  for (const raw of externals) {
+    const entry = (raw ?? {}) as Record<string, unknown>;
+    const name = String(entry.name ?? "").trim().slice(0, 120);
+    if (name.length < 2) continue;
+    const email = emailOf(entry.email);
+    add({ key: `external:${email ?? externalSlug(name)}`, name, email, source: "EXTERNAL" });
+  }
+
+  if (attendees.length < 2) {
+    return { ok: false, code: 422, error: "Name at least one other player — a meeting with only the owner is not a meeting." };
+  }
+
+  const at = new Date();
+  /* Minted now and never reused — the invitation can carry a real address
+     without waiting for a background job to create the room. */
+  const room = `quorum-meeting-${randomBytes(6).toString("hex")}`;
+  const row = dbCreateMeeting({
+    title,
+    agenda,
+    room,
+    joinUrl: `https://meet.jit.si/${room}`,
+    startsAt,
+    durationMinutes,
+    scheduledBy: actor.name.trim() || "unknown officer",
+    scheduledById: actor.id,
+    createdAt: at,
+    status: "SCHEDULED",
+    cancelledAt: null,
+    cancelledBy: null,
+    attendees,
+  });
+
+  return { ok: true, state: await getCommitteeState(actor), meeting: meetingViewOf(row) };
+}
+
+export async function cancelScheduledMeeting(id: string, actor: AuthUser | null): Promise<MutationResult> {
+  await ensureCommittee();
+
+  if (!actor?.id) {
+    return { ok: false, code: 401, error: "Sign in to cancel a meeting." };
+  }
+  const row = findScheduledMeetingById(id);
+  if (!row) return { ok: false, code: 404, error: "meeting not found" };
+  if (row.status !== "SCHEDULED") {
+    return { ok: false, code: 409, error: "the meeting is already cancelled" };
+  }
+
+  dbUpdateMeeting(row.id, {
+    status: "CANCELLED",
+    cancelledAt: new Date(),
+    cancelledBy: actor.name.trim() || "unknown officer",
+  });
+
+  return { ok: true, state: await getCommitteeState(actor) };
 }
 
 /* ── Desk writes: minutes, the door, the seal ───────────────────────────── */

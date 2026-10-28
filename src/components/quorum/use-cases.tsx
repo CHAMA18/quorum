@@ -1,7 +1,7 @@
 "use client";
 
 import { Activity, Banknote, Globe2, Scale, Stethoscope, Users } from "lucide-react";
-import { Eyebrow, Reveal } from "@/components/quorum/reveal";
+import { Reveal, SpecBar } from "@/components/quorum/reveal";
 import { Aurora, Spotlight, TiltCard } from "@/components/quorum/motion-kit";
 
 /**
@@ -45,10 +45,10 @@ export function UseCases() {
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
             <Reveal>
-              <Eyebrow>The theme — health &amp; life sciences</Eyebrow>
+              <SpecBar index="04" label="The theme — health & life sciences" meta="Checked against clinical reality" />
             </Reveal>
             <Reveal delay={0.06}>
-              <h2 className="mt-4 max-w-2xl font-display text-[34px] font-black leading-[1.06] tracking-[-0.025em] text-ink-950 sm:text-[44px]">
+              <h2 className="type-display mt-6 max-w-2xl text-[34px] text-ink-950 sm:text-[44px]">
                 Health commodity tenders. Checked against clinical reality.
               </h2>
             </Reveal>
@@ -64,11 +64,11 @@ export function UseCases() {
         <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {CHECKS.map((check, i) => (
             <Reveal key={check.no} delay={0.08 * i} className="h-full">
-              <TiltCard max={5} className="group h-full rounded-3xl">
-              <Spotlight className="h-full rounded-3xl">
-              <article className="group flex h-full flex-col rounded-3xl border border-ink-100 bg-white p-6 transition-all duration-300 hover:-translate-y-1 hover:border-brand-300 hover:shadow-[0_20px_44px_rgba(11,12,15,0.10)]">
+              <TiltCard max={5} className="group h-full rounded-[16px]">
+              <Spotlight className="h-full rounded-[16px]">
+              <article className="group flex h-full flex-col rounded-[16px] border border-ink-100 bg-white p-6 transition-all duration-300 hover:-translate-y-1 hover:border-brand-300 hover:shadow-[0_20px_44px_rgba(11,12,15,0.10)]">
                 <div className="flex items-center justify-between">
-                  <span className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-50 ring-1 ring-brand-200 transition-colors group-hover:bg-brand-600">
+                  <span className="grid h-12 w-12 place-items-center rounded-[10px] bg-brand-50 ring-1 ring-brand-200 transition-colors group-hover:bg-brand-600">
                     <check.icon
                       className="h-5.5 w-5.5 text-brand-600 transition-colors group-hover:text-white"
                       aria-hidden="true"
@@ -91,7 +91,7 @@ export function UseCases() {
 
         {/* The same workflow, queued for the next themes */}
         <Reveal delay={0.1}>
-          <div className="mt-10 flex flex-col gap-4 rounded-2xl border border-ink-100 bg-sand/60 px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="mt-10 flex flex-col gap-4 rounded-[10px] border border-ink-100 bg-sand/60 px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
             <p className="font-code text-[10px] font-semibold tracking-[0.24em] text-ink-500">
               ONE THEME SHIPS AT A TIME — THE SAME WORKFLOW, QUEUED NEXT
             </p>
