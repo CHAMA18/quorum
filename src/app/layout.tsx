@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from "next";
+import { cookies } from "next/headers";
 import { Archivo, Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseAnalytics } from "@/components/quorum/firebase-analytics";
 import { ThemeProvider } from "@/components/quorum/theme-toggle";
 import { MuseAssistant } from "@/components/quorum/muse-assistant";
+import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
 
 // Self-hosted via next/font — zero runtime requests to Google, so the page
 // can never hang on external font CDNs.
@@ -75,11 +77,17 @@ export const viewport: Viewport = {
   themeColor: "#d92616",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  /* The officer's first name rides to the bubble when a session exists — the
+     agent greets by it and signs nothing under it; the gavel stays theirs. */
+  const jar = await cookies();
+  const officer = await getUserFromToken(jar.get(SESSION_COOKIE)?.value).catch(() => null);
+  const firstName = officer?.name?.trim().split(/\s+/)[0] || undefined;
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -90,7 +98,7 @@ export default function RootLayout({
           {children}
           {/* The voice assistant bubble rides above every screen — landing,
               workspace, docs and org portal alike. */}
-          <MuseAssistant />
+          <MuseAssistant name={firstName} />
           <FirebaseAnalytics />
           <Toaster />
         </ThemeProvider>

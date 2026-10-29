@@ -1,0 +1,39 @@
+{
+  "gate": {
+    "id": "gate_ck5wte",
+    "runId": "run_2ef86ff8",
+    "tenderId": "RW-RURA-2027-021",
+    "tool": "file_gate_submission",
+    "inputs": {
+      "bidder": "Kigali Meter Works",
+      "value": "RWF 2,150,000,000",
+      "attachments": 6,
+      "findings": [
+        "F-01",
+        "F-02",
+        "F-03"
+      ],
+      "drafts": [
+        "draft_0ny1up",
+        "draft_3qoh1i"
+      ]
+    },
+    "status": "APPROVED",
+    "createdAt": "2026-10-28T14:53:58.188Z",
+    "approver": "Judge Demo",
+    "note": "Staged from the desk assistant for Judge.",
+    "decidedAt": "2026-10-29T08:45:34.276Z",
+    "stepUp": {
+      "by": "Judge Demo",
+      "method": "password",
+      "at": "2026-10-29T08:45:34.251Z",
+      "jti": "2c1fed8b-446d-45b4-998d-9dcd48d13597",
+      "docHash": "06b7ab49ad73fb4737a5d27cabca71cb"
+    }
+  },
+  "receipt": {
+    "submissionId": "SUB-MVTAT2OZ",
+    "hash": "696ec3d3812139d940a51acc91e6a931",
+    "portal": "egp-portal (simulated)"
+  }
+}

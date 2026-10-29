@@ -204,6 +204,7 @@ function viewRun(r: Run) {
 
 function viewGate(g: Gate) {
   return {
+    id: g.id,
     tender: g.tenderId,
     gate: g.tool ?? "file_gate_submission",
     status: GATE_STATUS_UI[g.status] ?? g.status,

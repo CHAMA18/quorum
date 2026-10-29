@@ -626,6 +626,37 @@
   .dark .bg-white:not(.keep-light) {
     background-color: #14161b;
   }
+  /* ── The paper sheet ────────────────────────────────────────────────────
+     A signature is appended to paper. Dialogs that carry an officer's ink
+     (the award signature, its receipt, the step-up seal) stay a lit sheet
+     in both themes: the light token scale is re-pinned inside them and
+     their white surfaces opt out of the dark-card rule, so the hand's ink
+     always lands on paper and always reads. */
+  .paper-sheet {
+    color-scheme: light;
+    --color-paper: #fafaf8;
+    --color-sand: #f2f0eb;
+    --color-brand-50: #fef4f2;
+    --color-brand-100: #fde5e1;
+    --color-brand-200: #fbc9c2;
+    --color-brand-700: #b41e10;
+    --color-brand-800: #8f1c10;
+    --color-brand-900: #761d12;
+    --color-ink-50: #f5f5f6;
+    --color-ink-100: #e9eaec;
+    --color-ink-200: #d3d5da;
+    --color-ink-300: #b0b4bc;
+    --color-ink-400: #878d98;
+    --color-ink-500: #6a707c;
+    --color-ink-600: #545a65;
+    --color-ink-700: #454a53;
+    --color-ink-800: #2b2f36;
+    --color-ink-900: #16181d;
+    --color-ink-950: #0b0c0f;
+  }
+  .dark .paper-sheet .bg-white {
+    background-color: #ffffff;
+  }
   /* Translucent white chips (bg-white/70, bg-white/95) need their own rules. */
   .dark .bg-white\/70 {
     background-color: rgb(20 22 27 / 0.7);

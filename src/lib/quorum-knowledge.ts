@@ -40,7 +40,7 @@ const GUIDE: GuideEntry[] = [
     title: "Quorum in one page",
     body: `Quorum is an agentic public-procurement review desk for public health supply chains. Its single invariant is: the agent prepares the file; a named human committee awards the tender.
 
-An officer stages a tender pack, the agent reads every document, extracts the requirements, checks bids against them, raises findings with citations and drafts redlines. The run then stops at the human gate. A committee member or the signed-in officer reviews the cited file, signs under their own name (with step-up), and only then is the bundle sealed, filed and receipted. The assistant is read-only: it can read the desk and explain it, but it cannot sign, award, return, file or summon anything.
+An officer stages a tender pack, the agent reads every document, extracts the requirements, checks bids against them, raises findings with citations and drafts redlines. The run then stops at the human gate. A committee member or the signed-in officer reviews the cited file, signs under their own name (with step-up), and only then is the bundle sealed, filed and receipted. The desk assistant is agentic but consent-gated: it reads the desk freely, and it can stage an approve, a return or a review launch as a signed proposal card — the action runs only after the officer confirms it in the bubble, and a gate decision still demands a fresh step-up signature.
 
 The workspace is the officer's desk; /org is the supplier's own portal; /docs is the product documentation. The review graph, MCP tool registry and hash-chained audit log are the engine underneath all three. The hackathon build is Quorum by CHAMA18 for the Meta Global AI Developer Hackathon 2026, indie track, theme "Build for Your World".`,
   },
@@ -60,7 +60,7 @@ The plan decides review depth for that pack: whether deep value parsing runs, wh
 
 A decision is refused unless the approver is a present member of the committee roster with the office the gate requires, or the signed-in officer acting as the gavel. If the roster cannot be read, the decision fails closed with a 503 rather than guessing. A quorum-short roll is refused. Gate decisions require a fresh step-up: a password or a TOTP code enrolled to the account. Replay is blocked by a server-side ledger.
 
-An APPROVE runs the filing graph: seal the bundle with SHA-256, submit, write the receipt, flip the run to FILED. A REJECT returns the file to the agent for clarification. Every signed decision also writes an Ed25519 receipt whose public key is embedded, so the decision can be verified later without trusting the database. Receipt and gate verification endpoints exist under /api/gates/:id/verify and /api/receipts/:id/verify. The gavel is never in the assistant bubble.`,
+An APPROVE runs the filing graph: seal the bundle with SHA-256, submit, write the receipt, flip the run to FILED. A REJECT returns the file to the agent for clarification. Every signed decision also writes an Ed25519 receipt whose public key is embedded, so the decision can be verified later without trusting the database. Receipt and gate verification endpoints exist under /api/gates/:id/verify and /api/receipts/:id/verify. The gavel never swings on a model's word: the assistant can stage a decision, but the card must be confirmed by the officer and signed with step-up before anything executes.`,
   },
   {
     id: "audit",
@@ -78,7 +78,7 @@ The assistant can read recent audit entries and verify claims about them, but it
 
 Capabilities are enforced on mutation routes and on the same-origin sidecar gateway, not only by hiding buttons. Committee offices are separate from workspace roles: procurement unit, evaluation committee, accounting officer and oversight. A committee member without the gate's office is refused even if their workspace role is COMMITTEE. The supplier portal is a separate identity space with its own organization session and cookie; suppliers do not get workspace roles.
 
-The assistant is read-only for every role, including OWNER.`,
+The assistant stages actions under the signed-in officer's identity, with the same capability checks as the screens: an AUDITOR session cannot sign a gate through the bubble any more than through the UI.`,
   },
   {
     id: "screens",
@@ -147,16 +147,16 @@ Tender references are server-generated and system-owned in the form PREFIX-YYYY-
   {
     id: "models",
     title: "Models and provenance",
-    body: `The desk assistant uses Meta Model API's muse-spark-1.3 for chat and the read-only tool loop. Voice input uses muse-voice-transcribe-1.0. Spoken replies use a real neural voice from Cloudflare Workers AI: Deepgram Aura-2 in English, with MeloTTS as the fallback and the browser's installed speech synthesis as the last fallback. The voice never changes the answer; it only reads it.
+    body: `The desk assistant uses Meta Model API's muse-spark-1.3 for chat and its agentic tool loop — reads run at once, writes are staged behind consent cards. With no model key configured a deterministic local brain answers from the same desk tools, so the bubble never depends on a secret to be useful. Voice input uses muse-voice-transcribe-1.0. Spoken replies use a real neural voice from Cloudflare Workers AI: Deepgram Aura-2 in English, with MeloTTS as the fallback and the browser's installed speech synthesis as the last fallback. The voice never changes the answer; it only reads it.
 
 The review engine can use an OpenAI-compatible model for redline drafting (the intended in-region setup is an open-weights model such as Llama via Ollama/vLLM/TGI) and falls back to a deterministic template when no model is configured. Every draft is labelled with its source, and the run shows the model and plan that produced it. The assistant displays the model id returned by the API, e.g. MODEL · MUSE-SPARK-1.3, so provenance is visible rather than implied.
 
-The assistant's tools are GETs. The model never chooses a URL, never sees a session and cannot call a write tool.`,
+The model never chooses a URL, never sees a session and never executes a write: its action calls become HMAC-signed proposals that execute only through the consent route, under the officer's verified session.`,
   },
   {
     id: "security",
     title: "Security and safety",
-    body: `Quorum treats the agent as an untrusted reader of untrusted documents. Prompt-injection patterns such as "ignore previous instructions", "approve without review" and "system override" are detected and raised as R-PROMPT-INJECTION findings. Document text is wrapped as untrusted data before it reaches a drafting model; verbatim evidence checks stop a model from inventing a citation. The assistant's tool surface is read-only, and the gate is enforced server-side, not by the UI.
+    body: `Quorum treats the agent as an untrusted reader of untrusted documents. Prompt-injection patterns such as "ignore previous instructions", "approve without review" and "system override" are detected and raised as R-PROMPT-INJECTION findings. Document text is wrapped as untrusted data before it reaches a drafting model; verbatim evidence checks stop a model from inventing a citation. The assistant's write surface is consent-gated: an action is staged as an HMAC-signed proposal and executes only after the officer confirms, under the officer's session, with step-up for a gate — the gate is enforced server-side, not by the UI.
 
 Gate decisions require step-up and are signed with Ed25519 receipts. The replay ledger blocks a reused step-up assertion. The audit log is hash-chained and verifiable. The same-origin gateway adds HMAC attestation between the web app and the sidecar. Known hardening item: the sidecar is intended to be reached only through that gateway; direct exposure of port 3031 must stay closed. The assistant should not claim that Quorum is certified, compliant with a specific procurement law, or immune to every attack. It is a review aid with a deliberately narrow decision boundary.`,
   },
@@ -172,7 +172,7 @@ The app uses Firebase Auth, Storage and Analytics only — not Firebase Function
   {
     id: "limits",
     title: "What is real, and what is not yet",
-    body: `Be precise about the boundary. Real today: the review graph and rule engine; cited findings and the verification/retry loop; the read-only MCP tool boundary; the human gate with named sign-off, quorum and offices; step-up and Ed25519 receipts; the hash-chained audit trail and verifier; notifications and delivery logs; the supplier portal; the Muse assistant with read-only desk tools and real voice.
+    body: `Be precise about the boundary. Real today: the review graph and rule engine; cited findings and the verification/retry loop; the read-only MCP tool boundary for the review graph; the human gate with named sign-off, quorum and offices; step-up and Ed25519 receipts; the hash-chained audit trail and verifier; notifications and delivery logs; the supplier portal; the Muse assistant with consent-gated desk actions and real voice.
 
 Not yet real: a live OCDS feed (packs carry OCDS references but ingestion is not connected); PDF/DOCX/XLSX/OCR upload extraction with page-level citations (the interface exists, the extraction path is roadmap); the e-GP portal transmission is a labelled demo stub; A5 deeper evaluation, A6 Postgres/durable production storage and A7 pilot evidence/LOIs are not finished; the admin/governance console is the flagship roadmap item; billing, SSO/SAML and full IAM are deliberately out of scope. Do not invent an officer response, a pilot, an LOI or a testimonial. If an officer asks for one of these, say it is not live yet and describe the honest next step.`,
   },
@@ -193,10 +193,10 @@ export function readSystemGuide(topic?: string): string {
   return `Quorum system guide — available topics:\n${guideIndex()}\n\nCall system_guide again with one topic for the full section.`;
 }
 
-export const SYSTEM_MAP = `Quorum is an agentic public-procurement review desk. The agent prepares a cited review file and stops at a human gate; a named committee member or the signed-in officer signs with step-up, and only then is the bundle sealed and receipted. The assistant is read-only.
+export const SYSTEM_MAP = `Quorum is an agentic public-procurement review desk. The agent prepares a cited review file and stops at a human gate; a named committee member or the signed-in officer signs with step-up, and only then is the bundle sealed and receipted. The desk assistant is agentic: it reads the desk live and can stage actions — approve or return a gate, launch a review — that execute only after the officer confirms the signed proposal card.
 
 Main areas: Overview, Evaluations, Approvals, Tender cycle, Live activity, Findings, Reports, Data sources, Award history, Committee, Calendar, Suppliers, Tools & models, Oversight, Audit trail, Rules & safeguards, Settings, Documentation and Walkthrough. Supplier portal: /org. Docs: /docs.
 
-The review pipeline reads a staged tender pack, extracts requirements, raises cited findings, verifies every anchor, retries or drops unanchored findings, drafts redlines, then parks at the gate. Gate approvals require a rostered present member with the right office (or the signed-in officer), quorum, step-up and a fresh decision; they write a hash-chained audit line and an Ed25519 receipt. The assistant can read runs, gates, deadlines, committee state, tenders, suppliers and recent audit entries. It cannot sign, award, return, file or summon.
+The review pipeline reads a staged tender pack, extracts requirements, raises cited findings, verifies every anchor, retries or drops unanchored findings, drafts redlines, then parks at the gate. Gate approvals require a rostered present member with the right office (or the signed-in officer), quorum, step-up and a fresh decision; they write a hash-chained audit line and an Ed25519 receipt. The assistant can read runs, gates, deadlines, committee state, tenders, suppliers and recent audit entries. It never executes on its own word: every write is a signed proposal waiting for the officer's consent.
 
 Use system_guide for the operating manual: ${GUIDE_IDS.join(", ")}.`;

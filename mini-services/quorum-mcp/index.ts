@@ -277,7 +277,24 @@ async function handleRpc(body: {
 
 /* ── Gate decisions — the named human, logged ────────────────────────────── */
 
-async function decideGate(id: string, decision: string, approver: string, note?: string, signedInAs?: string, stepUpToken?: string) {
+/* A freeform signature rides with the body, never with authority: it is
+   bound to the attested officer at seal time, size-checked, and stored only
+   once every precondition for the decision has passed. */
+function handInkFrom(body: unknown): { image: string; signedAt: string; strokes: number } | undefined | "invalid" {
+  const raw = (body as { handSignature?: unknown })?.handSignature;
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw !== "object") return "invalid";
+  const h = raw as { image?: unknown; signedAt?: unknown; strokes?: unknown };
+  if (typeof h.image !== "string" || !h.image.startsWith("data:image/png;base64,")) return "invalid";
+  if (h.image.length > 300_000) return "invalid";
+  return {
+    image: h.image,
+    signedAt: typeof h.signedAt === "string" && h.signedAt ? h.signedAt : new Date().toISOString(),
+    strokes: Math.max(0, Math.min(999, Math.round(Number(h.strokes) || 0))),
+  };
+}
+
+async function decideGate(id: string, decision: string, approver: string, note?: string, signedInAs?: string, stepUpToken?: string, hand?: { image: string; signedAt: string; strokes: number }) {
   const gate = state.gates.find((g) => g.id === id);
   if (!gate) return { error: "gate not found", code: 404 };
   if (gate.status !== "PENDING") return { error: `gate already ${gate.status}`, code: 409 };
@@ -354,6 +371,9 @@ async function decideGate(id: string, decision: string, approver: string, note?:
     jti: step.payload.jti,
     docHash: step.payload.docHash,
   };
+  /* The wet-ink layer is bound to the attested officer at seal time — the
+     body's ink is only kept once the decision has cleared every gate. */
+  gate.handSignature = hand ? { ...hand, by: step.payload.name } : undefined;
 
   if (decision === "REJECT") {
     gate.status = "REJECTED";
@@ -365,7 +385,7 @@ async function decideGate(id: string, decision: string, approver: string, note?:
       kind: "GATE_DECISION",
       runId: gate.runId,
       inputs: { gateId: id, decision, note: gate.note },
-      outputs: { status: "REJECTED — submission returned to the agent", stepUp: { method: step.payload.method, jti: step.payload.jti } },
+      outputs: { status: "REJECTED — submission returned to the agent", stepUp: { method: step.payload.method, jti: step.payload.jti }, ink: hand ? shaOf(hand.image).slice(0, 12) : undefined, strokes: hand?.strokes },
       status: "OK",
       durationMs: 0,
     });
@@ -394,7 +414,7 @@ async function decideGate(id: string, decision: string, approver: string, note?:
   if (run) {
     run.status = "FILED";
     run.updatedAt = gate.executedAt;
-    run.progress.push(`✓ ${name} signed the gate — bundle filed · ${gate.receipt?.submissionId ?? "receipt pending"}`);
+    run.progress.push(`✓ ${name} signed the gate — bundle filed · ${gate.receipt?.submissionId ?? "receipt pending"}${hand ? ` · hand signature ${shaOf(hand.image).slice(0, 12)}` : ""}`);
   }
   saveState();
   notifyWebSoon({ type: "GATE_DECIDED", gateId: gate.id, tenderId: gate.tenderId, tool: gate.tool, actor: name, outcome: "EXECUTED", note: gate.note });
@@ -1376,6 +1396,10 @@ Bun.serve({
         appendLog({ actor: attestedActor, server: "quorum-mcp", tool: "gate_decision", kind: "GATE_DECISION", inputs: { gateId: id, claimedSignedInAs: claimed }, outputs: { refused: "signedInAs does not match the gateway's attested session" }, status: "ERROR", durationMs: 0 });
         return json({ error: "The gateway's attested session is not who this request claims to be — signedInAs is server-attested and cannot be declared in the body." }, 403);
       }
+      const ink = handInkFrom(body);
+      if (ink === "invalid") {
+        return json({ error: "handSignature must be a PNG data URL under 300 KB." }, 422);
+      }
       const out = await decideGate(
         id,
         String(body.decision ?? ""),
@@ -1383,6 +1407,7 @@ Bun.serve({
         body.note ? String(body.note) : undefined,
         attestedActor || undefined,
         req.headers.get("x-quorum-stepup") ?? undefined,
+        ink,
       );
       if (out.error) return json(out, out.code ?? 400);
       return json(out);

@@ -63,6 +63,11 @@ server.log
 /logs/
 /shots/
 
+# local test screenshots & runtime artifacts (never part of the product)
+/download/*.png
+*.pid
+.zscripts/judge-cookies.txt
+
 # internal build log (agent work notes, never part of the product)
 /worklog.md
 

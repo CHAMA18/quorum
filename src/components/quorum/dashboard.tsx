@@ -37,6 +37,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Pencil,
+  PenLine,
   Play,
   Plus,
   Radio,
@@ -67,6 +68,13 @@ import { MasterSwitcher } from "@/components/quorum/master-switcher";
 import { NotificationBell } from "@/components/quorum/notification-bell";
 import { StackConsole } from "@/components/quorum/stack-console";
 import { StepUpHost, requestStepUp } from "@/components/quorum/step-up";
+import {
+  AwardSignatureHost,
+  SignatureReceiptDialog,
+  requestAwardSignature,
+  type AwardHandSignature,
+  type SignatureReceipt,
+} from "@/components/quorum/award-signature";
 import {
   ASSIGNABLE_ROLES,
   ROLE_LABELS,
@@ -147,7 +155,18 @@ type GateItem = {
   requiredOffice?: string;
 };
 
-type LedgerRow = { id?: string; tender: string; action: "AWARDED" | "RETURNED"; by: string; at: string };
+type LedgerRow = {
+  id?: string;
+  tender: string;
+  action: "AWARDED" | "RETURNED";
+  by: string;
+  at: string;
+  toolLabel?: string;
+  /* The appended freeform signature and the executed receipt, when the
+     decision carries them — the ledger row opens the ink receipt. */
+  hand?: { image: string; signedAt: string; strokes: number; by: string } | null;
+  receipt?: { submissionId?: string; hash?: string } | null;
+};
 
 /* ── Live mission data — every run, gate, decision and finding comes from
    the quorum-mcp sidecar. Nothing is seeded on the client. ───────────── */
@@ -175,6 +194,10 @@ type BackendGate = {
   createdAt: string;
   decidedAt?: string;
   approver?: string;
+  /* The wet-ink layer — the officer's freeform signature, set by the sidecar
+     on every decision that cleared the award dialog. */
+  handSignature?: { image: string; signedAt: string; strokes: number; by: string };
+  receipt?: { submissionId?: string; hash?: string; portal?: string };
 };
 
 /* What each gate kind is called at the desk — the queue renders it on the card. */
@@ -394,6 +417,9 @@ function useMissionData() {
           action: g.status === "REJECTED" ? "RETURNED" : "AWARDED",
           by: g.approver ?? "—",
           at: clockOf(g.decidedAt),
+          toolLabel: g.tool ? (GATE_TOOL_LABEL[g.tool] ?? g.tool) : undefined,
+          hand: g.handSignature ?? null,
+          receipt: g.receipt?.hash || g.receipt?.submissionId ? { submissionId: g.receipt?.submissionId, hash: g.receipt?.hash } : null,
         })),
     [rawGates]
   );
@@ -2624,6 +2650,8 @@ export function GateQueue({
   canSign?: boolean;
 }) {
   const [decided, setDecided] = useState<Record<string, "AWARDED" | "RETURNED">>({});
+  /* The ink receipt opened from the decision history. */
+  const [receiptRow, setReceiptRow] = useState<SignatureReceipt | null>(null);
   const presentCount = quorum ? quorumPresentCount(quorum) : 0;
   const blocked = !!quorum && presentCount < quorum.required;
   const short = quorum ? Math.max(0, quorum.required - presentCount) : 0;
@@ -2795,7 +2823,28 @@ export function GateQueue({
                   transition={{ duration: 0.35, ease: EASE }}
                   className="flex items-center justify-between gap-2 font-code text-[8.5px] tracking-[0.12em]"
                 >
-                  <span className="font-bold text-ink-800">{row.tender}</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setReceiptRow({
+                        tender: row.tender,
+                        action: row.action,
+                        by: row.by,
+                        at: row.at,
+                        toolLabel: row.toolLabel,
+                        image: row.hand?.image,
+                        strokes: row.hand?.strokes,
+                        signedAt: row.hand?.signedAt,
+                        submissionId: row.receipt?.submissionId,
+                        hash: row.receipt?.hash,
+                      })
+                    }
+                    title="Open the decision receipt — the appended signature and its seal"
+                    className="group inline-flex min-w-0 items-center gap-1.5 rounded text-left transition-colors hover:text-ink-950"
+                  >
+                    <span className="font-bold text-ink-800 group-hover:text-ink-950">{row.tender}</span>
+                    {row.hand && <PenLine className="h-2.5 w-2.5 shrink-0 text-brand-600" aria-hidden="true" />}
+                  </button>
                   <span className={cn("font-bold", row.action === "AWARDED" ? "text-ink-950" : "text-brand-600")}>
                     {row.action}
                   </span>
@@ -2811,6 +2860,9 @@ export function GateQueue({
           </ul>
         </div>
       </motion.div>
+
+      {/* The ink receipt, reachable from the desk's decision history. */}
+      <SignatureReceiptDialog row={receiptRow} onClose={() => setReceiptRow(null)} />
     </section>
   );
 }
@@ -4795,6 +4847,8 @@ function AwardLedgerView({
 }) {
   const awarded = ledger.filter((l) => l.action === "AWARDED").length;
   const returned = ledger.filter((l) => l.action === "RETURNED").length;
+  /* The ink receipt: any signed row opens the appended signature. */
+  const [receiptRow, setReceiptRow] = useState<SignatureReceipt | null>(null);
 
   return (
     <ViewShell
@@ -4826,11 +4880,11 @@ function AwardLedgerView({
 
           <div data-tour="ledger-rows" className="overflow-hidden rounded-[12px] panel shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[560px] border-collapse text-left">
+              <table className="w-full min-w-[640px] border-collapse text-left">
                 <caption className="sr-only">Award history — decisions signed at the approval gate</caption>
                 <thead>
                   <tr className="border-b border-ink-100 bg-paper/60">
-                    {["TENDER", "DECISION", "SIGNED BY", "LOGGED"].map((h) => (
+                    {["TENDER", "DECISION", "SIGNED BY", "LOGGED", "INK"].map((h) => (
                       <th
                         key={h}
                         scope="col"
@@ -4845,7 +4899,22 @@ function AwardLedgerView({
                   {ledger.map((row) => (
                     <tr
                       key={row.id ?? `${row.tender}-${row.at}-${row.action}`}
-                      className="border-b border-ink-100 transition-colors last:border-b-0 hover:bg-paper"
+                      onClick={() =>
+                        setReceiptRow({
+                          tender: row.tender,
+                          action: row.action,
+                          by: row.by,
+                          at: row.at,
+                          toolLabel: row.toolLabel,
+                          image: row.hand?.image,
+                          strokes: row.hand?.strokes,
+                          signedAt: row.hand?.signedAt,
+                          submissionId: row.receipt?.submissionId,
+                          hash: row.receipt?.hash,
+                        })
+                      }
+                      title="Open the decision receipt — the appended signature and its seal"
+                      className="cursor-pointer border-b border-ink-100 transition-colors last:border-b-0 hover:bg-paper"
                     >
                       <td className="py-3.5 pl-5 pr-4 font-code text-[10px] font-bold tracking-[0.08em] text-ink-950">
                         {row.tender}
@@ -4868,12 +4937,22 @@ function AwardLedgerView({
                         </span>
                       </td>
                       <td className="px-4 text-[13px] font-semibold text-ink-700">{row.by}</td>
-                      <td className="py-3.5 pr-5 font-code text-[8.5px] tracking-[0.12em] text-ink-400">{row.at}</td>
+                      <td className="py-3.5 pr-4 font-code text-[8.5px] tracking-[0.12em] text-ink-400">{row.at}</td>
+                      <td className="py-3.5 pr-5">
+                        {row.hand ? (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-brand-200 bg-brand-50 px-2 py-0.5 font-code text-[7.5px] font-bold tracking-[0.14em] text-brand-800">
+                            <PenLine className="h-2.5 w-2.5" aria-hidden="true" />
+                            APPENDED
+                          </span>
+                        ) : (
+                          <span className="font-code text-[8.5px] tracking-[0.14em] text-ink-300">—</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                   {ledger.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="px-5 py-10 text-center font-code text-[10px] tracking-[0.18em] text-ink-400">
+                      <td colSpan={5} className="px-5 py-10 text-center font-code text-[10px] tracking-[0.18em] text-ink-400">
                         THE LEDGER IS BLANK — DECISIONS APPEAR THE MOMENT A GATE SIGNS
                       </td>
                     </tr>
@@ -4901,6 +4980,9 @@ function AwardLedgerView({
           <StandingRuleCard />
         </div>
       </div>
+
+      {/* The ink receipt — the officer's own hand, with the seal it travelled under. */}
+      <SignatureReceiptDialog row={receiptRow} onClose={() => setReceiptRow(null)} />
     </ViewShell>
   );
 }
@@ -9212,8 +9294,10 @@ export function Dashboard({
     void refresh();
   };
 
-  /* Records the committee's decision on the sidecar; the UI follows what it returns. */
-  const decideGate = async (g: GateItem, decision: "APPROVE" | "REJECT") => {
+  /* Records the committee's decision on the sidecar; the UI follows what it returns.
+     An award decision can carry the officer's freeform signature — the ink is
+     posted alongside the step-up seal and kept on the receipt. */
+  const decideGate = async (g: GateItem, decision: "APPROVE" | "REJECT", ink?: AwardHandSignature) => {
     /* The signature comes first. A cancelled or refused step-up means the
        gate never reaches the sidecar. */
     const stepUp = await requestStepUp(g.id);
@@ -9231,6 +9315,9 @@ export function Dashboard({
           approver: signer,
           signedInAs: signer,
           note: decision === "APPROVE" ? "Signed by the committee" : "Returned for clarification",
+          ...(ink
+            ? { handSignature: { image: ink.image, signedAt: ink.signedAt, strokes: ink.strokes } }
+            : {}),
         }),
       });
       if (!res.ok) {
@@ -9248,8 +9335,30 @@ export function Dashboard({
   };
 
   const signGate = async (g: GateItem) => {
-    if (!(await decideGate(g, "APPROVE"))) return;
-    onToast(`GATE SIGNED — ${g.tender} AWARDED · DECISION LOGGED`);
+    /* The wet-ink ceremony comes first: the authorised officer appends their
+       freeform signature to the instrument, then re-authenticates, and only
+       then does the sidecar execute. A cancelled signature ends the flow. */
+    const ink = await requestAwardSignature({
+      gateId: g.id,
+      tender: g.tender,
+      title: g.title,
+      tool: g.tool,
+      toolLabel: GATE_TOOL_LABEL[g.tool] ?? g.tool,
+      supplier: g.supplier,
+      factLabel: g.factLabel,
+      factText: g.factText,
+      valueMissing: g.valueMissing,
+      flags: g.flags,
+      ...(g.requiredOffice ? { officeLabel: OFFICE_SHORT[g.requiredOffice] ?? g.requiredOffice } : {}),
+      signerName: user?.name.trim() ?? "",
+      signerRoleLabel: user?.role ? ROLE_LABELS[user.role] : "",
+    });
+    if (!ink) {
+      onToast("AWARD NOT SIGNED — SIGNATURE CANCELLED");
+      return;
+    }
+    if (!(await decideGate(g, "APPROVE", ink))) return;
+    onToast(`GATE SIGNED — ${g.tender} AWARDED · WET-INK SIGNATURE + SEAL LOGGED`);
   };
 
   const returnGate = async (g: GateItem) => {
@@ -9811,6 +9920,7 @@ export function Dashboard({
 
       {/* One step-up host for every gate card in the workspace. */}
       <StepUpHost />
+      <AwardSignatureHost />
 
       {/* The guided walkthrough — a spotlight layer over the real pages. */}
       {tour && tourChapter && tourSteps?.length ? (

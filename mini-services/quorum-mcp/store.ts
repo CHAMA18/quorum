@@ -93,6 +93,11 @@ export interface Gate {
   /* Ed25519 over the canonical decision receipt. Verifiable offline with the
      embedded public key; see /api/receipts/:gateId/verify. */
   signature?: GateSignature;
+  /* The wet-ink layer: the officer's freeform signature, drawn in the award
+     dialog before the step-up seal. `image` is a trimmed PNG data URL (white
+     ground, ≤640px wide); `by` is the gateway-attested officer, never a body
+     claim. Kept beside the cryptographic seal — the hand and the hash. */
+  handSignature?: { image: string; signedAt: string; strokes: number; by: string };
   /* Office-aware approval (the cycle's statutory gates): when set, a roster
      member must HOLD this office to approve. The signed-in officer (the gavel)
      is the accounting officer and may always sign. */

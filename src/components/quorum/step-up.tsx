@@ -12,23 +12,25 @@ import { Fingerprint, KeyRound, Loader2, ShieldCheck, X } from "lucide-react";
  * code — and returns a short-lived, single-use token bound to that gate. The
  * caller puts the token in `x-quorum-stepup`; the sidecar verifies it.
  *
- * The dialog is mounted once at the dashboard root and driven by a tiny
- * module-level event bus, so any gate card (dashboard queue, stack console)
- * can await the same signature without prop-drilling through the whole tree.
+ * The dialog is mounted at the dashboard root, and the Muse assistant bubble
+ * mounts its own while it is open — so a gate decision staged in chat can be
+ * signed right there, on any screen. Hosts register on a stack and
+ * requestStepUp always opens the topmost (most recently mounted) one.
  */
 
 type Pending = { gateId: string; resolve: (token: string | null) => void };
 type Listener = (pending: Pending) => void;
 
-let listener: Listener | null = null;
+const listeners: Listener[] = [];
 
 export function requestStepUp(gateId: string): Promise<string | null> {
   return new Promise((resolve) => {
-    if (!listener) {
+    const host = listeners[listeners.length - 1];
+    if (!host) {
       resolve(null);
       return;
     }
-    listener({ gateId, resolve });
+    host({ gateId, resolve });
   });
 }
 
@@ -67,9 +69,10 @@ export function StepUpHost() {
         .catch(() => setTotpEnabled(false));
       window.setTimeout(() => inputRef.current?.focus(), 80);
     };
-    listener = onRequest;
+    listeners.push(onRequest);
     return () => {
-      if (listener === onRequest) listener = null;
+      const at = listeners.indexOf(onRequest);
+      if (at !== -1) listeners.splice(at, 1);
     };
   }, []);
 
@@ -120,7 +123,7 @@ export function StepUpHost() {
     <AnimatePresence>
       {pending ? (
         <motion.div
-          className="fixed inset-0 z-[120] grid place-items-center bg-ink-950/45 px-4 backdrop-blur-[3px]"
+          className="paper-sheet fixed inset-0 z-[120] grid place-items-center bg-ink-950/45 px-4 backdrop-blur-[3px]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

@@ -1,0 +1,38 @@
+{
+  "gate": {
+    "id": "gate_v6vquk",
+    "runId": "run_1e1e4e0c",
+    "tenderId": "ZM-PROBE-145738",
+    "tool": "file_gate_submission",
+    "inputs": {
+      "bidder": "BID ALPHA",
+      "attachments": 6,
+      "findings": [
+        "F-01",
+        "F-02",
+        "F-03"
+      ],
+      "drafts": [
+        "draft_7z3wn8",
+        "draft_orek9w"
+      ]
+    },
+    "status": "APPROVED",
+    "createdAt": "2026-10-21T14:57:42.143Z",
+    "approver": "Judge Demo",
+    "note": "Staged from the desk assistant for Judge.",
+    "decidedAt": "2026-10-29T08:51:05.679Z",
+    "stepUp": {
+      "by": "Judge Demo",
+      "method": "password",
+      "at": "2026-10-29T08:51:05.542Z",
+      "jti": "302ae62d-313d-4e89-ad15-22b6e99905fe",
+      "docHash": "0c5d918a44f0973eefba46b47542517b"
+    }
+  },
+  "receipt": {
+    "submissionId": "SUB-MVTB06DW",
+    "hash": "b20ff4e7dce2888475d41b46aa50533a",
+    "portal": "egp-portal (simulated)"
+  }
+}
