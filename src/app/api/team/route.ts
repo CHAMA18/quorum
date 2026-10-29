@@ -44,8 +44,8 @@ function newCode(): string {
   return `Q-${code.slice(0, 4)}-${code.slice(4)}`;
 }
 
-function ownerCount(): number {
-  return listUsers().filter((u) => u.role === "OWNER" && u.status === "ACTIVE").length;
+function ownerCount(workspaceId: string): number {
+  return listUsers(workspaceId).filter((user) => user.role === "OWNER" && user.status === "ACTIVE").length;
 }
 
 function publicMember(user: ReturnType<typeof listUsers>[number], actorId: string) {
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Oversight access is limited to owners, admins and auditors." }, { status: 403 });
   }
 
-  const invites = listInvites(100);
+  const invites = listInvites(100, actor.workspaceId);
   const now = Date.now();
   const canManagePeople = can(actor.role, "manage_people");
   const invitesView = invites.map((inv) => ({
@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
   }));
 
   return NextResponse.json({
-    members: listUsers().map((u) => publicMember(u, actor.id)),
+    members: listUsers(actor.workspaceId).map((u) => publicMember(u, actor.id)),
     invites: invitesView,
     canManage: canManagePeople,
     actorRole: actor.role,
@@ -114,6 +114,7 @@ export async function POST(req: NextRequest) {
   }
 
   const invite = createInvite({
+    workspaceId: actor.workspaceId,
     code: newCode(),
     email: email || null,
     role,
@@ -148,7 +149,7 @@ export async function PATCH(req: NextRequest) {
   if (!body) return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
 
   const userId = typeof body.userId === "string" ? body.userId : "";
-  const target = findUserById(userId);
+  const target = findUserById(userId, actor.workspaceId);
   if (!target) return NextResponse.json({ error: "Workspace member not found." }, { status: 404 });
 
   const roleRaw = typeof body.role === "string" ? body.role.toUpperCase() : "";
@@ -175,7 +176,7 @@ export async function PATCH(req: NextRequest) {
       { status: 409 },
     );
   }
-  if ((status === "SUSPENDED" || (role && role !== "OWNER")) && target.role === "OWNER" && ownerCount() <= 1) {
+  if ((status === "SUSPENDED" || (role && role !== "OWNER")) && target.role === "OWNER" && ownerCount(actor.workspaceId) <= 1) {
     return NextResponse.json({ error: "The workspace must keep at least one active owner." }, { status: 409 });
   }
 
@@ -241,13 +242,13 @@ export async function DELETE(req: NextRequest) {
   const inviteId = req.nextUrl.searchParams.get("inviteId") ?? "";
   if (!inviteId) return NextResponse.json({ error: "inviteId required." }, { status: 422 });
 
-  const invite = findInviteById(inviteId);
+  const invite = findInviteById(inviteId, actor.workspaceId);
   if (!invite) return NextResponse.json({ error: "Invite not found." }, { status: 404 });
   if (invite.status !== "PENDING") {
     return NextResponse.json({ error: `Invite already ${invite.status.toLowerCase()}.` }, { status: 409 });
   }
 
-  updateInvite(inviteId, { status: "REVOKED" });
+  updateInvite(inviteId, { status: "REVOKED" }, actor.workspaceId);
   recordOversightEvent({
     actorId: actor.id,
     actorName: actor.name,

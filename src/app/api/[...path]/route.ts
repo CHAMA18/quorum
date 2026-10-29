@@ -51,6 +51,7 @@ async function proxy(req: NextRequest) {
     );
   }
   const actor = session?.name ?? "";
+  const workspaceId = session?.workspaceId ?? "demo";
 
   const url = new URL(req.url);
 
@@ -86,11 +87,12 @@ async function proxy(req: NextRequest) {
        sidecar verifies and consumes it; the gateway never mints one. */
     const stepUp = req.headers.get("x-quorum-stepup");
     if (stepUp) forward["x-quorum-stepup"] = stepUp;
-    if (actor) {
+    if (session) {
+      forward["x-quorum-workspace"] = workspaceId;
       forward["x-quorum-actor"] = actor;
       const ts = Date.now();
       forward["x-quorum-ts"] = String(ts);
-      forward["x-quorum-attest"] = attestSignature(req.method, url.pathname, actor, ts);
+      forward["x-quorum-attest"] = attestSignature(req.method, url.pathname, actor, ts, workspaceId);
     }
 
     const upstream = await fetch(target, {

@@ -8,5 +8,5 @@ import { getUserFromToken, publicUser, SESSION_COOKIE } from "@/lib/auth";
 export async function GET(req: NextRequest) {
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   const user = await getUserFromToken(token).catch(() => null);
-  return NextResponse.json({ user: user ? publicUser(user) : null });
+  return NextResponse.json({ user: user ? { ...publicUser(user), id: user.id } : null });
 }

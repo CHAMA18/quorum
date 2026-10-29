@@ -1467,7 +1467,6 @@ export function CycleView({
                 key={p.id}
                 p={p}
                 tenders={tenders}
-                busy={busy}
                 onLink={(tenderId) => act(`/api/pipeline/${p.id}/link`, { tenderId }, "PIPELINE ENTRY LINKED")}
               />
             ))}
@@ -2686,12 +2685,10 @@ function DeadlineIcon({ kind }: { kind: string }) {
 function PipelineRow({
   p,
   tenders,
-  busy,
   onLink,
 }: {
   p: PipelineDto;
   tenders: { ref: string; title: string }[];
-  busy: boolean;
   onLink: (tenderId: string) => Promise<boolean>;
 }) {
   const [open, setOpen] = useState(false);

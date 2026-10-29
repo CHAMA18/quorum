@@ -608,7 +608,7 @@ function extractRequirements(text: string): Requirement[] {
   return out.slice(0, 12);
 }
 
-interface LineItem {
+export interface LineItem {
   bidder: string;
   item: string;
   qty: number;
@@ -760,6 +760,131 @@ export function parseBid(text: string, bidder: string, source: string): LineItem
   /* A table that declares no currency but states one in every cell is still
      read; the header is simply absent from the finding. */
   return items;
+}
+
+export interface CriterionEvidenceSuggestion {
+  citation: string;
+  quote: string;
+  relevance: number;
+}
+
+const EVIDENCE_STOPWORDS = new Set(["and", "the", "for", "with", "from", "that", "this", "shall", "must", "will", "bidder", "criterion"]);
+
+/** Return verbatim, source-located passages matching criterion terms; never infer a score. */
+export function criterionEvidenceSuggestions(
+  text: string,
+  source: string,
+  criterion: string,
+  recordRef?: string,
+  take = 3,
+): CriterionEvidenceSuggestion[] {
+  const terms = [...new Set(criterion.toLowerCase().match(/[a-z0-9]{3,}/g) ?? [])].filter((term) => !EVIDENCE_STOPWORDS.has(term));
+  if (!terms.length) return [];
+  return text.split("\n").map((line, index) => {
+    const normalized = line.toLowerCase();
+    const matched = terms.filter((term) => normalized.includes(term));
+    return { line: line.trim(), index, matched };
+  }).filter((row) => row.line.length > 0 && row.matched.length > 0)
+    .sort((a, b) => b.matched.length - a.matched.length || a.index - b.index)
+    .slice(0, Math.max(0, Math.min(5, take)))
+    .map((row) => ({
+      citation: recordRef ? `${source}, ${recordRef}` : `${source}, line ${row.index + 1}`,
+      quote: row.line.slice(0, 320),
+      relevance: Math.round((row.matched.length / terms.length) * 100),
+    }));
+}
+
+export interface BidPriceSignal {
+  bidder: string;
+  item: string;
+  source: string;
+  quantity: number;
+  unitPrice: number;
+  extendedPrice: number;
+  currency?: string;
+  peerMedian?: number;
+  ratioToPeerMedian?: number;
+}
+
+export interface SharedBidderIdentifier {
+  kind: "REGISTRATION" | "TAX_ID" | "EMAIL" | "PHONE";
+  value: string;
+  bidders: { bidder: string; citation: string; quote: string }[];
+  interpretation: "shared identifier — verification required; not a collusion finding";
+}
+
+/** Compare only exact item/currency peers and explicitly shared labelled identifiers. */
+export function evaluatePackSignals(bids: BidDoc[]): { prices: BidPriceSignal[]; sharedIdentifiers: SharedBidderIdentifier[]; totalsByCurrency: { bidder: string; currency: string; total: number }[] } {
+  const items = bids.flatMap((bid) => parseBid(bid.text, bid.bidder, bid.source));
+  const buckets = new Map<string, LineItem[]>();
+  for (const item of items) {
+    const key = `${item.item.trim().toLowerCase()}|${(item.currency ?? "UNKNOWN").toUpperCase()}`;
+    buckets.set(key, [...(buckets.get(key) ?? []), item]);
+  }
+  const prices: BidPriceSignal[] = items.map((item) => {
+    const peers = (buckets.get(`${item.item.trim().toLowerCase()}|${(item.currency ?? "UNKNOWN").toUpperCase()}`) ?? [])
+      .filter((peer) => peer.bidder !== item.bidder).map((peer) => peer.unit).sort((a, b) => a - b);
+    const middle = Math.floor(peers.length / 2);
+    const peerMedian = peers.length ? peers.length % 2 ? peers[middle] : (peers[middle - 1] + peers[middle]) / 2 : undefined;
+    return {
+      bidder: item.bidder,
+      item: item.item,
+      source: item.source,
+      quantity: item.qty,
+      unitPrice: item.unit,
+      extendedPrice: item.qty * item.unit,
+      ...(item.currency ? { currency: item.currency } : {}),
+      ...(peerMedian !== undefined ? { peerMedian, ratioToPeerMedian: peerMedian > 0 ? Math.round((item.unit / peerMedian) * 100) / 100 : undefined } : {}),
+    };
+  });
+  const totalMap = new Map<string, number>();
+  for (const item of items) {
+    const currency = (item.currency ?? "UNKNOWN").toUpperCase();
+    const key = `${item.bidder}|${currency}`;
+    totalMap.set(key, (totalMap.get(key) ?? 0) + item.qty * item.unit);
+  }
+  const identifiers = new Map<string, Map<string, { bidder: string; citation: string; quote: string }>>();
+  const idPatterns: { kind: SharedBidderIdentifier["kind"]; re: RegExp }[] = [
+    { kind: "REGISTRATION", re: /^\s*(?:\*\*)?(?:PACRA|company|business|registration)(?: registration)?(?: number| no\.?)?(?:\*\*)?\s*[:：#-]\s*(.{3,100})$/i },
+    { kind: "TAX_ID", re: /^\s*(?:\*\*)?(?:TIN|tax PIN|tax identification number|VAT number)(?:\*\*)?\s*[:：#-]\s*(.{3,100})$/i },
+    { kind: "EMAIL", re: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i },
+    { kind: "PHONE", re: /^\s*(?:\*\*)?(?:phone|telephone|mobile|contact number)(?:\*\*)?\s*[:：#-]\s*(.{7,40})$/i },
+  ];
+  for (const bid of bids) {
+    for (const [lineIndex, raw] of bid.text.split("\n").entries()) {
+      const line = raw.trim();
+      for (const pattern of idPatterns) {
+        const match = line.match(pattern.re);
+        const rawValue = pattern.kind === "EMAIL" ? match?.[0] : match?.[1];
+        if (!rawValue) continue;
+        const value = rawValue.replace(/^\*\*|\*\*$/g, "").trim().replace(/\s+/g, " ");
+        const normalized = pattern.kind === "PHONE" ? value.replace(/\D/g, "") : value.toLowerCase();
+        if (normalized.length < 6) continue;
+        const key = `${pattern.kind}|${normalized}`;
+        const group = identifiers.get(key) ?? new Map();
+        group.set(bid.bidder.toLowerCase(), { bidder: bid.bidder, citation: `${bid.source}, line ${lineIndex + 1}`, quote: line.slice(0, 240) });
+        identifiers.set(key, group);
+      }
+    }
+  }
+  const sharedIdentifiers: SharedBidderIdentifier[] = [...identifiers.entries()].flatMap(([key, group]) => {
+    if (group.size < 2) return [];
+    const separator = key.indexOf("|");
+    return [{
+      kind: key.slice(0, separator) as SharedBidderIdentifier["kind"],
+      value: key.slice(separator + 1),
+      bidders: [...group.values()],
+      interpretation: "shared identifier — verification required; not a collusion finding",
+    }];
+  });
+  return {
+    prices,
+    sharedIdentifiers,
+    totalsByCurrency: [...totalMap.entries()].map(([key, total]) => {
+      const separator = key.lastIndexOf("|");
+      return { bidder: key.slice(0, separator), currency: key.slice(separator + 1), total };
+    }),
+  };
 }
 
 /* Citation gate: a finding must name a document that actually exists in this tender. */
@@ -1149,6 +1274,7 @@ const ReviewState = Annotation.Root({
 export interface EngineRefs {
   runs: Run[];
   gates: Gate[];
+  workspaceId(): string;
   save(): void;
   raiseGate(g: Gate): void;
   /* The live guards and the supplier register — read at flag time, so the
@@ -1163,7 +1289,7 @@ export function bindEngine(r: EngineRefs) {
 }
 
 function progress(runId: string, line: string) {
-  const run = refs.runs.find((r) => r.id === runId);
+  const run = refs.runs.find((r) => r.id === runId && (r.workspaceId ?? "demo") === refs.workspaceId());
   if (run) {
     run.progress.push(line);
     run.updatedAt = new Date().toISOString();
@@ -1334,9 +1460,9 @@ const str = (v: unknown) => (typeof v === "string" ? v : "");
 
 /* A direct call may add to a run only while its gate is still PENDING; once a human has decided, the bundle is closed. */
 function directRun(runId: string): Run {
-  const run = refs.runs.find((r) => r.id === runId);
+  const run = refs.runs.find((r) => r.id === runId && (r.workspaceId ?? "demo") === refs.workspaceId());
   if (!run) throw new Error(`run not found: "${runId}" — start a review with POST /api/runs first`);
-  const gate = refs.gates.find((g) => g.runId === run.id);
+  const gate = refs.gates.find((g) => g.runId === run.id && (g.workspaceId ?? "demo") === refs.workspaceId());
   if (gate && gate.status !== "PENDING") {
     throw new Error(`run ${run.id} gate is ${gate.status} — its filing bundle is closed`);
   }
@@ -1345,7 +1471,7 @@ function directRun(runId: string): Run {
 
 /* Keep the pending gate's bundle in step with the run, so the approver sees every added finding and draft. */
 function syncGate(run: Run) {
-  const gate = refs.gates.find((g) => g.runId === run.id && g.status === "PENDING");
+  const gate = refs.gates.find((g) => g.runId === run.id && (g.workspaceId ?? "demo") === refs.workspaceId() && g.status === "PENDING");
   if (!gate) return;
   gate.inputs = {
     ...((gate.inputs ?? {}) as Record<string, unknown>),
@@ -1758,7 +1884,7 @@ async function nodeDraft(s: typeof ReviewState.State) {
   const llm = drafts.filter((d) => d.source === "llm");
   const promptTokens = drafts.reduce((n, d) => n + (d.usage?.promptTokens ?? 0), 0);
   const completionTokens = drafts.reduce((n, d) => n + (d.usage?.completionTokens ?? 0), 0);
-  const run = refs.runs.find((r) => r.id === s.runId);
+  const run = refs.runs.find((r) => r.id === s.runId && (r.workspaceId ?? "demo") === refs.workspaceId());
   if (run) run.usage = { drafts: drafts.length, llmDrafts: llm.length, promptTokens, completionTokens };
   progress(
     s.runId,
@@ -1788,6 +1914,7 @@ async function nodeGate(s: typeof ReviewState.State) {
   const gate: Gate = {
     id: gateId,
     runId: s.runId,
+    workspaceId: refs.workspaceId(),
     tenderId: s.tenderId,
     tool: "file_gate_submission",
     inputs: {
@@ -1990,7 +2117,7 @@ export async function verifySessionActor(
   cookieHeader: string | null,
   fetchImpl: FetchLike = fetch,
   base = WEB_URL,
-): Promise<string | null> {
+): Promise<{ actor: string; workspaceId: string } | null> {
   if (!cookieHeader) return null;
   try {
     const res = await fetchImpl(`${base}/api/auth/me`, {
@@ -1998,9 +2125,10 @@ export async function verifySessionActor(
       signal: AbortSignal.timeout(4_000),
     });
     if (!res.ok) return null;
-    const data = (await res.json()) as { user?: { name?: string } | null };
+    const data = (await res.json()) as { user?: { name?: string; workspaceId?: string } | null };
     const name = data.user?.name?.trim();
-    return name ? name : null;
+    const workspaceId = data.user?.workspaceId?.trim();
+    return name && workspaceId ? { actor: name, workspaceId } : null;
   } catch {
     return null;
   }

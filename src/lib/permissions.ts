@@ -99,6 +99,7 @@ export function canMutateSidecar(
   if (!role) return false;
   if (method === "GET" || method === "HEAD" || method === "OPTIONS") return true;
 
+  if (/^\/api\/agent-mode$/.test(path)) return can(role, "manage_rules");
   if (/^\/api\/gates\/[^/]+\/decision$/.test(path)) return can(role, "sign_gates");
   if (path.startsWith("/api/guards") || path.startsWith("/api/portal-state") || path.startsWith("/api/settings")) {
     return can(role, "manage_rules");

@@ -10,14 +10,17 @@
  */
 
 import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { appendFileSync, renameSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { resolveDataDir } from "./paths";
+import { initializePersistence, readJsonSnapshot, readSnapshot, writeSnapshot, persistenceStatus } from "./postgres";
 
 export type ToolKind = "READ" | "WRITES" | "IRREVERSIBLE" | "GATE_DECISION";
 
 export interface LogEntry {
   seq: number;
+  workspaceId?: string;
   id: string;
   ts: string;
   actor: string;
@@ -77,6 +80,8 @@ export interface GateSignature {
 export interface Gate {
   id: string;
   runId: string;
+  tenantId?: string;
+  workspaceId?: string;
   tenderId: string;
   tool: string;
   inputs: unknown;
@@ -132,6 +137,8 @@ export interface ReviewPlan {
 
 export interface Run {
   id: string;
+  tenantId?: string;
+  workspaceId?: string;
   tenderId: string;
   status: "RUNNING" | "AWAITING_GATE" | "REJECTED" | "FILED" | "FAILED";
   startedAt: string;
@@ -194,6 +201,7 @@ export function appendLog(e: Omit<LogEntry, "seq" | "id" | "ts" | "prev" | "self
   const prev = toolLog.length ? toolLog[toolLog.length - 1].self ?? toolLog[toolLog.length - 1].id : "genesis";
   const entry: LogEntry = {
     seq,
+    workspaceId: currentWorkspaceId(),
     id: `tl_${seq.toString().padStart(5, "0")}_${randomUUID().slice(0, 8)}`,
     ts: new Date().toISOString(),
     ...e,
@@ -266,8 +274,8 @@ export function gateSecret(): string {
 }
 export const ATTEST_SKEW_MS = 5 * 60 * 1000;
 
-export function attestSignature(method: string, path: string, actor: string, ts: number, secret = gateSecret()): string {
-  return createHmac("sha256", secret).update(`${method}|${path}|${actor}|${ts}`).digest("hex");
+export function attestSignature(method: string, path: string, actor: string, ts: number, secret = gateSecret(), workspaceId = "demo"): string {
+  return createHmac("sha256", secret).update(`${method}|${path}|${actor}|${workspaceId}|${ts}`).digest("hex");
 }
 
 export function attestVerify(
@@ -278,11 +286,14 @@ export function attestVerify(
   const actor = headers.get("x-quorum-actor") ?? "";
   const ts = Number(headers.get("x-quorum-ts") ?? NaN);
   const sig = headers.get("x-quorum-attest") ?? "";
+  const workspaceId = headers.get("x-quorum-workspace")?.trim() || "demo";
   if (!actor || !sig)
     return { ok: false, reason: "Unattested mutation — state-changing requests must arrive through the gateway, signed by the session that owns them." };
+  if (!workspaceId || workspaceId.length > 160)
+    return { ok: false, reason: "Invalid workspace scope in gateway attestation." };
   if (!Number.isFinite(ts) || Math.abs(Date.now() - ts) > ATTEST_SKEW_MS)
     return { ok: false, reason: "Attestation timestamp outside the 5-minute window — reload and retry." };
-  const expected = attestSignature(method, path, actor, ts);
+  const expected = attestSignature(method, path, actor, ts, gateSecret(), workspaceId);
   const a = Buffer.from(expected);
   const b = Buffer.from(sig);
   const ok = a.length === b.length && timingSafeEqual(a, b);
@@ -332,10 +343,50 @@ export interface EvalCriterion {
   weight: number; /* percent — all weights must sum to 100 */
 }
 
+export interface EvalEvidence {
+  citation: string;
+  quote: string;
+  relevance: number;
+  decision: "SUGGESTED" | "CONFIRMED" | "REJECTED";
+  decidedBy?: string;
+  decidedAt?: string;
+}
+
+export interface EvalEvidenceGroup {
+  criterionId: string;
+  evidence: EvalEvidence[];
+}
+
+export interface EvalPriceSignal {
+  bidder: string;
+  item: string;
+  source: string;
+  quantity: number;
+  unitPrice: number;
+  extendedPrice: number;
+  currency?: string;
+  peerMedian?: number;
+  ratioToPeerMedian?: number;
+}
+
+export interface EvalSharedIdentifier {
+  kind: "REGISTRATION" | "TAX_ID" | "EMAIL" | "PHONE";
+  value: string;
+  bidders: { bidder: string; citation: string; quote: string }[];
+  interpretation: string;
+}
+
+export interface EvalMarketSignals {
+  prices: EvalPriceSignal[];
+  sharedIdentifiers: EvalSharedIdentifier[];
+  totalsByCurrency: { bidder: string; currency: string; total: number }[];
+}
+
 export interface EvalScore {
   criterionId: string;
   score: number; /* 0-100 */
   note?: string;
+  evidence?: EvalEvidence[];
 }
 
 export type Responsiveness = "ADMINISTRATIVELY_NONRESPONSIVE" | "MATERIALLY_NONRESPONSIVE" | "RESPONSIVE";
@@ -347,6 +398,8 @@ export interface EvalBidResult {
   responsiveness: Responsiveness;
   reasons: string[];
   technicalScores: EvalScore[];
+  evidenceByCriterion?: EvalEvidenceGroup[];
+  priceSignals?: EvalPriceSignal[];
   technicalTotal: number; /* weighted 0-100 */
   financial?: { amount: number; currency?: string; formulaScore?: number };
   total?: number; /* technical × techWeightPct + financial × rest */
@@ -356,6 +409,7 @@ export interface EvalBidResult {
 export interface EvalMatrix {
   id: string;
   tenderId: string;
+  marketSignals?: EvalMarketSignals;
   runId?: string;
   criteria: EvalCriterion[];
   technicalWeightPct: number;
@@ -536,6 +590,8 @@ export interface SpecDraft {
 
 export interface PipelineEntry {
   id: string;
+  tenantId?: string;
+  workspaceId?: string;
   ref: string;
   title: string;
   office?: string;
@@ -549,6 +605,8 @@ export interface PipelineEntry {
 
 export interface TenderCycle {
   tenderId: string;
+  tenantId?: string;
+  workspaceId?: string;
   closingDate?: string;
   closingSetBy?: string;
   closingSetAt?: string;
@@ -571,6 +629,7 @@ export interface TenderCycle {
 
 export interface SourceRequest {
   id: string;
+  workspaceId?: string;
   name: string;
   kind: string;
   note?: string;
@@ -604,6 +663,7 @@ export interface OpenBidInput {
 
 export interface DeadlineItem {
   tenderId: string;
+  workspaceId?: string;
   kind: "CLOSING" | "ALB_DUE" | "STANDSTILL_END" | "MILESTONE_DUE" | "COMPLAINT_DUE";
   dueAt: string;
   ref?: string;
@@ -618,6 +678,7 @@ export type DeadlinesInput = Pick<TenderCycle, "tenderId" | "closingDate" | "ope
    it, plus the purchuring reference the entity assigns on onboarding. */
 export interface Supplier {
   id: string;
+  workspaceId?: string;
   name: string;
   /* Legal identity */
   registrationNo: string;
@@ -650,6 +711,7 @@ export interface Supplier {
    on paper bids. */
 export interface SupplierApplication {
   id: string;
+  workspaceId?: string;
   tenderId: string;
   orgId: string;                 /* the web store's organization id (reference only) */
   orgName: string;               /* derived from the attested actor, not the body */
@@ -701,6 +763,19 @@ interface PersistShape {
   cycle: TenderCycle[];
   pipeline: PipelineEntry[];
   stepUpUses: StepUpUse[];
+  agentMode: AgentMode;
+}
+
+export type AgentMode = "enabled" | "read-only" | "disabled";
+export const DEFAULT_AGENT_MODE: AgentMode = "enabled";
+const workspaceContext = new AsyncLocalStorage<string>();
+export const currentWorkspaceId = () => workspaceContext.getStore() ?? "demo";
+export function workspaceRows<T extends { workspaceId?: string }>(rows: readonly T[], workspaceId = currentWorkspaceId()): T[] {
+  return rows.filter((row) => (row.workspaceId ?? "demo") === workspaceId);
+}
+export function withWorkspace<T>(workspaceId: string, work: () => T): T {
+  if (!workspaceId || workspaceId.length > 160) throw new Error("invalid workspace scope");
+  return workspaceContext.run(workspaceId, work);
 }
 
 export const state: PersistShape = {
@@ -713,31 +788,42 @@ export const state: PersistShape = {
   cycle: [],
   pipeline: [],
   stepUpUses: [],
+  agentMode: DEFAULT_AGENT_MODE,
 };
 
 export async function loadState() {
+  const storage = await initializePersistence();
+  let raw: any = await readSnapshot();
+  if (raw === null && storage === "postgres") {
+    /* First PostgreSQL boot imports, but does not remove, the JSON snapshot. */
+    raw = await readJsonSnapshot();
+    if (raw !== null) await writeSnapshot(raw);
+  }
   /* A state file that EXISTS but cannot be parsed is not "first boot" — it is
      corruption, and pretending otherwise silently erases gates, runs and the
      cycle. Quarantine the file (renamed, never deleted), flag it, and say so
      on /api/health forever after. */
-  const stateFile = Bun.file(DATA + "state.json");
-  if (await stateFile.exists()) {
-    try {
-      await stateFile.json();
-    } catch (err) {
-      const quarantine = `${DATA}state.corrupt-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+  if (storage === "json") {
+    const stateFile = Bun.file(DATA + "state.json");
+    if (await stateFile.exists()) {
       try {
-        renameSync(DATA + "state.json", quarantine);
-      } catch {
-        /* keep the file in place if even the rename fails — never destroy evidence */
+        await stateFile.json();
+      } catch (err) {
+        const quarantine = `${DATA}state.corrupt-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+        try {
+          renameSync(DATA + "state.json", quarantine);
+        } catch {
+          /* keep the file in place if even the rename fails — never destroy evidence */
+        }
+        auditHealth.stateCorrupt = true;
+        auditHealth.stateCorruptFile = quarantine;
+        console.error(`[audit-spine] state.json was UNREADABLE and has been quarantined to ${quarantine} — gates/runs/cycle start empty rather than restore. Investigate before writing over it:`, err);
       }
-      auditHealth.stateCorrupt = true;
-      auditHealth.stateCorruptFile = quarantine;
-      console.error(`[audit-spine] state.json was UNREADABLE and has been quarantined to ${quarantine} — gates/runs/cycle start empty rather than restore. Investigate before writing over it:`, err);
     }
   }
   try {
-    const raw = await Bun.file(DATA + "state.json").json();
+    if (raw === null) return;
+
     /* mutate in place — engine.ts holds references to these exact arrays */
     state.gates.length = 0;
     state.gates.push(...(raw.gates ?? []));
@@ -755,6 +841,7 @@ export async function loadState() {
     state.pipeline.push(...(raw.pipeline ?? []));
     state.stepUpUses.length = 0;
     state.stepUpUses.push(...(raw.stepUpUses ?? []));
+    state.agentMode = raw.agentMode === "read-only" || raw.agentMode === "disabled" ? raw.agentMode : DEFAULT_AGENT_MODE;
     /* Merged over the defaults so a store written before the guards existed
        still boots with the carved settings. */
     const g = (raw.guards ?? {}) as Partial<Guards>;
@@ -796,17 +883,31 @@ export async function loadState() {
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingSnapshot: ReturnType<typeof setTimeout> | null = null;
 export function saveState() {
   if (saveTimer) clearTimeout(saveTimer);
+  if (pendingSnapshot) clearTimeout(pendingSnapshot);
   saveTimer = setTimeout(() => {
-    Bun.write(DATA + "state.json", JSON.stringify({ ...state, seq }, null, 2))
+    const snapshot = { ...state, seq };
+    if (persistenceStatus() === "postgres") {
+      void writeSnapshot(snapshot)
       .then(() => {
         auditHealth.stateSaveFailing = false;
       })
       .catch((err) => {
         auditHealth.stateSaveFailing = true;
-        console.error("[audit-spine] state.json write FAILED — gates/runs/cycle are memory-only until this resolves:", err);
+        console.error("[audit-spine] state snapshot write FAILED — gates/runs/cycle are memory-only until this resolves:", err);
       });
+    } else {
+      pendingSnapshot = setTimeout(() => {
+        void writeSnapshot(snapshot)
+          .then(() => { auditHealth.stateSaveFailing = false; })
+          .catch((err) => {
+            auditHealth.stateSaveFailing = true;
+            console.error("[audit-spine] state.json write FAILED — gates/runs/cycle are memory-only until this resolves:", err);
+          });
+      }, 0);
+    }
   }, 120);
 }
 

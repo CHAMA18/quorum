@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { Document, Packer, Paragraph } from "docx";
 import ExcelJS from "exceljs";
+import sharp from "sharp";
 import { PDFDocument, StandardFonts } from "pdf-lib";
 import { extractTenderText } from "@/lib/tender-extract";
 
@@ -74,13 +75,19 @@ describe("tender document extraction", () => {
     expect(out?.text).toContain("Sterile consumables\tCompliant");
   });
 
-  test("a scanned PDF is empty text with an OCR note, never a fake extract", async () => {
+  test("an image-only PDF gets page-marked local OCR text", async () => {
+    const svg = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500"><rect width="100%" height="100%" fill="white"/><text x="60" y="160" font-family="Arial" font-size="72" fill="black">SCANNED TENDER NOTICE</text><text x="60" y="300" font-family="Arial" font-size="56" fill="black">Closing date: 12 March 2027</text></svg>`);
+    const png = await sharp(svg).png().toBuffer();
     const doc = await PDFDocument.create();
-    doc.addPage([595, 842]);
+    const page = doc.addPage([595, 842]);
+    const image = await doc.embedPng(png);
+    page.drawImage(image, { x: 35, y: 590, width: 525, height: 219 });
     const out = await extractTenderText(await doc.save(), "scan-notice.pdf");
-    expect(out?.text).toBe("");
-    expect(out?.note).toContain("OCR");
-  });
+    expect(out?.text).toContain("[Page 1]");
+    expect(out?.text).toMatch(/SCANNED TENDER NOTICE/i);
+    expect(out?.text).toMatch(/12 March 2027/i);
+    expect(out?.note).toContain("local OCR");
+  }, 120_000);
 
   test("a container format is stored but not extracted here", async () => {
     expect(await extractTenderText(new Uint8Array([0x50, 0x4b]), "pack.zip")).toBeNull();

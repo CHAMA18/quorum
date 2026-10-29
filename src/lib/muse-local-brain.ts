@@ -141,7 +141,6 @@ async function answerAudit(): Promise<BrainAnswer> {
   const log = await readTool("list_audit", { limit: 8 });
   const entries = (log.entries ?? []) as { at: string; actor: string; tool: string; kind: string; status: string }[];
   if (!entries.length) return { reply: "The audit trail is empty — nothing has happened on the desk yet.", tools: ["list_audit"] };
-  const last = entries[0];
   const lines = entries.slice(0, 3).map((e) => `${e.actor} · ${e.tool} · ${e.status}`);
   return { reply: `Latest on the audit trail (${entries.length} recent): ${lines.join("; ")}. The full hash-chained record is in the Audit trail screen.`, tools: ["list_audit"] };
 }

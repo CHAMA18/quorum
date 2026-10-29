@@ -413,7 +413,7 @@ export function OversightView({
             <h1 className="type-display text-[30px] text-ink-950 sm:text-[38px]">
               Oversight<span className="text-brand-600">.</span>
             </h1>
-            <p className="type-lede mt-3 max-w-[62ch] text-ink-600">
+            <p className="type-lede mt-3 text-ink-600">
               Who holds workspace authority, which organizations may use the desk, and every change to either. The
               console is scoped by role: owners and admins hold the writable surface, auditors read it.
             </p>

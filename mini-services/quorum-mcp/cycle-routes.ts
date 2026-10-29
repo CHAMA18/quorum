@@ -22,13 +22,14 @@ import {
   type ContractPayment,
   type ContractVariation,
   type EvalMatrix,
+  type EvalPriceSignal,
   type Gate,
   type Office,
   type OpenBidInput,
   type RosterMemberForGate,
   type TenderCycle,
 } from "./store";
-import { loadPack, parseMarkdownBidValue } from "./engine";
+import { criterionEvidenceSuggestions, evaluatePackSignals, loadPack, parseMarkdownBidValue } from "./engine";
 import {
   ADDENDUM_MIN_NOTICE_DAYS,
   ALB_RESPONSE_DAYS,
@@ -70,11 +71,12 @@ import { llmConfigFromEnv, callLlama } from "./engine";
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 const SAFE_REF = TENDER_REF_RE;
 
-function cycleFor(tenderId: string): TenderCycle {
-  const existing = state.cycle.find((c) => c.tenderId === tenderId);
+function cycleFor(tenderId: string, workspaceId = "demo"): TenderCycle {
+  const existing = state.cycle.find((c) => c.tenderId === tenderId && (c.workspaceId ?? "demo") === workspaceId);
   if (existing) return existing;
   const fresh: TenderCycle = {
     tenderId,
+    workspaceId,
     coi: [],
     alb: [],
     debriefs: [],
@@ -111,6 +113,7 @@ async function closingOnRecord(tenderId: string, cycle: TenderCycle): Promise<st
 
 function raiseCycleGate(input: {
   tenderId: string;
+  workspaceId?: string;
   tool: string;
   requiredOffice?: Office;
   inputs: unknown;
@@ -119,6 +122,7 @@ function raiseCycleGate(input: {
   const gate: Gate = {
     id: `gate_${Math.random().toString(36).slice(2, 8)}`,
     runId: "cycle",
+    workspaceId: input.workspaceId ?? "demo",
     tenderId: input.tenderId,
     tool: input.tool,
     inputs: input.inputs,
@@ -430,7 +434,7 @@ async function coreBuildMatrix(tenderId: string, criteriaRaw: { title: unknown; 
   const run = state.runs.find((r) => r.tenderId === tenderId);
   const lateBy = new Map<string, boolean>((cycle.opening?.rows ?? []).map((r) => [r.bidder.toLowerCase(), r.late]));
 
-  const bids = pack.bids.map((raw) => {
+  const bids: EvalMatrix["bids"] = pack.bids.map((raw) => {
     /* The pack carries OCDS values; markdown bids state theirs on the value line —
        the same deep parse flagPack runs, so the matrix's financial column reads
        exactly what the review rules read. */
@@ -449,14 +453,30 @@ async function coreBuildMatrix(tenderId: string, criteriaRaw: { title: unknown; 
       responsiveness: ladder.responsiveness,
       reasons: ladder.reasons,
       technicalScores: criteria.map((c) => ({ criterionId: c.id, score: 0 })),
+      evidenceByCriterion: criteria.map((criterion) => ({
+        criterionId: criterion.id,
+        evidence: criterionEvidenceSuggestions(b.text, b.source, criterion.title, b.ref).map((item) => ({ ...item, decision: "SUGGESTED" as const })),
+      })),
+      priceSignals: [] as EvalPriceSignal[],
       technicalTotal: 0,
       financial: b.value !== undefined ? { amount: b.value, ...(b.currency ? { currency: b.currency } : {}) } : undefined,
       verdict: "NOT_RECOMMENDED" as const,
     };
   });
+  const marketSignals = evaluatePackSignals(pack.bids.map((raw) => {
+    const parsedValue = raw.value === undefined ? parseMarkdownBidValue(raw.text) : undefined;
+    return {
+      ...raw,
+      ...(parsedValue ? { value: parsedValue.amount, currency: parsedValue.currency } : {}),
+    };
+  }));
+  for (const row of bids) {
+    row.priceSignals = marketSignals.prices.filter((signal) => signal.bidder.toLowerCase() === row.bidder.toLowerCase());
+  }
   const matrix: EvalMatrix = {
     id: `mtx_${Math.random().toString(36).slice(2, 8)}`,
     tenderId,
+    marketSignals,
     ...(run ? { runId: run.id } : {}),
     criteria,
     technicalWeightPct: techWeight,
@@ -480,7 +500,7 @@ async function coreBuildMatrix(tenderId: string, criteriaRaw: { title: unknown; 
   return { matrix: cycle.matrix };
 }
 
-function coreScoreMatrix(tenderId: string, bidder: string, scores: { criterionId: string; score: number; note?: string }[]) {
+function coreScoreMatrix(tenderId: string, bidder: string, scores: { criterionId: string; score: number; note?: string; evidenceDecision?: "CONFIRMED" | "REJECTED" }[], actor = "web-app") {
   const cycle = state.cycle.find((c) => c.tenderId === tenderId);
   if (!cycle?.matrix) throw new Error(`no evaluation matrix on record for "${tenderId}" — build one first`);
   if (cycle.matrix.status === "CERTIFIED") throw new Error("the matrix is CERTIFIED — its scores are sealed; record a MED session instead");
@@ -488,15 +508,33 @@ function coreScoreMatrix(tenderId: string, bidder: string, scores: { criterionId
   if (!row) throw new Error(`bidder "${bidder}" is not on the matrix`);
   const err = validateScores(cycle.matrix.criteria, scores);
   if (err) throw new Error(err);
-  row.technicalScores = scores.map((s) => ({ criterionId: s.criterionId, score: Math.round(Number(s.score) * 10) / 10, ...(s.note ? { note: str(s.note).slice(0, 200) } : {}) }));
+  row.technicalScores = scores.map((s) => {
+    const suggested = row.evidenceByCriterion?.find((item) => item.criterionId === s.criterionId)?.evidence ?? [];
+    const previous = row.technicalScores.find((item) => item.criterionId === s.criterionId)?.evidence ?? [];
+    const decision = s.evidenceDecision;
+    const evidence = decision
+      ? (suggested.length ? suggested : previous).map((item) => ({
+          ...item,
+          decision,
+          decidedBy: actor.slice(0, 80),
+          decidedAt: new Date().toISOString(),
+        }))
+      : previous;
+    return {
+      criterionId: s.criterionId,
+      score: Math.round(Number(s.score) * 10) / 10,
+      ...(s.note ? { note: str(s.note).slice(0, 200) } : {}),
+      ...(evidence.length ? { evidence } : {}),
+    };
+  });
   cycle.matrix = scoreMatrix(cycle.matrix);
   appendLog({
-    actor: "web-app",
+    actor: actor.slice(0, 80),
     server: "quorum-mcp",
     tool: "score_matrix",
     kind: "WRITES",
     runId: "cycle",
-    inputs: { tenderId, bidder },
+    inputs: { tenderId, bidder, evidenceDecisions: scores.filter((score) => score.evidenceDecision).length },
     outputs: { technicalTotal: row.technicalTotal, total: row.total },
     status: "OK",
     durationMs: 0,
@@ -1340,31 +1378,35 @@ export const json = (data: unknown, code = 200) =>
     },
   });
 
-export async function handleCycleRoutes(path: string, method: string, body: Record<string, unknown>): Promise<Response | null> {
+export async function handleCycleRoutes(path: string, method: string, body: Record<string, unknown>, attestedActor = "", workspaceId = "demo"): Promise<Response | null> {
   const mustPost = () => method === "POST";
+  const cycles = () => state.cycle.filter((cycle) => (cycle.workspaceId ?? "demo") === workspaceId);
+  const pipelineRows = () => state.pipeline.filter((entry) => (entry.workspaceId ?? "demo") === workspaceId);
+  const runs = () => state.runs.filter((run) => (run.workspaceId ?? "demo") === workspaceId);
+  const gates = () => state.gates.filter((gate) => (gate.workspaceId ?? "demo") === workspaceId);
   const tenderRef = (re: RegExp) => decodeURIComponent(path.match(re)?.[1] ?? "");
 
   if (path === "/api/cycle" && method === "GET") {
-    return json({ cycles: [...state.cycle].reverse(), pipeline: [...state.pipeline].reverse() });
+    return json({ cycles: [...cycles()].reverse(), pipeline: [...pipelineRows()].reverse() });
   }
   if (path === "/api/cycle/analytics" && method === "GET") {
-    return json(cycleAnalytics({ cycles: state.cycle, runs: state.runs }));
+    return json(cycleAnalytics({ cycles: cycles(), runs: runs() }));
   }
   if (path === "/api/cycle/deadlines" && method === "GET") {
-    return json({ deadlines: collectDeadlines(state.cycle) });
+    return json({ deadlines: collectDeadlines(cycles()) });
   }
   const tenderGet = path.match(/^\/api\/tenders\/([A-Za-z0-9._-]+)$/);
   if (tenderGet && method === "GET") {
     const tenderId = decodeURIComponent(tenderGet[1]);
-    const cycle = state.cycle.find((c) => c.tenderId === tenderId);
-    const pipeline = state.pipeline.find((p) => p.ref === tenderId || p.linkedTenderId === tenderId);
+    const cycle = cycles().find((c) => c.tenderId === tenderId);
+    const pipeline = pipelineRows().find((p) => p.ref === tenderId || p.linkedTenderId === tenderId);
     if (!cycle && !pipeline) return json({ error: `no tender "${tenderId}" on record` }, 404);
     return json({
       tenderId,
       ...(pipeline ? { pipeline } : {}),
       ...(cycle ? { cycle } : {}),
-      runs: state.runs.filter((r) => r.tenderId === tenderId).map((r) => ({ id: r.id, status: r.status, startedAt: r.startedAt })),
-      gates: state.gates.filter((g) => g.tenderId === tenderId).map((g) => ({ id: g.id, tool: g.tool, status: g.status })),
+      runs: runs().filter((r) => r.tenderId === tenderId).map((r) => ({ id: r.id, status: r.status, startedAt: r.startedAt })),
+      gates: gates().filter((g) => g.tenderId === tenderId).map((g) => ({ id: g.id, tool: g.tool, status: g.status })),
     });
   }
   if (/^\/api\/procurement-file\/[A-Za-z0-9._-]+$/.test(path) && method === "GET") {
@@ -1476,10 +1518,16 @@ export async function handleCycleRoutes(path: string, method: string, body: Reco
     const ref = tenderRef(/^\/api\/tenders\/([A-Za-z0-9._-]+)\/matrix\/scores$/);
     const scores = (Array.isArray(body.scores) ? body.scores : []).map((raw) => {
       const s = raw as Record<string, unknown>;
-      return { criterionId: str(s.criterionId), score: Number(s.score), ...(s.note ? { note: str(s.note) } : {}) };
+      const decision: "CONFIRMED" | "REJECTED" | undefined = s.evidenceDecision === "CONFIRMED" || s.evidenceDecision === "REJECTED" ? s.evidenceDecision : undefined;
+      return {
+        criterionId: str(s.criterionId),
+        score: Number(s.score),
+        ...(s.note ? { note: str(s.note) } : {}),
+        ...(decision ? { evidenceDecision: decision } : {}),
+      };
     });
     try {
-      return json(coreScoreMatrix(ref, str(body.bidder), scores));
+      return json(coreScoreMatrix(ref, str(body.bidder), scores, attestedActor || "web-app"));
     } catch (err) {
       return json({ error: (err as Error).message }, 422);
     }

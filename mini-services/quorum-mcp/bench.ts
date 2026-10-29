@@ -66,6 +66,9 @@ const benchRuns: Run[] = [];
 bindEngine({
   runs: benchRuns,
   gates: [],
+  /* The benchmark runs outside any request context, so it reads the same
+     default workspace the engine falls back to. */
+  workspaceId: () => "demo",
   save() {
     /* no-op — the benchmark never writes state.json */
   },

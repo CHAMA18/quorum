@@ -28,6 +28,6 @@ function attestSecret(): string {
   return secret;
 }
 
-export function attestSignature(method: string, path: string, actor: string, ts: number): string {
-  return createHmac("sha256", attestSecret()).update(`${method}|${path}|${actor}|${ts}`).digest("hex");
+export function attestSignature(method: string, path: string, actor: string, ts: number, workspaceId = "demo"): string {
+  return createHmac("sha256", attestSecret()).update(`${method}|${path}|${actor}|${workspaceId}|${ts}`).digest("hex");
 }

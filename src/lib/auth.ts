@@ -80,12 +80,13 @@ export async function getUserFromToken(token: string | undefined) {
 
 export function publicUser(u: {
   id: string;
+  workspaceId: string;
   name: string;
   email: string;
   organization: string | null;
   role: AuthUser["role"];
 }): AuthUser {
-  return { id: u.id, name: u.name, email: u.email, organization: u.organization, role: u.role };
+  return { id: u.id, workspaceId: u.workspaceId, name: u.name, email: u.email, organization: u.organization, role: u.role };
 }
 
 /* ── Naive in-memory rate limiter (per process, per IP) ─────────────────── */

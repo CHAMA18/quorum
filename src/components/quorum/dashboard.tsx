@@ -9,7 +9,6 @@ import {
   BookOpen,
   Building2,
   Cable,
-  CalendarClock,
   CalendarDays,
   CalendarPlus,
   Check,
@@ -22,7 +21,6 @@ import {
   Database,
   Download,
   Eye,
-  FileSignature,
   FileText,
   FileUp,
   Files,
@@ -113,7 +111,7 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 
 type RunStatus = "running" | "queued" | "gate" | "complete";
 
-type McRun = {
+export type McRun = {
   id: string;
   /* Backend run identity (`run_…`) — unique even when the same tender is
      reviewed twice. React keys use this; `id` stays the human-facing ref. */
@@ -135,6 +133,16 @@ type McRun = {
   /* Documents ingested at launch — set when the run was briefed
      through the guided wizard (seeded runs have no pack attached). */
   docs?: number;
+  progress?: string[];
+  findingDetails?: {
+    id: string;
+    rule: string;
+    severity: "HIGH" | "MEDIUM" | "LOW";
+    item: string;
+    evidence: string;
+    citation: string;
+    repaired?: boolean;
+  }[];
 };
 
 type GateItem = {
@@ -1981,7 +1989,6 @@ function SidebarContent({
   counts,
   agent,
   onNavigate,
-  onNewRun,
   onSignOut,
   onExit,
 }: {
@@ -1990,7 +1997,6 @@ function SidebarContent({
   counts: { runs: number; gates: number; findings: number };
   agent: AgentStatus;
   onNavigate: (id: SectionId) => void;
-  onNewRun: () => void;
   onSignOut: () => void;
   onExit: () => void;
 }) {
@@ -2634,7 +2640,6 @@ function quorumPresentCount(quorum: CommitteeData): number {
 export function GateQueue({
   queue,
   ledger,
-  firstName,
   quorum,
   onSign,
   onReturn,
@@ -2643,7 +2648,6 @@ export function GateQueue({
 }: {
   queue: GateItem[];
   ledger: LedgerRow[];
-  firstName: string;
   quorum: CommitteeData | null;
   onSign: (g: GateItem) => void;
   onReturn: (g: GateItem) => void;
@@ -2651,7 +2655,7 @@ export function GateQueue({
   /* Read-only roles see the queue but never the signature controls. */
   canSign?: boolean;
 }) {
-  const [decided, setDecided] = useState<Record<string, "AWARDED" | "RETURNED">>({});
+  const [, setDecided] = useState<Record<string, "AWARDED" | "RETURNED">>({});
   /* The ink receipt opened from the decision history. */
   const [receiptRow, setReceiptRow] = useState<SignatureReceipt | null>(null);
   const presentCount = quorum ? quorumPresentCount(quorum) : 0;
@@ -4329,7 +4333,6 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
      the row moves the instant it is clicked, the sidecar's saved state
      replaces it a beat later, and a failed POST rolls the row back. */
   const [pendingToggleIds, setPendingToggleIds] = useState<number[]>([]);
-  const isToggling = useCallback((id: number) => pendingToggleIds.includes(id), [pendingToggleIds]);
   const togglePortals = useCallback(
     async (ids: number[], enabled: boolean, okMsg: string) => {
       if (ids.length === 0) return;
@@ -4843,11 +4846,9 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
 function AwardLedgerView({
   ledger,
   awaiting,
-  onToast,
 }: {
   ledger: LedgerRow[];
   awaiting: number;
-  onToast: (m: string) => void;
 }) {
   const awarded = ledger.filter((l) => l.action === "AWARDED").length;
   const returned = ledger.filter((l) => l.action === "RETURNED").length;
@@ -5124,20 +5125,6 @@ function downloadText(filename: string, text: string): void {
 }
 
 type CommitteeTab = "roll" | "quorum" | "desk";
-
-const COMMITTEE_TABS: { id: CommitteeTab; label: string }[] = [
-  { id: "roll", label: "The roll" },
-  { id: "quorum", label: "Quorum" },
-  { id: "desk", label: "Sitting room" },
-];
-
-/* Tab badges: the number each tab is about, so the bar reads at a glance. */
-function committeeTabCount(id: CommitteeTab, data: CommitteeData | null, live: boolean): string | null {
-  if (!data) return null;
-  if (id === "roll") return String(data.seats);
-  if (id === "quorum") return `${data.present}/${data.required}`;
-  return live ? "LIVE" : null;
-}
 
 function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: string) => void }) {
   /* The register is an admin surface; running a sitting is not. A committee
@@ -7389,6 +7376,27 @@ type SupplierDraft = {
   categories: string[];
 };
 
+const SUPPLIER_INTAKE_STEPS: {
+  key: keyof SupplierDraft;
+  section: string;
+  prompt: string;
+  hint?: string;
+  placeholder?: string;
+}[] = [
+  { key: "name", section: "IDENTITY", prompt: "What is the supplier's registered name?", placeholder: "e.g. Kafubu Engineering Works Ltd" },
+  { key: "registrationNo", section: "IDENTITY", prompt: "What is their registration number?", hint: "PACRA / Registrar of Societies number.", placeholder: "e.g. 120200012345" },
+  { key: "taxPin", section: "COMPLIANCE", prompt: "What is their ZRA tax PIN?", placeholder: "e.g. 1000000000" },
+  { key: "taxClearanceNo", section: "COMPLIANCE", prompt: "Do they have a tax clearance certificate?", placeholder: "Certificate number" },
+  { key: "taxClearanceExpiry", section: "COMPLIANCE", prompt: "When does the tax clearance expire?", hint: "An expired certificate makes a bid non-responsive." },
+  { key: "regulator", section: "COMPLIANCE", prompt: "Does their sector require a regulator?", hint: "Choose the regulator where the category requires registration." },
+  { key: "regulatorNo", section: "COMPLIANCE", prompt: "What is their regulator registration number?", placeholder: "e.g. NCC/RS/2019/1187" },
+  { key: "contactName", section: "CONTACT", prompt: "Who is the main contact?", placeholder: "Who signs for the firm" },
+  { key: "email", section: "CONTACT", prompt: "What is their email address?", placeholder: "bids@supplier.co.zm" },
+  { key: "phone", section: "CONTACT", prompt: "What is their phone number?", placeholder: "+260 …" },
+  { key: "address", section: "CONTACT", prompt: "Where is the supplier based?", placeholder: "Plot, street, city" },
+  { key: "categories", section: "CATEGORIES", prompt: "What does this supplier provide?", hint: "Select all that apply." },
+];
+
 const EMPTY_SUPPLIER_DRAFT: SupplierDraft = {
   name: "",
   registrationNo: "",
@@ -7739,6 +7747,7 @@ function AddSupplierModal({
   onRegistered: (name: string) => Promise<void> | void;
 }) {
   const [draft, setDraft] = useState<SupplierDraft>(EMPTY_SUPPLIER_DRAFT);
+  const [activeStep, setActiveStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [roll, setRoll] = useState<{ source: ZppaSource; entries: ZppaRollEntry[] } | null>(null);
@@ -7757,11 +7766,12 @@ function AddSupplierModal({
     if (open && !wasOpenRef.current) {
       wasOpenRef.current = true;
       setDraft(EMPTY_SUPPLIER_DRAFT);
+      setActiveStep(0);
       setError("");
       setPicked(null);
       setRollQuery("");
       setBusy(false);
-      setRollOpen(existingRef.current.length === 0);
+      setRollOpen(false);
     } else if (!open && wasOpenRef.current) {
       wasOpenRef.current = false;
     }
@@ -7788,12 +7798,15 @@ function AddSupplierModal({
     if (open && !roll && !rollLoading && !rollFailed) loadRoll();
   }, [open, roll, rollLoading, rollFailed, loadRoll]);
 
-  /* Open with the cursor already in the first field. */
+  /* Focus the single field on the active intake screen. */
   useEffect(() => {
     if (!open) return;
-    const t = setTimeout(() => document.getElementById("add-name")?.focus(), 90);
+    const current = SUPPLIER_INTAKE_STEPS[activeStep];
+    const t = setTimeout(() => {
+      document.getElementById(`add-${current.key}`)?.focus();
+    }, 90);
     return () => clearTimeout(t);
-  }, [open]);
+  }, [open, activeStep]);
 
   /* Escape closes — nothing closes while a write is in flight. */
   useEffect(() => {
@@ -7852,7 +7865,7 @@ function AddSupplierModal({
   const register = async () => {
     if (!draft.name.trim() || !draft.registrationNo.trim()) {
       setError("A supplier needs at least a name and a registration number.");
-      document.getElementById("add-name")?.focus();
+      setActiveStep(draft.name.trim() ? 1 : 0);
       return;
     }
     setBusy(true);
@@ -7883,6 +7896,118 @@ function AddSupplierModal({
     const base = q ? roll.entries.filter((e) => `${e.name} ${e.regNo}`.toLowerCase().includes(q)) : roll.entries;
     return base.slice(0, 40);
   }, [roll, q]);
+  const currentStep = SUPPLIER_INTAKE_STEPS[activeStep];
+  const updateDraft = <K extends keyof SupplierDraft>(key: K, value: SupplierDraft[K]) => {
+    setDraft((current) => ({ ...current, [key]: value }));
+  };
+  const advanceStep = () => {
+    if (currentStep.key === "name" && !draft.name.trim()) {
+      setError("Enter the supplier's registered name to continue.");
+      return;
+    }
+    if (currentStep.key === "registrationNo" && !draft.registrationNo.trim()) {
+      setError("Enter a registration number to continue.");
+      return;
+    }
+    setError("");
+    setActiveStep((step) => Math.min(step + 1, SUPPLIER_INTAKE_STEPS.length - 1));
+  };
+  const goBack = () => {
+    setError("");
+    setActiveStep((step) => Math.max(step - 1, 0));
+  };
+  const handleStepKeyDown = (e: ReactKeyboardEvent<HTMLInputElement | HTMLSelectElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      advanceStep();
+    }
+  };
+  const renderStepField = () => {
+    if (currentStep.key === "categories") {
+      return (
+        <div
+          id="add-categories"
+          tabIndex={-1}
+          className="flex flex-wrap gap-2 outline-none"
+          aria-label="Supplier categories"
+        >
+          {SUPPLIER_CATEGORIES.map((category) => {
+            const selected = draft.categories.includes(category);
+            return (
+              <button
+                key={category}
+                type="button"
+                aria-pressed={selected}
+                onClick={() =>
+                  updateDraft(
+                    "categories",
+                    selected
+                      ? draft.categories.filter((item) => item !== category)
+                      : [...draft.categories, category],
+                  )
+                }
+                className={cn(
+                  "rounded-full border px-3.5 py-2 font-code text-[9px] font-semibold tracking-[0.1em] transition-colors",
+                  selected
+                    ? "border-ink-950 bg-ink-950 text-white"
+                    : "border-ink-200 bg-white text-ink-500 hover:border-ink-400 hover:text-ink-800",
+                )}
+              >
+                {category.toUpperCase()}
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
+    if (currentStep.key === "regulator") {
+      return (
+        <select
+          id="add-regulator"
+          className={SUPPLIER_INPUT}
+          value={draft.regulator}
+          onChange={(e) => updateDraft("regulator", e.target.value)}
+          onKeyDown={handleStepKeyDown}
+        >
+          <option value="">— none required —</option>
+          {SUPPLIER_REGULATORS.map((regulator) => (
+            <option key={regulator} value={regulator}>{regulator}</option>
+          ))}
+        </select>
+      );
+    }
+
+    const type = currentStep.key === "taxClearanceExpiry"
+      ? "date"
+      : currentStep.key === "email"
+        ? "email"
+        : currentStep.key === "phone"
+          ? "tel"
+          : "text";
+    const inputMode = currentStep.key === "taxPin" ? "numeric" : undefined;
+    const autoComplete =
+      currentStep.key === "name" ? "organization"
+        : currentStep.key === "contactName" ? "name"
+          : currentStep.key === "email" ? "email"
+            : currentStep.key === "phone" ? "tel"
+              : undefined;
+
+    return (
+      <input
+        id={`add-${currentStep.key}`}
+        type={type}
+        inputMode={inputMode}
+        autoComplete={autoComplete}
+        className={`${SUPPLIER_INPUT} py-3.5 text-[15px] sm:py-4 sm:text-base`}
+        value={draft[currentStep.key]}
+        onChange={(e) => updateDraft(currentStep.key, e.target.value)}
+        onKeyDown={handleStepKeyDown}
+        placeholder={currentStep.placeholder}
+        aria-label={currentStep.prompt}
+      />
+    );
+  };
 
   return (
     <AnimatePresence>
@@ -7918,8 +8043,7 @@ function AddSupplierModal({
                   Add supplier
                 </h3>
                 <p className="mt-2 max-w-xl text-[12.5px] leading-relaxed text-ink-500">
-                  Register a bidder before their first bid. The fields mirror what Zambia&apos;s regime asks a bidder
-                  to hold — only the name and registration number are required.
+                  One detail at a time. Only the supplier name and registration number are required.
                 </p>
               </div>
               <button
@@ -7934,7 +8058,37 @@ function AddSupplierModal({
               </button>
             </div>
 
+            <div className="mt-6" aria-label="Supplier intake progress">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <span className="font-code text-[8px] font-bold tracking-[0.18em] text-brand-700">
+                  {currentStep.section}
+                </span>
+                <span className="font-code text-[8px] tracking-[0.14em] text-ink-400">
+                  {String(activeStep + 1).padStart(2, "0")} / {String(SUPPLIER_INTAKE_STEPS.length).padStart(2, "0")}
+                </span>
+              </div>
+              <div
+                className="flex gap-1"
+                role="progressbar"
+                aria-label="Supplier intake progress"
+                aria-valuemin={1}
+                aria-valuemax={SUPPLIER_INTAKE_STEPS.length}
+                aria-valuenow={activeStep + 1}
+              >
+                {SUPPLIER_INTAKE_STEPS.map((step, index) => (
+                  <span
+                    key={step.key}
+                    className={cn(
+                      "h-1 flex-1 rounded-full transition-colors",
+                      index <= activeStep ? "bg-brand-600" : "bg-ink-100",
+                    )}
+                  />
+                ))}
+              </div>
+            </div>
+
             {/* The published ZPPA record, offered as a head start */}
+            {activeStep === 0 && (
             <div className="mt-5 rounded-[10px] border border-ink-100 bg-paper/70">
               <button
                 type="button"
@@ -8076,12 +8230,37 @@ function AddSupplierModal({
                 <p className="mt-1.5 font-code text-[7.5px] leading-[1.9] tracking-[0.14em] text-ink-400">
                   EVERY FIELD IS STILL YOURS TO CORRECT — THE RECORD SUGGESTS, THE OFFICER CONFIRMS.
                 </p>
-              </div>
+            </div>
+            )}
             )}
 
-            <div className="mt-5">
-              <SupplierFormFields idPrefix="add" draft={draft} onChange={setDraft} />
-            </div>
+            <AnimatePresence mode="wait" initial={false}>
+            <motion.section
+              key={currentStep.key}
+              initial={{ opacity: 0, x: 18 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -18 }}
+              transition={{ duration: 0.18, ease: EASE }}
+              aria-live="polite"
+              className="mt-7 min-h-[190px]"
+            >
+              <p className="font-code text-[8px] font-semibold tracking-[0.2em] text-ink-400">
+                {currentStep.section} · QUESTION {String(activeStep + 1).padStart(2, "0")}
+              </p>
+              <h4 className="mt-2 font-display text-[21px] font-black tracking-[-0.02em] text-ink-950 sm:text-[25px]">
+                {currentStep.prompt}
+                {(currentStep.key === "name" || currentStep.key === "registrationNo") && (
+                  <span className="ml-1 text-brand-600" aria-label="required">*</span>
+                )}
+              </h4>
+              {currentStep.hint && (
+                <p className="mt-1.5 text-[12px] leading-relaxed text-ink-500">{currentStep.hint}</p>
+              )}
+              <div className="mt-6 max-w-2xl">
+                {renderStepField()}
+              </div>
+            </motion.section>
+            </AnimatePresence>
 
             {error && (
               <p
@@ -8093,20 +8272,44 @@ function AddSupplierModal({
             )}
 
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-ink-100 pt-5">
-              <p className="font-code text-[7.5px] leading-[2] tracking-[0.16em] text-ink-400">
-                WRITTEN VIA quorum-mcp · {(firstName || "unknown").toUpperCase()} IS THE RECORDED ACTOR
-              </p>
-              <div className="flex items-center gap-2.5">
+            <p className="max-w-[220px] font-code text-[7.5px] leading-[2] tracking-[0.16em] text-ink-400 sm:max-w-none">
+              WRITTEN VIA quorum-mcp · {(firstName || "unknown").toUpperCase()} IS THE RECORDED ACTOR
+            </p>
+            <div className="ml-auto flex items-center gap-2">
+              {activeStep > 0 && (
                 <button
                   type="button"
-                  onClick={() => {
-                    if (!busy) onClose();
-                  }}
+                  onClick={goBack}
                   disabled={busy}
-                  className="inline-flex h-10 items-center rounded-xl border border-ink-200 bg-white px-5 font-code text-[9px] font-bold tracking-[0.16em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:opacity-60"
+                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 font-code text-[9px] font-bold tracking-[0.14em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:opacity-60"
                 >
-                  CANCEL
+                  <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                  BACK
                 </button>
+              )}
+              {activeStep < SUPPLIER_INTAKE_STEPS.length - 1 ? (
+                <>
+                  {currentStep.key !== "name" && currentStep.key !== "registrationNo" && (
+                    <button
+                      type="button"
+                      onClick={advanceStep}
+                      disabled={busy}
+                      className="inline-flex h-10 items-center rounded-xl px-3 font-code text-[8px] font-bold tracking-[0.12em] text-ink-500 transition-colors hover:text-ink-950 disabled:opacity-60"
+                    >
+                      SKIP
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={advanceStep}
+                    disabled={busy}
+                    className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-5 font-code text-[9px] font-bold tracking-[0.14em] text-white shadow-[0_10px_26px_rgba(217,38,22,0.28)] transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    CONTINUE
+                    <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                </>
+              ) : (
                 <button
                   type="button"
                   onClick={() => void register()}
@@ -8116,8 +8319,10 @@ function AddSupplierModal({
                   <UserPlus className="h-4 w-4" aria-hidden="true" />
                   {busy ? "Writing to the register…" : "Add supplier"}
                 </button>
-              </div>
+              )}
             </div>
+            </div>
+
           </motion.div>
         </motion.div>
       )}
@@ -8965,21 +9170,17 @@ function RunsView({
 function GatesView({
   queue,
   ledger,
-  firstName,
   quorum,
   onSign,
   onReturn,
   onGoCommittee,
-  onToast,
 }: {
   queue: GateItem[];
   ledger: LedgerRow[];
-  firstName: string;
   quorum: CommitteeData | null;
   onSign: (g: GateItem) => void;
   onReturn: (g: GateItem) => void;
   onGoCommittee: () => void;
-  onToast: (m: string) => void;
 }) {
   const officeOrder = ["PROCUREMENT_UNIT", "EVALUATION_COMMITTEE", "ACCOUNTING_OFFICER", "OVERSIGHT"] as const;
   const officeRole: Record<string, string> = {
@@ -9027,7 +9228,6 @@ function GatesView({
           <GateQueue
             queue={queue}
             ledger={ledger}
-            firstName={firstName}
             quorum={quorum}
             onSign={onSign}
             onReturn={onReturn}
@@ -9059,7 +9259,7 @@ function GatesView({
   );
 }
 
-function FeedView({ onToast }: { onToast: (m: string) => void }) {
+function FeedView() {
   return (
     <ViewShell
       fig="07"
@@ -9471,16 +9671,14 @@ export function Dashboard({
           <GatesView
             queue={queue}
             ledger={ledger}
-            firstName={firstName}
             quorum={committee}
             onSign={signGate}
             onReturn={returnGate}
             onGoCommittee={() => switchTo("mc-committee")}
-            onToast={onToast}
           />
         );
       case "mc-activity":
-        return <FeedView onToast={onToast} />;
+        return <FeedView />;
       case "mc-cycle":
         return (
           <CycleView
@@ -9504,7 +9702,7 @@ export function Dashboard({
       case "mc-sources":
         return <SourcesView onToast={onToast} firstName={firstName} />;
       case "mc-ledger":
-        return <AwardLedgerView ledger={ledger} awaiting={queue.length} onToast={onToast} />;
+        return <AwardLedgerView ledger={ledger} awaiting={queue.length} />;
       case "mc-committee":
         return <CommitteeView user={user} onToast={onToast} />;
       case "mc-calendar":
@@ -9580,7 +9778,6 @@ export function Dashboard({
                 counts={{ runs: runs.length, gates: queue.length, findings: openFindings }}
                 agent={agent}
                 onNavigate={switchTo}
-                onNewRun={openNewRun}
                 onSignOut={onSignOut}
                 onExit={onExit}
               />
@@ -9644,10 +9841,6 @@ export function Dashboard({
                   counts={{ runs: runs.length, gates: queue.length, findings: openFindings }}
                   agent={agent}
                   onNavigate={switchTo}
-                  onNewRun={() => {
-                    setNavOpen(false);
-                    openNewRun();
-                  }}
                   onSignOut={onSignOut}
                   onExit={onExit}
                 />
@@ -9880,7 +10073,6 @@ export function Dashboard({
             <GateQueue
               queue={queue}
               ledger={ledger}
-              firstName={firstName}
               quorum={committee}
               onSign={signGate}
               onReturn={returnGate}

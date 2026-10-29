@@ -6,6 +6,7 @@ export type AuthMode = "register" | "login";
 
 export type AuthUser = {
   id: string;
+  workspaceId: string;
   name: string;
   email: string;
   organization: string | null;

@@ -39,6 +39,9 @@ import { randomUUID } from "node:crypto";
 import {
   appendLog,
   attestVerify,
+  withWorkspace,
+  currentWorkspaceId,
+  workspaceRows,
   auditHealth,
   loadState,
   saveState,
@@ -63,7 +66,7 @@ import { rollupAfrica } from "./ocp-africa-roll";
 import { connectMany, loadPortalLinks } from "./portal-links";
 import { disabledPortalIds, loadPortalState, setPortalsEnabled } from "./portal-state";
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
-import { TENDERS_DIR } from "./engine";
+import { loadPack, TENDERS_DIR } from "./engine";
 import { modelAttributionForRun, modelStatus } from "./model";
 import { parseClosingDate } from "./cycle";
 import {
@@ -150,8 +153,10 @@ function latestModelCall() {
 bindEngine({
   runs: state.runs,
   gates: state.gates,
+  workspaceId: () => currentWorkspaceId(),
   save: saveState,
   raiseGate(g) {
+    g.workspaceId = currentWorkspaceId();
     state.gates.unshift(g);
     saveState();
     notifyWebSoon({ type: "GATE_WAITING", gateId: g.id, tenderId: g.tenderId, tool: g.tool, requiredOffice: g.requiredOffice });
@@ -167,6 +172,7 @@ async function raiseGateTool(args: { tenderId: string; bundle: Record<string, un
   const gate: Gate = {
     id: gateId,
     runId: runId ?? "mcp-direct",
+    workspaceId: currentWorkspaceId(),
     tenderId: args.tenderId,
     tool: "file_gate_submission",
     inputs: args.bundle,
@@ -294,8 +300,8 @@ function handInkFrom(body: unknown): { image: string; signedAt: string; strokes:
   };
 }
 
-async function decideGate(id: string, decision: string, approver: string, note?: string, signedInAs?: string, stepUpToken?: string, hand?: { image: string; signedAt: string; strokes: number }) {
-  const gate = state.gates.find((g) => g.id === id);
+async function decideGate(id: string, decision: string, approver: string, note?: string, signedInAs?: string, stepUpToken?: string, workspaceId = currentWorkspaceId(), hand?: { image: string; signedAt: string; strokes: number }) {
+  const gate = state.gates.find((g) => g.id === id && (g.workspaceId ?? "demo") === workspaceId);
   if (!gate) return { error: "gate not found", code: 404 };
   if (gate.status !== "PENDING") return { error: `gate already ${gate.status}`, code: 409 };
   const name = approver?.trim();
@@ -389,7 +395,7 @@ async function decideGate(id: string, decision: string, approver: string, note?:
       status: "OK",
       durationMs: 0,
     });
-    const run = state.runs.find((r) => r.id === gate.runId);
+    const run = state.runs.find((r) => r.id === gate.runId && (r.workspaceId ?? "demo") === workspaceId);
     if (run) {
       run.status = "REJECTED";
       run.updatedAt = gate.decidedAt;
@@ -460,22 +466,26 @@ Bun.serve({
        (POST /mcp) stays the documented agent door: its irreversible steps
        halt behind named-human gates regardless of who connects. */
     let attestedActor = "";
-    if (req.method !== "GET" && req.method !== "HEAD" && req.method !== "OPTIONS" && path !== "/mcp") {
+    let workspaceId = "demo";
+    if (path !== "/mcp" && req.method !== "OPTIONS") {
       const seal = attestVerify(req.method, path, req.headers);
       if (seal.ok) {
         attestedActor = seal.actor;
-      } else {
-        const sessionActor = await verifySessionActor(req.headers.get("cookie"));
-        if (!sessionActor) {
-          return json(
-            {
-              error: `${seal.reason} Sign in (a verified session is accepted) and retry.`,
-            },
-            401,
-          );
+        workspaceId = req.headers.get("x-quorum-workspace")?.trim() ?? "";
+        if (!workspaceId) return json({ error: "The gateway seal is missing its workspace scope." }, 401);
+      } else if (req.method !== "GET" && req.method !== "HEAD") {
+        const session = await verifySessionActor(req.headers.get("cookie"));
+        if (!session) {
+          return json({ error: `${seal.reason} Sign in (a verified session is accepted) and retry.` }, 401);
         }
-        attestedActor = sessionActor;
+        attestedActor = session.actor;
+        workspaceId = session.workspaceId;
+      } else {
+        workspaceId = req.headers.get("x-quorum-workspace")?.trim() || "demo";
       }
+    }
+    if (req.method !== "GET" && req.method !== "HEAD" && path !== "/mcp" && state.agentMode === "disabled") {
+      return json({ error: "The agent is disabled; all changes are paused." }, 423);
     }
 
     /* MCP surface */
@@ -497,6 +507,7 @@ Bun.serve({
         version: "1.0.0",
         uptimeSec: Math.round(performance.now() / 1000),
         fsMcp: { status: fsMcp.status, tools: fsMcp.tools },
+        agent: { mode: state.agentMode, storage: process.env.DATABASE_URL ? "postgres-configured" : "json" },
         graphs: ["review_graph (8 nodes)", "filing_graph (2 nodes)"],
         /* Configured endpoint + the newest real model answer in the log. */
         model: { ...modelStatus(), lastCall: latestModelCall() },
@@ -509,6 +520,20 @@ Bun.serve({
           logChainEntries: toolLog.length,
         },
       });
+    }
+
+    if (path === "/api/agent-mode" && req.method === "GET") return json({ mode: state.agentMode });
+    if (path === "/api/agent-mode" && req.method === "PATCH") {
+      const body = await readBody(req);
+      const mode = body.mode;
+      if (mode !== "enabled" && mode !== "read-only" && mode !== "disabled") return json({ error: "mode must be enabled, read-only or disabled" }, 422);
+      const previous = state.agentMode;
+      if (previous !== mode) {
+        state.agentMode = mode;
+        saveState();
+        appendLog({ actor: attestedActor || "unknown", server: "quorum-mcp", tool: "set_agent_mode", kind: "WRITES", inputs: { previous }, outputs: { mode }, status: "OK", durationMs: 0 });
+      }
+      return json({ mode: state.agentMode, changed: previous !== mode });
     }
 
     if (path === "/api/tools") return json({ tools: TOOLS });
@@ -591,7 +616,7 @@ Bun.serve({
        this service. This endpoint is the same check for the UI. */
     if (/^\/api\/(?:gates|receipts)\/[^/]+\/verify$/.test(path) && req.method === "GET") {
       const id = decodeURIComponent(path.split("/")[3] ?? "");
-      const gate = state.gates.find((g) => g.id === id);
+      const gate = state.gates.find((g) => g.id === id && (g.workspaceId ?? "demo") === currentWorkspaceId());
       if (!gate) return json({ error: "gate not found" }, 404);
       const verdict = verifyGateSignature(gate);
       return json({
@@ -612,8 +637,8 @@ Bun.serve({
       /* Each run carries its REAL seal — the executed gate's receipt hash (a
          sha-256 of the sealed bundle), computed by the filing graph. The UI
          displays this; it never synthesizes one. */
-      const runs = [...state.runs].reverse().map((r) => {
-        const gate = r.gateId ? state.gates.find((g) => g.id === r.gateId) : undefined;
+      const runs = [...workspaceRows(state.runs)].reverse().map((r) => {
+        const gate = r.gateId ? state.gates.find((g) => g.id === r.gateId && (g.workspaceId ?? "demo") === workspaceId) : undefined;
         return {
           ...r,
           /* Stored facts, not the current env: plan source/model, draft
@@ -702,6 +727,7 @@ Bun.serve({
       }
       const run: Run = {
         id: `run_${randomUUID().slice(0, 8)}`,
+        workspaceId: currentWorkspaceId(),
         tenderId,
         status: "RUNNING",
         startedAt: new Date().toISOString(),
@@ -904,9 +930,52 @@ Bun.serve({
       return json({ ZM: ZAMBIA_METHODS });
     }
 
+    /* ── Published procurement records are read-only; no authenticated e-GP write API is configured. ── */
+    if (path === "/api/egp-status") {
+      return json({
+        available: false,
+        mode: "read-only-demo",
+        message: "Authenticated e-GP submission and publication are unavailable. Portal actions in this demo create local simulated records only.",
+        configuredWriteConnectors: [],
+      });
+    }
+
     /* ── The ZPPA roll — the published e-GP record, read in at intake ───── */
     if (path === "/api/zppa-roll") {
-      return json({ source: ZPPA_SOURCE, roll: ZPPA_ROLL });
+      return json({ source: ZPPA_SOURCE, roll: ZPPA_ROLL, writeAccess: { available: false, statusUrl: "/api/egp-status" } });
+    }
+
+    /* ── OCDS records already staged in a tender pack, exposed read-only. ── */
+    if (path === "/api/ocds-feed" && req.method === "GET") {
+      const ref = (url.searchParams.get("ref") ?? "").trim();
+      if (!ref) {
+        return json({
+          standard: "OCDS 1.1",
+          mode: "staged-records-only",
+          recordsUrl: "/api/ocds-feed?ref=<tender-reference>",
+          registries: OCP_AFRICA.map((dataset) => ({
+            country: dataset.country,
+            publisher: dataset.publisher,
+            publicationId: dataset.publicationId,
+            registryUrl: dataset.registryUrl,
+            downloads: dataset.downloads,
+            lastRetrieved: dataset.lastRetrieved,
+            stale: dataset.stale,
+          })),
+          writeAccess: { available: false, statusUrl: "/api/egp-status" },
+        });
+      }
+      if (!/^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$/.test(ref)) return json({ error: "invalid tender reference" }, 422);
+      const { files, pack } = await loadPack(ref);
+      if (!files.length) return json({ error: "no staged tender pack found" }, 404);
+      const records = pack.records.map((record) => ({
+        ocid: record.ocid,
+        source: record.source,
+        tender: { title: record.notice, ...(record.tenderValue ? { value: record.tenderValue } : {}) },
+        bids: { details: record.bids.map((bid) => ({ tenderers: [{ name: bid.bidder }], value: bid.value === undefined ? undefined : { amount: bid.value, currency: bid.currency }, documents: bid.text ? [{ title: bid.text }] : [], _source: bid.source, _ref: bid.ref })) },
+        awards: record.awards.map((award) => ({ suppliers: [{ name: award.supplier }], value: { amount: award.value, currency: award.currency }, _ref: award.ref })),
+      }));
+      return json({ standard: "OCDS 1.1", ref, records, sourceFiles: files.filter((file) => file.endsWith(".json")), writeAccess: { available: false, statusUrl: "/api/egp-status" } });
     }
 
     /* ── The OCP Data Registry, read for Africa — as published, nothing added */
@@ -1407,6 +1476,7 @@ Bun.serve({
         body.note ? String(body.note) : undefined,
         attestedActor || undefined,
         req.headers.get("x-quorum-stepup") ?? undefined,
+        workspaceId,
         ink,
       );
       if (out.error) return json(out, out.code ?? 400);
@@ -1415,7 +1485,7 @@ Bun.serve({
 
     if (path === "/api/gates") {
       return json({
-        gates: state.gates.map((g) => ({ ...g, signatureValid: g.signature ? verifyGateSignature(g).ok : false })),
+        gates:      workspaceRows(state.gates).map((g) => ({ ...g, signatureValid: g.signature ? verifyGateSignature(g).ok : false })),
       });
     }
 
@@ -1432,7 +1502,7 @@ Bun.serve({
     /* ── The tender cycle — solicitation to closure (waves 1-3) ───────── */
     if (path.startsWith("/api/cycle") || path.startsWith("/api/procurement-file") || path.startsWith("/api/pipeline") || /^\/api\/tenders\/[A-Za-z0-9._-]+\/(closing|opening|coi|matrix|alb|award-report|award-notice|standstill|debrief|contract|complaints|clarifications|addenda|notices|specs)/.test(path) || /^\/api\/tenders\/[A-Za-z0-9._-]+$/.test(path)) {
       const cycleBody = req.method === "POST" ? await readBody(req) : {};
-      return (await handleCycleRoutes(path, req.method, cycleBody)) ?? json({ error: "not found" }, 404);
+      return withWorkspace(workspaceId, () => handleCycleRoutes(path, req.method, cycleBody, attestedActor, workspaceId)).then((response) => response ?? json({ error: "not found" }, 404));
     }
 
     return json({ error: "not found" }, 404);

@@ -21,9 +21,11 @@ export async function sidecarFetch(
   if (init?.body !== undefined) headers["content-type"] = "application/json";
   if (init?.actor && method !== "GET" && method !== "HEAD") {
     const ts = Date.now();
+    const workspaceId = init.actor.startsWith("org:") ? "supplier-public" : "demo";
+    headers["x-quorum-workspace"] = workspaceId;
     headers["x-quorum-actor"] = init.actor;
     headers["x-quorum-ts"] = String(ts);
-    headers["x-quorum-attest"] = attestSignature(method, path, init.actor, ts);
+    headers["x-quorum-attest"] = attestSignature(method, path, init.actor, ts, workspaceId);
   }
   try {
     const res = await fetch(`${SIDECAR}${path}`, {

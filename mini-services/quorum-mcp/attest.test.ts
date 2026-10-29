@@ -10,8 +10,9 @@ import type { Gate, RosterMemberForGate, TenderCycle } from "./store";
 function headersWith(method: string, path: string, actor: string, ts: number, secret = GATE_SECRET): Headers {
   const h = new Headers();
   h.set("x-quorum-actor", actor);
+  h.set("x-quorum-workspace", "test-workspace");
   h.set("x-quorum-ts", String(ts));
-  h.set("x-quorum-attest", attestSignature(method, path, actor, ts, secret));
+  h.set("x-quorum-attest", attestSignature(method, path, actor, ts, secret, "test-workspace"));
   return h;
 }
 
