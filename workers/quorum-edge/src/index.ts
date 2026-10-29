@@ -362,22 +362,50 @@ async function transcribe(request: Request, env: Env): Promise<Response> {
 
   const bytes = await audioBytes(request);
   if (!bytes) return json({ error: "an audio clip is required" }, 422);
-  /* The binding input is a plain array of byte values. */
-  const samples = new Array<number>(bytes.length);
-  for (let i = 0; i < bytes.length; i++) samples[i] = bytes[i];
+
+  /* The current audio schema wants `audio` as an object carrying the bytes
+     and their content type; the byte-array form is the legacy shape. Both
+     are tried — a schema rejection is deterministic, a quota or model error
+     is not, so the loop stops at the first honest failure of each kind. */
+  const arrayBody = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+  const attempts: { input: Record<string, unknown>; model: string }[] = [];
+  for (const model of ["@cf/openai/whisper", "@cf/deepgram/nova-3"]) {
+    attempts.push({ model, input: { audio: { body: arrayBody, contentType: "audio/wav" } } });
+  }
+  for (const model of ["@cf/openai/whisper", "@cf/deepgram/nova-3"]) {
+    const samples = new Array<number>(bytes.length);
+    for (let i = 0; i < bytes.length; i++) samples[i] = bytes[i];
+    attempts.push({ model, input: { audio: { body: samples, contentType: "audio/wav" } } });
+    attempts.push({ model, input: { audio: samples } });
+  }
 
   let lastError = "";
-  for (const model of ["@cf/openai/whisper", "@cf/deepgram/nova-3"]) {
+  for (const attempt of attempts) {
     try {
-      const result = (await env.AI.run(model, { audio: samples })) as { text?: unknown } | null;
-      const text = String(result?.text ?? "").trim();
-      if (text) return json({ text, model: model.split("/")[1] });
+      const result = (await env.AI.run(attempt.model, attempt.input)) as Record<string, unknown> | null;
+      const text = transcriptOf(result);
+      if (text) return json({ text, model: attempt.model.split("/")[1] });
       lastError = "model returned an empty transcript";
     } catch (err) {
       lastError = (err as Error).message.slice(0, 240);
+      /* A schema rejection (5006) means this shape is wrong — try the next.
+         Anything else (quota, model) would fail on every shape, so stop. */
+      if (!/5006|schema|properties/i.test(lastError)) break;
     }
   }
   return json({ error: "speech-to-text is unavailable", detail: lastError || "no transcript" }, 502);
+}
+
+/** Pull the transcript out of whichever shape the ASR model answered with. */
+function transcriptOf(result: Record<string, unknown> | null): string {
+  if (!result) return "";
+  const direct = result.text ?? result.transcript;
+  if (typeof direct === "string" && direct.trim()) return direct.trim();
+  const deep = (result as {
+    results?: { channels?: { alternatives?: { transcript?: unknown }[] }[] };
+  }).results;
+  const alt = deep?.channels?.[0]?.alternatives?.[0]?.transcript;
+  return typeof alt === "string" ? alt.trim() : "";
 }
 
 function rewriteLocation(location: string, publicOrigin: string, origin: URL): string {
