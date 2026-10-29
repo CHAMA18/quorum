@@ -77,3 +77,4 @@ server.log
 # Cloudflare Workers local state
 workers/*/.wrangler/
 workers/*/.dev.vars
+the-bid-box-challenge/
