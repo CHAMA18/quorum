@@ -215,15 +215,21 @@ export function SiteHeader({
             </>
           ) : (
             <>
-              <MasterSwitcher active="quorum" />
               <button
                 type="button"
-                onClick={onDashboard}
-                className="focus-brand group inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-[13.5px] font-semibold text-ink-950 transition-colors hover:text-brand-600"
+                onClick={onSignIn}
+                className="focus-brand inline-flex h-10 items-center rounded-full px-3 text-[13.5px] font-semibold text-ink-950 transition-colors hover:text-brand-600"
               >
-                Enter workspace
+                Login
+              </button>
+              <button
+                type="button"
+                onClick={onGetStarted}
+                className="focus-brand group inline-flex h-10 items-center gap-1.5 rounded-full bg-ink-950 pl-4 pr-3 text-[13.5px] font-semibold text-white shadow-[0_10px_28px_-14px_rgba(11,12,15,0.8)] transition-colors hover:bg-brand-600"
+              >
+                Register
                 <ArrowUpRight
-                  className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                  className="h-4 w-4 opacity-70 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
                   aria-hidden="true"
                 />
               </button>
@@ -328,7 +334,7 @@ export function SiteHeader({
                     }}
                     className="focus-brand inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-brand-600 text-[15px] font-semibold text-white"
                   >
-                    Start your first run
+                    Register
                     <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
                   </button>
                   <button
@@ -339,7 +345,7 @@ export function SiteHeader({
                     }}
                     className="focus-brand inline-flex h-12 items-center justify-center rounded-xl border border-ink-200 bg-white text-[15px] font-semibold text-ink-900 dark:border-white/10 dark:bg-white/[0.04]"
                   >
-                    Sign in
+                    Login
                   </button>
                 </div>
               )}
