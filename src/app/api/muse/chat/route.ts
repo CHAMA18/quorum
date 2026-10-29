@@ -4,6 +4,7 @@ import { museChat, museConfigFromEnv, type MuseMessage } from "@/lib/muse";
 import { DESK_TOOLS, runDeskTool } from "@/lib/muse-desk-tools";
 import { ACTION_TOOLS, buildProposal, isActionTool, proposalStagedNote, type Proposal } from "@/lib/muse-actions";
 import { localAgent } from "@/lib/muse-local-brain";
+import { zaiAgent } from "@/lib/muse-zai";
 import { SYSTEM_MAP } from "@/lib/quorum-knowledge";
 
 /**
@@ -21,10 +22,12 @@ import { SYSTEM_MAP } from "@/lib/quorum-knowledge";
  *     through /api/muse/execute, under their own verified session, with a
  *     fresh step-up signature for a gate decision. The gavel stays human;
  *     the agent just carries it to the desk and waits.
- *   · With no MUSE_API_KEY set, the same loop runs on the deterministic
- *     local brain (muse-local-brain) — same reads, same proposals, same
- *     consent cards. There is no setup notice: the product never depends
- *     on a secret to be useful.
+ *   · With no MUSE_API_KEY set, the same loop runs on the platform's own
+ *     served model (muse-zai) — a full LLM brain over a strict JSON tool
+ *     dialect, same reads, same proposals, same consent cards — and the
+ *     deterministic local brain (muse-local-brain) is the last resort if
+ *     even that is unreachable. There is no setup notice: the product never
+ *     depends on a secret to be useful.
  */
 
 const MAX_ROUNDS = 5;
@@ -82,8 +85,17 @@ export async function POST(request: NextRequest) {
 
   const { message, history, who } = parsed.data;
   const cfg = museConfigFromEnv();
-  const result = cfg ? await modelLoop(cfg, message, history, who) : await localLoop(message, who);
-  return NextResponse.json(result);
+  if (cfg) {
+    return NextResponse.json(await modelLoop(cfg, message, history, who));
+  }
+  /* No Meta key: the platform model carries the same agency, with the
+     deterministic brain as the last resort. Every answer labels its model. */
+  try {
+    const result = await zaiAgent(message, history, who, ALL_TOOLS, SYSTEM_PROMPT, MAX_HISTORY);
+    return NextResponse.json({ reply: result.reply, model: result.model, toolsRead: result.tools, ...(result.proposal ? { proposal: result.proposal } : {}) });
+  } catch {
+    return NextResponse.json(await localLoop(message, who));
+  }
 }
 
 /* ── The model loop — Muse Spark with reads + consent-staged actions ─────── */

@@ -224,7 +224,9 @@ async function download(request: Request, env: Env, url: URL): Promise<Response>
    Deepgram Aura-2 through Workers AI is the natural voice. MeloTTS is the
    fallback because it is cheap and multilingual. The browser's own speech
    synthesis is the last fallback, on the client, so a Worker error never
-   leaves the assistant mute. */
+   leaves the assistant mute. Failures are reported honestly: the 502 body
+   carries the underlying model error, so a broken entitlement is visible
+   in one curl instead of a silent swing to the browser voice. */
 
 const VOICE_SPEAKERS = new Set(["asteria", "orion", "luna", "atlas"]);
 const DEFAULT_SPEAKER = "asteria";
@@ -305,11 +307,13 @@ async function speak(request: Request, env: Env): Promise<Response> {
   }
 
   let audio: Response | null = null;
+  let lastError = "";
   try {
     /* Aura-2 returns audio/mpeg directly from the Workers AI binding. */
     const result = await env.AI.run("@cf/deepgram/aura-2-en", { text, speaker: voice });
     audio = await audioResult(result, "audio/mpeg");
-  } catch {
+  } catch (err) {
+    lastError = (err as Error).message.slice(0, 240);
     audio = null;
   }
   if (!audio) {
@@ -317,11 +321,12 @@ async function speak(request: Request, env: Env): Promise<Response> {
       /* MeloTTS returns { audio: base64(WAV) } and is the cheap fallback. */
       const result = await env.AI.run("@cf/myshell-ai/melotts", { prompt: text, lang: "en" });
       audio = await audioResult(result, "audio/wav");
-    } catch {
+    } catch (err) {
+      lastError = lastError || (err as Error).message.slice(0, 240);
       audio = null;
     }
   }
-  if (!audio) return json({ error: "text-to-speech is unavailable" }, 502);
+  if (!audio) return json({ error: "text-to-speech is unavailable", detail: lastError || "both models returned no audio" }, 502);
 
   const headers = new Headers(audio.headers);
   headers.set("cache-control", "public, max-age=86400");
@@ -329,6 +334,50 @@ async function speak(request: Request, env: Env): Promise<Response> {
   const response = new Response(audio.body, { status: 200, headers });
   await caches.default.put(cacheKey, response.clone());
   return response;
+}
+
+/* ── Speech to text ────────────────────────────────────────────────────────
+   The assistant's ears when no Meta Model API key is configured: the same
+   AI binding that speaks also hears. Whisper is the long-available default;
+   Deepgram Nova-3 is the fallback. The clip arrives as multipart (the web
+   app forwards its WAV) or as a raw octet-stream body, and is never stored. */
+
+async function audioBytes(request: Request): Promise<Uint8Array | null> {
+  const type = request.headers.get("content-type") ?? "";
+  if (type.startsWith("multipart/")) {
+    const form = await request.formData().catch(() => null);
+    const part = form?.get("audio");
+    if (!(part instanceof Blob) || part.size === 0) return null;
+    return new Uint8Array(await part.arrayBuffer());
+  }
+  const buffer = await request.arrayBuffer().catch(() => null);
+  if (!buffer || buffer.byteLength === 0) return null;
+  return new Uint8Array(buffer);
+}
+
+async function transcribe(request: Request, env: Env): Promise<Response> {
+  if (!isAuthorised(request, env)) return json({ error: "unauthorised" }, 401);
+  if (!env.AI) return json({ error: "Workers AI is not bound to this worker" }, 503);
+  if (request.method !== "POST") return json({ error: "use POST" }, 405, { allow: "POST" });
+
+  const bytes = await audioBytes(request);
+  if (!bytes) return json({ error: "an audio clip is required" }, 422);
+  /* The binding input is a plain array of byte values. */
+  const samples = new Array<number>(bytes.length);
+  for (let i = 0; i < bytes.length; i++) samples[i] = bytes[i];
+
+  let lastError = "";
+  for (const model of ["@cf/openai/whisper", "@cf/deepgram/nova-3"]) {
+    try {
+      const result = (await env.AI.run(model, { audio: samples })) as { text?: unknown } | null;
+      const text = String(result?.text ?? "").trim();
+      if (text) return json({ text, model: model.split("/")[1] });
+      lastError = "model returned an empty transcript";
+    } catch (err) {
+      lastError = (err as Error).message.slice(0, 240);
+    }
+  }
+  return json({ error: "speech-to-text is unavailable", detail: lastError || "no transcript" }, 502);
 }
 
 function rewriteLocation(location: string, publicOrigin: string, origin: URL): string {
@@ -412,6 +461,7 @@ export default {
     if (url.pathname === "/__edge/list") return list(request, env, url);
     if (url.pathname === "/__edge/delete") return remove(request, env, url);
     if (url.pathname === "/__edge/tts") return speak(request, env);
+    if (url.pathname === "/__edge/asr") return transcribe(request, env);
 
     try {
       return await proxy(request, env, url);

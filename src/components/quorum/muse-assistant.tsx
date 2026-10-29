@@ -8,15 +8,18 @@
  * or type into:
  *
  *   · hearing  — the mic captures raw PCM, the browser encodes a WAV, and
- *     Muse Voice Transcribe (Meta Model API) turns it into the sentence.
- *     Nothing is buffered to disk; the clip goes to the model and back as
- *     text.
+ *     the server hears it: Muse Voice Transcribe (Meta Model API) when a
+ *     key is configured, otherwise the quorum-edge Worker's speech
+ *     recognition on Cloudflare Workers AI; a browser with neither server
+ *     path falls back to its own built-in SpeechRecognition. Nothing is
+ *     buffered to disk and no setup notice ever appears.
  *   · thinking — the sentence goes to /api/muse/chat, where the desk agent
  *     runs an agentic loop: reads (runs, approvals, deadlines, the committee
  *     register, one tender's record) execute at once, and actions — approve
  *     or return a gate, launch a review — come back as HMAC-signed proposal
- *     cards. With no model key a deterministic local brain does the same
- *     job, so the panel never shows a setup notice.
+ *     cards. A full LLM brain answers whenever a model is reachable (Meta
+ *     key or the platform's own served model), with a deterministic local
+ *     brain as the last resort — the panel never shows a setup notice.
  *   · acting   — a proposal card waits for the officer. Confirm stages it
  *     through /api/muse/execute under their own session; a gate decision
  *     opens the same step-up dialog the Approvals screen uses before the
@@ -118,6 +121,37 @@ function downMix(input: Float32Array, fromRate: number, toRate: number): Float32
 
 const TARGET_RATE = 16_000;
 const MAX_RECORD_MS = 25_000;
+
+/* ── The browser's own ears ─────────────────────────────────────────────
+   The last hearing path: no server, no key. Chrome, Edge and Safari ship
+   SpeechRecognition; where it exists, a clip round trip is unnecessary —
+   the transcript streams live into the composer while the officer talks. */
+
+interface SpeechRecognitionLike {
+  continuous: boolean;
+  interimResults: boolean;
+  lang?: string;
+  onresult:
+    | ((event: {
+        resultIndex: number;
+        results: ArrayLike<{ isFinal: boolean; 0?: { transcript?: string } }>;
+      }) => void)
+    | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+}
+type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
+
+function speechRecognitionCtor(): SpeechRecognitionCtor | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as {
+    SpeechRecognition?: SpeechRecognitionCtor;
+    webkitSpeechRecognition?: SpeechRecognitionCtor;
+  };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
 
 /* ── The spoken reply ─────────────────────────────────────────────────────── */
 
@@ -319,6 +353,10 @@ export function MuseAssistant({ name }: { name?: string }) {
   const [speakOn, setSpeakOn] = useState(true);
   const [voiceNote, setVoiceNote] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  /* Which ears the server offers: meta (Muse Voice Transcribe), edge
+     (Workers AI) or browser (the device's own recognition). Probed once
+     per open; the mic flow adapts before the officer ever presses it. */
+  const [asrProvider, setAsrProvider] = useState<"meta" | "edge" | "browser">("browser");
 
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -326,6 +364,9 @@ export function MuseAssistant({ name }: { name?: string }) {
   const contextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const asrModeRef = useRef<"wav" | "browser">("wav");
+  const recogRef = useRef<SpeechRecognitionLike | null>(null);
+  const finalHeardRef = useRef("");
 
   const { speak, stop, prime, voice, setVoice, mode, speaking } = useSpeaker(speakOn && open);
 
@@ -341,7 +382,23 @@ export function MuseAssistant({ name }: { name?: string }) {
   }, [turns, busy, open]);
 
   useEffect(() => {
-    if (open) window.setTimeout(() => inputRef.current?.focus(), 220);
+    if (open) {
+      window.setTimeout(() => inputRef.current?.focus(), 220);
+      /* One probe decides the mic's path before the officer presses it —
+         the answer never names a key or a setup step, it only picks ears. */
+      let alive = true;
+      fetch("/api/muse/transcribe")
+        .then((r) => r.json())
+        .then((d: { provider?: string }) => {
+          if (alive && (d.provider === "meta" || d.provider === "edge" || d.provider === "browser")) {
+            setAsrProvider(d.provider);
+          }
+        })
+        .catch(() => undefined);
+      return () => {
+        alive = false;
+      };
+    }
   }, [open]);
 
   /* Esc closes the panel and mutes any reply mid-sentence. */
@@ -500,9 +557,88 @@ export function MuseAssistant({ name }: { name?: string }) {
     [patchTurn, say, speak]
   );
 
-  /* ── Hearing: capture PCM, encode WAV, transcribe, then ask ─────────────── */
+  /* ── Hearing: three paths, zero setup ───────────────────────────────── */
+
+  /* Browser ears — the live path when no server hearing is configured. */
+  const finishBrowserHearing = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    recogRef.current = null;
+    setHearing(false);
+    setHeardLevel(0);
+    const heard = finalHeardRef.current.trim();
+    finalHeardRef.current = "";
+    if (heard) {
+      void ask(heard, heard);
+    } else {
+      setVoiceNote((prev) => prev ?? "I heard nothing — tap the mic and speak a little longer.");
+    }
+  }, [ask]);
+
+  const startBrowserHearing = useCallback(() => {
+    const Ctor = speechRecognitionCtor();
+    if (!Ctor) {
+      setVoiceNote("Voice is not available in this browser — type your question.");
+      return;
+    }
+    prime();
+    stop();
+    finalHeardRef.current = "";
+    const recog = new Ctor();
+    recog.continuous = true;
+    recog.interimResults = true;
+    recog.onresult = (event) => {
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        const text = result[0]?.transcript ?? "";
+        if (result.isFinal) finalHeardRef.current += `${text} `;
+        else interim += text;
+      }
+      const live = `${finalHeardRef.current} ${interim}`.trim();
+      if (live) {
+        setDraft(live);
+        setHeardLevel(Math.min(1, 0.15 + live.length / 90));
+      }
+    };
+    recog.onerror = (event) => {
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        setVoiceNote("The microphone is blocked in this browser — allow it, or type instead.");
+      } else if (event.error === "network") {
+        setVoiceNote("The browser's ears need a network — type the question instead.");
+      }
+    };
+    recog.onend = () => {
+      if (recogRef.current === recog) finishBrowserHearing();
+    };
+    try {
+      recog.start();
+      asrModeRef.current = "browser";
+      recogRef.current = recog;
+      setHearing(true);
+      setHeardLevel(0.15);
+      timerRef.current = setTimeout(() => finishBrowserHearing(), MAX_RECORD_MS);
+    } catch {
+      setVoiceNote("The microphone did not open — type your question instead.");
+    }
+  }, [finishBrowserHearing, prime, stop]);
 
   const stopHearing = useCallback(async () => {
+    if (asrModeRef.current === "browser") {
+      const recog = recogRef.current;
+      if (recog) {
+        try {
+          recog.stop(); /* onend finalises the transcript */
+        } catch {
+          finishBrowserHearing();
+        }
+      } else {
+        setHearing(false);
+      }
+      return;
+    }
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
@@ -542,8 +678,13 @@ export function MuseAssistant({ name }: { name?: string }) {
       const form = new FormData();
       form.append("audio", wav, "clip.wav");
       const res = await fetch("/api/muse/transcribe", { method: "POST", body: form });
-      const data = (await res.json().catch(() => ({}))) as { text?: string; note?: string; error?: string };
+      const data = (await res.json().catch(() => ({}))) as { text?: string; note?: string; error?: string; provider?: string };
       const heard = (data.text ?? "").trim();
+      if (data.provider === "browser") {
+        /* The server's ears are not answering — next press uses the device's
+           own recognition, with no setup language anywhere. */
+        setAsrProvider("browser");
+      }
       if (!heard) {
         setVoiceNote(data.note ?? (data.error ? "I could not make out that clip — try again." : null));
       } else {
@@ -555,13 +696,17 @@ export function MuseAssistant({ name }: { name?: string }) {
       setBusy(false);
       void context.close().catch(() => undefined);
     }
-  }, [ask]);
+  }, [ask, finishBrowserHearing]);
 
   const startHearing = useCallback(async () => {
     if (busy || hearing) return;
+    setVoiceNote(null);
+    if (asrProvider === "browser") {
+      startBrowserHearing();
+      return;
+    }
     prime();
     stop();
-    setVoiceNote(null);
     if (!navigator.mediaDevices?.getUserMedia) {
       setVoiceNote("This browser has no microphone API — type instead.");
       return;
@@ -593,6 +738,7 @@ export function MuseAssistant({ name }: { name?: string }) {
 
       contextRef.current = context;
       streamRef.current = stream;
+      asrModeRef.current = "wav";
       setHearing(true);
       timerRef.current = setTimeout(() => void stopHearing(), MAX_RECORD_MS);
     } catch {
@@ -604,7 +750,7 @@ export function MuseAssistant({ name }: { name?: string }) {
       setHeardLevel(0);
       setVoiceNote("The microphone is blocked in this browser — allow it, or type instead.");
     }
-  }, [busy, hearing, prime, stop, stopHearing]);
+  }, [asrProvider, busy, hearing, prime, startBrowserHearing, stopHearing]);
 
   useEffect(
     () => () => {
