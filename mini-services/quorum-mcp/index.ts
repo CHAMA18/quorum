@@ -40,6 +40,7 @@ import {
   appendLog,
   attestVerify,
   auditHealth,
+  DATA,
   loadState,
   saveState,
   shaOf,
@@ -62,7 +63,7 @@ import { OCP_AFRICA, OCP_AFRICA_SOURCE } from "./ocp-africa";
 import { rollupAfrica } from "./ocp-africa-roll";
 import { connectMany, loadPortalLinks } from "./portal-links";
 import { disabledPortalIds, loadPortalState, setPortalsEnabled } from "./portal-state";
-import { mkdirSync, writeFileSync, existsSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { TENDERS_DIR } from "./engine";
 import { modelAttributionForRun, modelStatus } from "./model";
 import { parseClosingDate } from "./cycle";
@@ -87,10 +88,14 @@ import {
   TOOLS,
   verifySessionActor,
 } from "./engine";
-import { cycleToolCall, executeCycleGateAction, handleCycleRoutes, nextPipelineRef, preApprovalCheck } from "./cycle-routes";
+import { cycleToolCall, executeCycleGateAction, executeCycleGateRejection, handleCycleRoutes, nextPipelineRef, preApprovalCheck } from "./cycle-routes";
 import { consumeStepUp, verifyStepUp } from "./step-up";
 import { signGate, verifyGateSignature } from "./receipts";
 import { notifyWebSoon } from "./notify";
+import { approvalOfficeFor, governanceSnapshot, recordSignoff, updateBands } from "./governance";
+import { listExceptions, raiseException, withdrawException } from "./exceptions";
+import { complianceSummary, RULE_PACKS } from "./rulepack";
+import { archiveDocument, listDocuments, noteDownload, registerDocument, reviewDocument, verifyDocument } from "./documents";
 const PORT = 3031;
 
 /* An optional string field — trims, caps, and collapses empty to undefined. */
@@ -378,6 +383,10 @@ async function decideGate(id: string, decision: string, approver: string, note?:
   if (decision === "REJECT") {
     gate.status = "REJECTED";
     gate.signature = signGate(gate);
+    /* Some tools keep a register row on refusal too (the exception register
+       records WHO refused and why) — the rejection executor runs before the
+       log line so the outcome is one fact, not two. */
+    const refused = executeCycleGateRejection(gate);
     appendLog({
       actor: name,
       server: "quorum-mcp",
@@ -385,7 +394,7 @@ async function decideGate(id: string, decision: string, approver: string, note?:
       kind: "GATE_DECISION",
       runId: gate.runId,
       inputs: { gateId: id, decision, note: gate.note },
-      outputs: { status: "REJECTED — submission returned to the agent", stepUp: { method: step.payload.method, jti: step.payload.jti }, ink: hand ? shaOf(hand.image).slice(0, 12) : undefined, strokes: hand?.strokes },
+      outputs: { status: "REJECTED — submission returned to the agent", stepUp: { method: step.payload.method, jti: step.payload.jti }, ink: hand ? shaOf(hand.image).slice(0, 12) : undefined, strokes: hand?.strokes, refused: refused ?? undefined },
       status: "OK",
       durationMs: 0,
     });
@@ -652,6 +661,49 @@ Bun.serve({
       return handleReportRequest(id);
     }
 
+    /* Phase 6 (AI safety): the named human disposition for a model-surfaced
+       finding. The reviewer, the decision, the when and the why are stored on
+       the finding itself and flow into the report and the procurement file.
+       The sidecar never disposes of a finding on its own. */
+    if (/^\/api\/runs\/[A-Za-z0-9._-]+\/findings\/[A-Za-z0-9._-]+\/review$/.test(path) && req.method === "POST") {
+      const body = await readBody(req);
+      const match = path.match(/^\/api\/runs\/([A-Za-z0-9._-]+)\/findings\/([A-Za-z0-9._-]+)\/review$/)!;
+      const run = state.runs.find((r) => r.id === match[1]);
+      if (!run) return json({ error: "run not found" }, 404);
+      const finding = run.findings.find((f) => f.id === match[2]);
+      if (!finding) return json({ error: "finding not found on this run" }, 404);
+      const actor = attestedActor || strOpt(body.actor) || "";
+      if (!actor || actor === "unknown") return json({ error: "a named reviewer must attest this disposition" }, 401);
+      const decision = strOpt(body.decision);
+      if (decision !== "ACCEPTED" && decision !== "REJECTED") {
+        return json({ error: "decision must be ACCEPTED or REJECTED" }, 422);
+      }
+      const note = strOpt(body.note);
+      if (decision === "REJECTED" && (!note || note.trim().length < 10)) {
+        return json({ error: "rejecting a finding needs a stated reason (at least 10 characters) — the record must show why the human disagreed" }, 422);
+      }
+      finding.review = {
+        decision,
+        by: actor.slice(0, 80),
+        at: new Date().toISOString(),
+        ...(note?.trim() ? { note: note.trim().slice(0, 500) } : {}),
+      };
+      run.updatedAt = new Date().toISOString();
+      saveState();
+      appendLog({
+        actor: actor.slice(0, 80),
+        server: "quorum-mcp",
+        tool: "finding_disposition",
+        kind: "WRITES",
+        runId: run.id,
+        inputs: { findingId: finding.id, rule: finding.rule, decision },
+        outputs: { by: finding.review.by, at: finding.review.at, note: finding.review.note ?? null },
+        status: "OK",
+        durationMs: 0,
+      });
+      return json({ finding });
+    }
+
     if (path === "/api/runs" && req.method === "POST") {
       const body = await readBody(req);
       const tenderId = String(body.tenderId ?? "").trim();
@@ -776,6 +828,28 @@ Bun.serve({
         }
       }
       if (written.length === 0) return json({ error: "no valid docs" }, 422);
+      /* Phase 4: staged text is registered per file with its content hash —
+         the pack files are the review graph's source of truth, so their
+         fingerprints live in the register too. */
+      for (const file of written) {
+        try {
+          const content = readFileSync(TENDERS_DIR + tenderId + "/" + file, "utf8");
+          registerDocument({
+            tenderId,
+            key: `tenders/${tenderId}/${file}`,
+            title: file,
+            kind: file.startsWith("01-") ? "NOTICE" : file.includes("-bid-") ? "BID" : "OTHER",
+            content,
+            bytes: Buffer.byteLength(content),
+            contentType: "text/markdown",
+            channel: "sidecar_stage",
+            importer: attestedActor || "web-app",
+            provenance: { originSystem: "quorum sidecar staging", note: "typed/staged text the review graph reads" },
+          });
+        } catch (err) {
+          console.error("[document-register] stage registration failed:", err);
+        }
+      }
       appendLog({
         actor: "web-app",
         server: "quorum-mcp",
@@ -826,6 +900,34 @@ Bun.serve({
       const chars = Number(body.chars);
       const note = typeof body.note === "string" ? body.note.slice(0, 220) : undefined;
       const reason = typeof body.reason === "string" ? body.reason.slice(0, 220) : undefined;
+      /* Phase 4: every stored object lands in the document register with its
+         content hash, provenance and retention line. The web route computes
+         the sha over the raw bytes; when it did not send one, the register
+         row still exists with the byte count and channel as the durable
+         facts — the hash line says so honestly. */
+      const sha = typeof body.sha256 === "string" && /^[a-f0-9]{16,64}$/.test(body.sha256) ? body.sha256 : undefined;
+      try {
+        const { record } = registerDocument({
+          tenderId,
+          key,
+          title: String(body.filename ?? key).slice(0, 200),
+          kind: body.kind === "notice" ? "NOTICE" : body.kind === "bid" ? "BID" : "OTHER",
+          ...(sha ? { sha256: sha } : {}),
+          bytes,
+          contentType: String(body.contentType ?? "").trim().slice(0, 120) || undefined,
+          channel: "web_upload",
+          importer: attestedActor || "web-app",
+          provenance: { originSystem: "R2 quorum-tenders via quorum-edge", note: reason ?? note },
+          extractionConfidence:
+            body.extracted === true && body.staged === true
+              ? { level: "HIGH" }
+              : { level: "LOW", reason: reason ?? "extraction found no usable text — a human must review before this document is relied on" },
+        });
+      } catch (err) {
+        /* The audit line below is the durable record; a register failure is
+           reported in its outputs, never thrown away. */
+        console.error("[document-register] upload registration failed:", err);
+      }
       const entry = appendLog({
         actor: attestedActor || "web-app",
         server: "quorum-mcp",
@@ -866,6 +968,16 @@ Bun.serve({
     if (path === "/api/tender-downloads" && req.method === "POST") {
       const body = await readBody(req);
       const recorded = recordTenderDownload(body, attestedActor);
+      if (recorded.status === 201) {
+        /* The register's custody line mirrors the spine: who read the object,
+           when, and what slice. A failure here is logged, never fatal. */
+        try {
+          const key = String((body as { key?: unknown }).key ?? "");
+          if (key) noteDownload(key, attestedActor || "web-app", "signed download through the edge gate");
+        } catch (err) {
+          console.error("[document-register] download custody failed:", err);
+        }
+      }
       return recorded.status === 201
         ? json({ entry: recorded.entry }, 201)
         : json({ error: recorded.error }, 422);
@@ -1429,8 +1541,116 @@ Bun.serve({
       });
     }
 
+    /* ── Phase 1 — governance: authority matrix, bands, sign-off ─────────── */
+    if (path === "/api/governance" && req.method === "GET") {
+      return json(governanceSnapshot());
+    }
+    if (path === "/api/governance/bands" && req.method === "POST") {
+      const body = await readBody(req);
+      const actor = attestedActor || strOpt(body.actor) || "unknown";
+      try {
+        const out = updateBands(actor, (body.bands ?? []) as never[]);
+        if (!out.ok) return json({ error: out.error }, out.code);
+        return json({ governance: governanceSnapshot() });
+      } catch (err) {
+        return json({ error: (err as Error).message }, 422);
+      }
+    }
+    if (path === "/api/governance/signoff" && req.method === "POST") {
+      const body = await readBody(req);
+      const actor = attestedActor || strOpt(body.actor) || "";
+      if (!actor || actor === "unknown") return json({ error: "a named actor must attest this sign-off" }, 401);
+      const scope = strOpt(body.scope) ?? "governance and control foundation";
+      const signoff = recordSignoff(actor, scope);
+      return json({ signedOff: signoff, governance: governanceSnapshot() });
+    }
+
+    /* ── Phase 2 — the exception register ─────────────────────────────── */
+    if (path === "/api/exceptions" && req.method === "GET") {
+      const url = new URL(req.url);
+      const tenderId = url.searchParams.get("tenderId") ?? undefined;
+      return json({ exceptions: listExceptions(tenderId ?? undefined) });
+    }
+    if (path === "/api/exceptions" && req.method === "POST") {
+      const body = await readBody(req);
+      const actor = attestedActor || strOpt(body.actor) || "unknown";
+      const out = raiseException(body, actor);
+      if (!out.ok) return json({ error: out.error }, out.code);
+      return json({ exception: out.exception, gateId: out.gateId }, 201);
+    }
+    if (/^\/api\/exceptions\/[A-Za-z0-9._-]+\/withdraw$/.test(path) && req.method === "POST") {
+      const body = await readBody(req);
+      const actor = attestedActor || strOpt(body.actor) || "unknown";
+      const out = withdrawException(path.split("/")[3] ?? "", actor, strOpt(body.note));
+      if (!out.ok) return json({ error: out.error }, out.code);
+      return json({ exception: out.exception });
+    }
+
+    /* ── Phase 3 — rule packs and per-tender compliance ───────────────── */
+    if (path === "/api/rulepacks" && req.method === "GET") {
+      return json({ packs: RULE_PACKS });
+    }
+    /* ── Phase 9 — the honest quality record: eval + bench outputs ────── */
+    if (path === "/api/eval/summary" && req.method === "GET") {
+      const readJson = async (file: string): Promise<Record<string, unknown> | null> => {
+        try {
+          return (await Bun.file(DATA + file).json()) as Record<string, unknown>;
+        } catch {
+          return null;
+        }
+      };
+      const [report, bench] = await Promise.all([readJson("eval/report.json"), readJson("eval/bench.json")]);
+      const summary = (report?.summary ?? null) as Record<string, unknown> | null;
+      return json({
+        eval: summary
+          ? {
+              original: summary.original ?? null,
+              adjudicated: summary.adjudicated ?? null,
+              mutation: summary.mutation ?? null,
+              identicalAcrossRuns: summary.identicalAcrossRuns ?? null,
+              heldOut: summary.heldOut ?? null,
+              labeller: report?.labeller ?? null,
+              generatedAt: report?.generatedAt ?? null,
+            }
+          : null,
+        bench: bench ? { medianMs: bench.medianMs ?? bench.median_ms ?? null, packs: bench.packs ?? bench.rows ?? null, note: bench.note ?? null } : null,
+        note: "Produced by eval.ts (recall/precision against pre-written labels + mutation testing) and bench.ts (the deterministic clock). The files are what they are — nothing here is computed on the fly.",
+      });
+    }
+    if (/^\/api\/tenders\/[A-Za-z0-9._-]+\/compliance$/.test(path) && req.method === "GET") {
+      const ref = decodeURIComponent(path.match(/^\/api\/tenders\/([A-Za-z0-9._-]+)\/compliance$/)![1]);
+      return json(complianceSummary(ref));
+    }
+
+    /* ── Phase 4 — the document register ──────────────────────────────── */
+    if (path === "/api/documents" && req.method === "GET") {
+      const url = new URL(req.url);
+      const tenderId = url.searchParams.get("tenderId") ?? undefined;
+      const unreviewedOnly = url.searchParams.get("unreviewed") === "1";
+      const rows = listDocuments({ ...(tenderId ? { tenderId } : {}), ...(unreviewedOnly ? { unreviewedOnly: true } : {}) });
+      return json({ documents: rows, unreviewed: listDocuments({ unreviewedOnly: true }).length });
+    }
+    if (/^\/api\/documents\/[A-Za-z0-9._-]+\/review$/.test(path) && req.method === "POST") {
+      const body = await readBody(req);
+      const actor = attestedActor || strOpt(body.actor) || "unknown";
+      const out = reviewDocument(path.split("/")[3] ?? "", actor, body.confirm === true, strOpt(body.note));
+      if (!out.ok) return json({ error: out.error }, out.code);
+      return json({ document: out.record });
+    }
+    if (/^\/api\/documents\/[A-Za-z0-9._-]+\/archive$/.test(path) && req.method === "POST") {
+      const body = await readBody(req);
+      const actor = attestedActor || strOpt(body.actor) || "unknown";
+      const out = archiveDocument(path.split("/")[3] ?? "", actor);
+      if (!out.ok) return json({ error: out.error }, out.code);
+      return json({ document: out.record });
+    }
+    if (/^\/api\/documents\/[A-Za-z0-9._-]+\/verify$/.test(path) && req.method === "GET") {
+      const out = verifyDocument(path.split("/")[3] ?? "", readTenderFileForRegister);
+      return json(out, out.ok ? 200 : 409);
+    }
+
     /* ── The tender cycle — solicitation to closure (waves 1-3) ───────── */
-    if (path.startsWith("/api/cycle") || path.startsWith("/api/procurement-file") || path.startsWith("/api/pipeline") || /^\/api\/tenders\/[A-Za-z0-9._-]+\/(closing|opening|coi|matrix|alb|award-report|award-notice|standstill|debrief|contract|complaints|clarifications|addenda|notices|specs)/.test(path) || /^\/api\/tenders\/[A-Za-z0-9._-]+$/.test(path)) {
+    if (path.startsWith("/api/cycle") || path.startsWith("/api/procurement-file") || path.startsWith("/api/pipeline") || /^\/api\/tenders\/[A-Za-z0-9._-]+\/(closing|opening|coi|matrix|alb|award-report|award-notice|standstill|debrief|contract|complaints|clarifications|addenda|notices|specs|dissents)/.test(path) || /^\/api\/tenders\/[A-Za-z0-9._-]+$/.test(path)) {
       const cycleBody = req.method === "POST" ? await readBody(req) : {};
       return (await handleCycleRoutes(path, req.method, cycleBody)) ?? json({ error: "not found" }, 404);
     }
@@ -1442,3 +1662,14 @@ Bun.serve({
 await loadState();
 void initFsMcp();
 console.log(`quorum-mcp listening on :${PORT} — MCP surface POST /mcp · audit ${toolLog.length} calls restored`);
+
+/* The register verifies staged/pack documents by re-reading the file from the
+   tenders directory — the same jail the filesystem MCP uses (no traversal). */
+function readTenderFileForRegister(tenderId: string, file: string): string | null {
+  if (!/^[A-Za-z0-9._-]{1,64}$/.test(tenderId) || !/^[A-Za-z0-9._-]{1,128}$/.test(file)) return null;
+  try {
+    return readFileSync(TENDERS_DIR + tenderId + "/" + file, "utf8");
+  } catch {
+    return null;
+  }
+}

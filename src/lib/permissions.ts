@@ -100,6 +100,13 @@ export function canMutateSidecar(
   if (method === "GET" || method === "HEAD" || method === "OPTIONS") return true;
 
   if (/^\/api\/gates\/[^/]+\/decision$/.test(path)) return can(role, "sign_gates");
+  /* Governance configuration (approval bands, sign-off) is rule-keeping. */
+  if (path.startsWith("/api/governance")) return can(role, "manage_rules");
+  /* Exceptions are requested by the desk; approval itself is a gate decision
+     for the accounting officer (the sidecar enforces the office). */
+  if (path.startsWith("/api/exceptions")) return can(role, "run_reviews");
+  /* Document register upkeep: OCR review confirmations and archiving. */
+  if (path.startsWith("/api/documents")) return can(role, "run_reviews");
   if (path.startsWith("/api/guards") || path.startsWith("/api/portal-state") || path.startsWith("/api/settings")) {
     return can(role, "manage_rules");
   }

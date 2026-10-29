@@ -64,6 +64,9 @@ import { DEBARMENT_LIST } from "./debarment";
 import { TENDER_REF_RE } from "./marketplace";
 import { listSampleTenders } from "./samples";
 import { llmConfigFromEnv, callLlama } from "./engine";
+import { executeExceptionApproval, executeExceptionRejection } from "./exceptions";
+import { complianceSummary } from "./rulepack";
+import { listDocuments } from "./documents";
 
 /* ── Small helpers ─────────────────────────────────────────────────────────── */
 
@@ -72,7 +75,12 @@ const SAFE_REF = TENDER_REF_RE;
 
 function cycleFor(tenderId: string): TenderCycle {
   const existing = state.cycle.find((c) => c.tenderId === tenderId);
-  if (existing) return existing;
+  if (existing) {
+    /* Cycles written before dissents existed keep working — the field is
+       backfilled on read rather than migrated on boot. */
+    if (!existing.dissents) existing.dissents = [];
+    return existing;
+  }
   const fresh: TenderCycle = {
     tenderId,
     coi: [],
@@ -83,6 +91,7 @@ function cycleFor(tenderId: string): TenderCycle {
     addenda: [],
     notices: [],
     specs: [],
+    dissents: [],
     createdAt: new Date().toISOString(),
   };
   state.cycle.push(fresh);
@@ -227,6 +236,11 @@ export function preApprovalCheck(
 /* ── Gate executors — the thing that happens ONLY after a named human signs ── */
 
 export async function executeCycleGateAction(gate: Gate): Promise<Record<string, unknown> | undefined> {
+  /* Exceptions resolve through the register, not the cycle — a standalone
+     exception (no tender) must not mint an empty TenderCycle row. */
+  if (gate.tool === "approve_exception") {
+    return executeExceptionApproval(gate);
+  }
   const cycle = cycleFor(gate.tenderId);
   const who = gate.approver ?? "named human";
   switch (gate.tool) {
@@ -310,6 +324,7 @@ export async function executeCycleGateAction(gate: Gate): Promise<Record<string,
         milestones: [],
         variations: [],
         payments: [],
+        performanceSecurity: [],
       };
       saveState();
       return { supplier: cycle.contract.supplier, value: cycle.contract.value };
@@ -317,7 +332,7 @@ export async function executeCycleGateAction(gate: Gate): Promise<Record<string,
     case "approve_variation": {
       const input = gate.inputs as { variationId?: string };
       const variation = cycle.contract?.variations.find((v) => v.id === input.variationId);
-      if (!variation) return undefined;
+      if (!cycle.contract || !variation) return undefined;
       variation.status = "APPROVED";
       variation.decidedBy = who;
       saveState();
@@ -357,6 +372,17 @@ export async function executeCycleGateAction(gate: Gate): Promise<Record<string,
       saveState();
       return { noticeId: notice.id, published: true, portal: "egp-portal (simulated)" };
     }
+    default:
+      return undefined;
+  }
+}
+
+/* Rejections need their own bookkeeping for tools whose refusal is itself a
+   record (the exception register keeps the REFUSED row with the decider). */
+export function executeCycleGateRejection(gate: Gate): Record<string, unknown> | undefined {
+  switch (gate.tool) {
+    case "approve_exception":
+      return executeExceptionRejection(gate);
     default:
       return undefined;
   }
@@ -1288,7 +1314,14 @@ async function procurementFile(tenderId: string) {
       id: r.id,
       status: r.status,
       startedAt: r.startedAt,
-      findings: r.findings.map((f) => ({ id: f.id, rule: f.rule, item: f.item, severity: f.severity, citation: f.citation })),
+      findings: r.findings.map((f) => ({
+        id: f.id,
+        rule: f.rule,
+        item: f.item,
+        severity: f.severity,
+        citation: f.citation,
+        ...(f.review ? { review: { decision: f.review.decision, by: f.review.by, at: f.review.at } } : {}),
+      })),
       drafts: r.drafts.map((d) => ({ id: d.id })),
     })),
     gates: state.gates.filter((g) => g.tenderId === tenderId).map((g) => ({
@@ -1299,6 +1332,20 @@ async function procurementFile(tenderId: string) {
       ...(g.decidedAt ? { decidedAt: g.decidedAt } : {}),
       ...(g.receipt ? { receipt: g.receipt } : {}),
     })),
+    ...(cycle?.dissents?.length
+      ? { dissents: cycle.dissents.map((d) => ({ stage: d.stage, member: d.member, position: d.position, basis: d.basis, recordedAt: d.recordedAt })) }
+      : {}),
+    ...(state.exceptions.some((e) => e.tenderId === tenderId)
+      ? {
+          exceptions: state.exceptions
+            .filter((e) => e.tenderId === tenderId)
+            .map((e) => ({ id: e.id, kind: e.kind, status: e.status, title: e.title, requestedBy: e.requestedBy, ...(e.decidedBy ? { decidedBy: e.decidedBy } : {}) })),
+        }
+      : {}),
+    compliance: (() => {
+      const c = complianceSummary(tenderId);
+      return { verdict: c.verdict, hardFails: c.hardFails.map((h) => ({ rule: h.rule, detail: h.detail })), lines: c.lines.map((l) => ({ rule: l.rule, count: l.count, hardFail: l.hardFail })) };
+    })(),
     generatedAt: new Date().toISOString(),
   });
   const log = await verifyToolLogFile();
@@ -1394,6 +1441,140 @@ export async function handleCycleRoutes(path: string, method: string, body: Reco
     } catch (err) {
       return json({ error: (err as Error).message }, 422);
     }
+  }
+  /* ── Requisition and budget validation (lifecycle stage 2) ─────────────────
+     A planned entry is not publishable until an officer confirms the budget
+     on the record. The confirmation is a named act, logged like every write. */
+  if (/^\/api\/pipeline\/[A-Za-z0-9._-]+\/requisition$/.test(path) && mustPost()) {
+    const id = path.split("/")[3] ?? "";
+    const entry = state.pipeline.find((p) => p.id === id);
+    if (!entry) return json({ error: "pipeline entry not found" }, 404);
+    const actor = str(body.actor).trim().slice(0, 80) || "officer";
+    const validated = body.budgetValidated !== false;
+    const budgetReference = str(body.budgetReference).trim().slice(0, 120) || undefined;
+    if (validated && !budgetReference) {
+      return json({ error: "budgetReference is required when validating the budget — the record must point at the vote book line" }, 422);
+    }
+    entry.requisition = {
+      budgetValidated: validated,
+      ...(budgetReference ? { budgetReference } : {}),
+      ...(validated ? { validatedBy: actor, validatedAt: new Date().toISOString() } : {}),
+      ...(str(body.note).trim() ? { note: str(body.note).trim().slice(0, 300) } : {}),
+    };
+    saveState();
+    appendLog({
+      actor,
+      server: "quorum-mcp",
+      tool: "requisition_validate",
+      kind: "WRITES",
+      runId: "cycle",
+      inputs: { pipelineId: entry.id, ref: entry.ref },
+      outputs: { budgetValidated: entry.requisition.budgetValidated, budgetReference: entry.requisition.budgetReference ?? null },
+      status: "OK",
+      durationMs: 0,
+    });
+    return json({ entry });
+  }
+  /* ── Dissents and minority positions (committee decision support) ────────── */
+  if (/^\/api\/tenders\/[A-Za-z0-9._-]+\/dissents$/.test(path) && mustPost()) {
+    const ref = tenderRef(/^\/api\/tenders\/([A-Za-z0-9._-]+)\/dissents$/);
+    const cycle = cycleFor(ref);
+    const member = str(body.member).trim();
+    const position = str(body.position);
+    const basis = str(body.basis).trim();
+    if (!member || member.length < 3) return json({ error: "member must name the committee member holding the position" }, 422);
+    if (!["DISSENT", "ABSTAIN", "CONCUR_WITH_NOTES"].includes(position)) {
+      return json({ error: "position must be DISSENT, ABSTAIN or CONCUR_WITH_NOTES" }, 422);
+    }
+    const stage = str(body.stage);
+    if (!["EVALUATION_CERTIFICATION", "AWARD_REPORT", "CONTRACT_PACK"].includes(stage)) {
+      return json({ error: "stage must be EVALUATION_CERTIFICATION, AWARD_REPORT or CONTRACT_PACK" }, 422);
+    }
+    if (basis.length < 10) return json({ error: "basis must state the reasons (at least 10 characters)" }, 422);
+    const recordedBy = str(body.actor).trim().slice(0, 80) || member;
+    const dissent = {
+      id: `dis_${Math.random().toString(36).slice(2, 8)}`,
+      stage: stage as "EVALUATION_CERTIFICATION" | "AWARD_REPORT" | "CONTRACT_PACK",
+      member: member.slice(0, 80),
+      position: position as "DISSENT" | "ABSTAIN" | "CONCUR_WITH_NOTES",
+      basis: basis.slice(0, 2000),
+      recordedAt: new Date().toISOString(),
+      recordedBy,
+    };
+    cycle.dissents.push(dissent);
+    saveState();
+    appendLog({
+      actor: recordedBy,
+      server: "quorum-mcp",
+      tool: "record_dissent",
+      kind: "WRITES",
+      runId: "cycle",
+      inputs: { tenderId: ref, stage, member: dissent.member, position },
+      outputs: { dissentId: dissent.id },
+      status: "OK",
+      durationMs: 0,
+    });
+    return json({ dissent }, 201);
+  }
+  /* ── Performance security (contract administration) ─────────────────────── */
+  if (/^\/api\/tenders\/[A-Za-z0-9._-]+\/contract\/security$/.test(path) && mustPost()) {
+    const ref = tenderRef(/^\/api\/tenders\/([A-Za-z0-9._-]+)\/contract\/security$/);
+    const cycle = state.cycle.find((c) => c.tenderId === ref);
+    if (!cycle?.contract) return json({ error: "no contract is open on this tender — security is held against an open contract" }, 409);
+    const instrument = str(body.instrument);
+    if (!["BANK_GUARANTEE", "INSURANCE_BOND", "CASH_DEPOSIT", "OTHER"].includes(instrument)) {
+      return json({ error: "instrument must be BANK_GUARANTEE, INSURANCE_BOND, CASH_DEPOSIT or OTHER" }, 422);
+    }
+    const amount = Number(body.amount);
+    if (!Number.isFinite(amount) || amount <= 0) return json({ error: "amount must be a positive number" }, 422);
+    const actor = str(body.actor).trim().slice(0, 80) || "officer";
+    const security = {
+      id: `sec_${Math.random().toString(36).slice(2, 8)}`,
+      instrument: instrument as "BANK_GUARANTEE" | "INSURANCE_BOND" | "CASH_DEPOSIT" | "OTHER",
+      amount,
+      ...(str(body.currency).trim() ? { currency: str(body.currency).trim().slice(0, 8) } : {}),
+      ...(str(body.provider).trim() ? { provider: str(body.provider).trim().slice(0, 120) } : {}),
+      ...(str(body.reference).trim() ? { reference: str(body.reference).trim().slice(0, 120) } : {}),
+      ...(str(body.validUntil).trim() ? { validUntil: str(body.validUntil).trim().slice(0, 10) } : {}),
+      receivedAt: new Date().toISOString(),
+    };
+    cycle.contract.performanceSecurity.push(security);
+    saveState();
+    appendLog({
+      actor,
+      server: "quorum-mcp",
+      tool: "performance_security_record",
+      kind: "WRITES",
+      runId: "cycle",
+      inputs: { tenderId: ref, instrument, amount },
+      outputs: { securityId: security.id },
+      status: "OK",
+      durationMs: 0,
+    });
+    return json({ security }, 201);
+  }
+  if (/^\/api\/tenders\/[A-Za-z0-9._-]+\/contract\/security\/[A-Za-z0-9._-]+\/verify$/.test(path) && mustPost()) {
+    const match = path.match(/^\/api\/tenders\/([A-Za-z0-9._-]+)\/contract\/security\/([A-Za-z0-9._-]+)\/verify$/);
+    const cycle = state.cycle.find((c) => c.tenderId === (match?.[1] ?? ""));
+    const security = cycle?.contract?.performanceSecurity.find((s) => s.id === match?.[2]);
+    if (!security) return json({ error: "security record not found" }, 404);
+    const actor = str(body.actor).trim().slice(0, 80);
+    if (!actor) return json({ error: "actor must name the verifying officer — verification is a named act" }, 422);
+    security.verifiedBy = actor;
+    security.verifiedAt = new Date().toISOString();
+    saveState();
+    appendLog({
+      actor,
+      server: "quorum-mcp",
+      tool: "performance_security_verify",
+      kind: "WRITES",
+      runId: "cycle",
+      inputs: { tenderId: match?.[1], securityId: security.id },
+      outputs: { verifiedAt: security.verifiedAt },
+      status: "OK",
+      durationMs: 0,
+    });
+    return json({ security });
   }
   if (/^\/api\/tenders\/[A-Za-z0-9._-]+\/closing$/.test(path) && mustPost()) {
     const ref = tenderRef(/^\/api\/tenders\/([A-Za-z0-9._-]+)\/closing$/);

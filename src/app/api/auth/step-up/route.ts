@@ -1,9 +1,10 @@
 import { randomUUID } from "crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { getUserFromToken, rateLimit, clientKey, SESSION_COOKIE, verifyPassword } from "@/lib/auth";
-import { recordStepUpIssued } from "@/lib/db";
+import { getSetting, recordStepUpIssued } from "@/lib/db";
 import { gateDocHash, signStepUpToken, STEP_UP_TTL_MS } from "@/lib/step-up";
 import { verifyTotp } from "@/lib/totp";
+import { isAdminRole } from "@/lib/permissions";
 
 const SIDECAR = process.env.QUORUM_SIDECAR_URL ?? "http://127.0.0.1:3031";
 
@@ -42,6 +43,17 @@ export async function POST(req: NextRequest) {
   }
   if (!gate) return NextResponse.json({ error: "Gate not found." }, { status: 404 });
   if (gate.status !== "PENDING") return NextResponse.json({ error: `This gate is already ${gate.status}.` }, { status: 409 });
+
+  /* Phase 7 (access security): when the MFA-for-privilege policy is on, the
+     people who run the desk authenticate with a second factor on every
+     irreversible act — a passphrase alone no longer opens the gavel. The
+     refusal names the remedy, not just the rule. */
+  if (isAdminRole(user.role) && getSetting("require_mfa_admins") === "1" && !user.totpEnabled) {
+    return NextResponse.json(
+      { error: "Privileged accounts must enroll an authenticator before signing gates. Enroll TOTP from Settings, then step up again." },
+      { status: 403 },
+    );
+  }
 
   const password = typeof body.password === "string" ? body.password : "";
   const code = typeof body.code === "string" ? body.code.replace(/\s+/g, "") : "";

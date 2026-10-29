@@ -105,7 +105,8 @@ export type OversightAction =
   | "SESSIONS_REVOKED"
   | "ORG_SUSPENDED"
   | "ORG_REACTIVATED"
-  | "INVITE_REVOKED";
+  | "INVITE_REVOKED"
+  | "ACCESS_REVIEW";
 
 export interface OversightEventRow {
   id: string;

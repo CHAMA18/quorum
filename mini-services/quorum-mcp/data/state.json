@@ -1,6 +1,25 @@
 {
   "gates": [
     {
+      "id": "gate_0pyk6e",
+      "runId": "cycle",
+      "tenderId": "KE-MOH-2026-117",
+      "tool": "approve_exception",
+      "inputs": {
+        "exceptionId": "exc_v58vu1",
+        "kind": "SINGLE_SOURCE",
+        "title": "Sole supplier: calibration gas standards",
+        "justification": "Only the incumbent manufacturer holds the certified reference materials and the ZRA-registered calibration chain required for the ministry analysers; an open call would breach the equipment warranty terms.",
+        "evidence": [
+          "01-tender-notice.md",
+          "gate_abc123"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-29T15:59:26.060Z",
+      "requiredOffice": "ACCOUNTING_OFFICER"
+    },
+    {
       "id": "gate_ukcbof",
       "runId": "run_1b672e8c",
       "tenderId": "RW-RURA-2027-021",
@@ -3415,7 +3434,7 @@
       "tenderId": "RW-RURA-2027-021",
       "status": "REJECTED",
       "startedAt": "2026-10-21T10:48:45.633Z",
-      "updatedAt": "2026-10-28T08:05:08.914Z",
+      "updatedAt": "2026-10-29T15:59:57.176Z",
       "progress": [
         "▸ review_graph invoked — langgraph.js · tender RW-RURA-2027-021",
         "▸ tender_documents_list — via server-filesystem MCP",
@@ -3441,7 +3460,13 @@
           "severity": "HIGH",
           "item": "Volta Metering",
           "evidence": "Bid value RWF 6,100,000,000 vs peer median 2,225,000,000 (2.7×).",
-          "citation": "ocds-release.json, ocid ocds-rw-rura-2027-021, bids.details[1].value"
+          "citation": "ocds-release.json, ocid ocds-rw-rura-2027-021, bids.details[1].value",
+          "review": {
+            "decision": "ACCEPTED",
+            "by": "Chungu Chipimo Chama",
+            "at": "2026-10-29T15:59:57.176Z",
+            "note": "Verified against the cited bid line."
+          }
         },
         {
           "id": "F-02",
@@ -4924,6 +4949,29 @@
         "completedAt": "2026-10-21T14:57:45.287Z",
         "completedBy": "Verify Officer"
       }
+    },
+    {
+      "tenderId": "KE-MOH-2026-117",
+      "coi": [],
+      "alb": [],
+      "debriefs": [],
+      "complaints": [],
+      "clarifications": [],
+      "addenda": [],
+      "notices": [],
+      "specs": [],
+      "dissents": [
+        {
+          "id": "dis_ja02sa",
+          "stage": "EVALUATION_CERTIFICATION",
+          "member": "Test Member",
+          "position": "DISSENT",
+          "basis": "The MED adjustment lacks a documented basis in the pack.",
+          "recordedAt": "2026-10-29T15:59:57.019Z",
+          "recordedBy": "Chungu Chipimo Chama"
+        }
+      ],
+      "createdAt": "2026-10-29T15:59:46.588Z"
     }
   ],
   "pipeline": [
@@ -5006,7 +5054,13 @@
       "currency": "ZMW",
       "expectedPublication": "2026-10-28",
       "status": "PLANNED",
-      "createdAt": "2026-10-28T20:51:51.233Z"
+      "createdAt": "2026-10-28T20:51:51.233Z",
+      "requisition": {
+        "budgetValidated": true,
+        "budgetReference": "VOTE-104-2026",
+        "validatedBy": "Chungu Chipimo Chama",
+        "validatedAt": "2026-10-29T15:59:46.685Z"
+      }
     }
   ],
   "stepUpUses": [
@@ -5035,5 +5089,953 @@
       "usedAt": "2026-10-29T10:00:29.416Z"
     }
   ],
-  "seq": 433
+  "exceptions": [
+    {
+      "id": "exc_v58vu1",
+      "tenderId": "KE-MOH-2026-117",
+      "kind": "SINGLE_SOURCE",
+      "title": "Sole supplier: calibration gas standards",
+      "justification": "Only the incumbent manufacturer holds the certified reference materials and the ZRA-registered calibration chain required for the ministry analysers; an open call would breach the equipment warranty terms.",
+      "evidence": [
+        "01-tender-notice.md",
+        "gate_abc123"
+      ],
+      "requestedBy": "Chungu Chipimo Chama",
+      "requestedAt": "2026-10-29T15:59:26.060Z",
+      "status": "PENDING_GATE",
+      "gateId": "gate_0pyk6e"
+    }
+  ],
+  "documents": [
+    {
+      "id": "doc_r22w30yc",
+      "tenderId": "KE-MOH-2026-117",
+      "key": "tenders/KE-MOH-2026-117/91-bid-test-upload-md.md",
+      "title": "91-bid-test-upload-md.md",
+      "kind": "BID",
+      "sha256": "bf8ca07c9a761fb981dac2ad8dce8e1e",
+      "version": 1,
+      "bytes": 50,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.301Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Bid record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.301Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:bf8ca07c9a761fb981dac2ad8dce8e1e · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_kx8ghpee",
+      "tenderId": "KE-MOH-2026-117",
+      "key": "tenders/KE-MOH-2026-117/03-bid-equatorial-medicines.md",
+      "title": "03-bid-equatorial-medicines.md",
+      "kind": "BID",
+      "sha256": "8d1093b02907919e5f86d2df8174684a",
+      "version": 1,
+      "bytes": 1123,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.301Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Bid record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.301Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:8d1093b02907919e5f86d2df8174684a · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_6y5v56tk",
+      "tenderId": "KE-MOH-2026-117",
+      "key": "tenders/KE-MOH-2026-117/02-bid-savanna-pharma.md",
+      "title": "02-bid-savanna-pharma.md",
+      "kind": "BID",
+      "sha256": "61c73d89b6121a63b436b5f27d658383",
+      "version": 1,
+      "bytes": 1161,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.301Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Bid record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.301Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:61c73d89b6121a63b436b5f27d658383 · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_dr3w1gck",
+      "tenderId": "KE-MOH-2026-117",
+      "key": "tenders/KE-MOH-2026-117/01-tender-notice.md",
+      "title": "01-tender-notice.md",
+      "kind": "NOTICE",
+      "sha256": "71b5682facbca33c4f403b20a5e430a2",
+      "version": 1,
+      "bytes": 1641,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.301Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Solicitation record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.301Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:71b5682facbca33c4f403b20a5e430a2 · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_09luens5",
+      "tenderId": "KE-KCS-2026-042",
+      "key": "tenders/KE-KCS-2026-042/02-bid-portscan-systems.md",
+      "title": "02-bid-portscan-systems.md",
+      "kind": "BID",
+      "sha256": "c34f3bf060265224c652ddbf96f183ef",
+      "version": 1,
+      "bytes": 1091,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.301Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Bid record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.301Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:c34f3bf060265224c652ddbf96f183ef · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_se2r6jy2",
+      "tenderId": "KE-KCS-2026-042",
+      "key": "tenders/KE-KCS-2026-042/03-bid-coastline-screening.md",
+      "title": "03-bid-coastline-screening.md",
+      "kind": "BID",
+      "sha256": "7d21c276443da9019531189141a09e36",
+      "version": 1,
+      "bytes": 1262,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.301Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Bid record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.301Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:7d21c276443da9019531189141a09e36 · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_ckkz9lc8",
+      "tenderId": "KE-KCS-2026-042",
+      "key": "tenders/KE-KCS-2026-042/01-tender-notice.md",
+      "title": "01-tender-notice.md",
+      "kind": "NOTICE",
+      "sha256": "b89e65de716a39d8d5b67f44b5473417",
+      "version": 1,
+      "bytes": 1899,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.301Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Solicitation record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.301Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:b89e65de716a39d8d5b67f44b5473417 · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_e1ktn0sq",
+      "tenderId": "KE-NCB-104293",
+      "key": "tenders/KE-NCB-104293/02-bid-mediqueast.md",
+      "title": "02-bid-mediqueast.md",
+      "kind": "BID",
+      "sha256": "704518679fa0d379750112b14dcec150",
+      "version": 1,
+      "bytes": 952,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.301Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Bid record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.301Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:704518679fa0d379750112b14dcec150 · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_5xrxib09",
+      "tenderId": "KE-NCB-104293",
+      "key": "tenders/KE-NCB-104293/01-tender-notice.md",
+      "title": "01-tender-notice.md",
+      "kind": "NOTICE",
+      "sha256": "cf75bd7dd85182bec04ae6273d7499b7",
+      "version": 1,
+      "bytes": 1520,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.301Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Solicitation record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.301Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:cf75bd7dd85182bec04ae6273d7499b7 · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_ctm1o2ns",
+      "tenderId": "KE-NCB-104293",
+      "key": "tenders/KE-NCB-104293/03-bid-radiant-health.md",
+      "title": "03-bid-radiant-health.md",
+      "kind": "BID",
+      "sha256": "11466b930aed8ad9fe032df0cb62b534",
+      "version": 1,
+      "bytes": 944,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.301Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Bid record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.301Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:11466b930aed8ad9fe032df0cb62b534 · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_60y3bd4w",
+      "tenderId": "KE-PHC-2026-311",
+      "key": "tenders/KE-PHC-2026-311/03-bid-mwangaza-cold-chain.md",
+      "title": "03-bid-mwangaza-cold-chain.md",
+      "kind": "BID",
+      "sha256": "246d254ad81b9f600668a24ed51c5b4b",
+      "version": 1,
+      "bytes": 734,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.301Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Bid record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.301Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:246d254ad81b9f600668a24ed51c5b4b · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_uly1jwl5",
+      "tenderId": "KE-PHC-2026-311",
+      "key": "tenders/KE-PHC-2026-311/02-bid-nyota-energy.md",
+      "title": "02-bid-nyota-energy.md",
+      "kind": "BID",
+      "sha256": "4dcdf5b0d1cda5f05d9dbeaca7996ffd",
+      "version": 1,
+      "bytes": 840,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.301Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Bid record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.301Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:4dcdf5b0d1cda5f05d9dbeaca7996ffd · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_jtvmh1zs",
+      "tenderId": "KE-PHC-2026-311",
+      "key": "tenders/KE-PHC-2026-311/01-tender-notice.md",
+      "title": "01-tender-notice.md",
+      "kind": "NOTICE",
+      "sha256": "769749bb466aa7180e017678b2560500",
+      "version": 1,
+      "bytes": 1243,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.301Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Solicitation record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.301Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:769749bb466aa7180e017678b2560500 · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_arpwh280",
+      "tenderId": "KE-PHC-2026-311",
+      "key": "tenders/KE-PHC-2026-311/04-bid-highland-refrigeration.md",
+      "title": "04-bid-highland-refrigeration.md",
+      "kind": "BID",
+      "sha256": "6f6c559443723abd8915b5e7b0881f20",
+      "version": 1,
+      "bytes": 807,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.301Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Bid record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.301Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:6f6c559443723abd8915b5e7b0881f20 · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_b4q8o0vw",
+      "tenderId": "RW-UMUCYO-2027-006",
+      "key": "tenders/RW-UMUCYO-2027-006/02-bid-weza-technologies.md",
+      "title": "02-bid-weza-technologies.md",
+      "kind": "BID",
+      "sha256": "74262d02c6a4e4de80c2bff21d788cb7",
+      "version": 1,
+      "bytes": 945,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.301Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Bid record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.301Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:74262d02c6a4e4de80c2bff21d788cb7 · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_xnolxrsw",
+      "tenderId": "RW-UMUCYO-2027-006",
+      "key": "tenders/RW-UMUCYO-2027-006/01-tender-notice.md",
+      "title": "01-tender-notice.md",
+      "kind": "NOTICE",
+      "sha256": "08adc0476c78845ffd857d3f587c37ea",
+      "version": 1,
+      "bytes": 1621,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.301Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Solicitation record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.301Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:08adc0476c78845ffd857d3f587c37ea · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_nud32ckk",
+      "tenderId": "RW-UMUCYO-2027-006",
+      "key": "tenders/RW-UMUCYO-2027-006/03-bid-ubumwe-mobile.md",
+      "title": "03-bid-ubumwe-mobile.md",
+      "kind": "BID",
+      "sha256": "2614aa4ccdcb65caf772855731e5ea7a",
+      "version": 1,
+      "bytes": 1021,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.301Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Bid record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.301Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:2614aa4ccdcb65caf772855731e5ea7a · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_hs8n0oan",
+      "tenderId": "RW-RURA-2027-021",
+      "key": "tenders/RW-RURA-2027-021/ocds-release.json",
+      "title": "ocds-release.json",
+      "kind": "OCDS",
+      "sha256": "0842e45dad94e1e2c4dd74de0d2cf26c",
+      "version": 1,
+      "bytes": 1461,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.301Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Bid record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.301Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:0842e45dad94e1e2c4dd74de0d2cf26c · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_59p30x8y",
+      "tenderId": "KE-WRA-2026-058",
+      "key": "tenders/KE-WRA-2026-058/02-bid-aqua-dynamics.md",
+      "title": "02-bid-aqua-dynamics.md",
+      "kind": "BID",
+      "sha256": "325f3160c86ea5ad95084b82ffd758a1",
+      "version": 1,
+      "bytes": 624,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.301Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Bid record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.301Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:325f3160c86ea5ad95084b82ffd758a1 · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_ser07ha0",
+      "tenderId": "KE-WRA-2026-058",
+      "key": "tenders/KE-WRA-2026-058/04-bid-sahel-water-works.md",
+      "title": "04-bid-sahel-water-works.md",
+      "kind": "BID",
+      "sha256": "60f50fb77e34587ed99d3d4f06b4dbe4",
+      "version": 1,
+      "bytes": 632,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.301Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Bid record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.301Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:60f50fb77e34587ed99d3d4f06b4dbe4 · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_ghlb0e3m",
+      "tenderId": "KE-WRA-2026-058",
+      "key": "tenders/KE-WRA-2026-058/03-bid-rift-pumps.md",
+      "title": "03-bid-rift-pumps.md",
+      "kind": "BID",
+      "sha256": "a41754a721595de3b7c5eeb8200391eb",
+      "version": 1,
+      "bytes": 716,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.301Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Bid record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.301Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:a41754a721595de3b7c5eeb8200391eb · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_6n89s7sq",
+      "tenderId": "KE-WRA-2026-058",
+      "key": "tenders/KE-WRA-2026-058/01-tender-notice.md",
+      "title": "01-tender-notice.md",
+      "kind": "NOTICE",
+      "sha256": "f71ee4fed2f99c5816e2f931c51109a8",
+      "version": 1,
+      "bytes": 1105,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.301Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Solicitation record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.301Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:f71ee4fed2f99c5816e2f931c51109a8 · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_64291z9f",
+      "tenderId": "KE-MOE-2026-205",
+      "key": "tenders/KE-MOE-2026-205/02-bid-lakeshore-educational.md",
+      "title": "02-bid-lakeshore-educational.md",
+      "kind": "BID",
+      "sha256": "03d6eac822b2c9816467d50df13ea433",
+      "version": 1,
+      "bytes": 683,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.301Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Bid record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.301Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:03d6eac822b2c9816467d50df13ea433 · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_mkwl6fgb",
+      "tenderId": "KE-MOE-2026-205",
+      "key": "tenders/KE-MOE-2026-205/03-bid-rift-valley-lab.md",
+      "title": "03-bid-rift-valley-lab.md",
+      "kind": "BID",
+      "sha256": "0060ee6d4fb4bde3f7f1652fcf280faf",
+      "version": 1,
+      "bytes": 718,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.301Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Bid record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.301Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:0060ee6d4fb4bde3f7f1652fcf280faf · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_7srygyeu",
+      "tenderId": "KE-MOE-2026-205",
+      "key": "tenders/KE-MOE-2026-205/01-tender-notice.md",
+      "title": "01-tender-notice.md",
+      "kind": "NOTICE",
+      "sha256": "29d20cc7df7f600d8772c95fd688ff09",
+      "version": 1,
+      "bytes": 1092,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.300Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Solicitation record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.300Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:29d20cc7df7f600d8772c95fd688ff09 · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_gsjoeml9",
+      "tenderId": "KE-MOE-2026-205",
+      "key": "tenders/KE-MOE-2026-205/04-bid-summit-learning.md",
+      "title": "04-bid-summit-learning.md",
+      "kind": "BID",
+      "sha256": "2f16775a368dd7a75227d996990ff924",
+      "version": 1,
+      "bytes": 725,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.300Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Bid record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.300Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:2f16775a368dd7a75227d996990ff924 · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_v9dwhfyy",
+      "tenderId": "KE-MSA-2026-090",
+      "key": "tenders/KE-MSA-2026-090/03-bid-mombasa-marine.md",
+      "title": "03-bid-mombasa-marine.md",
+      "kind": "BID",
+      "sha256": "02097e54379db5dee42f965ca476de61",
+      "version": 1,
+      "bytes": 859,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.300Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Bid record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.300Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:02097e54379db5dee42f965ca476de61 · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_71ofllrj",
+      "tenderId": "KE-MSA-2026-090",
+      "key": "tenders/KE-MSA-2026-090/01-tender-notice.md",
+      "title": "01-tender-notice.md",
+      "kind": "NOTICE",
+      "sha256": "e9efae66295277dfd1e9f4bb0dfb2bb0",
+      "version": 1,
+      "bytes": 1571,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.300Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Solicitation record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.300Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:e9efae66295277dfd1e9f4bb0dfb2bb0 · backfill of the pre-register corpus"
+        }
+      ]
+    },
+    {
+      "id": "doc_vu6chhij",
+      "tenderId": "KE-MSA-2026-090",
+      "key": "tenders/KE-MSA-2026-090/02-bid-bahari-medical.md",
+      "title": "02-bid-bahari-medical.md",
+      "kind": "BID",
+      "sha256": "528169c776eb900d7721c437360442b2",
+      "version": 1,
+      "bytes": 858,
+      "channel": "sample_pack",
+      "importer": "quorum-ops (backfill)",
+      "capturedAt": "2026-10-29T16:01:52.300Z",
+      "provenance": {
+        "originSystem": "sidecar sample pack",
+        "note": "registered retroactively when the document register was introduced"
+      },
+      "retention": {
+        "schedule": "Bid record — confirm against the operational records schedule",
+        "years": 7,
+        "disposeAfter": "2033-10-29",
+        "status": "ACTIVE"
+      },
+      "custody": [
+        {
+          "at": "2026-10-29T16:01:52.300Z",
+          "actor": "quorum-ops (backfill)",
+          "action": "REGISTERED",
+          "detail": "sha256:528169c776eb900d7721c437360442b2 · backfill of the pre-register corpus"
+        }
+      ]
+    }
+  ],
+  "governance": {
+    "bands": [
+      {
+        "id": "band-small",
+        "label": "Small value",
+        "currency": "ZMW",
+        "min": 0,
+        "max": 250000,
+        "approvalOffice": "PROCUREMENT_UNIT",
+        "note": "Illustrative default — the operational owner confirms the real bands before live use."
+      },
+      {
+        "id": "band-medium",
+        "label": "Medium value",
+        "currency": "ZMW",
+        "min": 250000,
+        "max": 2000000,
+        "approvalOffice": "EVALUATION_COMMITTEE",
+        "note": "Illustrative default — the operational owner confirms the real bands before live use."
+      },
+      {
+        "id": "band-large",
+        "label": "Large / material value",
+        "currency": "ZMW",
+        "min": 2000000,
+        "approvalOffice": "ACCOUNTING_OFFICER",
+        "note": "Material awards carry independent committee review and the accounting officer's signature."
+      }
+    ]
+  },
+  "seq": 437
 }

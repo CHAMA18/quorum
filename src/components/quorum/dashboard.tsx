@@ -22,6 +22,7 @@ import {
   Database,
   Download,
   Eye,
+  FileCheck2,
   FileSignature,
   FileText,
   FileUp,
@@ -29,6 +30,7 @@ import {
   Gavel,
   Gauge,
   HardDrive,
+  Landmark,
   Library,
   ListChecks,
   Lock,
@@ -62,6 +64,9 @@ import { AuditView } from "@/components/quorum/audit-view";
 import { OversightView } from "@/components/quorum/oversight-view";
 import { CalendarView } from "@/components/quorum/calendar-view";
 import { CycleView } from "@/components/quorum/cycle-view";
+import { GovernanceView } from "@/components/quorum/governance-view";
+import { ComplianceView } from "@/components/quorum/compliance-view";
+import { ReadinessView } from "@/components/quorum/readiness-view";
 import { SpecBar } from "@/components/quorum/reveal";
 import { QuorumLogo } from "@/components/quorum/logo";
 import { MasterSwitcher } from "@/components/quorum/master-switcher";
@@ -461,6 +466,9 @@ type SectionId =
   | "mc-sources"
   | "mc-ledger"
   | "mc-committee"
+  | "mc-governance"
+  | "mc-compliance"
+  | "mc-readiness"
   | "mc-oversight"
   | "mc-calendar"
   | "mc-suppliers"
@@ -493,6 +501,14 @@ const NAV_GROUPS: {
       { id: "mc-findings", label: "Findings", icon: ListChecks, badge: "findings" },
       { id: "mc-reports", label: "Reports", icon: Files },
       { id: "mc-sources", label: "Data sources", icon: Database },
+    ],
+  },
+  {
+    group: "CONTROL",
+    items: [
+      { id: "mc-governance", label: "Governance", icon: Landmark },
+      { id: "mc-compliance", label: "Compliance", icon: FileCheck2 },
+      { id: "mc-readiness", label: "Readiness", icon: Stamp },
     ],
   },
   {
@@ -540,7 +556,13 @@ const SECTION_CAPABILITY: Partial<Record<SectionId, Capability>> = {
   "mc-rules": "manage_rules",
   "mc-stack": "manage_rules",
   "mc-oversight": "view_oversight",
+  "mc-governance": "view_oversight",
+  "mc-readiness": "view_oversight",
   "mc-audit": "read_audit",
+  /* Compliance is readable by every desk role — the committee reads the rule
+     set before they certify; auditors read it for oversight. Mutations are
+     re-checked per route. */
+  "mc-compliance": "read_audit",
 };
 
 function canOpenSection(user: AuthUser | null, id: SectionId): boolean {
@@ -9515,6 +9537,12 @@ export function Dashboard({
         return <StackConsole onToast={onToast} />;
       case "mc-oversight":
         return <OversightView actor={user} onToast={onToast} onOpenAudit={() => switchTo("mc-audit")} />;
+      case "mc-governance":
+        return <GovernanceView user={user} onToast={onToast} />;
+      case "mc-compliance":
+        return <ComplianceView user={user} onToast={onToast} />;
+      case "mc-readiness":
+        return <ReadinessView user={user} onToast={onToast} />;
       case "mc-audit":
         return <AuditView onToast={onToast} />;
       case "mc-settings":

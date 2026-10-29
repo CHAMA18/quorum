@@ -746,9 +746,12 @@ export function composeProcurementFile(input: {
     coi: { member: string; declaration: string; declaredAt: string }[];
     debriefs: { bidder: string; status: string }[];
   };
-  runs: { id: string; status: string; findings: { id: string; rule: string; item: string; severity: string; citation: string }[]; drafts: { id: string }[]; startedAt: string }[];
+  runs: { id: string; status: string; findings: { id: string; rule: string; item: string; severity: string; citation: string; review?: { decision: string; by: string; at: string } }[]; drafts: { id: string }[]; startedAt: string }[];
   gates: { id: string; tool: string; status: string; approver?: string; decidedAt?: string; receipt?: Record<string, unknown> }[];
   logVerified?: { ok: boolean; checked: number };
+  dissents?: { stage: string; member: string; position: string; basis: string; recordedAt: string }[];
+  exceptions?: { id: string; kind: string; status: string; title: string; requestedBy: string; decidedBy?: string }[];
+  compliance?: { verdict: string; hardFails: { rule: string; detail: string }[]; lines: { rule: string; count: number; hardFail: boolean }[] };
   generatedAt: string;
 }): string {
   const c = input.cycle;
@@ -786,7 +789,7 @@ export function composeProcurementFile(input: {
     ...(input.runs.length
       ? input.runs.flatMap((r) => [
           `### Run ${r.id} — ${r.status} (${r.startedAt.slice(0, 10)})`,
-          ...(r.findings.length ? r.findings.map((f) => `- ${f.id} ${f.rule} — ${f.item} (${f.severity}) · ${f.citation}`) : ["- no findings"]),
+          ...(r.findings.length ? r.findings.map((f) => `- ${f.id} ${f.rule} — ${f.item} (${f.severity}) · ${f.citation}${f.review ? ` · human disposition: ${f.review.decision} by ${f.review.by} (${f.review.at.slice(0, 10)})` : " · awaiting human disposition"}`) : ["- no findings"]),
         ])
       : ["- No review runs on record."]),
     "",
@@ -830,13 +833,42 @@ export function composeProcurementFile(input: {
       ? c.complaints.map((x) => `- ${x.complainant}: ${x.subject} — ${x.status} (${x.receivedAt.slice(0, 10)})`)
       : ["- None on record."]),
     "",
-    "## 9. Contract administration",
+    "## 9. Dissents and minority positions",
+    "",
+    ...(input.dissents?.length
+      ? input.dissents.map(
+          (d) => `- ${d.member} — ${d.position.replace(/_/g, " ").toLowerCase()} on ${d.stage.replace(/_/g, " ").toLowerCase()} (${d.recordedAt.slice(0, 10)}): ${d.basis}`,
+        )
+      : ["- None recorded. A dissent is a right, not a defect — its absence means none was declared."]),
+    "",
+    "## 10. Exceptions",
+    "",
+    ...(input.exceptions?.length
+      ? input.exceptions.map(
+          (e) => `- ${e.id} ${e.kind.replace(/_/g, " ").toLowerCase()} — ${e.status}${e.decidedBy ? ` by ${e.decidedBy}` : ""} · requested by ${e.requestedBy}: ${e.title}`,
+        )
+      : ["- None on record."]),
+    "",
+    "## 11. Compliance verdict",
+    "",
+    ...(input.compliance
+      ? [
+          `- Verdict: ${input.compliance.verdict}`,
+          ...(input.compliance.hardFails.length
+            ? input.compliance.hardFails.map((h) => `  - HARD FAIL ${h.rule}: ${h.detail}`)
+            : ["- No hard-fail conditions."]),
+          `- Rule lines on record: ${input.compliance.lines.length}`,
+        ]
+      : ["- Compliance summary not computed at file time."]),
+    "",
+    "## 12. Contract administration",
     "",
     ...(c?.contract
       ? [
           `- Contract with ${c.contract.supplier} — ${c.contract.currency ?? ""} ${c.contract.value.toLocaleString()}${c.contract.completedAt ? ` · completed ${c.contract.completedAt.slice(0, 10)}` : ""}`,
           `- Milestones: ${c.contract.milestones.map((m) => `${m.title} (${m.status})`).join(", ") || "none"}`,
           `- Variations: ${c.contract.variations.map((v) => `${v.description} ${v.pctOfContract}% (${v.status})`).join("; ") || "none"}`,
+          `- Performance security held: ${c.contract.performanceSecurity.length ? c.contract.performanceSecurity.map((s) => `${s.instrument.replace(/_/g, " ").toLowerCase()} ${s.currency ?? ""} ${s.amount.toLocaleString()}${s.verifiedBy ? ` (verified by ${s.verifiedBy})` : " (unverified)"}`).join("; ") : "none on record"}`,
           `- Payments certified: ${c.contract.payments.length}`,
         ]
       : ["- No contract on record."]),
