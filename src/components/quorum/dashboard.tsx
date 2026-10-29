@@ -677,7 +677,9 @@ function AgentStatusBadge({ mode, className }: { mode: AgentMode; className?: st
       role="status"
       aria-label={`Agent status: ${mode}`}
       className={cn(
-        "inline-flex h-9 items-center gap-2 rounded-full border px-3 type-micro",
+        /* shrink-0 + nowrap: the pill is a status instrument, never a widget
+           that yields its width — squeezed, it used to wrap onto two lines. */
+        "inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-3 type-micro",
         mode === "online" &&
           "border-brand-500/30 bg-brand-500/[0.06] text-brand-700 dark:border-brand-500/35 dark:text-brand-300",
         mode === "offline" && "border-ink-200 bg-white text-ink-400 dark:border-white/10 dark:bg-white/[0.04]",
@@ -9675,31 +9677,23 @@ export function Dashboard({
                   <PanelLeftOpen className="h-4 w-4" aria-hidden="true" />
                 </button>
               )}
-              <p className="flex min-w-0 items-center gap-3">
-                <span className="relative flex h-1.5 w-1.5 shrink-0" aria-hidden="true">
-                  <span
-                    className={cn(
-                      "absolute inline-flex h-full w-full animate-ping-slow rounded-full",
-                      agentMode === "online" ? "bg-brand-500" : "bg-ink-400"
-                    )}
-                  />
-                  <span
-                    className={cn(
-                      "relative inline-flex h-1.5 w-1.5 rounded-full",
-                      agentMode === "online" ? "bg-brand-600" : "bg-ink-400"
-                    )}
-                  />
-                </span>
-                <span className="font-code text-[8px] font-semibold uppercase tracking-[0.24em] text-ink-400">
+              {/* The breadcrumb is pure navigation: where I am. System state
+                  lives in the status cluster on the right — one pulsing dot
+                  per screen, not two. */}
+              <nav aria-label="Workspace location" className="flex min-w-0 items-center gap-2.5">
+                <span className="shrink-0 font-code text-[8px] font-semibold uppercase tracking-[0.24em] text-ink-400">
                   Workspace
                 </span>
-                <span className="text-[11px] text-ink-300 dark:text-ink-600" aria-hidden="true">
+                <span className="shrink-0 text-[11px] text-ink-300 dark:text-ink-600" aria-hidden="true">
                   /
                 </span>
-                <span className="truncate text-[13px] font-semibold tracking-[-0.01em] text-ink-950">
+                <span
+                  aria-current="page"
+                  className="min-w-0 truncate text-[13.5px] font-semibold tracking-[-0.01em] text-ink-950 dark:text-white"
+                >
                   {SECTION_LABEL[active] ?? "Overview"}
                 </span>
-              </p>
+              </nav>
             </div>
             <div className="flex items-center gap-2.5 sm:gap-3">
               <button
@@ -9730,17 +9724,19 @@ export function Dashboard({
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search evaluations…"
                   aria-label="Search evaluations by reference, title or buyer"
-                  className="focus-brand h-9 w-48 rounded-lg border border-ink-200/80 bg-[#fffdfb] pl-9 pr-3.5 text-[12.5px] text-ink-900 shadow-[inset_0_1px_1px_rgba(11,12,15,0.03)] outline-none transition-[width,border-color,background-color] duration-300 placeholder:text-ink-400 focus:w-64 focus:border-ink-950 focus:ring-[3px] focus:ring-ink-950/[0.07] dark:border-white/[0.1] dark:bg-white/[0.04] dark:focus:border-white/35 dark:focus:ring-white/[0.06] lg:w-52"
+                  /* Width steps are small and deliberate: a focus jump that
+                     reflows the whole status cluster reads as a glitch. */
+                  className="focus-brand h-9 w-40 rounded-lg border border-ink-200/80 bg-[#fffdfb] pl-9 pr-3.5 text-[12.5px] text-ink-900 shadow-[inset_0_1px_1px_rgba(11,12,15,0.03)] outline-none transition-[width,border-color,background-color] duration-300 placeholder:text-ink-400 focus:w-56 focus:border-ink-950 focus:ring-[3px] focus:ring-ink-950/[0.07] dark:border-white/[0.1] dark:bg-white/[0.04] dark:focus:border-white/35 dark:focus:ring-white/[0.06] lg:w-40 xl:w-48"
                 />
               </div>
               <p
-                className="hidden items-center gap-2 type-micro text-ink-500 xl:flex"
+                className="hidden shrink-0 items-center gap-2 whitespace-nowrap type-micro text-ink-500 2xl:flex"
                 aria-label="Local time"
               >
                 <LiveClock />
                 <span className="text-ink-300">·</span> Local
               </p>
-              <AgentStatusBadge mode={agentMode} className="hidden md:inline-flex" />
+              <AgentStatusBadge mode={agentMode} className="hidden lg:inline-flex" />
               <NotificationBell
                 onNavigate={(section) => switchTo(section as SectionId)}
                 onToast={onToast}

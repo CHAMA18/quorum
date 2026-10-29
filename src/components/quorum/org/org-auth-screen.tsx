@@ -14,15 +14,14 @@ import {
   Eye,
   EyeOff,
   KeyRound,
-  Landmark,
   Loader2,
-  ScrollText,
   ShieldCheck,
   UserRound,
   X,
 } from "lucide-react";
 import { QuorumLogo } from "@/components/quorum/logo";
 import { MasterSwitcher } from "@/components/quorum/master-switcher";
+import { RegisterShowcase } from "@/components/quorum/org/register-showcase";
 import { SearchSelect, type SelectOption } from "@/components/quorum/org/search-select";
 import { COUNTRIES, SUGGESTED_COUNTRIES, findCountry, type Country } from "@/lib/countries";
 import { LEGAL_FORM_GROUPS, LEGAL_FORM_OTHER } from "@/lib/legal-forms";
@@ -457,12 +456,12 @@ function RegisterWizard({ onRegistered }: { onRegistered: (name: string) => void
         </div>
         <ol className="mt-2 flex items-center gap-1.5" aria-label="Registration steps">
           {STEPS.map((s) => (
-            <li key={s.n} className="flex-1">
+            <li key={s.n} className="min-w-0 flex-1">
               <button
                 type="button"
                 onClick={() => s.n < step && setStep(s.n)}
                 className={cn(
-                  "w-full rounded-lg px-2 py-1.5 text-left transition-colors",
+                  "w-full min-w-0 rounded-lg px-1.5 py-1.5 text-left transition-colors",
                   s.n === step
                     ? "bg-ink-50 ring-1 ring-inset ring-ink-200 dark:bg-white/[0.07] dark:ring-white/10"
                     : s.n < step
@@ -485,7 +484,11 @@ function RegisterWizard({ onRegistered }: { onRegistered: (name: string) => void
                   </span>
                   <span
                     className={cn(
-                      "font-code text-[9px] font-semibold uppercase tracking-[0.14em]",
+                      /* Labels only once the card is wide enough to spell
+                         them — below that the numbered rail plus the
+                         "STEP n OF 4" line carry the state without
+                         overflowing the phone. */
+                      "hidden min-w-0 truncate font-code text-[9px] font-semibold uppercase tracking-[0.1em] min-[480px]:inline",
                       s.n === step ? "text-ink-950 dark:text-white" : s.n < step ? "text-ink-500 dark:text-ink-400" : "text-ink-400",
                     )}
                   >
@@ -1329,23 +1332,9 @@ export function OrgAuthScreen() {
             watch the opportunities board, and file applications that carry your organization&apos;s verified identity
             into the procurement record.
           </p>
-          <ul className="space-y-3.5">
-            {[
-              { icon: Building2, title: "One profile, kept current", body: "Legal identity, tax clearance, sector registrations — the exact fields the register asks for." },
-              { icon: Landmark, title: "Apply from the board", body: "Every open tender with its closing date. File an application in one pass; late bids are refused, honestly." },
-              { icon: ScrollText, title: "Nothing happens silently", body: "Each application is attested as org:<name> and appended to the same audit spine the desk reads." },
-            ].map((item) => (
-              <li key={item.title} className="flex gap-3.5">
-                <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-brand-400/25 bg-brand-400/10 text-brand-300">
-                  <item.icon className="h-4 w-4" aria-hidden="true" />
-                </span>
-                <div>
-                  <p className="text-[14.5px] font-semibold text-white">{item.title}</p>
-                  <p className="text-[13px] leading-relaxed text-ink-400">{item.body}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
+          {/* The value story rotates — one fact at a time, pausing when the
+              visitor reads it. Every slide states something the portal does. */}
+          <RegisterShowcase />
         </div>
 
         <div className="relative">
@@ -1374,10 +1363,11 @@ export function OrgAuthScreen() {
                 <h2 className="type-display mt-2 text-[22px] text-white">
                   The supplier side of the desk<span className="text-brand-500">.</span>
                 </h2>
-                <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-400">
-                  Build your organization&apos;s profile once, watch the opportunities board, and file applications that
-                  carry your verified identity.
-                </p>
+                {/* The same rotation, compact — the door tells its story on
+                    small screens too, with the same facts and controls. */}
+                <div className="mt-3.5">
+                  <RegisterShowcase compact />
+                </div>
               </div>
             </div>
 

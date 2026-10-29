@@ -98,6 +98,9 @@
   --animate-gate-breathe: gate-breathe 3.2s ease-in-out infinite;
   --animate-scanline: scanline 5.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
   --animate-pulse-dot: pulse-dot 2.6s ease-in-out infinite;
+  /* Registration showcase — the active slide's progress fill. Duration is
+     set inline so the clock and the auto-advance timer can never drift. */
+  --animate-showcase-fill: showcase-fill 6.5s linear forwards;
 
   @keyframes shimmer {
     0% {
@@ -106,6 +109,14 @@
     55%,
     100% {
       transform: translateX(330%) skewX(-20deg);
+    }
+  }
+  @keyframes showcase-fill {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
     }
   }
   @keyframes aurora-drift {
@@ -425,7 +436,8 @@
     .animate-caret-blink,
     .animate-gate-breathe,
     .animate-scanline,
-    .animate-pulse-dot {
+    .animate-pulse-dot,
+    .animate-showcase-fill {
       animation: none;
     }
   }

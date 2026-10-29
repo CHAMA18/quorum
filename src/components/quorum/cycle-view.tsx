@@ -28,6 +28,7 @@ import {
   Check,
   ChevronDown,
   CircleAlert,
+  Copy,
   Download,
   FileSignature,
   Flag,
@@ -223,10 +224,14 @@ type Stage = {
   tab: CycleTab;
   state: StageState;
   caption?: string;
+  /* True when the desk has reached this stage but an irreversible step is
+     parked at a named human's gate (or the standstill clock is running).
+     Derived strictly from the record — never from a feeling. */
+  held?: boolean;
 };
 
 function deriveStages(c: CycleDto | null): { stages: Stage[]; doneCount: number; currentIndex: number } {
-  const raw: { key: string; label: string; tab: CycleTab; done: boolean; caption: string }[] = [
+  const raw: { key: string; label: string; tab: CycleTab; done: boolean; caption: string; held?: boolean }[] = [
     {
       key: "solicitation",
       label: "Solicitation",
@@ -239,6 +244,7 @@ function deriveStages(c: CycleDto | null): { stages: Stage[]; doneCount: number;
       label: "Opening",
       tab: "opening",
       done: !!c?.opening?.certifiedAt,
+      held: !!c?.opening && !c.opening.certifiedAt,
       caption: c?.opening?.certifiedAt ? "register certified" : c?.opening ? "awaiting certification gate" : "public bid opening",
     },
     {
@@ -246,13 +252,15 @@ function deriveStages(c: CycleDto | null): { stages: Stage[]; doneCount: number;
       label: "Evaluation",
       tab: "evaluation",
       done: !!c?.matrix?.certifiedBy,
-      caption: c?.matrix?.certifiedBy ? "matrix certified" : c?.matrix ? "matrix in draft" : "matrix · MED · COI",
+      held: !!c?.matrix && !c.matrix.certifiedBy,
+      caption: c?.matrix?.certifiedBy ? "matrix certified" : c?.matrix ? "matrix in draft — at the gate" : "matrix · MED · COI",
     },
     {
       key: "award",
       label: "Award",
       tab: "award",
       done: !!c?.awardReport?.signedAt,
+      held: !!c?.awardReport && !c.awardReport.signedAt,
       caption: c?.awardReport?.signedAt ? "report signed" : c?.awardReport ? "awaiting the gavel" : "report at the gate",
     },
     {
@@ -260,6 +268,7 @@ function deriveStages(c: CycleDto | null): { stages: Stage[]; doneCount: number;
       label: "Standstill",
       tab: "award",
       done: !!c?.standstill && c.standstill.status !== "ACTIVE",
+      held: c?.standstill?.status === "ACTIVE",
       caption: c?.standstill?.status === "ACTIVE" ? `ends ${fmtDate(c.standstill.endsAt)}` : c?.standstill ? "lifted — clear" : "10 wd on publication",
     },
     {
@@ -277,7 +286,14 @@ function deriveStages(c: CycleDto | null): { stages: Stage[]; doneCount: number;
       caption: c?.contract?.completedAt ? "cycle closed" : "final acceptance",
     },
   ];
-  const stages: Stage[] = raw.map((s) => ({ key: s.key, label: s.label, tab: s.tab, caption: s.caption, state: "todo" as StageState }));
+  const stages: Stage[] = raw.map((s) => ({
+    key: s.key,
+    label: s.label,
+    tab: s.tab,
+    caption: s.caption,
+    state: "todo" as StageState,
+    ...(s.held ? { held: true } : {}),
+  }));
   let currentIndex = raw.findIndex((s) => !s.done);
   if (currentIndex === -1) currentIndex = raw.length - 1;
   stages[currentIndex] = { ...stages[currentIndex], state: "current" };
@@ -418,10 +434,11 @@ function StageLegend() {
   const items = [
     { label: "Complete", dot: "bg-emerald-500" },
     { label: "Current", dot: "bg-brand-500" },
+    { label: "At a gate", dot: "bg-brand-500/25 ring-2 ring-inset ring-brand-500/70" },
     { label: "Ahead", dot: "bg-ink-200 dark:bg-white/20" },
   ];
   return (
-    <div className="flex items-center gap-3.5">
+    <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5">
       {items.map((i) => (
         <span key={i.label} className="flex items-center gap-1.5 font-code text-[7.5px] font-bold tracking-[0.16em] text-ink-400">
           <span className={cn("h-1.5 w-1.5 rounded-full", i.dot)} aria-hidden="true" />
@@ -463,8 +480,12 @@ function CycleRail({ cycle }: { cycle: CycleDto | null }) {
               transition={{ duration: 0.6, ease: EASE }}
             />
           </span>
+          {/* The measure the officer actually asks: how many of the seven.
+              The percentage rides along for the instrument feel. */}
           <span className="tabular font-code text-[8.5px] font-bold tracking-[0.14em] text-ink-500">
-            {pct}% complete
+            {doneCount} OF {stages.length} STAGES
+            <span className="mx-1.5 text-ink-300 dark:text-ink-600">·</span>
+            {pct}%
           </span>
         </div>
       </div>
@@ -476,13 +497,15 @@ function CycleRail({ cycle }: { cycle: CycleDto | null }) {
              neutral rather than claiming a stage the desk has not reached. */
           const done = cycle ? s.state === "done" : false;
           const isCurrent = cycle ? s.state === "current" : false;
+          const atGate = cycle ? isCurrent && !!s.held : false;
           return (
             <li key={s.key} className="min-w-0">
               <button
                 type="button"
                 onClick={() => document.getElementById(`cycle-tab-${s.tab}`)?.click()}
                 aria-current={isCurrent ? "step" : undefined}
-                aria-label={`${s.label} — ${done ? "complete" : isCurrent ? "current stage" : "upcoming"}. Open the ${s.tab} tab.`}
+                aria-label={`${s.label} — ${done ? "complete" : atGate ? "waiting at a human gate" : isCurrent ? "current stage" : "upcoming"}. Open the ${s.tab} tab.`}
+                title={`${s.label} — ${s.caption ?? ""} (opens the ${s.tab} tab)`}
                 className="group block w-full min-w-0 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50 focus-visible:ring-offset-4 focus-visible:ring-offset-[#fffdfb] dark:focus-visible:ring-offset-[#111318]"
               >
                 {/* The meter: one segment per stage, so progress is read at a glance. */}
@@ -490,14 +513,18 @@ function CycleRail({ cycle }: { cycle: CycleDto | null }) {
                   className={cn(
                     "relative block h-[3px] w-full overflow-hidden rounded-full transition-colors",
                     done && "bg-emerald-500/85",
-                    isCurrent && "bg-brand-500/20",
+                    isCurrent && !atGate && "bg-brand-500/20",
+                    atGate && "bg-brand-500/20",
                     !done && !isCurrent && "bg-ink-100 group-hover:bg-ink-200 dark:bg-white/[0.09] dark:group-hover:bg-white/[0.16]",
                   )}
                   aria-hidden="true"
                 >
                   {isCurrent ? (
                     <motion.span
-                      className="absolute inset-y-0 left-0 rounded-full bg-brand-500 shadow-[0_0_12px_rgba(232,56,42,0.55)]"
+                      className={cn(
+                        "absolute inset-y-0 left-0 rounded-full bg-brand-500",
+                        atGate ? "animate-pulse shadow-[0_0_12px_rgba(232,56,42,0.75)]" : "shadow-[0_0_12px_rgba(232,56,42,0.55)]",
+                      )}
                       initial={false}
                       animate={{ width: "100%" }}
                       transition={{ duration: 0.6, ease: EASE }}
@@ -509,7 +536,10 @@ function CycleRail({ cycle }: { cycle: CycleDto | null }) {
                     className={cn(
                       "grid h-[17px] w-[17px] shrink-0 place-items-center rounded-full border font-code text-[7.5px] font-black tabular transition-colors",
                       done && "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:border-emerald-400/35 dark:text-emerald-300",
-                      isCurrent && "animate-gate-breathe border-brand-600 bg-brand-600 text-white",
+                      isCurrent && !atGate && "animate-gate-breathe border-brand-600 bg-brand-600 text-white",
+                      /* Held at a gate: the gavel belongs to a human — the
+                         ring says so without claiming completion. */
+                      atGate && "border-brand-600/70 bg-brand-500/[0.12] text-brand-700 ring-2 ring-brand-500/25 dark:border-brand-400/70 dark:text-brand-300",
                       !done && !isCurrent && "border-ink-200 text-ink-400 group-hover:border-ink-300 group-hover:text-ink-600 dark:border-white/[0.12] dark:text-ink-500 dark:group-hover:border-white/25",
                     )}
                     aria-hidden="true"
@@ -529,7 +559,8 @@ function CycleRail({ cycle }: { cycle: CycleDto | null }) {
                 <span
                   className={cn(
                     "mt-1 block truncate text-[9.5px] leading-tight transition-colors",
-                    isCurrent ? "text-ink-600 dark:text-ink-500" : "text-ink-400 dark:text-ink-400",
+                    atGate && "font-semibold text-brand-700 dark:text-brand-300",
+                    !atGate && (isCurrent ? "text-ink-600 dark:text-ink-500" : "text-ink-400 dark:text-ink-400"),
                   )}
                   title={s.caption}
                 >
@@ -595,19 +626,23 @@ function TenderPicker({
   value: currentRef,
   cycles,
   onSelect,
+  onToast,
 }: {
   tenders: { ref: string; title: string }[];
   value: string;
   cycles: CycleDto[];
   onSelect: (ref: string) => void;
+  onToast: (m: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const [q, setQ] = useState("");
+  const [copied, setCopied] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
   useOutside(boxRef, () => setOpen(false), open);
 
   const current = tenders.find((t) => t.ref === currentRef);
+  const currentCycle = cycles.find((x) => x.tenderId === currentRef) ?? null;
   const progressOf = (r: string) => {
     const c = cycles.find((x) => x.tenderId === r);
     if (!c) return { pct: 0, stage: "Not started" };
@@ -637,6 +672,28 @@ function TenderPicker({
 
   const p = progressOf(currentRef);
 
+  /* The dossier's own status line — spoken from the record, never invented:
+     closed cycles say so; open ones name the stage the desk is standing at. */
+  const cycleClosed = !!currentCycle?.contract?.completedAt;
+  const dossierStatus = !currentCycle
+    ? { label: "NOT STARTED", tone: "muted" as const }
+    : cycleClosed
+      ? { label: "CYCLE CLOSED", tone: "ok" as const }
+      : { label: `STAGE ${String(deriveStages(currentCycle).currentIndex + 1).padStart(2, "0")} · ${p.stage.toUpperCase()}`, tone: "brand" as const };
+
+  const copyRef = async () => {
+    if (!currentRef) return;
+    try {
+      await navigator.clipboard.writeText(currentRef);
+      setCopied(true);
+      onToast(`REFERENCE ${currentRef} COPIED`);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      /* Clipboard permission denied — the reference is selectable text anyway. */
+      onToast("COPY BLOCKED BY THE BROWSER — SELECT THE REFERENCE MANUALLY");
+    }
+  };
+
   return (
     <div
       ref={boxRef}
@@ -661,46 +718,78 @@ function TenderPicker({
         }
       }}
     >
-      <button
-        type="button"
-        onClick={toggle}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label={`Tender: ${current ? `${current.ref} — ${current.title}` : "select a tender"}`}
+      {/* The dossier surface: two controls, one visual instrument. The
+          picker button owns the reading; the copy button stands beside it,
+          never inside it — a button inside a button is a lie to the DOM. */}
+      <div
         className={cn(
-          "panel-inset group flex w-full items-center gap-3.5 rounded-[10px] px-3.5 py-3 text-left transition-[border-color,background-color] duration-200",
+          "panel-inset group flex w-full items-center gap-3.5 rounded-[10px] px-3.5 py-3 transition-[border-color,background-color] duration-200",
           "hover:border-ink-300 dark:hover:border-white/20",
+          "focus-within:border-ink-950 focus-within:ring-4 focus-within:ring-ink-950/[0.06] dark:focus-within:border-white/40 dark:focus-within:ring-white/[0.05]",
           open && "border-ink-950 ring-4 ring-ink-950/[0.06] dark:border-white/40 dark:ring-white/[0.05]",
         )}
       >
-        <ProgressRing pct={p.pct} />
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2 eyebrow text-[8px] tracking-[0.24em]">
-            Working dossier
-            {current ? (
-              <span className="hidden items-center gap-1 rounded-full bg-ink-950/[0.055] px-1.5 py-0.5 text-[7px] tracking-[0.12em] text-ink-500 sm:inline-flex dark:bg-white/[0.07] dark:text-ink-400">
-                {p.stage}
+        <button
+          type="button"
+          onClick={toggle}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-label={`Tender: ${current ? `${current.ref} — ${current.title}` : "select a tender"}. Open the dossier picker.`}
+          className="flex min-w-0 flex-1 items-center gap-3.5 rounded-[8px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50"
+        >
+          <ProgressRing pct={p.pct} />
+          <span className="min-w-0 flex-1">
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1 eyebrow text-[8px] tracking-[0.24em]">
+              <span className="text-ink-400 dark:text-ink-500">Working dossier</span>
+              <Chip tone={dossierStatus.tone}>{dossierStatus.label}</Chip>
+            </span>
+            <span className="mt-1.5 flex min-w-0 items-baseline gap-2.5">
+              <span className="shrink-0 font-code text-[12.5px] font-bold tracking-[0.08em] text-ink-950 dark:text-white">
+                {current ? current.ref : "—"}
+              </span>
+              <span className="truncate text-[12px] leading-tight text-ink-500">
+                {current?.title ?? "No tender staged on the desk yet"}
+              </span>
+            </span>
+            {/* One honest meta line, only from the record: the closing date
+                when the cycle has one. Without a record the right-hand count
+                already says what the desk holds — say it once, not twice. */}
+            {currentCycle?.closingDate ? (
+              <span className="mt-1 flex min-w-0 items-center gap-x-2.5 gap-y-0.5 flex-wrap font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-400">
+                <span className="inline-flex items-center gap-1">
+                  <CalendarClock className="h-2.5 w-2.5" aria-hidden="true" />
+                  CLOSES {fmtDate(currentCycle.closingDate).toUpperCase()} · {relDays(currentCycle.closingDate).toUpperCase()}
+                </span>
               </span>
             ) : null}
           </span>
-          <span className="mt-1.5 flex min-w-0 items-baseline gap-2.5">
-            <span className="shrink-0 font-code text-[11.5px] font-bold tracking-[0.08em] text-ink-950">
-              {current ? current.ref : "—"}
-            </span>
-            <span className="truncate text-[12px] leading-tight text-ink-500">
-              {current?.title ?? "No tender staged on the desk yet"}
-            </span>
-          </span>
-        </span>
-        <span className="flex shrink-0 items-center gap-2">
-          <span className="hidden font-code text-[8px] font-bold tracking-[0.16em] text-ink-400 sm:block">
+        </button>
+        <span className="flex shrink-0 items-center gap-1.5">
+          {current ? (
+            <button
+              type="button"
+              onClick={() => void copyRef()}
+              aria-label={`Copy tender reference ${current.ref}`}
+              title={`Copy ${current.ref}`}
+              className="focus-brand grid h-7 w-7 place-items-center rounded-lg border border-ink-200/70 text-ink-400 transition-colors hover:border-ink-400 hover:text-ink-900 dark:border-white/10 dark:text-ink-500 dark:hover:border-white/25 dark:hover:text-white"
+            >
+              {copied ? <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
+            </button>
+          ) : null}
+          <span className="hidden font-code text-[8px] font-bold tracking-[0.16em] text-ink-400 lg:block">
             {tenders.length} ON DESK
           </span>
-          <span className="grid h-7 w-7 place-items-center rounded-lg border border-ink-200/70 text-ink-500 transition-colors group-hover:border-ink-300 group-hover:text-ink-900 dark:border-white/10 dark:group-hover:border-white/25 dark:group-hover:text-white">
+          <button
+            type="button"
+            onClick={toggle}
+            aria-hidden="true"
+            tabIndex={-1}
+            className="grid h-7 w-7 place-items-center rounded-lg border border-ink-200/70 text-ink-500 transition-colors group-hover:border-ink-300 group-hover:text-ink-900 dark:border-white/10 dark:group-hover:border-white/25 dark:group-hover:text-white"
+          >
             <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", open && "rotate-180")} aria-hidden="true" />
-          </span>
+          </button>
         </span>
-      </button>
+      </div>
 
       <AnimatePresence>
         {open ? (
@@ -1974,31 +2063,139 @@ export function CycleView({
 
   /* ── Tab: analytics + procurement file (G15/G5) ──────────────────────────── */
 
-  const ANALYTICS_LABELS: Record<string, string> = {
-    tendersStaged: "Tenders staged",
-    packsFlagged: "Packs flagged",
-    findingsRaised: "Findings raised",
-    gatesRaised: "Gates raised",
-    gatesExecuted: "Gates executed",
-    procurementFiles: "Procurement files",
-    runs: "Runs",
-    toolCalls: "Tool calls",
+  /* Whole numbers stay whole; the one ratio on the desk gets one decimal. */
+  const fmtNum = (v: number | string) => {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return String(v);
+    return Number.isInteger(n) ? n.toLocaleString("en-US") : n.toFixed(1);
   };
-  const prettyKey = (k: string) => ANALYTICS_LABELS[k] ?? k.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase());
 
   const AnalyticsTab = (
     <div className="grid gap-4">
-      <Card title="Desk analytics" sub="READ-SIDE ONLY — COMPUTED FROM THE APPEND-ONLY LOGS, ZERO NEW INSTRUMENTATION">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
-          {analytics
-            ? Object.entries(analytics).map(([k, v]) => (
-                <div key={k} className="rounded-xl border border-ink-100 bg-paper px-3 py-3 transition-shadow hover:shadow-md hover:shadow-ink-950/5">
-                  <p className="font-display text-[22px] font-black leading-tight text-ink-950 tabular">{String(v)}</p>
-                  <p className="mt-1 font-code text-[7.5px] tracking-[0.16em] text-ink-400">{prettyKey(k).toUpperCase()}</p>
+      <Card
+        title="Desk analytics"
+        sub="READ-SIDE ONLY — COMPUTED FROM THE APPEND-ONLY LOGS, ZERO NEW INSTRUMENTATION"
+        right={
+          analytics ? (
+            <span className="font-code text-[8px] font-bold tracking-[0.14em] text-ink-400">
+              {fmtNum(analytics.tendersInCycle ?? 0)} TENDER{Number(analytics.tendersInCycle ?? 0) === 1 ? "" : "S"} IN CYCLE
+            </span>
+          ) : null
+        }
+      >
+        {!analytics ? (
+          /* No record yet — an honest instrument reads blank, not zero. */
+          <div className="flex flex-col items-center rounded-[10px] border border-dashed border-ink-200 px-5 py-10 text-center dark:border-white/[0.12]">
+            <span className="grid h-11 w-11 place-items-center rounded-full bg-ink-100/70 text-ink-400 dark:bg-white/[0.05]">
+              <Workflow className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <p className="mt-3.5 text-[13px] font-semibold text-ink-800">Analytics arrive with the first cycle record</p>
+            <p className="mt-1.5 max-w-[44ch] text-[11.5px] leading-relaxed text-ink-400">
+              Every number here is computed from the append-only log the moment the desk starts moving — nothing is
+              estimated ahead of the record.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {/* Headline numbers — the four an oversight meeting opens with. */}
+            <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-[10px] border border-ink-100 bg-ink-100/70 sm:grid-cols-4 dark:border-white/[0.07] dark:bg-white/[0.07]">
+              {(
+                [
+                  { k: "tendersInCycle", label: "Tenders in cycle", hint: "RECORDS OPEN ON THE DESK" },
+                  { k: "bidsOpened", label: "Bids opened", hint: "REGISTERED AT PUBLIC OPENING" },
+                  { k: "certifiedMatrices", label: "Matrices certified", hint: "EVALUATION SIGNED AT A GATE" },
+                  { k: "contractsClosed", label: "Contracts closed", hint: "ACCEPTANCE RECORDED", accent: true },
+                ] as { k: string; label: string; hint?: string; accent?: boolean }[]
+              ).map((m) => (
+                <div key={m.k} className="bg-[#fffefa] px-4 py-3.5 dark:bg-[#12141a]">
+                  <dt className="eyebrow text-[8px] tracking-[0.2em]">{m.label}</dt>
+                  <dd
+                    className={cn(
+                      "mt-2 font-display text-[26px] font-black leading-none tracking-[-0.02em] tabular",
+                      m.accent ? "text-brand-600 dark:text-brand-400" : "text-ink-950 dark:text-white",
+                    )}
+                  >
+                    {fmtNum(analytics[m.k] ?? 0)}
+                  </dd>
+                  <p className="mt-1.5 font-code text-[7.5px] tracking-[0.12em] text-ink-400">{m.hint}</p>
                 </div>
-              ))
-            : null}
-        </div>
+              ))}
+            </dl>
+
+            {/* Watchlist — the exceptions that need a human, each with the
+                tab that resolves it. Zero stays zero; nothing is invented. */}
+            {(() => {
+              const watches: { count: number; label: string; tab: CycleTab; tabLabel: string }[] = [
+                { count: Number(analytics.lateBids ?? 0), label: "late bids rejected unopened", tab: "opening", tabLabel: "OPENING" },
+                { count: Number(analytics.albOpen ?? 0), label: "abnormally-low-bid queries open", tab: "evaluation", tabLabel: "EVALUATION" },
+                { count: Number(analytics.openComplaints ?? 0), label: "complaints awaiting a response", tab: "complaints", tabLabel: "COMPLAINTS" },
+                { count: Number(analytics.standstillsActive ?? 0), label: "standstill clocks running", tab: "award", tabLabel: "AWARD" },
+              ];
+              const raised = watches.filter((w) => w.count > 0);
+              return (
+                <div
+                  className={cn(
+                    "rounded-[10px] border px-4 py-3.5",
+                    raised.length
+                      ? "border-brand-500/30 bg-brand-500/[0.05] dark:border-brand-400/30 dark:bg-brand-500/[0.07]"
+                      : "border-emerald-500/25 bg-emerald-500/[0.05] dark:border-emerald-400/25",
+                  )}
+                >
+                  <p className={cn("eyebrow text-[8px] tracking-[0.2em]", raised.length ? "text-brand-700 dark:text-brand-300" : "text-emerald-700 dark:text-emerald-300")}>
+                    {raised.length ? "NEEDS ATTENTION" : "ALL CLEAR"}
+                  </p>
+                  {raised.length ? (
+                    <ul className="mt-2.5 space-y-1.5">
+                      {raised.map((w) => (
+                        <li key={w.label} className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                          <span className="inline-grid h-4.5 min-w-4.5 place-items-center rounded-full bg-brand-600 px-1 font-code text-[8.5px] font-black tabular text-white dark:bg-brand-500">
+                            {w.count}
+                          </span>
+                          <span className="text-[12px] font-medium text-ink-800 dark:text-ink-100">{w.label}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTab(w.tab);
+                              document.getElementById(`cycle-tab-${w.tab}`)?.focus();
+                            }}
+                            className="focus-brand inline-flex items-center gap-1 rounded font-code text-[8px] font-bold tracking-[0.14em] text-brand-700 underline decoration-brand-500/40 underline-offset-4 transition-colors hover:decoration-brand-500 dark:text-brand-300"
+                          >
+                            OPEN {w.tabLabel}
+                            <ArrowRight className="h-2.5 w-2.5" aria-hidden="true" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-1.5 text-[12px] text-ink-600 dark:text-ink-300">
+                      No late bids, no open queries, no unanswered complaints, no running standstills — the desk is clean.
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* The rest of the record — compact, tabular, honest. */}
+            <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-[10px] border border-ink-100 bg-ink-100/70 sm:grid-cols-3 xl:grid-cols-5 dark:border-white/[0.07] dark:bg-white/[0.07]">
+              {(
+                [
+                  { k: "onTimeBids", label: "On-time bids" },
+                  { k: "complaints", label: "Complaints logged" },
+                  { k: "findingsTotal", label: "Findings raised" },
+                  { k: "findingsPerTender", label: "Findings / tender" },
+                  { k: "contractsActive", label: "Contracts active" },
+                ] as { k: string; label: string }[]
+              ).map((m) => (
+                <div key={m.k} className="bg-[#fffefa] px-3.5 py-3 dark:bg-[#12141a]">
+                  <dt className="eyebrow text-[7.5px] tracking-[0.18em]">{m.label}</dt>
+                  <dd className="mt-1.5 font-display text-[19px] font-bold leading-none tracking-[-0.02em] tabular text-ink-900 dark:text-white">
+                    {fmtNum(analytics[m.k] ?? 0)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
       </Card>
       <StoredDocsBrowser
         tenderRef={ref}
@@ -2091,7 +2288,7 @@ export function CycleView({
 
           <div className="mt-4 flex items-center gap-4">
             <div className="min-w-0 flex-1 xl:max-w-[760px]">
-              <TenderPicker tenders={tenders} value={ref} cycles={cycles} onSelect={setRef} />
+              <TenderPicker tenders={tenders} value={ref} cycles={cycles} onSelect={setRef} onToast={onToast} />
             </div>
             <div className="ml-auto hidden shrink-0 items-center gap-2.5 xl:flex" aria-live="polite">
               <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
@@ -2187,17 +2384,49 @@ export function CycleView({
               {tab === "complaints" ? ComplaintsTab : null}
               {tab === "analytics" ? AnalyticsTab : null}
               {tab !== "pipeline" && tab !== "deadlines" && !cycle ? (
+                /* No cycle record — the one empty state that asks for a hand.
+                   The action is real: it opens the pipeline tab where the pack
+                   is actually staged. No decorative buttons. */
                 <div className="panel flex flex-col items-center rounded-[12px] px-6 py-12 text-center">
-                  <span className="grid h-11 w-11 place-items-center rounded-full border border-dashed border-ink-300 text-ink-400 dark:border-white/[0.18]">
+                  <span className="grid h-12 w-12 place-items-center rounded-full border border-dashed border-ink-300 text-ink-400 dark:border-white/[0.18]">
                     <Workflow className="h-5 w-5" aria-hidden="true" />
                   </span>
-                  <p className="mt-3.5 text-[13.5px] font-semibold text-ink-800">
+                  <p className="mt-4 text-[14px] font-semibold text-ink-800">
                     {ref ? "No cycle record for this tender yet" : "No tender selected"}
                   </p>
-                  <p className="mt-1.5 max-w-[44ch] text-[12px] leading-relaxed text-ink-500">
+                  <p className="mt-2 max-w-[48ch] text-[12.5px] leading-relaxed text-ink-500">
                     {ref
-                      ? "Plan the pack in the pipeline — the opening, evaluation and award tabs open as the desk records each step."
-                      : "Pick a tender above. Its stage, its vitals and its file appear here."}
+                      ? "The cycle file opens with the tender's first entry. Plan the pack in the pipeline — once it is staged, the opening, evaluation and award tabs keep their own record from the first step."
+                      : "Pick a tender from the working dossier above, or plan a new pack in the pipeline. Its stage, vitals and file appear here the moment the record exists."}
+                  </p>
+                  <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTab("pipeline");
+                        document.getElementById("cycle-tab-pipeline")?.focus();
+                      }}
+                      className="focus-brand inline-flex h-10 items-center gap-2 rounded-lg bg-brand-600 px-4 text-[12.5px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_22px_-14px_rgba(217,38,22,0.9)] transition-[background-color,transform] duration-150 hover:bg-brand-500 active:scale-[0.985]"
+                    >
+                      <Plus className="h-4 w-4" aria-hidden="true" />
+                      {ref ? "Stage the tender pack" : "Plan a tender in the pipeline"}
+                    </button>
+                    {tenders.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = tenders.find((t) => cycles.some((c) => c.tenderId === t.ref))?.ref ?? tenders[0]?.ref;
+                          if (next) setRef(next);
+                        }}
+                        className="focus-brand inline-flex h-10 items-center gap-2 rounded-lg border border-ink-200/90 bg-[#fffdfb] px-4 text-[12.5px] font-semibold text-ink-700 transition-colors hover:border-ink-400 hover:text-ink-950 dark:border-white/[0.12] dark:bg-white/[0.04] dark:text-ink-300 dark:hover:border-white/25 dark:hover:text-white"
+                      >
+                        <Search className="h-3.5 w-3.5" aria-hidden="true" />
+                        Show a tender with a record
+                      </button>
+                    ) : null}
+                  </div>
+                  <p className="mt-4 font-code text-[8px] font-bold tracking-[0.16em] text-ink-400">
+                    7 STAGES · EVERY IRREVERSIBLE STEP STOPS AT A NAMED HUMAN
                   </p>
                 </div>
               ) : null}
