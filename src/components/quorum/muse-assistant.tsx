@@ -368,7 +368,7 @@ export function MuseAssistant({ name }: { name?: string }) {
   const recogRef = useRef<SpeechRecognitionLike | null>(null);
   const finalHeardRef = useRef("");
 
-  const { speak, stop, prime, voice, setVoice, mode, speaking } = useSpeaker(speakOn && open);
+  const { speak, stop, prime, speaking } = useSpeaker(speakOn && open);
 
   /* Chrome ships a new default voice list after the first utterance. */
   useEffect(() => {
@@ -1094,35 +1094,6 @@ export function MuseAssistant({ name }: { name?: string }) {
                   <Send className="h-4 w-4" aria-hidden="true" />
                 </button>
               </form>
-              <div className="mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 font-code text-[7px] tracking-[0.16em] text-ink-500">
-                <span className={speaking ? "text-brand-300" : undefined}>
-                  {!speakOn ? "MUTED" : speaking ? "SPEAKING" : mode === "aura" ? "AURA-2" : "SYSTEM VOICE"}
-                </span>
-                <span aria-hidden="true">·</span>
-                <label className="inline-flex items-center gap-1">
-                  VOICE
-                  <select
-                    value={voice}
-                    onChange={(e) => {
-                      prime();
-                      setVoice(e.target.value);
-                    }}
-                    aria-label="Spoken reply voice"
-                    className="max-w-[7.5rem] cursor-pointer rounded border border-white/10 bg-night px-1 py-0.5 font-code text-[7px] tracking-[0.1em] text-ink-300 outline-none focus:border-brand-500/60"
-                  >
-                    {VOICE_PRESETS.map((preset) => (
-                      <option key={preset.id} value={preset.id} title={preset.blurb}>
-                        {preset.label.toUpperCase()}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <span aria-hidden="true">·</span>
-                <span className="text-ink-400">ACTS ON CONSENT</span>
-              </div>
-              <p className="mt-1 text-center font-code text-[7px] tracking-[0.16em] text-ink-500">
-                MUSE SPARK + REAL VOICE · THE GAVEL SIGNS ONLY WHEN YOU DO
-              </p>
             </div>
           </motion.div>
         )}
