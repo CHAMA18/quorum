@@ -27,6 +27,8 @@ import {
   CalendarClock,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   CircleAlert,
   Copy,
   Download,
@@ -435,7 +437,7 @@ function StageLegend() {
     { label: "Complete", dot: "bg-emerald-500" },
     { label: "Current", dot: "bg-brand-500" },
     { label: "At a gate", dot: "bg-brand-500/25 ring-2 ring-inset ring-brand-500/70" },
-    { label: "Ahead", dot: "bg-ink-200 dark:bg-white/20" },
+    { label: "Upcoming", dot: "bg-ink-200 dark:bg-white/20" },
   ];
   return (
     <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5">
@@ -472,7 +474,7 @@ function CycleRail({ cycle }: { cycle: CycleDto | null }) {
           )}
         </p>
         <div className="flex items-center gap-2.5" aria-live="polite">
-          <span className="h-[3px] w-14 overflow-hidden rounded-full bg-ink-100 dark:bg-white/10" aria-hidden="true">
+          <span className="h-[3px] w-16 overflow-hidden rounded-full bg-ink-100 dark:bg-white/10" aria-hidden="true">
             <motion.span
               className="block h-full rounded-full bg-brand-500"
               initial={false}
@@ -480,10 +482,10 @@ function CycleRail({ cycle }: { cycle: CycleDto | null }) {
               transition={{ duration: 0.6, ease: EASE }}
             />
           </span>
-          {/* The measure the officer actually asks: how many of the seven.
-              The percentage rides along for the instrument feel. */}
+          {/* The measure the officer actually asks: how many of the seven are
+              behind the desk — spelled out, never a bare percentage. */}
           <span className="tabular font-code text-[8.5px] font-bold tracking-[0.14em] text-ink-500">
-            {doneCount} OF {stages.length} STAGES
+            {doneCount} OF {stages.length} STAGES COMPLETE
             <span className="mx-1.5 text-ink-300 dark:text-ink-600">·</span>
             {pct}%
           </span>
@@ -566,6 +568,14 @@ function CycleRail({ cycle }: { cycle: CycleDto | null }) {
                 >
                   {s.caption}
                 </span>
+                {/* A stage parked at a human gate is the one state an officer
+                    scans for — name it, don't make them read the caption. */}
+                {atGate ? (
+                  <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-brand-500/[0.09] px-1.5 py-[2px] font-code text-[7px] font-black tracking-[0.12em] text-brand-700 dark:bg-brand-500/[0.14] dark:text-brand-300">
+                    <span className="h-1 w-1 animate-pulse rounded-full bg-brand-500" aria-hidden="true" />
+                    AT GATE
+                  </span>
+                ) : null}
               </button>
             </li>
           );
@@ -638,8 +648,31 @@ function TenderPicker({
   const [active, setActive] = useState(0);
   const [q, setQ] = useState("");
   const [copied, setCopied] = useState(false);
+  /* Carousel direction — last travel of the deck, so the slide animation
+     always agrees with the control that caused it. */
+  const [dir, setDir] = useState(0);
   const boxRef = useRef<HTMLDivElement>(null);
+  const dragX = useRef<number | null>(null);
+  const swiped = useRef(false);
   useOutside(boxRef, () => setOpen(false), open);
+
+  const count = tenders.length;
+  const many = count > 1;
+  const at = Math.max(0, tenders.findIndex((t) => t.ref === currentRef));
+
+  /* The deck wraps: an officer flipping right from the last dossier lands
+     back on the first — the desk is a ring, not a dead end. */
+  const step = (delta: number) => {
+    if (!many) return;
+    const next = (at + delta + count) % count;
+    setDir(delta);
+    onSelect(tenders[next].ref);
+  };
+  const goTo = (i: number) => {
+    if (!many || i === at || !tenders[i]) return;
+    setDir(i > at ? 1 : -1);
+    onSelect(tenders[i].ref);
+  };
 
   const current = tenders.find((t) => t.ref === currentRef);
   const currentCycle = cycles.find((x) => x.tenderId === currentRef) ?? null;
@@ -670,6 +703,16 @@ function TenderPicker({
     setOpen(!open);
   };
 
+  const handleToggleClick = () => {
+    /* A horizontal swipe ends with a synthesized click — swallow that one
+       so flipping the deck never also opens the dropdown. */
+    if (swiped.current) {
+      swiped.current = false;
+      return;
+    }
+    toggle();
+  };
+
   const p = progressOf(currentRef);
 
   /* The dossier's own status line — spoken from the record, never invented:
@@ -697,8 +740,18 @@ function TenderPicker({
   return (
     <div
       ref={boxRef}
+      role="group"
+      aria-roledescription="carousel"
+      aria-label="Working dossiers on the desk"
       className="relative w-full"
       onKeyDown={(e) => {
+        /* The deck answers ← → when the dropdown is closed; when it is open
+           those keys belong to the caret in the search field. */
+        if (!open && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+          e.preventDefault();
+          step(e.key === "ArrowRight" ? 1 : -1);
+          return;
+        }
         if (!open) return;
         if (e.key === "ArrowDown") {
           e.preventDefault();
@@ -723,48 +776,76 @@ function TenderPicker({
           never inside it — a button inside a button is a lie to the DOM. */}
       <div
         className={cn(
-          "panel-inset group flex w-full items-center gap-3.5 rounded-[10px] px-3.5 py-3 transition-[border-color,background-color] duration-200",
+          "panel-inset group flex w-full flex-wrap items-center gap-x-2.5 gap-y-2.5 rounded-[10px] px-3 py-3 transition-[border-color,background-color] duration-200 sm:flex-nowrap sm:gap-3.5 sm:px-3.5",
           "hover:border-ink-300 dark:hover:border-white/20",
           "focus-within:border-ink-950 focus-within:ring-4 focus-within:ring-ink-950/[0.06] dark:focus-within:border-white/40 dark:focus-within:ring-white/[0.05]",
           open && "border-ink-950 ring-4 ring-ink-950/[0.06] dark:border-white/40 dark:ring-white/[0.05]",
         )}
+        onPointerDown={(e) => {
+          swiped.current = false;
+          dragX.current = e.clientX;
+        }}
+        onPointerUp={(e) => {
+          const startX = dragX.current;
+          dragX.current = null;
+          if (startX === null || open) return;
+          const dx = e.clientX - startX;
+          if (Math.abs(dx) >= 44) {
+            swiped.current = true;
+            step(dx < 0 ? 1 : -1);
+          }
+        }}
+        onPointerCancel={() => {
+          dragX.current = null;
+        }}
+        style={{ touchAction: "pan-y" }}
       >
         <button
           type="button"
-          onClick={toggle}
+          onClick={handleToggleClick}
           aria-haspopup="listbox"
           aria-expanded={open}
           aria-label={`Tender: ${current ? `${current.ref} — ${current.title}` : "select a tender"}. Open the dossier picker.`}
-          className="flex min-w-0 flex-1 items-center gap-3.5 rounded-[8px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50"
+          className="min-w-0 w-full rounded-[8px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50 sm:w-auto sm:flex-1"
         >
-          <ProgressRing pct={p.pct} />
-          <span className="min-w-0 flex-1">
-            <span className="flex flex-wrap items-center gap-x-2 gap-y-1 eyebrow text-[8px] tracking-[0.24em]">
-              <span className="text-ink-400 dark:text-ink-500">Working dossier</span>
-              <Chip tone={dossierStatus.tone}>{dossierStatus.label}</Chip>
-            </span>
-            <span className="mt-1.5 flex min-w-0 items-baseline gap-2.5">
-              <span className="shrink-0 font-code text-[12.5px] font-bold tracking-[0.08em] text-ink-950 dark:text-white">
-                {current ? current.ref : "—"}
+          {/* One dossier = one slide. The key is the tender reference, so
+              flipping the deck slides the card in the direction travelled. */}
+          <motion.span
+            key={currentRef || "empty"}
+            initial={{ opacity: 0, x: dir * 14 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.22, ease: EASE }}
+            className="flex min-w-0 items-center gap-3.5"
+          >
+            <ProgressRing pct={p.pct} />
+            <span className="min-w-0 flex-1">
+              <span className="flex flex-wrap items-center gap-x-2 gap-y-1 eyebrow text-[8px] tracking-[0.24em]">
+                <span className="text-ink-400 dark:text-ink-500">Working dossier</span>
+                <Chip tone={dossierStatus.tone}>{dossierStatus.label}</Chip>
               </span>
-              <span className="truncate text-[12px] leading-tight text-ink-500">
-                {current?.title ?? "No tender staged on the desk yet"}
-              </span>
-            </span>
-            {/* One honest meta line, only from the record: the closing date
-                when the cycle has one. Without a record the right-hand count
-                already says what the desk holds — say it once, not twice. */}
-            {currentCycle?.closingDate ? (
-              <span className="mt-1 flex min-w-0 items-center gap-x-2.5 gap-y-0.5 flex-wrap font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-400">
-                <span className="inline-flex items-center gap-1">
-                  <CalendarClock className="h-2.5 w-2.5" aria-hidden="true" />
-                  CLOSES {fmtDate(currentCycle.closingDate).toUpperCase()} · {relDays(currentCycle.closingDate).toUpperCase()}
+              <span className="mt-1.5 flex min-w-0 items-baseline gap-2.5">
+                <span className="shrink-0 font-code text-[12.5px] font-bold tracking-[0.08em] text-ink-950 dark:text-white">
+                  {current ? current.ref : "—"}
+                </span>
+                <span className="truncate text-[12px] leading-tight text-ink-500">
+                  {current?.title ?? "No tender staged on the desk yet"}
                 </span>
               </span>
-            ) : null}
-          </span>
+              {/* One honest meta line, only from the record: the closing date
+                  when the cycle has one. Without a record the right-hand count
+                  already says what the desk holds — say it once, not twice. */}
+              {currentCycle?.closingDate ? (
+                <span className="mt-1 flex min-w-0 items-center gap-x-2.5 gap-y-0.5 flex-wrap font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-400">
+                  <span className="inline-flex items-center gap-1">
+                    <CalendarClock className="h-2.5 w-2.5" aria-hidden="true" />
+                    CLOSES {fmtDate(currentCycle.closingDate).toUpperCase()} · {relDays(currentCycle.closingDate).toUpperCase()}
+                  </span>
+                </span>
+              ) : null}
+            </span>
+          </motion.span>
         </button>
-        <span className="flex shrink-0 items-center gap-1.5">
+        <span className="ml-auto flex shrink-0 items-center gap-1.5">
           {current ? (
             <button
               type="button"
@@ -776,6 +857,31 @@ function TenderPicker({
               {copied ? <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
             </button>
           ) : null}
+          {many ? (
+            <span className="flex shrink-0 items-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => step(-1)}
+                aria-label={`Previous dossier (${tenders[(at - 1 + count) % count]?.ref ?? ""})`}
+                title="Previous tender"
+                className="focus-brand grid h-7 w-7 place-items-center rounded-lg border border-ink-200/70 text-ink-500 transition-colors hover:border-ink-400 hover:bg-ink-950/[0.03] hover:text-ink-900 active:scale-95 dark:border-white/10 dark:text-ink-400 dark:hover:border-white/25 dark:hover:bg-white/[0.05] dark:hover:text-white"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+              <span className="w-[46px] text-center font-code text-[9px] font-bold tabular tracking-[0.06em] text-ink-500 dark:text-ink-400">
+                {String(at + 1).padStart(2, "0")}/{String(count).padStart(2, "0")}
+              </span>
+              <button
+                type="button"
+                onClick={() => step(1)}
+                aria-label={`Next dossier (${tenders[(at + 1) % count]?.ref ?? ""})`}
+                title="Next tender"
+                className="focus-brand grid h-7 w-7 place-items-center rounded-lg border border-ink-200/70 text-ink-500 transition-colors hover:border-ink-400 hover:bg-ink-950/[0.03] hover:text-ink-900 active:scale-95 dark:border-white/10 dark:text-ink-400 dark:hover:border-white/25 dark:hover:bg-white/[0.05] dark:hover:text-white"
+              >
+                <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </span>
+          ) : null}
           <span className="hidden font-code text-[8px] font-bold tracking-[0.16em] text-ink-400 lg:block">
             {tenders.length} ON DESK
           </span>
@@ -784,12 +890,44 @@ function TenderPicker({
             onClick={toggle}
             aria-hidden="true"
             tabIndex={-1}
-            className="grid h-7 w-7 place-items-center rounded-lg border border-ink-200/70 text-ink-500 transition-colors group-hover:border-ink-300 group-hover:text-ink-900 dark:border-white/10 dark:group-hover:border-white/25 dark:group-hover:text-white"
+            className="hidden h-7 w-7 place-items-center rounded-lg border border-ink-200/70 text-ink-500 transition-colors group-hover:border-ink-300 group-hover:text-ink-900 sm:grid dark:border-white/10 dark:group-hover:border-white/25 dark:group-hover:text-white"
           >
             <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", open && "rotate-180")} aria-hidden="true" />
           </button>
         </span>
       </div>
+
+      {/* Position dots — a direct jump for every dossier on the desk. Kept
+          to twelve; past that the stepper and the searchable picker are the
+          honest instruments. */}
+      {many && count <= 12 ? (
+        <div className="mt-2 hidden items-center justify-center gap-1.5 sm:flex">
+          {tenders.map((t, i) => (
+            <button
+              key={t.ref}
+              type="button"
+              onClick={() => goTo(i)}
+              aria-label={`Dossier ${i + 1} of ${count}: ${t.ref}`}
+              aria-current={i === at ? "true" : undefined}
+              title={`${t.ref} — ${t.title}`}
+              className={cn(
+                "focus-brand h-1.5 rounded-full transition-all duration-200",
+                i === at
+                  ? "w-4 bg-brand-500 dark:bg-brand-400"
+                  : "w-1.5 bg-ink-200 hover:bg-ink-300 dark:bg-white/[0.14] dark:hover:bg-white/[0.28]",
+              )}
+            />
+          ))}
+        </div>
+      ) : null}
+
+      {/* The one announcement a screen reader needs: which dossier the desk
+          is showing now. The visual slide animation is silent by design. */}
+      <span className="sr-only" aria-live="polite">
+        {count
+          ? `Dossier ${at + 1} of ${count}: ${current ? `${current.ref} — ${current.title}` : "none selected"}`
+          : "No tenders on the desk"}
+      </span>
 
       <AnimatePresence>
         {open ? (
@@ -2070,6 +2208,20 @@ export function CycleView({
     return Number.isInteger(n) ? n.toLocaleString("en-US") : n.toFixed(1);
   };
 
+  /* Where every dossier on the desk actually stands — each cycle record is
+     read for the stage it has reached and counted once. Derived from the
+     records on every poll, never stored, never asserted. Zero stays zero. */
+  const stageLabels = useMemo(() => deriveStages(null).stages.map((s) => s.label), []);
+  const stageDist = useMemo(() => {
+    const buckets = Array.from({ length: 7 }, () => 0);
+    for (const c of cycles) {
+      const { currentIndex } = deriveStages(c);
+      buckets[Math.min(Math.max(currentIndex, 0), 6)] += 1;
+    }
+    return buckets;
+  }, [cycles]);
+  const stageDistMax = Math.max(...stageDist, 1);
+
   const AnalyticsTab = (
     <div className="grid gap-4">
       <Card
@@ -2121,6 +2273,63 @@ export function CycleView({
                 </div>
               ))}
             </dl>
+
+            {/* Where the desk stands — one column per stage, one count per
+                dossier record. The bar carries no decoration: height is the
+                count, zero is empty, and the number above it is the truth. */}
+            {cycles.length ? (
+              <div className="rounded-[10px] border border-ink-100 px-4 pb-3 pt-3.5 dark:border-white/[0.07]">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <p className="eyebrow text-[8px] tracking-[0.2em]">Where the desk stands</p>
+                  <span className="font-code text-[8px] font-bold tracking-[0.14em] text-ink-400">
+                    {cycles.length} CYCLE {cycles.length === 1 ? "RECORD" : "RECORDS"} ON FILE
+                  </span>
+                </div>
+                <div
+                  className="mt-3 grid grid-cols-7 gap-1.5 sm:gap-2"
+                  role="img"
+                  aria-label={
+                    `Tenders by current stage: ` +
+                    stageLabels.map((l, i) => `${l} ${stageDist[i]}`).join(", ")
+                  }
+                >
+                  {stageDist.map((n, i) => (
+                    <div
+                      key={stageLabels[i]}
+                      className="flex min-w-0 flex-col items-center"
+                      title={`${n} tender${n === 1 ? "" : "s"} at ${stageLabels[i]}`}
+                    >
+                      <span
+                        className={cn(
+                          "font-display text-[15px] font-black leading-none tabular tracking-[-0.02em]",
+                          n > 0 ? "text-ink-950 dark:text-white" : "text-ink-300 dark:text-ink-600",
+                        )}
+                      >
+                        {n}
+                      </span>
+                      <span
+                        className="mt-1.5 flex h-12 w-full items-end justify-center border-b border-ink-100 dark:border-white/[0.08]"
+                        aria-hidden="true"
+                      >
+                        <span
+                          className={cn(
+                            "w-full max-w-[26px] rounded-t-[3px] transition-[height] duration-500",
+                            n > 0 ? "bg-brand-500/85 dark:bg-brand-400/80" : "bg-transparent",
+                          )}
+                          style={{ height: n > 0 ? `${Math.max((n / stageDistMax) * 100, 10)}%` : "0%" }}
+                        />
+                      </span>
+                      <span className="mt-1.5 w-full truncate text-center font-code text-[6.5px] font-bold tracking-[0.08em] text-ink-400">
+                        {stageLabels[i].toUpperCase()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-2.5 font-code text-[7.5px] tracking-[0.14em] text-ink-400">
+                  COUNTED AT THE STAGE EACH RECORD HAS REACHED — CLOSED CYCLES SIT AT CLOSURE
+                </p>
+              </div>
+            ) : null}
 
             {/* Watchlist — the exceptions that need a human, each with the
                 tab that resolves it. Zero stays zero; nothing is invented. */}
@@ -2392,11 +2601,11 @@ export function CycleView({
                     <Workflow className="h-5 w-5" aria-hidden="true" />
                   </span>
                   <p className="mt-4 text-[14px] font-semibold text-ink-800">
-                    {ref ? "No cycle record for this tender yet" : "No tender selected"}
+                    {ref ? "No tender cycle has been initiated" : "No tender selected"}
                   </p>
                   <p className="mt-2 max-w-[48ch] text-[12.5px] leading-relaxed text-ink-500">
                     {ref
-                      ? "The cycle file opens with the tender's first entry. Plan the pack in the pipeline — once it is staged, the opening, evaluation and award tabs keep their own record from the first step."
+                      ? "This dossier has no cycle record — the pack has not been staged or advertised yet. Plan it in the pipeline below; from the first entry, opening, evaluation, award and contract each keep their own file."
                       : "Pick a tender from the working dossier above, or plan a new pack in the pipeline. Its stage, vitals and file appear here the moment the record exists."}
                   </p>
                   <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">

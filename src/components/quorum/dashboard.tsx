@@ -9666,8 +9666,10 @@ export function Dashboard({
       >
         {/* Sticky utility bar — the desk's instrument strip */}
         <div className="sticky top-0 z-30 border-b border-ink-200/70 bg-paper/80 backdrop-blur-xl supports-[backdrop-filter]:bg-paper/65 dark:border-white/[0.08]">
-          <div className="mx-auto flex h-[58px] w-full max-w-[1500px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-            <div className="flex min-w-0 items-center gap-3">
+          <div className="mx-auto flex h-[58px] w-full max-w-[1500px] items-center gap-2 px-4 sm:gap-3 sm:px-6 lg:px-8">
+            {/* Location zone — shrink-0: the page name is the anchor of the bar
+                and never truncates; the search field absorbs pressure instead. */}
+            <div className="flex shrink-0 items-center gap-3">
               {navCollapsed && (
                 <button
                   type="button"
@@ -9683,10 +9685,10 @@ export function Dashboard({
                   lives in the status cluster on the right — one pulsing dot
                   per screen, not two. */}
               <nav aria-label="Workspace location" className="flex min-w-0 items-center gap-2.5">
-                <span className="shrink-0 font-code text-[8px] font-semibold uppercase tracking-[0.24em] text-ink-400">
+                <span className="hidden shrink-0 font-code text-[8px] font-semibold uppercase tracking-[0.24em] text-ink-400 sm:inline">
                   Workspace
                 </span>
-                <span className="shrink-0 text-[11px] text-ink-300 dark:text-ink-600" aria-hidden="true">
+                <span className="hidden shrink-0 text-[11px] text-ink-300 sm:inline dark:text-ink-600" aria-hidden="true">
                   /
                 </span>
                 <span
@@ -9697,25 +9699,34 @@ export function Dashboard({
                 </span>
               </nav>
             </div>
-            <div className="flex items-center gap-2.5 sm:gap-3">
+            {/* Hairline between the location zone and the tool zone — the bar
+                reads as three instruments, not one crowded strip. */}
+            <span
+              aria-hidden="true"
+              className="hidden h-5 w-px shrink-0 bg-ink-200/80 sm:block dark:bg-white/[0.09]"
+            />
+            <div className="flex min-w-0 flex-1 items-center gap-1 sm:gap-1.5">
               <button
                 type="button"
                 onClick={() => setPaletteOpen(true)}
                 aria-label="Jump to a workspace section"
                 aria-keyshortcuts="Meta+K Control+K"
                 title="Jump to… (⌘K)"
-                className="focus-brand inline-flex h-9 shrink-0 items-center gap-2 rounded-lg px-2 text-ink-500 transition-colors hover:bg-ink-950/[0.045] hover:text-ink-900 dark:text-ink-400 dark:hover:bg-white/[0.06] dark:hover:text-white"
+                className="focus-brand inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-ink-200/80 bg-white/60 px-2.5 text-ink-500 shadow-[0_1px_2px_rgba(11,12,15,0.03)] transition-colors hover:border-ink-300 hover:text-ink-900 dark:border-white/[0.1] dark:bg-white/[0.04] dark:text-ink-400 dark:hover:border-white/20 dark:hover:text-white"
               >
                 <CommandIcon className="h-3.5 w-3.5" aria-hidden="true" />
                 <span className="hidden font-code text-[8px] font-bold tracking-[0.16em] xl:inline">JUMP TO</span>
                 <kbd
                   aria-hidden="true"
-                  className="hidden rounded-[4px] border border-ink-200/80 px-1 py-[1px] font-code text-[8px] font-bold leading-none text-ink-400 lg:inline dark:border-white/10"
+                  className="hidden rounded-[4px] border border-ink-200/80 bg-white px-1 py-[1px] font-code text-[8px] font-bold leading-none text-ink-500 lg:inline dark:border-white/10 dark:bg-white/[0.06] dark:text-ink-400"
                 >
                   ⌘K
                 </kbd>
               </button>
-              <div className="relative hidden sm:block">
+              {/* The field flexes with the bar: full share of the tool zone,
+                  capped at its resting width — focus no longer reflows the
+                  status cluster because the width never jumps. */}
+              <div className="relative hidden min-w-0 w-full max-w-[13rem] sm:block">
                 <Search
                   className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400"
                   aria-hidden="true"
@@ -9726,11 +9737,14 @@ export function Dashboard({
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search evaluations…"
                   aria-label="Search evaluations by reference, title or buyer"
-                  /* Width steps are small and deliberate: a focus jump that
-                     reflows the whole status cluster reads as a glitch. */
-                  className="focus-brand h-9 w-40 rounded-lg border border-ink-200/80 bg-[#fffdfb] pl-9 pr-3.5 text-[12.5px] text-ink-900 shadow-[inset_0_1px_1px_rgba(11,12,15,0.03)] outline-none transition-[width,border-color,background-color] duration-300 placeholder:text-ink-400 focus:w-56 focus:border-ink-950 focus:ring-[3px] focus:ring-ink-950/[0.07] dark:border-white/[0.1] dark:bg-white/[0.04] dark:focus:border-white/35 dark:focus:ring-white/[0.06] lg:w-40 xl:w-48"
+                  className="focus-brand h-9 w-full rounded-lg border border-ink-200/80 bg-[#fffdfb] pl-9 pr-3.5 text-[12.5px] text-ink-900 shadow-[inset_0_1px_1px_rgba(11,12,15,0.03)] outline-none transition-[border-color,background-color] duration-300 placeholder:text-ink-400 focus:border-ink-950 focus:ring-[3px] focus:ring-ink-950/[0.07] dark:border-white/[0.1] dark:bg-white/[0.04] dark:focus:border-white/35 dark:focus:ring-white/[0.06]"
                 />
               </div>
+            </div>
+            {/* Status + application controls — the system's side of the bar.
+                Every child is shrink-0: the cluster compresses by hiding,
+                never by wrapping or squashing a pill. */}
+            <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2 lg:gap-2.5">
               <p
                 className="hidden shrink-0 items-center gap-2 whitespace-nowrap type-micro text-ink-500 2xl:flex"
                 aria-label="Local time"
