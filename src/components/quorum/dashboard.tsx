@@ -3331,7 +3331,9 @@ function ViewShell({
             {title}
             <span className="text-brand-600">.</span>
           </h1>
-          <p className="type-lede mt-3 max-w-[56ch] text-ink-600">{sub}</p>
+          {/* The lede runs the full measure — the officer asked for the
+              whole width; the container itself keeps the line sane. */}
+          <p className="type-lede mt-3 text-ink-600">{sub}</p>
         </div>
         {action ? <div className="shrink-0 pb-1.5">{action}</div> : null}
       </div>
@@ -9787,7 +9789,7 @@ export function Dashboard({
                   </span>
                   <span className="text-brand-600 dark:text-brand-400">.</span>
                 </h1>
-                <p className="type-lede mt-4 max-w-[52ch] text-ink-600">
+                <p className="type-lede mt-4 text-ink-600">
                   The agent has been in the files since 06:00. Everything below is cited — and the gavel
                   stays with you.
                 </p>
