@@ -1,4 +1,5 @@
 import { createHmac } from "crypto";
+import { secretFor } from "@/lib/secrets";
 
 /**
  * Gateway attestation — the web layer vouches for WHO acts.
@@ -18,16 +19,10 @@ import { createHmac } from "crypto";
  * must still succeed — a request-time production process without a real
  * GATE_SECRET still refuses to sign.
  */
-const DEV_ATTEST_SECRET = "quorum-dev-attest-secret";
-
 function attestSecret(): string {
-  const secret = process.env.GATE_SECRET?.trim() || DEV_ATTEST_SECRET;
-  if (process.env.NODE_ENV === "production" && secret === DEV_ATTEST_SECRET) {
-    throw new Error("GATE_SECRET must be set to a real secret in production — refusing to run with the shipped default.");
-  }
-  return secret;
+  return secretFor("attest");
 }
 
-export function attestSignature(method: string, path: string, actor: string, ts: number): string {
-  return createHmac("sha256", attestSecret()).update(`${method}|${path}|${actor}|${ts}`).digest("hex");
+export function attestSignature(method: string, path: string, actor: string, ts: number, workspaceId = "demo"): string {
+  return createHmac("sha256", attestSecret()).update(`${method}|${path}|${actor}|${workspaceId}|${ts}`).digest("hex");
 }

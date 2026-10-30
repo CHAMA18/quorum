@@ -1,4 +1,9 @@
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { extname } from "node:path";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import mammoth from "mammoth";
 import readXlsxFile from "read-excel-file/node";
 import { extractText, getDocumentProxy } from "unpdf";
@@ -14,8 +19,10 @@ import { extractText, getDocumentProxy } from "unpdf";
  *   .xlsx  → read-excel-file, one `# Sheet: …` block per worksheet (TSV rows)
  *   text   → .txt/.md/.csv/.eml decoded as UTF-8
  *
- * Scanned/image-only PDFs return an empty body with a `needs OCR` note instead
- * of pretending extraction worked. JSON (OCDS) and ZIP are stored in R2 but
+ * Scanned/image-only PDFs use bounded local Tesseract OCR when Poppler and
+ * Tesseract are installed; OCR output remains page-marked and is flagged for
+ * human verification. Set QUORUM_OCR_LANG to a locally installed language.
+ * JSON (OCDS) and ZIP are stored in R2 but
  * are not extracted here; they take different ingestion paths.
  */
 
@@ -31,6 +38,10 @@ export interface ExtractedTender {
 
 const MAX_TEXT = 60_000;
 const MIN_TEXT = 20;
+const execFileAsync = promisify(execFile);
+const OCR_MAX_PAGES = 20;
+const OCR_TIMEOUT_MS = 90_000;
+const OCR_PAGE_TIMEOUT_MS = 20_000;
 const EXTRACTABLE = new Set([".pdf", ".docx", ".xlsx", ".txt", ".md", ".csv", ".eml"]);
 
 /* Filename signals are checked before content: a "Bidder A — Financial" file
@@ -75,17 +86,70 @@ function cellText(value: unknown): string {
   return String(value);
 }
 
+async function extractScannedPdf(bytes: Uint8Array, totalPages: number): Promise<{ text: string; note?: string }> {
+  const workDir = await mkdtemp(join(tmpdir(), "quorum-ocr-"));
+  try {
+    const pdfPath = join(workDir, "scan.pdf");
+    const pagesToProcess = Math.min(totalPages, OCR_MAX_PAGES);
+    const deadline = Date.now() + OCR_TIMEOUT_MS;
+    await writeFile(pdfPath, bytes);
+    const outputPrefix = join(workDir, "page");
+    await execFileAsync("pdftoppm", ["-f", "1", "-l", String(pagesToProcess), "-r", "200", "-png", pdfPath, outputPrefix], {
+      timeout: OCR_TIMEOUT_MS,
+      maxBuffer: 1024 * 1024,
+    });
+    const pageTexts: string[] = [];
+    for (let page = 1; page <= pagesToProcess; page += 1) {
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) break;
+      const pngPath = `${outputPrefix}-${page}.png`;
+      try {
+        const { stdout } = await execFileAsync("tesseract", [pngPath, "stdout", "-l", process.env.QUORUM_OCR_LANG?.trim() || "eng", "--psm", "3"], {
+          timeout: Math.min(OCR_PAGE_TIMEOUT_MS, remainingMs),
+          maxBuffer: 2 * 1024 * 1024,
+        });
+        const text = cleanText(stdout);
+        if (text) pageTexts.push(`[Page ${page}]\n${text}`);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+          return { text: "", note: "No extractable text — local OCR requires pdftoppm and tesseract on the server." };
+        }
+        throw error;
+      }
+    }
+    if (pageTexts.length === 0) return { text: "", note: "Local OCR ran, but no readable text was detected in the scanned PDF." };
+    const processedPages = pageTexts.length;
+    const truncatedPages = totalPages > OCR_MAX_PAGES || processedPages < pagesToProcess;
+    return {
+      text: pageTexts.join("\n\n"),
+      note: truncatedPages ? `Local OCR recovered ${processedPages} pages (maximum ${OCR_MAX_PAGES} of ${totalPages}); upload smaller page ranges for the remainder.` : "Text recovered with local OCR (Tesseract). Verify OCR text and citations against the original scan.",
+    };
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") return { text: "", note: "No extractable text — local OCR requires pdftoppm and tesseract on the server." };
+    const reason = error instanceof Error ? error.message.replaceAll(workDir, "[temporary OCR directory]").slice(0, 180) : "unknown processing error";
+    return { text: "", note: `Local OCR could not process this PDF (${reason}). The original remains stored; review the scan manually.` };
+  } finally {
+    await rm(workDir, { recursive: true, force: true });
+  }
+}
+
 async function extractPdf(bytes: Uint8Array): Promise<{ text: string; pages: number; note?: string }> {
-  const pdf = await getDocumentProxy(bytes);
+  /* PDF.js may transfer and detach its input buffer when using a worker. Keep
+     the upload bytes intact because the local OCR fallback needs the original. */
+  const pdf = await getDocumentProxy(bytes.slice());
   const result = await extractText(pdf, { mergePages: false });
   const pages = Array.isArray(result.text) ? result.text : [String(result.text)];
   const totalPages = result.totalPages ?? pages.length;
   const hasText = pages.some((page) => page.trim().length > 0);
-  return {
-    text: hasText ? pages.map((page, i) => `[Page ${i + 1}]\n${page}`).join("\n\n") : "",
-    pages: totalPages,
-    note: hasText ? undefined : "No extractable text — the PDF may be scanned; OCR is not configured.",
-  };
+  if (hasText) {
+    return {
+      text: pages.map((page, i) => `[Page ${i + 1}]\n${page}`).join("\n\n"),
+      pages: totalPages,
+    };
+  }
+  const ocr = await extractScannedPdf(bytes, totalPages);
+  return { text: ocr.text, pages: totalPages, note: ocr.note };
 }
 
 async function extractDocx(bytes: Uint8Array): Promise<{ text: string; note?: string }> {
@@ -161,7 +225,7 @@ export async function extractTenderText(
       kind,
       pages,
       sheets,
-      note: note ?? "No extractable text — the document may be scanned; OCR is not configured.",
+      note: note ?? "No extractable text — the document may be scanned or contain no readable text.",
     };
   }
   return { text: clipped.text, kind, pages, sheets, note: clipped.note ?? note };

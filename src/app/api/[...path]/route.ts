@@ -29,7 +29,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { attestSignature } from "@/lib/sidecar-attest";
-import { canMutateSidecar } from "@/lib/permissions";
+import { canMutateSidecar, canReadSidecar } from "@/lib/permissions";
 
 const ALLOWED_PORTS = new Set(["3031"]);
 const UPSTREAM_HOST = "127.0.0.1";
@@ -42,15 +42,32 @@ async function proxy(req: NextRequest) {
   }
 
   /* Identity comes from the session cookie, verified server-side — never
-     from a header the client could set. */
+     from a header the client could set. Every sidecar read needs one too:
+     bidder names, bid values, supplier contacts and the audit trail are not
+     public data. The marketing surfaces read /api/public/summary instead. */
   const session = await getUserFromToken(req.cookies.get(SESSION_COOKIE)?.value);
-  if (MUTATING.has(req.method) && !session) {
+  if (!session) {
     return NextResponse.json(
-      { error: "Sign in to make changes — state-changing requests require a session." },
+      {
+        error: MUTATING.has(req.method)
+          ? "Sign in to make changes — state-changing requests require a session."
+          : "Sign in to read the record — the desk is not public.",
+      },
       { status: 401 },
     );
   }
-  const actor = session?.name ?? "";
+  const actor = session.name;
+  const workspaceId = session.workspaceId;
+  const requestedPath = req.nextUrl.pathname;
+
+  /* Reads are authorised per surface, not just per session: an auditor may read
+     the trail and the file, not the rule configuration. */
+  if (!MUTATING.has(req.method) && !canReadSidecar(session.role, requestedPath)) {
+    return NextResponse.json(
+      { error: `Your workspace role (${session.role}) cannot read this part of the desk.` },
+      { status: 403 },
+    );
+  }
 
   const url = new URL(req.url);
 
@@ -64,12 +81,6 @@ async function proxy(req: NextRequest) {
     );
   }
 
-  /* The applications list names every bidder and its bid amount. It is an
-     officer-desk read only: suppliers reach their own rows through the
-     org-session routes, which attest directly to the sidecar. */
-  if (req.method === "GET" && url.pathname === "/api/applications" && !session) {
-    return NextResponse.json({ error: "Sign in to see the applications on the record." }, { status: 401 });
-  }
   url.searchParams.delete("XTransformPort");
   const search = url.searchParams.toString();
   const target = `http://${UPSTREAM_HOST}:${port}${url.pathname}${search ? `?${search}` : ""}`;
@@ -86,11 +97,12 @@ async function proxy(req: NextRequest) {
        sidecar verifies and consumes it; the gateway never mints one. */
     const stepUp = req.headers.get("x-quorum-stepup");
     if (stepUp) forward["x-quorum-stepup"] = stepUp;
-    if (actor) {
+    if (session) {
+      forward["x-quorum-workspace"] = workspaceId;
       forward["x-quorum-actor"] = actor;
       const ts = Date.now();
       forward["x-quorum-ts"] = String(ts);
-      forward["x-quorum-attest"] = attestSignature(req.method, url.pathname, actor, ts);
+      forward["x-quorum-attest"] = attestSignature(req.method, url.pathname, actor, ts, workspaceId);
     }
 
     const upstream = await fetch(target, {
@@ -99,6 +111,13 @@ async function proxy(req: NextRequest) {
       body: req.method === "GET" || req.method === "HEAD" ? undefined : await req.arrayBuffer(),
       cache: "no-store",
     });
+
+    /* Reading supplier, bid or audit data is itself a recordable act. The line
+       is written to the same spine, attested, and never blocks the response. */
+    if (req.method === "GET" && isSensitiveRead(url.pathname)) {
+      auditRead(port, session.name, session.workspaceId, url.pathname, upstream.status);
+    }
+
     return new NextResponse(upstream.body, {
       status: upstream.status,
       headers: {
@@ -111,6 +130,37 @@ async function proxy(req: NextRequest) {
       { status: 502 },
     );
   }
+}
+
+/* Which reads name bidders, money or the record itself. */
+const SENSITIVE_READS = [
+  "/api/suppliers",
+  "/api/applications",
+  "/api/gates",
+  "/api/runs",
+  "/api/log",
+  "/api/decisions",
+  "/api/cycle",
+];
+
+function isSensitiveRead(path: string): boolean {
+  return SENSITIVE_READS.some((prefix) => path === prefix || path.startsWith(prefix + "/") || path.startsWith(prefix + "?"));
+}
+
+/** Write the read to the spine. A failure is quiet here and loud in the log. */
+function auditRead(port: string, actor: string, workspaceId: string, path: string, status: number) {
+  const ts = Date.now();
+  void fetch(`http://127.0.0.1:${port}/api/audit/read`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-quorum-actor": actor,
+      "x-quorum-workspace": workspaceId,
+      "x-quorum-ts": String(ts),
+      "x-quorum-attest": attestSignature("POST", "/api/audit/read", actor, ts, workspaceId),
+    },
+    body: JSON.stringify({ path, status }),
+  }).catch(() => undefined);
 }
 
 export const GET = proxy;

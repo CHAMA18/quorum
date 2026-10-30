@@ -10,6 +10,7 @@ import {
 } from "framer-motion";
 import { ArrowDown, ArrowRight, CircleDot, Landmark, PenLine } from "lucide-react";
 import { AgentRun } from "@/components/quorum/agent-run";
+import { HeroFilm } from "@/components/quorum/hero-film";
 import { SpecBar } from "@/components/quorum/reveal";
 import { CountUp, Magnetic } from "@/components/quorum/motion-kit";
 
@@ -97,10 +98,12 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
       onMouseLeave={onLeave}
     >
       {/* ── Ground ─────────────────────────────────────────────────────────
-          First light over a drafting sheet: one warm paper wash, a masked
-          engineering grid, and a single red source behind the run panel. */}
+          First light over a drafting sheet: the procurement film under a
+          scrim, a masked engineering grid over it, and a single red source
+          behind the run panel. The film is the room; the grid is the desk. */}
+      <HeroFilm />
+
       <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-        <div className="absolute inset-x-0 top-0 h-[420px] bg-gradient-to-b from-paper-2/80 to-transparent dark:from-white/[0.02]" />
         <div className="absolute inset-0 bg-grid-light [mask-image:radial-gradient(ellipse_92%_62%_at_50%_0%,black,transparent)]" />
         <div
           className="absolute right-[-18%] top-[2%] h-[620px] w-[900px] rounded-full"

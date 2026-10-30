@@ -17,6 +17,7 @@
  */
 
 import { createHmac, randomUUID, timingSafeEqual } from "crypto";
+import { secretFor } from "@/lib/secrets";
 import { GUIDE_IDS } from "@/lib/quorum-knowledge";
 
 /* ── Definitions (these travel to the model) ─────────────────────────────── */
@@ -144,15 +145,10 @@ export function buildProposal(tool: string, args: Record<string, unknown>): Prop
 
 /* ── Signing ─────────────────────────────────────────────────────────────── */
 
-const DEV_ACTION_SECRET = "quorum-dev-attest-secret";
 const PROPOSAL_TTL_MS = 10 * 60_000;
 
 function actionSecret(): string {
-  const secret = process.env.MUSE_ACTION_SECRET?.trim() || process.env.GATE_SECRET?.trim() || DEV_ACTION_SECRET;
-  if (process.env.NODE_ENV === "production" && secret === DEV_ACTION_SECRET) {
-    throw new Error("MUSE_ACTION_SECRET (or GATE_SECRET) must be set in production.");
-  }
-  return secret;
+  return secretFor("muse");
 }
 
 function payloadOf(p: Proposal): string {

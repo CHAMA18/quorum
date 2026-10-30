@@ -1,0 +1,3076 @@
+{
+  "archivedAt": "2026-10-29T16:47:22.172Z",
+  "reason": "Probe and end-to-end test rows removed from the working record. Kept here as evidence of what was removed.",
+  "counts": {
+    "gates": 51,
+    "runs": 8,
+    "cycle": 5,
+    "pipeline": 0
+  },
+  "gates": [
+    {
+      "id": "gate_dwgd58",
+      "runId": "cycle",
+      "tenderId": "E2E-CYCLE-PROBE",
+      "tool": "record_bid_opening",
+      "inputs": {
+        "registerId": "open_cud1ax",
+        "bids": 2,
+        "late": 1
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T15:18:06.582Z",
+      "requiredOffice": "PROCUREMENT_UNIT",
+      "approver": "Chungu Chipimo Chama",
+      "decidedAt": "2026-10-28T08:17:01.203Z",
+      "executedAt": "2026-10-28T08:17:01.204Z",
+      "receipt": {
+        "registerId": "open_cud1ax",
+        "sha": "7549d2185916f54219a1d3d195df3e4a",
+        "admitted": 1
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_s9q496",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-145738",
+      "tool": "respond_complaint",
+      "inputs": {
+        "complaintId": "cmp_8y4mkq",
+        "response": "The complaint was reviewed; the award stands."
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T14:57:45.511Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T14:57:45.560Z",
+      "executedAt": "2026-10-21T14:57:45.560Z",
+      "receipt": {
+        "complaintId": "cmp_8y4mkq",
+        "status": "ANSWERED"
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_4vm2qf",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-145738",
+      "tool": "record_contract_completion",
+      "inputs": {
+        "note": "Final acceptance recorded"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T14:57:45.212Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T14:57:45.287Z",
+      "executedAt": "2026-10-21T14:57:45.287Z",
+      "receipt": {
+        "completedAt": "2026-10-21T14:57:45.287Z"
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_v6l48p",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-145738",
+      "tool": "certify_payment",
+      "inputs": {
+        "paymentId": "pay_y86zdn",
+        "amount": 1000000,
+        "description": "Mobilisation advance"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T14:57:45.089Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T14:57:45.171Z",
+      "executedAt": "2026-10-21T14:57:45.171Z",
+      "receipt": {
+        "paymentId": "pay_y86zdn",
+        "amount": 1000000
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_3qqey4",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-145738",
+      "tool": "approve_variation",
+      "inputs": {
+        "variationId": "var_f8j99d",
+        "description": "Extra wards equipment",
+        "pctOfContract": 23.1,
+        "valueDelta": 900000
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T14:57:44.977Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T14:57:45.051Z",
+      "executedAt": "2026-10-21T14:57:45.051Z",
+      "receipt": {
+        "variationId": "var_f8j99d",
+        "pct": 23.1
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_vqr03p",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-145738",
+      "tool": "sign_contract_pack",
+      "inputs": {
+        "supplier": "BID BETA",
+        "value": 3900000,
+        "currency": "ZMW",
+        "packMd": "# CONTRACT PACK — ZM-PROBE-145738\n\n**Supplier:** BID BETA\n**Contract value:** ZMW 3,900,000\n\n## Contents\n\n1. Contract ag"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T14:57:44.892Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T14:57:44.938Z",
+      "executedAt": "2026-10-21T14:57:44.938Z",
+      "receipt": {
+        "supplier": "BID BETA",
+        "value": 3900000
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_brq2qx",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-145738",
+      "tool": "publish_award_notice",
+      "inputs": {
+        "sha": "2092315eddd295948424067761f384ca",
+        "portal": "egp-portal (simulated)"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T14:57:44.696Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T14:57:44.756Z",
+      "executedAt": "2026-10-21T14:57:44.757Z",
+      "receipt": {
+        "portal": "egp-portal (simulated)",
+        "standstillEndsAt": "2026-11-04T14:57:44.756Z"
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_de9c47",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-145738",
+      "tool": "sign_award_report",
+      "inputs": {
+        "sha": "019abf79d1816814f0f2428b80ee422c",
+        "recommendation": "BID BETA"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T14:57:44.587Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T14:57:44.644Z",
+      "executedAt": "2026-10-21T14:57:44.644Z",
+      "receipt": {
+        "sha": "019abf79d1816814f0f2428b80ee422c",
+        "recommendation": "BID BETA"
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_61s4rd",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-145738",
+      "tool": "certify_evaluation",
+      "inputs": {
+        "matrixId": "mtx_oopp34",
+        "bids": 2
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T14:57:44.468Z",
+      "requiredOffice": "EVALUATION_COMMITTEE",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T14:57:44.539Z",
+      "executedAt": "2026-10-21T14:57:44.540Z",
+      "receipt": {
+        "matrixId": "mtx_oopp34",
+        "status": "CERTIFIED",
+        "recommended": "BID BETA"
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_elx368",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-145738",
+      "tool": "record_bid_opening",
+      "inputs": {
+        "registerId": "open_rqbgwn",
+        "bids": 2,
+        "late": 1
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T14:57:44.171Z",
+      "requiredOffice": "PROCUREMENT_UNIT",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T14:57:44.274Z",
+      "executedAt": "2026-10-21T14:57:44.275Z",
+      "receipt": {
+        "registerId": "open_rqbgwn",
+        "sha": "c4f3c2404af67f4257ed2adbce1a4115",
+        "admitted": 1
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_v6vquk",
+      "runId": "run_1e1e4e0c",
+      "tenderId": "ZM-PROBE-145738",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "BID ALPHA",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_7z3wn8",
+          "draft_orek9w"
+        ]
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T14:57:42.143Z",
+      "approver": "Judge Demo",
+      "note": "Staged from the desk assistant for Judge.",
+      "decidedAt": "2026-10-29T08:51:05.679Z",
+      "stepUp": {
+        "by": "Judge Demo",
+        "method": "password",
+        "at": "2026-10-29T08:51:05.542Z",
+        "jti": "302ae62d-313d-4e89-ad15-22b6e99905fe",
+        "docHash": "0c5d918a44f0973eefba46b47542517b"
+      },
+      "executedAt": "2026-10-29T08:51:05.688Z",
+      "receipt": {
+        "submissionId": "SUB-MVTB06DW",
+        "hash": "b20ff4e7dce2888475d41b46aa50533a",
+        "portal": "egp-portal (simulated)"
+      },
+      "signature": {
+        "algorithm": "ed25519",
+        "keyId": "831c884ad43159db",
+        "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAbmNu9OrMYctcx+4IgMjERHtPMy64/7kb/WWjD6KZI58=\n-----END PUBLIC KEY-----\n",
+        "payloadHash": "ff379ce3a9673811c19834daedf5fa86601e1e44efe05680c54b673ab49b062c",
+        "value": "FEyQmm7Sp48s/zp2iXv0yMA218oDz2YOQdqblWBNwUKVVXOrXNUsjfnieuf50sM9RghMczibd6AZg9p0JTvIDg==",
+        "signedAt": "2026-10-29T08:51:05.688Z"
+      }
+    },
+    {
+      "id": "gate_jvhl8w",
+      "runId": "run_e263795b",
+      "tenderId": "ZM-PROBE-145738",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "BID ALPHA",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_akjh15",
+          "draft_faa1cq"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T14:57:39.153Z"
+    },
+    {
+      "id": "gate_5gfakp",
+      "runId": "cycle",
+      "tenderId": "E2E-CYCLE-PROBE",
+      "tool": "record_bid_opening",
+      "inputs": {
+        "registerId": "open_u2rj2q",
+        "bids": 2,
+        "late": 1
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T14:57:38.454Z",
+      "requiredOffice": "PROCUREMENT_UNIT"
+    },
+    {
+      "id": "gate_nmeupk",
+      "runId": "cycle",
+      "tenderId": "E2E-CYCLE-PROBE",
+      "tool": "record_bid_opening",
+      "inputs": {
+        "registerId": "open_17t9s8",
+        "bids": 2,
+        "late": 1
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T11:54:13.287Z",
+      "requiredOffice": "PROCUREMENT_UNIT"
+    },
+    {
+      "id": "gate_0dq9u7",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114529",
+      "tool": "respond_complaint",
+      "inputs": {
+        "complaintId": "cmp_74if8k",
+        "response": "The complaint was reviewed; the award stands."
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:45:34.951Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:45:34.965Z",
+      "executedAt": "2026-10-21T11:45:34.965Z",
+      "receipt": {
+        "complaintId": "cmp_74if8k",
+        "status": "ANSWERED"
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_43hwps",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114529",
+      "tool": "record_contract_completion",
+      "inputs": {
+        "note": "Final acceptance recorded"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:45:34.779Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:45:34.811Z",
+      "executedAt": "2026-10-21T11:45:34.811Z",
+      "receipt": {
+        "completedAt": "2026-10-21T11:45:34.811Z"
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_px5e89",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114529",
+      "tool": "certify_payment",
+      "inputs": {
+        "paymentId": "pay_a9054e",
+        "amount": 1000000,
+        "description": "Mobilisation advance"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:45:34.718Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:45:34.746Z",
+      "executedAt": "2026-10-21T11:45:34.746Z",
+      "receipt": {
+        "paymentId": "pay_a9054e",
+        "amount": 1000000
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_aabtr2",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114529",
+      "tool": "approve_variation",
+      "inputs": {
+        "variationId": "var_n7ygyo",
+        "description": "Extra wards equipment",
+        "pctOfContract": 23.1,
+        "valueDelta": 900000
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:45:34.644Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:45:34.684Z",
+      "executedAt": "2026-10-21T11:45:34.684Z",
+      "receipt": {
+        "variationId": "var_n7ygyo",
+        "pct": 23.1
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_qquibz",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114529",
+      "tool": "sign_contract_pack",
+      "inputs": {
+        "supplier": "BID BETA",
+        "value": 3900000,
+        "currency": "ZMW",
+        "packMd": "# CONTRACT PACK — ZM-PROBE-114529\n\n**Supplier:** BID BETA\n**Contract value:** ZMW 3,900,000\n\n## Contents\n\n1. Contract ag"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:45:34.583Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:45:34.615Z",
+      "executedAt": "2026-10-21T11:45:34.615Z",
+      "receipt": {
+        "supplier": "BID BETA",
+        "value": 3900000
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_iwfw4v",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114529",
+      "tool": "publish_award_notice",
+      "inputs": {
+        "sha": "d754ffa50f9ac04c1a8f4a2beedd2a3c",
+        "portal": "egp-portal (simulated)"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:45:34.479Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:45:34.506Z",
+      "executedAt": "2026-10-21T11:45:34.507Z",
+      "receipt": {
+        "portal": "egp-portal (simulated)",
+        "standstillEndsAt": "2026-11-04T11:45:34.506Z"
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_55zqy2",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114529",
+      "tool": "sign_award_report",
+      "inputs": {
+        "sha": "4dd86f63776eeca55cce35df54938ee1",
+        "recommendation": "BID BETA"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:45:34.424Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:45:34.448Z",
+      "executedAt": "2026-10-21T11:45:34.449Z",
+      "receipt": {
+        "sha": "4dd86f63776eeca55cce35df54938ee1",
+        "recommendation": "BID BETA"
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_ie5722",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114529",
+      "tool": "certify_evaluation",
+      "inputs": {
+        "matrixId": "mtx_v9rfux",
+        "bids": 2
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:45:34.369Z",
+      "requiredOffice": "EVALUATION_COMMITTEE",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:45:34.392Z",
+      "executedAt": "2026-10-21T11:45:34.392Z",
+      "receipt": {
+        "matrixId": "mtx_v9rfux",
+        "status": "CERTIFIED",
+        "recommended": "BID BETA"
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_11egxi",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114529",
+      "tool": "record_bid_opening",
+      "inputs": {
+        "registerId": "open_0szy0b",
+        "bids": 2,
+        "late": 1
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:45:34.216Z",
+      "requiredOffice": "PROCUREMENT_UNIT",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:45:34.270Z",
+      "executedAt": "2026-10-21T11:45:34.271Z",
+      "receipt": {
+        "registerId": "open_0szy0b",
+        "sha": "0082fa7a72b16d0b4aee17645df01d53",
+        "admitted": 1
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_8foygo",
+      "runId": "run_d018667a",
+      "tenderId": "ZM-PROBE-114529",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "BID ALPHA",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_da3ecw",
+          "draft_2568j9"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T11:45:32.193Z"
+    },
+    {
+      "id": "gate_wv01r5",
+      "runId": "run_3d94f5f8",
+      "tenderId": "ZM-PROBE-114529",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "BID ALPHA",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_5ffei6",
+          "draft_wxre4v"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T11:45:29.169Z"
+    },
+    {
+      "id": "gate_gt1wkq",
+      "runId": "cycle",
+      "tenderId": "E2E-CYCLE-PROBE",
+      "tool": "record_bid_opening",
+      "inputs": {
+        "registerId": "open_xk0s2q",
+        "bids": 2,
+        "late": 1
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T11:45:28.759Z",
+      "requiredOffice": "PROCUREMENT_UNIT"
+    },
+    {
+      "id": "gate_vbjs4v",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114000",
+      "tool": "respond_complaint",
+      "inputs": {
+        "complaintId": "cmp_5low2i",
+        "response": "The complaint was reviewed; the award stands."
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:40:06.776Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:40:06.797Z",
+      "executedAt": "2026-10-21T11:40:06.797Z",
+      "receipt": {
+        "complaintId": "cmp_5low2i",
+        "status": "ANSWERED"
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_67x8zj",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114000",
+      "tool": "record_contract_completion",
+      "inputs": {
+        "note": "Final acceptance recorded"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:40:06.628Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:40:06.655Z",
+      "executedAt": "2026-10-21T11:40:06.655Z",
+      "receipt": {
+        "completedAt": "2026-10-21T11:40:06.655Z"
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_rlh5xq",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114000",
+      "tool": "certify_payment",
+      "inputs": {
+        "paymentId": "pay_4rzyx4",
+        "amount": 1000000,
+        "description": "Mobilisation advance"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:40:06.580Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:40:06.599Z",
+      "executedAt": "2026-10-21T11:40:06.599Z",
+      "receipt": {
+        "paymentId": "pay_4rzyx4",
+        "amount": 1000000
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_tqw19a",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114000",
+      "tool": "approve_variation",
+      "inputs": {
+        "variationId": "var_xx5n5c",
+        "description": "Extra wards equipment",
+        "pctOfContract": 23.1,
+        "valueDelta": 900000
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:40:06.515Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:40:06.542Z",
+      "executedAt": "2026-10-21T11:40:06.542Z",
+      "receipt": {
+        "variationId": "var_xx5n5c",
+        "pct": 23.1
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_360fmw",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114000",
+      "tool": "sign_contract_pack",
+      "inputs": {
+        "supplier": "BID BETA",
+        "value": 3900000,
+        "currency": "ZMW",
+        "packMd": "# CONTRACT PACK — ZM-PROBE-114000\n\n**Supplier:** BID BETA\n**Contract value:** ZMW 3,900,000\n\n## Contents\n\n1. Contract ag"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:40:06.467Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:40:06.484Z",
+      "executedAt": "2026-10-21T11:40:06.484Z",
+      "receipt": {
+        "supplier": "BID BETA",
+        "value": 3900000
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_e6r44x",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114000",
+      "tool": "publish_award_notice",
+      "inputs": {
+        "sha": "60695d617bc740208ab1d274efd99612",
+        "portal": "egp-portal (simulated)"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:40:06.361Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:40:06.388Z",
+      "executedAt": "2026-10-21T11:40:06.389Z",
+      "receipt": {
+        "portal": "egp-portal (simulated)",
+        "standstillEndsAt": "2026-11-04T11:40:06.388Z"
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_tixeex",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114000",
+      "tool": "sign_award_report",
+      "inputs": {
+        "sha": "df0bf32762b08fa72be3d98dfe287343",
+        "recommendation": "BID BETA"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:40:06.302Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:40:06.329Z",
+      "executedAt": "2026-10-21T11:40:06.329Z",
+      "receipt": {
+        "sha": "df0bf32762b08fa72be3d98dfe287343",
+        "recommendation": "BID BETA"
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_0lt4xo",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114000",
+      "tool": "certify_evaluation",
+      "inputs": {
+        "matrixId": "mtx_zvwtgi",
+        "bids": 2
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:40:06.237Z",
+      "requiredOffice": "EVALUATION_COMMITTEE",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:40:06.265Z",
+      "executedAt": "2026-10-21T11:40:06.265Z",
+      "receipt": {
+        "matrixId": "mtx_zvwtgi",
+        "status": "CERTIFIED",
+        "recommended": "BID BETA"
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_csnqa9",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-114000",
+      "tool": "record_bid_opening",
+      "inputs": {
+        "registerId": "open_xwl53w",
+        "bids": 2,
+        "late": 1
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:40:06.071Z",
+      "requiredOffice": "PROCUREMENT_UNIT",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T11:40:06.133Z",
+      "executedAt": "2026-10-21T11:40:06.134Z",
+      "receipt": {
+        "registerId": "open_xwl53w",
+        "sha": "9e6833d8338f55a6082814e79328ae27",
+        "admitted": 1
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_ep69ji",
+      "runId": "run_7fdc6de7",
+      "tenderId": "ZM-PROBE-114000",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "BID ALPHA",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_xztpex",
+          "draft_si9cfn"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T11:40:04.044Z"
+    },
+    {
+      "id": "gate_osdiva",
+      "runId": "run_238c42c0",
+      "tenderId": "ZM-PROBE-114000",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "BID ALPHA",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_wr0gql",
+          "draft_c500qe"
+        ]
+      },
+      "status": "PENDING",
+      "createdAt": "2026-10-21T11:40:01.042Z"
+    },
+    {
+      "id": "gate_qqardl",
+      "runId": "cycle",
+      "tenderId": "E2E-CYCLE-PROBE",
+      "tool": "record_bid_opening",
+      "inputs": {
+        "registerId": "open_hqftld",
+        "bids": 2,
+        "late": 1
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:40:00.650Z",
+      "requiredOffice": "PROCUREMENT_UNIT",
+      "approver": "Judge Demo",
+      "note": "Signed by the committee",
+      "decidedAt": "2026-10-29T09:24:28.526Z",
+      "stepUp": {
+        "by": "Judge Demo",
+        "method": "password",
+        "at": "2026-10-29T09:24:28.379Z",
+        "jti": "fb8d9cd2-b33d-4184-8625-d7e82329975e",
+        "docHash": "ec10b07ca270984a9083509553233820"
+      },
+      "handSignature": {
+        "image": "data:image/png;base64,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",
+        "signedAt": "2026-10-29T09:24:14.348Z",
+        "strokes": 3,
+        "by": "Judge Demo"
+      },
+      "executedAt": "2026-10-29T09:24:28.527Z",
+      "receipt": {
+        "registerId": "open_cud1ax",
+        "sha": "c9946240c3bda9bbc47bbc3bb8ee9f69",
+        "admitted": 1
+      },
+      "signature": {
+        "algorithm": "ed25519",
+        "keyId": "831c884ad43159db",
+        "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAbmNu9OrMYctcx+4IgMjERHtPMy64/7kb/WWjD6KZI58=\n-----END PUBLIC KEY-----\n",
+        "payloadHash": "162e597ebb51d71ddf4b023fe747618976f4d07e4fe439813554d4dd705b5dcf",
+        "value": "NhRrQ84WRiQ0qjfKa6mwpawW0CuFdJQHMo98htEgvCbIK/Bcgdj9bs/qS3VV/UNY1D1EQg49S0RQUXyFf6zEDQ==",
+        "signedAt": "2026-10-29T09:24:28.528Z"
+      }
+    },
+    {
+      "id": "gate_qztu6u",
+      "runId": "cycle",
+      "tenderId": "E2E-CYCLE-PROBE",
+      "tool": "record_bid_opening",
+      "inputs": {
+        "registerId": "open_24e7ot",
+        "bids": 2,
+        "late": 1
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T11:39:44.165Z",
+      "requiredOffice": "PROCUREMENT_UNIT",
+      "approver": "Chungu Chipimo Chama",
+      "note": "Signed by the committee",
+      "decidedAt": "2026-10-28T08:05:28.876Z",
+      "executedAt": "2026-10-28T08:05:28.876Z",
+      "receipt": {
+        "registerId": "open_cud1ax",
+        "sha": "ee9f79b66a87a2702ea04b5001efe57d",
+        "admitted": 1
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_t2qoyv",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-104845",
+      "tool": "respond_complaint",
+      "inputs": {
+        "complaintId": "cmp_1diqhm",
+        "response": "The complaint was reviewed; the award stands."
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T10:48:51.524Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T10:48:51.539Z",
+      "executedAt": "2026-10-21T10:48:51.539Z",
+      "receipt": {
+        "complaintId": "cmp_1diqhm",
+        "status": "ANSWERED"
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_0gnyv9",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-104845",
+      "tool": "record_contract_completion",
+      "inputs": {
+        "note": "Final acceptance recorded"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T10:48:51.386Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T10:48:51.409Z",
+      "executedAt": "2026-10-21T10:48:51.409Z",
+      "receipt": {
+        "completedAt": "2026-10-21T10:48:51.409Z"
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_woduv6",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-104845",
+      "tool": "certify_payment",
+      "inputs": {
+        "paymentId": "pay_vp33cp",
+        "amount": 1000000,
+        "description": "Mobilisation advance"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T10:48:51.333Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T10:48:51.359Z",
+      "executedAt": "2026-10-21T10:48:51.359Z",
+      "receipt": {
+        "paymentId": "pay_vp33cp",
+        "amount": 1000000
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_imk110",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-104845",
+      "tool": "approve_variation",
+      "inputs": {
+        "variationId": "var_bnlikm",
+        "description": "Extra wards equipment",
+        "pctOfContract": 23.1,
+        "valueDelta": 900000
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T10:48:51.280Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T10:48:51.305Z",
+      "executedAt": "2026-10-21T10:48:51.305Z",
+      "receipt": {
+        "variationId": "var_bnlikm",
+        "pct": 23.1
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_h18vxs",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-104845",
+      "tool": "sign_contract_pack",
+      "inputs": {
+        "supplier": "BID BETA",
+        "value": 3900000,
+        "currency": "ZMW",
+        "packMd": "# CONTRACT PACK — ZM-PROBE-104845\n\n**Supplier:** BID BETA\n**Contract value:** ZMW 3,900,000\n\n## Contents\n\n1. Contract ag"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T10:48:51.232Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T10:48:51.251Z",
+      "executedAt": "2026-10-21T10:48:51.251Z",
+      "receipt": {
+        "supplier": "BID BETA",
+        "value": 3900000
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_lomnrk",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-104845",
+      "tool": "publish_award_notice",
+      "inputs": {
+        "sha": "6ba319ad7067a6c8117215b1e8cff7f2",
+        "portal": "egp-portal (simulated)"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T10:48:51.141Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T10:48:51.164Z",
+      "executedAt": "2026-10-21T10:48:51.164Z",
+      "receipt": {
+        "portal": "egp-portal (simulated)",
+        "standstillEndsAt": "2026-11-04T10:48:51.164Z"
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_i1zrsu",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-104845",
+      "tool": "sign_award_report",
+      "inputs": {
+        "sha": "b0eb374617b2b4eaf761b688d44b0a26",
+        "recommendation": "BID BETA"
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T10:48:51.083Z",
+      "requiredOffice": "ACCOUNTING_OFFICER",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T10:48:51.107Z",
+      "executedAt": "2026-10-21T10:48:51.107Z",
+      "receipt": {
+        "sha": "b0eb374617b2b4eaf761b688d44b0a26",
+        "recommendation": "BID BETA"
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_0ma7y8",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-104845",
+      "tool": "certify_evaluation",
+      "inputs": {
+        "matrixId": "mtx_sx3q5b",
+        "bids": 2
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T10:48:51.029Z",
+      "requiredOffice": "EVALUATION_COMMITTEE",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T10:48:51.052Z",
+      "executedAt": "2026-10-21T10:48:51.052Z",
+      "receipt": {
+        "matrixId": "mtx_sx3q5b",
+        "status": "CERTIFIED",
+        "recommended": "BID BETA"
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_ar2lp3",
+      "runId": "cycle",
+      "tenderId": "ZM-PROBE-104845",
+      "tool": "record_bid_opening",
+      "inputs": {
+        "registerId": "open_8231l3",
+        "bids": 2,
+        "late": 1
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T10:48:50.886Z",
+      "requiredOffice": "PROCUREMENT_UNIT",
+      "approver": "Verify Officer",
+      "note": "Cycle proof",
+      "decidedAt": "2026-10-21T10:48:50.937Z",
+      "executedAt": "2026-10-21T10:48:50.938Z",
+      "receipt": {
+        "registerId": "open_8231l3",
+        "sha": "c4450ae809d2f72c7ae099e49a55d4d8",
+        "admitted": 1
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    },
+    {
+      "id": "gate_skvwa0",
+      "runId": "run_78bab52d",
+      "tenderId": "ZM-PROBE-104845",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "BID ALPHA",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_k3le90",
+          "draft_4c2uuq"
+        ]
+      },
+      "status": "REJECTED",
+      "createdAt": "2026-10-21T10:48:48.863Z",
+      "approver": "Chungu Chipimo Chama",
+      "note": "Returned for clarification",
+      "decidedAt": "2026-10-28T08:05:19.599Z"
+    },
+    {
+      "id": "gate_pfrtyj",
+      "runId": "run_6d4cae04",
+      "tenderId": "ZM-PROBE-104845",
+      "tool": "file_gate_submission",
+      "inputs": {
+        "bidder": "BID ALPHA",
+        "attachments": 6,
+        "findings": [
+          "F-01",
+          "F-02",
+          "F-03"
+        ],
+        "drafts": [
+          "draft_ewb7ym",
+          "draft_38ozrg"
+        ]
+      },
+      "status": "REJECTED",
+      "createdAt": "2026-10-21T10:48:45.841Z",
+      "approver": "Chungu Chipimo Chama",
+      "note": "Returned for clarification",
+      "decidedAt": "2026-10-28T08:05:15.338Z"
+    },
+    {
+      "id": "gate_raf3b3",
+      "runId": "cycle",
+      "tenderId": "E2E-CYCLE-PROBE",
+      "tool": "record_bid_opening",
+      "inputs": {
+        "registerId": "open_bkr7sg",
+        "bids": 2,
+        "late": 1
+      },
+      "status": "EXECUTED",
+      "createdAt": "2026-10-21T10:48:45.744Z",
+      "requiredOffice": "PROCUREMENT_UNIT",
+      "approver": "Chungu Chipimo Chama",
+      "note": "Signed by the committee",
+      "decidedAt": "2026-10-28T08:05:10.563Z",
+      "executedAt": "2026-10-28T08:05:10.563Z",
+      "receipt": {
+        "registerId": "open_cud1ax",
+        "sha": "a0b8d512fad6f8b7ff6cd317ea0e160f",
+        "admitted": 1
+      },
+      "evidential": false,
+      "evidentialNote": "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval."
+    }
+  ],
+  "runs": [
+    {
+      "id": "run_1e1e4e0c",
+      "tenderId": "ZM-PROBE-145738",
+      "status": "FILED",
+      "startedAt": "2026-10-21T14:57:42.120Z",
+      "updatedAt": "2026-10-29T08:51:05.688Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender ZM-PROBE-145738",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — heuristic · value parsing DEEP (markdown + OCDS) · focus OVER-BUDGET > VALUE-OUTLIER > DOC-MISSING > SUPPLIER-ID > BID-SECURITY > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-DOC-MISSING",
+        "▸ draft_redline — template (no model configured) for R-SUPPLIER-ID",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus OVER-BUDGET, VALUE-OUTLIER, DOC-MISSING) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_v6vquk) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate",
+        "✓ Judge Demo signed the gate — bundle filed · SUB-MVTB06DW"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "BID BETA — tax clearance certificate",
+          "evidence": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-manual-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-SUPPLIER-ID",
+          "severity": "HIGH",
+          "item": "BID BETA — Kenya KRA PIN",
+          "evidence": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "citation": "92-bid-bid-beta.md, supplier identifier line"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-BID-SECURITY",
+          "severity": "HIGH",
+          "item": "BID BETA — bid security amount",
+          "evidence": "Bid security ZMW 20,000 is 0.5% of the stated bid value — below the 2% floor.",
+          "citation": "92-bid-bid-beta.md, bid security line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_7z3wn8",
+          "findingId": "F-01",
+          "original": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-DOC-MISSING on BID BETA — tax clearance certificate prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_orek9w",
+          "findingId": "F-02",
+          "original": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-SUPPLIER-ID on BID BETA — Kenya KRA PIN prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "OVER-BUDGET",
+          "VALUE-OUTLIER",
+          "DOC-MISSING",
+          "SUPPLIER-ID",
+          "BID-SECURITY",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 2 markdown bid value(s) + published ceiling — deep-value parsing on",
+        "source": "heuristic"
+      },
+      "gateId": "gate_v6vquk"
+    },
+    {
+      "id": "run_e263795b",
+      "tenderId": "ZM-PROBE-145738",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-21T14:57:39.085Z",
+      "updatedAt": "2026-10-21T14:57:39.155Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender ZM-PROBE-145738",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — heuristic · value parsing DEEP (markdown + OCDS) · focus OVER-BUDGET > VALUE-OUTLIER > DOC-MISSING > SUPPLIER-ID > BID-SECURITY > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-DOC-MISSING",
+        "▸ draft_redline — template (no model configured) for R-SUPPLIER-ID",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus OVER-BUDGET, VALUE-OUTLIER, DOC-MISSING) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_jvhl8w) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "BID BETA — tax clearance certificate",
+          "evidence": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-manual-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-SUPPLIER-ID",
+          "severity": "HIGH",
+          "item": "BID BETA — Kenya KRA PIN",
+          "evidence": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "citation": "92-bid-bid-beta.md, supplier identifier line"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-BID-SECURITY",
+          "severity": "HIGH",
+          "item": "BID BETA — bid security amount",
+          "evidence": "Bid security ZMW 20,000 is 0.5% of the stated bid value — below the 2% floor.",
+          "citation": "92-bid-bid-beta.md, bid security line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_akjh15",
+          "findingId": "F-01",
+          "original": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-DOC-MISSING on BID BETA — tax clearance certificate prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_faa1cq",
+          "findingId": "F-02",
+          "original": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-SUPPLIER-ID on BID BETA — Kenya KRA PIN prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "OVER-BUDGET",
+          "VALUE-OUTLIER",
+          "DOC-MISSING",
+          "SUPPLIER-ID",
+          "BID-SECURITY",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 2 markdown bid value(s) + published ceiling — deep-value parsing on",
+        "source": "heuristic"
+      },
+      "gateId": "gate_jvhl8w"
+    },
+    {
+      "id": "run_d018667a",
+      "tenderId": "ZM-PROBE-114529",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-21T11:45:32.167Z",
+      "updatedAt": "2026-10-21T11:45:32.194Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender ZM-PROBE-114529",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — heuristic · value parsing DEEP (markdown + OCDS) · focus OVER-BUDGET > VALUE-OUTLIER > DOC-MISSING > SUPPLIER-ID > BID-SECURITY > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-DOC-MISSING",
+        "▸ draft_redline — template (no model configured) for R-SUPPLIER-ID",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus OVER-BUDGET, VALUE-OUTLIER, DOC-MISSING) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_8foygo) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "BID BETA — tax clearance certificate",
+          "evidence": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-manual-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-SUPPLIER-ID",
+          "severity": "HIGH",
+          "item": "BID BETA — Kenya KRA PIN",
+          "evidence": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "citation": "92-bid-bid-beta.md, supplier identifier line"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-BID-SECURITY",
+          "severity": "HIGH",
+          "item": "BID BETA — bid security amount",
+          "evidence": "Bid security ZMW 20,000 is 0.5% of the stated bid value — below the 2% floor.",
+          "citation": "92-bid-bid-beta.md, bid security line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_da3ecw",
+          "findingId": "F-01",
+          "original": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-DOC-MISSING on BID BETA — tax clearance certificate prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_2568j9",
+          "findingId": "F-02",
+          "original": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-SUPPLIER-ID on BID BETA — Kenya KRA PIN prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "OVER-BUDGET",
+          "VALUE-OUTLIER",
+          "DOC-MISSING",
+          "SUPPLIER-ID",
+          "BID-SECURITY",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 2 markdown bid value(s) + published ceiling — deep-value parsing on",
+        "source": "heuristic"
+      },
+      "gateId": "gate_8foygo"
+    },
+    {
+      "id": "run_3d94f5f8",
+      "tenderId": "ZM-PROBE-114529",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-21T11:45:29.141Z",
+      "updatedAt": "2026-10-21T11:45:29.170Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender ZM-PROBE-114529",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — heuristic · value parsing DEEP (markdown + OCDS) · focus OVER-BUDGET > VALUE-OUTLIER > DOC-MISSING > SUPPLIER-ID > BID-SECURITY > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-DOC-MISSING",
+        "▸ draft_redline — template (no model configured) for R-SUPPLIER-ID",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus OVER-BUDGET, VALUE-OUTLIER, DOC-MISSING) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_wv01r5) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "BID BETA — tax clearance certificate",
+          "evidence": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-manual-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-SUPPLIER-ID",
+          "severity": "HIGH",
+          "item": "BID BETA — Kenya KRA PIN",
+          "evidence": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "citation": "92-bid-bid-beta.md, supplier identifier line"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-BID-SECURITY",
+          "severity": "HIGH",
+          "item": "BID BETA — bid security amount",
+          "evidence": "Bid security ZMW 20,000 is 0.5% of the stated bid value — below the 2% floor.",
+          "citation": "92-bid-bid-beta.md, bid security line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_5ffei6",
+          "findingId": "F-01",
+          "original": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-DOC-MISSING on BID BETA — tax clearance certificate prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_wxre4v",
+          "findingId": "F-02",
+          "original": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-SUPPLIER-ID on BID BETA — Kenya KRA PIN prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "OVER-BUDGET",
+          "VALUE-OUTLIER",
+          "DOC-MISSING",
+          "SUPPLIER-ID",
+          "BID-SECURITY",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 2 markdown bid value(s) + published ceiling — deep-value parsing on",
+        "source": "heuristic"
+      },
+      "gateId": "gate_wv01r5"
+    },
+    {
+      "id": "run_7fdc6de7",
+      "tenderId": "ZM-PROBE-114000",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-21T11:40:04.024Z",
+      "updatedAt": "2026-10-21T11:40:04.044Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender ZM-PROBE-114000",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — heuristic · value parsing DEEP (markdown + OCDS) · focus OVER-BUDGET > VALUE-OUTLIER > DOC-MISSING > SUPPLIER-ID > BID-SECURITY > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-DOC-MISSING",
+        "▸ draft_redline — template (no model configured) for R-SUPPLIER-ID",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus OVER-BUDGET, VALUE-OUTLIER, DOC-MISSING) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_ep69ji) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "BID BETA — tax clearance certificate",
+          "evidence": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-manual-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-SUPPLIER-ID",
+          "severity": "HIGH",
+          "item": "BID BETA — Kenya KRA PIN",
+          "evidence": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "citation": "92-bid-bid-beta.md, supplier identifier line"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-BID-SECURITY",
+          "severity": "HIGH",
+          "item": "BID BETA — bid security amount",
+          "evidence": "Bid security ZMW 20,000 is 0.5% of the stated bid value — below the 2% floor.",
+          "citation": "92-bid-bid-beta.md, bid security line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_xztpex",
+          "findingId": "F-01",
+          "original": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-DOC-MISSING on BID BETA — tax clearance certificate prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_si9cfn",
+          "findingId": "F-02",
+          "original": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-SUPPLIER-ID on BID BETA — Kenya KRA PIN prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "OVER-BUDGET",
+          "VALUE-OUTLIER",
+          "DOC-MISSING",
+          "SUPPLIER-ID",
+          "BID-SECURITY",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 2 markdown bid value(s) + published ceiling — deep-value parsing on",
+        "source": "heuristic"
+      },
+      "gateId": "gate_ep69ji"
+    },
+    {
+      "id": "run_238c42c0",
+      "tenderId": "ZM-PROBE-114000",
+      "status": "AWAITING_GATE",
+      "startedAt": "2026-10-21T11:40:01.001Z",
+      "updatedAt": "2026-10-21T11:40:01.043Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender ZM-PROBE-114000",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — heuristic · value parsing DEEP (markdown + OCDS) · focus OVER-BUDGET > VALUE-OUTLIER > DOC-MISSING > SUPPLIER-ID > BID-SECURITY > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-DOC-MISSING",
+        "▸ draft_redline — template (no model configured) for R-SUPPLIER-ID",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus OVER-BUDGET, VALUE-OUTLIER, DOC-MISSING) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_osdiva) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "BID BETA — tax clearance certificate",
+          "evidence": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-manual-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-SUPPLIER-ID",
+          "severity": "HIGH",
+          "item": "BID BETA — Kenya KRA PIN",
+          "evidence": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "citation": "92-bid-bid-beta.md, supplier identifier line"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-BID-SECURITY",
+          "severity": "HIGH",
+          "item": "BID BETA — bid security amount",
+          "evidence": "Bid security ZMW 20,000 is 0.5% of the stated bid value — below the 2% floor.",
+          "citation": "92-bid-bid-beta.md, bid security line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_wr0gql",
+          "findingId": "F-01",
+          "original": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-DOC-MISSING on BID BETA — tax clearance certificate prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_c500qe",
+          "findingId": "F-02",
+          "original": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-SUPPLIER-ID on BID BETA — Kenya KRA PIN prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "OVER-BUDGET",
+          "VALUE-OUTLIER",
+          "DOC-MISSING",
+          "SUPPLIER-ID",
+          "BID-SECURITY",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 2 markdown bid value(s) + published ceiling — deep-value parsing on",
+        "source": "heuristic"
+      },
+      "gateId": "gate_osdiva"
+    },
+    {
+      "id": "run_78bab52d",
+      "tenderId": "ZM-PROBE-104845",
+      "status": "REJECTED",
+      "startedAt": "2026-10-21T10:48:48.841Z",
+      "updatedAt": "2026-10-28T08:05:19.599Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender ZM-PROBE-104845",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — heuristic · value parsing DEEP (markdown + OCDS) · focus OVER-BUDGET > VALUE-OUTLIER > DOC-MISSING > SUPPLIER-ID > BID-SECURITY > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-DOC-MISSING",
+        "▸ draft_redline — template (no model configured) for R-SUPPLIER-ID",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus OVER-BUDGET, VALUE-OUTLIER, DOC-MISSING) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_skvwa0) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate",
+        "✗ Chungu Chipimo Chama returned the submission — back to the agent"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "BID BETA — tax clearance certificate",
+          "evidence": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-manual-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-SUPPLIER-ID",
+          "severity": "HIGH",
+          "item": "BID BETA — Kenya KRA PIN",
+          "evidence": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "citation": "92-bid-bid-beta.md, supplier identifier line"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-BID-SECURITY",
+          "severity": "HIGH",
+          "item": "BID BETA — bid security amount",
+          "evidence": "Bid security ZMW 20,000 is 0.5% of the stated bid value — below the 2% floor.",
+          "citation": "92-bid-bid-beta.md, bid security line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_k3le90",
+          "findingId": "F-01",
+          "original": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-DOC-MISSING on BID BETA — tax clearance certificate prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_4c2uuq",
+          "findingId": "F-02",
+          "original": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-SUPPLIER-ID on BID BETA — Kenya KRA PIN prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "OVER-BUDGET",
+          "VALUE-OUTLIER",
+          "DOC-MISSING",
+          "SUPPLIER-ID",
+          "BID-SECURITY",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 2 markdown bid value(s) + published ceiling — deep-value parsing on",
+        "source": "heuristic"
+      },
+      "gateId": "gate_skvwa0"
+    },
+    {
+      "id": "run_6d4cae04",
+      "tenderId": "ZM-PROBE-104845",
+      "status": "REJECTED",
+      "startedAt": "2026-10-21T10:48:45.813Z",
+      "updatedAt": "2026-10-28T08:05:15.338Z",
+      "progress": [
+        "▸ review_graph invoked — langgraph.js · tender ZM-PROBE-104845",
+        "▸ tender_documents_list — via server-filesystem MCP",
+        "▸ 3 documents read · 2 bids · 0 awards · 0 OCDS records",
+        "▸ plan_review — heuristic · value parsing DEEP (markdown + OCDS) · focus OVER-BUDGET > VALUE-OUTLIER > DOC-MISSING > SUPPLIER-ID > BID-SECURITY > SPEC-DEVIATION · maxDrafts 2",
+        "▸ extract_requirements — 0 SHALL/must clauses pinned",
+        "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+        "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+        "▸ flag_finding — 3 findings flagged, each cited",
+        "▸ verify_findings — 3/3 confirmed in their cited document",
+        "▸ draft_redline — template (no model configured) for R-DOC-MISSING",
+        "▸ draft_redline — template (no model configured) for R-SUPPLIER-ID",
+        "▸ 2 redline draft(s) ready for committee (plan: maxDrafts 2, focus OVER-BUDGET, VALUE-OUTLIER, DOC-MISSING) · 0 from the model, 2 template · 0 tokens",
+        "⏸ human gate raised (gate_pfrtyj) — filing blocked until a named human signs",
+        "✓ review graph complete — the graph itself stops at the gate",
+        "✗ Chungu Chipimo Chama returned the submission — back to the agent"
+      ],
+      "requirements": [],
+      "findings": [
+        {
+          "id": "F-01",
+          "rule": "R-DOC-MISSING",
+          "severity": "MEDIUM",
+          "item": "BID BETA — tax clearance certificate",
+          "evidence": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "citation": "01-manual-notice.md, eligibility checklist"
+        },
+        {
+          "id": "F-02",
+          "rule": "R-SUPPLIER-ID",
+          "severity": "HIGH",
+          "item": "BID BETA — Kenya KRA PIN",
+          "evidence": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "citation": "92-bid-bid-beta.md, supplier identifier line"
+        },
+        {
+          "id": "F-03",
+          "rule": "R-BID-SECURITY",
+          "severity": "HIGH",
+          "item": "BID BETA — bid security amount",
+          "evidence": "Bid security ZMW 20,000 is 0.5% of the stated bid value — below the 2% floor.",
+          "citation": "92-bid-bid-beta.md, bid security line"
+        }
+      ],
+      "drafts": [
+        {
+          "id": "draft_ewb7ym",
+          "findingId": "F-01",
+          "original": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-DOC-MISSING on BID BETA — tax clearance certificate prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        },
+        {
+          "id": "draft_38ozrg",
+          "findingId": "F-02",
+          "original": "Supplier identifier \"P0518472\" does not conform to its scheme — a Kenya KRA PIN is letter P or C, then nine digits, then one letter — 11 characters.",
+          "proposed": "Insert: \"The Buyer reserves the right to seek written clarification of R-SUPPLIER-ID on BID BETA — Kenya KRA PIN prior to award, and to disqualify bids left unclarified after five (5) working days.\"",
+          "rationale": "LLM call failed (LLM_BASE_URL and LLM_MODEL are not set); template guard applied so the run never stalls.",
+          "model": "template (no model configured)",
+          "source": "template",
+          "usage": {
+            "promptTokens": 0,
+            "completionTokens": 0
+          },
+          "latencyMs": 0
+        }
+      ],
+      "usage": {
+        "drafts": 2,
+        "llmDrafts": 0,
+        "promptTokens": 0,
+        "completionTokens": 0
+      },
+      "plan": {
+        "pack": {
+          "files": 3,
+          "bids": 2,
+          "ocdsRecords": 0,
+          "markdownValueBids": 2,
+          "ocdsValueBids": 0
+        },
+        "parseMarkdownValues": true,
+        "focusRules": [
+          "OVER-BUDGET",
+          "VALUE-OUTLIER",
+          "DOC-MISSING",
+          "SUPPLIER-ID",
+          "BID-SECURITY",
+          "SPEC-DEVIATION"
+        ],
+        "maxDrafts": 2,
+        "note": "heuristic: 2 markdown bid value(s) + published ceiling — deep-value parsing on",
+        "source": "heuristic"
+      },
+      "gateId": "gate_pfrtyj"
+    }
+  ],
+  "cycle": [
+    {
+      "tenderId": "E2E-CYCLE-PROBE",
+      "coi": [
+        {
+          "id": "coi_0cc12237",
+          "tenderId": "E2E-CYCLE-PROBE",
+          "member": "E2E Member",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T15:18:06.558Z"
+        }
+      ],
+      "alb": [],
+      "debriefs": [],
+      "complaints": [],
+      "clarifications": [],
+      "addenda": [],
+      "notices": [],
+      "specs": [],
+      "createdAt": "2026-10-21T10:48:45.711Z",
+      "closingDate": "2026-12-01T23:59:59.000Z",
+      "closingSetBy": "officer",
+      "closingSetAt": "2026-10-21T15:18:06.545Z",
+      "opening": {
+        "id": "open_cud1ax",
+        "tenderId": "E2E-CYCLE-PROBE",
+        "createdAt": "2026-10-21T15:18:06.582Z",
+        "closingDate": "2026-12-01T23:59:59.000Z",
+        "rows": [
+          {
+            "bidder": "Probe A",
+            "receivedAt": "2026-11-30T10:00:00Z",
+            "late": false
+          },
+          {
+            "bidder": "Probe B",
+            "receivedAt": "2026-12-02T10:00:00Z",
+            "late": true
+          }
+        ],
+        "minutesMd": "# BID OPENING REGISTER — E2E-CYCLE-PROBE\n\nOpened: 2026-10-21T15:18:06.582Z\nClosing date on record: 2026-12-01T23:59:59.000Z\n\n| Bidder | Received | Late | Price read aloud |\n| --- | --- | --- | --- |\n| Probe A | 2026-11-30T10:00:00Z | no | — |\n| Probe B | 2026-12-02T10:00:00Z | YES — rejected unopened | — |\n\n1 bid(s) admitted · 1 late\n\n_Bids were opened publicly; each bid and its price were read aloud and recorded above. The register is sealed with a sha-256 digest once certified by the procurement unit._",
+        "gateId": "gate_dwgd58",
+        "certifiedAt": "2026-10-29T09:24:28.526Z",
+        "certifiedBy": "Judge Demo",
+        "sha": "c9946240c3bda9bbc47bbc3bb8ee9f69"
+      }
+    },
+    {
+      "tenderId": "ZM-PROBE-104845",
+      "coi": [
+        {
+          "id": "coi_c94b3dea",
+          "tenderId": "ZM-PROBE-104845",
+          "member": "Dr. Chanda Mwale",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T10:48:51.002Z"
+        },
+        {
+          "id": "coi_9ad4216a",
+          "tenderId": "ZM-PROBE-104845",
+          "member": "Eng. Bwalya Phiri",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T10:48:51.010Z"
+        },
+        {
+          "id": "coi_30b58cd4",
+          "tenderId": "ZM-PROBE-104845",
+          "member": "Dr. Nkhensani Bilmon",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T10:48:51.019Z"
+        }
+      ],
+      "alb": [],
+      "debriefs": [
+        {
+          "id": "dbr_ja5pt9",
+          "tenderId": "ZM-PROBE-104845",
+          "bidder": "BID ALPHA",
+          "md": "# DEBRIEF LETTER — BID ALPHA\n\nTender: ZM-PROBE-104845\n\nThank you for your bid. This debrief is qualitative: it explains why your bid did not succeed without disclosing another bidder's confidential pricing.\n\n**Outcome:** your bid was recorded as responsive at the responsiveness stage.\n\nNo findings stood against your bid specifically.\n\n_You may request a full administrative review under the applicable procurement law within the standstill window._",
+          "status": "DRAFT",
+          "createdAt": "2026-10-21T10:48:51.456Z"
+        }
+      ],
+      "complaints": [
+        {
+          "id": "cmp_1diqhm",
+          "tenderId": "ZM-PROBE-104845",
+          "complainant": "Beta Pharma",
+          "subject": "Award challenge",
+          "body": "",
+          "receivedAt": "2026-10-21T10:48:51.482Z",
+          "duringStandstill": false,
+          "status": "ANSWERED",
+          "response": {
+            "md": "The complaint was reviewed; the award stands.",
+            "at": "2026-10-21T10:48:51.539Z",
+            "by": "Verify Officer",
+            "gateId": "gate_t2qoyv"
+          }
+        }
+      ],
+      "clarifications": [],
+      "addenda": [],
+      "notices": [],
+      "specs": [],
+      "createdAt": "2026-10-21T10:48:50.878Z",
+      "opening": {
+        "id": "open_8231l3",
+        "tenderId": "ZM-PROBE-104845",
+        "createdAt": "2026-10-21T10:48:50.886Z",
+        "closingDate": "2026-11-30T14:00:00.000Z",
+        "rows": [
+          {
+            "bidder": "ALPHA MEDICAL",
+            "receivedAt": "2026-11-30T09:00:00Z",
+            "late": false,
+            "priceRead": "ZMW 4,100,000"
+          },
+          {
+            "bidder": "BETA PHARMA",
+            "receivedAt": "2026-11-30T16:30:00Z",
+            "late": true,
+            "priceRead": "ZMW 3,900,000"
+          }
+        ],
+        "minutesMd": "# BID OPENING REGISTER — ZM-PROBE-104845\n\nOpened: 2026-10-21T10:48:50.886Z\nClosing date on record: 2026-11-30T14:00:00.000Z\n\n| Bidder | Received | Late | Price read aloud |\n| --- | --- | --- | --- |\n| ALPHA MEDICAL | 2026-11-30T09:00:00Z | no | ZMW 4,100,000 |\n| BETA PHARMA | 2026-11-30T16:30:00Z | YES — rejected unopened | ZMW 3,900,000 |\n\n1 bid(s) admitted · 1 late\n\n_Bids were opened publicly; each bid and its price were read aloud and recorded above. The register is sealed with a sha-256 digest once certified by the procurement unit._",
+        "gateId": "gate_ar2lp3",
+        "certifiedAt": "2026-10-21T10:48:50.937Z",
+        "certifiedBy": "Verify Officer",
+        "sha": "c4450ae809d2f72c7ae099e49a55d4d8"
+      },
+      "matrix": {
+        "id": "mtx_sx3q5b",
+        "tenderId": "ZM-PROBE-104845",
+        "runId": "run_78bab52d",
+        "criteria": [
+          {
+            "id": "C-01",
+            "title": "Technical compliance",
+            "weight": 40
+          },
+          {
+            "id": "C-02",
+            "title": "Experience",
+            "weight": 30
+          },
+          {
+            "id": "C-03",
+            "title": "Delivery plan",
+            "weight": 30
+          }
+        ],
+        "technicalWeightPct": 80,
+        "bids": [
+          {
+            "bidder": "BID ALPHA",
+            "source": "91-bid-bid-alpha.md",
+            "late": false,
+            "responsiveness": "RESPONSIVE",
+            "reasons": [],
+            "technicalScores": [
+              {
+                "criterionId": "C-01",
+                "score": 0
+              },
+              {
+                "criterionId": "C-02",
+                "score": 0
+              },
+              {
+                "criterionId": "C-03",
+                "score": 0
+              }
+            ],
+            "technicalTotal": 0,
+            "financial": {
+              "amount": 4100000,
+              "currency": "ZMW",
+              "formulaScore": 95.1
+            },
+            "verdict": "NOT_RECOMMENDED",
+            "total": 19
+          },
+          {
+            "bidder": "BID BETA",
+            "source": "92-bid-bid-beta.md",
+            "late": false,
+            "responsiveness": "RESPONSIVE",
+            "reasons": [],
+            "technicalScores": [
+              {
+                "criterionId": "C-01",
+                "score": 0
+              },
+              {
+                "criterionId": "C-02",
+                "score": 0
+              },
+              {
+                "criterionId": "C-03",
+                "score": 0
+              }
+            ],
+            "technicalTotal": 0,
+            "financial": {
+              "amount": 3900000,
+              "currency": "ZMW",
+              "formulaScore": 100
+            },
+            "verdict": "NOT_RECOMMENDED",
+            "total": 20
+          }
+        ],
+        "status": "CERTIFIED",
+        "createdAt": "2026-10-21T10:48:50.971Z",
+        "gateId": "gate_0ma7y8",
+        "certifiedAt": "2026-10-21T10:48:51.052Z",
+        "certifiedBy": "Verify Officer"
+      },
+      "awardReport": {
+        "tenderId": "ZM-PROBE-104845",
+        "md": "# AWARD RECOMMENDATION REPORT\n\n**Tender:** ZM-PROBE-104845\n**Buyer:** —\n**Method:** —\n\n## 1. Process\n\nThe pack was reviewed by the quorum desk: requirements pinned from the notices, each bid read against them, every finding cited to its document and verified. The evaluation matrix below was certified by the evaluation committee.\n\n## 2. Findings carried into the decision\n\n- **R-DOC-MISSING** BID BETA — tax clearance certificate (MEDIUM)\n- **R-SUPPLIER-ID** BID BETA — Kenya KRA PIN (HIGH)\n- **R-BID-SECURITY** BID BETA — bid security amount (HIGH)\n\n## 3. Evaluation outcome\n\nCriteria: Technical compliance (40%), Experience (30%), Delivery plan (30%)\nTechnical/financial split: 80/20\n\n| Bidder | Responsive | Technical | Financial | Total | Verdict |\n| --- | --- | --- | --- | --- | --- |\n| BID ALPHA | RESPONSIVE | 0 | 95.1 | 19 | NOT_RECOMMENDED |\n| BID BETA | RESPONSIVE | 0 | 100 | 20 | NOT_RECOMMENDED |\n\n## 4. Recommendation\n\nAward to **BID BETA** at ZMW 3,900,000, subject to the accounting officer's signature and the statutory standstill.\n\n## 5. Signatures\n\n- Evaluation committee chair: _signed at the certification gate_\n- Accounting officer: _signed at the award-report gate_",
+        "sha": "b0eb374617b2b4eaf761b688d44b0a26",
+        "createdAt": "2026-10-21T10:48:51.083Z",
+        "recommendation": "BID BETA",
+        "gateId": "gate_i1zrsu",
+        "signedAt": "2026-10-21T10:48:51.107Z",
+        "signedBy": "Verify Officer"
+      },
+      "awardNotice": {
+        "tenderId": "ZM-PROBE-104845",
+        "md": "# NOTICE OF AWARD\n\n**Reference:** ZM-PROBE-104845\n**Buyer:** —\n**Awarded to:** BID BETA\n**Published to:** egp-portal (simulated)\n\n_This notice is published through a simulated portal stub, labelled as such everywhere it appears. The standstill period gives unsuccessful bidders the chance to complain before the contract is signed._",
+        "sha": "6ba319ad7067a6c8117215b1e8cff7f2",
+        "portal": "egp-portal (simulated)",
+        "gateId": "gate_lomnrk",
+        "publishedAt": "2026-10-21T10:48:51.164Z",
+        "publishedBy": "Verify Officer"
+      },
+      "standstill": {
+        "tenderId": "ZM-PROBE-104845",
+        "startsAt": "2026-10-21T10:48:51.164Z",
+        "endsAt": "2026-11-04T10:48:51.164Z",
+        "days": 10,
+        "status": "LIFTED"
+      },
+      "contract": {
+        "tenderId": "ZM-PROBE-104845",
+        "supplier": "BID BETA",
+        "value": 3900000,
+        "currency": "ZMW",
+        "openedAt": "2026-10-21T10:48:51.251Z",
+        "openedFromGate": "gate_h18vxs",
+        "packMd": "# CONTRACT PACK — ZM-PROBE-104845\n\n**Supplier:** BID BETA\n**Contract value:** ZMW 3,900,000\n\n## Contents\n\n1. Contract ag",
+        "milestones": [],
+        "variations": [
+          {
+            "id": "var_bnlikm",
+            "description": "Extra wards equipment",
+            "valueDelta": 900000,
+            "pctOfContract": 23.1,
+            "status": "APPROVED",
+            "at": "2026-10-21T10:48:51.280Z",
+            "gateId": "gate_imk110",
+            "decidedBy": "Verify Officer"
+          }
+        ],
+        "payments": [
+          {
+            "id": "pay_vp33cp",
+            "description": "Mobilisation advance",
+            "amount": 1000000,
+            "currency": "ZMW",
+            "gateId": "gate_woduv6",
+            "certifiedAt": "2026-10-21T10:48:51.359Z",
+            "certifiedBy": "Verify Officer"
+          }
+        ],
+        "completedAt": "2026-10-21T10:48:51.409Z",
+        "completedBy": "Verify Officer"
+      }
+    },
+    {
+      "tenderId": "ZM-PROBE-114000",
+      "coi": [
+        {
+          "id": "coi_0d5dbced",
+          "tenderId": "ZM-PROBE-114000",
+          "member": "Dr. Chanda Mwale",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T11:40:06.201Z"
+        },
+        {
+          "id": "coi_ab2f677a",
+          "tenderId": "ZM-PROBE-114000",
+          "member": "Eng. Bwalya Phiri",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T11:40:06.210Z"
+        },
+        {
+          "id": "coi_922280b9",
+          "tenderId": "ZM-PROBE-114000",
+          "member": "Dr. Nkhensani Bilmon",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T11:40:06.224Z"
+        }
+      ],
+      "alb": [],
+      "debriefs": [
+        {
+          "id": "dbr_kb5ztm",
+          "tenderId": "ZM-PROBE-114000",
+          "bidder": "BID ALPHA",
+          "md": "# DEBRIEF LETTER — BID ALPHA\n\nTender: ZM-PROBE-114000\n\nThank you for your bid. This debrief is qualitative: it explains why your bid did not succeed without disclosing another bidder's confidential pricing.\n\n**Outcome:** your bid was recorded as responsive at the responsiveness stage.\n\nNo findings stood against your bid specifically.\n\n_You may request a full administrative review under the applicable procurement law within the standstill window._",
+          "status": "DRAFT",
+          "createdAt": "2026-10-21T11:40:06.708Z"
+        }
+      ],
+      "complaints": [
+        {
+          "id": "cmp_5low2i",
+          "tenderId": "ZM-PROBE-114000",
+          "complainant": "Beta Pharma",
+          "subject": "Award challenge",
+          "body": "",
+          "receivedAt": "2026-10-21T11:40:06.734Z",
+          "duringStandstill": false,
+          "status": "ANSWERED",
+          "response": {
+            "md": "The complaint was reviewed; the award stands.",
+            "at": "2026-10-21T11:40:06.797Z",
+            "by": "Verify Officer",
+            "gateId": "gate_vbjs4v"
+          }
+        }
+      ],
+      "clarifications": [],
+      "addenda": [],
+      "notices": [],
+      "specs": [],
+      "createdAt": "2026-10-21T11:40:06.066Z",
+      "opening": {
+        "id": "open_xwl53w",
+        "tenderId": "ZM-PROBE-114000",
+        "createdAt": "2026-10-21T11:40:06.071Z",
+        "closingDate": "2026-11-30T14:00:00.000Z",
+        "rows": [
+          {
+            "bidder": "ALPHA MEDICAL",
+            "receivedAt": "2026-11-30T09:00:00Z",
+            "late": false,
+            "priceRead": "ZMW 4,100,000"
+          },
+          {
+            "bidder": "BETA PHARMA",
+            "receivedAt": "2026-11-30T16:30:00Z",
+            "late": true,
+            "priceRead": "ZMW 3,900,000"
+          }
+        ],
+        "minutesMd": "# BID OPENING REGISTER — ZM-PROBE-114000\n\nOpened: 2026-10-21T11:40:06.071Z\nClosing date on record: 2026-11-30T14:00:00.000Z\n\n| Bidder | Received | Late | Price read aloud |\n| --- | --- | --- | --- |\n| ALPHA MEDICAL | 2026-11-30T09:00:00Z | no | ZMW 4,100,000 |\n| BETA PHARMA | 2026-11-30T16:30:00Z | YES — rejected unopened | ZMW 3,900,000 |\n\n1 bid(s) admitted · 1 late\n\n_Bids were opened publicly; each bid and its price were read aloud and recorded above. The register is sealed with a sha-256 digest once certified by the procurement unit._",
+        "gateId": "gate_csnqa9",
+        "certifiedAt": "2026-10-21T11:40:06.133Z",
+        "certifiedBy": "Verify Officer",
+        "sha": "9e6833d8338f55a6082814e79328ae27"
+      },
+      "matrix": {
+        "id": "mtx_zvwtgi",
+        "tenderId": "ZM-PROBE-114000",
+        "runId": "run_7fdc6de7",
+        "criteria": [
+          {
+            "id": "C-01",
+            "title": "Technical compliance",
+            "weight": 40
+          },
+          {
+            "id": "C-02",
+            "title": "Experience",
+            "weight": 30
+          },
+          {
+            "id": "C-03",
+            "title": "Delivery plan",
+            "weight": 30
+          }
+        ],
+        "technicalWeightPct": 80,
+        "bids": [
+          {
+            "bidder": "BID ALPHA",
+            "source": "91-bid-bid-alpha.md",
+            "late": false,
+            "responsiveness": "RESPONSIVE",
+            "reasons": [],
+            "technicalScores": [
+              {
+                "criterionId": "C-01",
+                "score": 0
+              },
+              {
+                "criterionId": "C-02",
+                "score": 0
+              },
+              {
+                "criterionId": "C-03",
+                "score": 0
+              }
+            ],
+            "technicalTotal": 0,
+            "financial": {
+              "amount": 4100000,
+              "currency": "ZMW",
+              "formulaScore": 95.1
+            },
+            "verdict": "NOT_RECOMMENDED",
+            "total": 19
+          },
+          {
+            "bidder": "BID BETA",
+            "source": "92-bid-bid-beta.md",
+            "late": false,
+            "responsiveness": "RESPONSIVE",
+            "reasons": [],
+            "technicalScores": [
+              {
+                "criterionId": "C-01",
+                "score": 0
+              },
+              {
+                "criterionId": "C-02",
+                "score": 0
+              },
+              {
+                "criterionId": "C-03",
+                "score": 0
+              }
+            ],
+            "technicalTotal": 0,
+            "financial": {
+              "amount": 3900000,
+              "currency": "ZMW",
+              "formulaScore": 100
+            },
+            "verdict": "NOT_RECOMMENDED",
+            "total": 20
+          }
+        ],
+        "status": "CERTIFIED",
+        "createdAt": "2026-10-21T11:40:06.168Z",
+        "gateId": "gate_0lt4xo",
+        "certifiedAt": "2026-10-21T11:40:06.265Z",
+        "certifiedBy": "Verify Officer"
+      },
+      "awardReport": {
+        "tenderId": "ZM-PROBE-114000",
+        "md": "# AWARD RECOMMENDATION REPORT\n\n**Tender:** ZM-PROBE-114000\n**Buyer:** —\n**Method:** —\n\n## 1. Process\n\nThe pack was reviewed by the quorum desk: requirements pinned from the notices, each bid read against them, every finding cited to its document and verified. The evaluation matrix below was certified by the evaluation committee.\n\n## 2. Findings carried into the decision\n\n- **R-DOC-MISSING** BID BETA — tax clearance certificate (MEDIUM)\n- **R-SUPPLIER-ID** BID BETA — Kenya KRA PIN (HIGH)\n- **R-BID-SECURITY** BID BETA — bid security amount (HIGH)\n\n## 3. Evaluation outcome\n\nCriteria: Technical compliance (40%), Experience (30%), Delivery plan (30%)\nTechnical/financial split: 80/20\n\n| Bidder | Responsive | Technical | Financial | Total | Verdict |\n| --- | --- | --- | --- | --- | --- |\n| BID ALPHA | RESPONSIVE | 0 | 95.1 | 19 | NOT_RECOMMENDED |\n| BID BETA | RESPONSIVE | 0 | 100 | 20 | NOT_RECOMMENDED |\n\n## 4. Recommendation\n\nAward to **BID BETA** at ZMW 3,900,000, subject to the accounting officer's signature and the statutory standstill.\n\n## 5. Signatures\n\n- Evaluation committee chair: _signed at the certification gate_\n- Accounting officer: _signed at the award-report gate_",
+        "sha": "df0bf32762b08fa72be3d98dfe287343",
+        "createdAt": "2026-10-21T11:40:06.302Z",
+        "recommendation": "BID BETA",
+        "gateId": "gate_tixeex",
+        "signedAt": "2026-10-21T11:40:06.329Z",
+        "signedBy": "Verify Officer"
+      },
+      "awardNotice": {
+        "tenderId": "ZM-PROBE-114000",
+        "md": "# NOTICE OF AWARD\n\n**Reference:** ZM-PROBE-114000\n**Buyer:** —\n**Awarded to:** BID BETA\n**Published to:** egp-portal (simulated)\n\n_This notice is published through a simulated portal stub, labelled as such everywhere it appears. The standstill period gives unsuccessful bidders the chance to complain before the contract is signed._",
+        "sha": "60695d617bc740208ab1d274efd99612",
+        "portal": "egp-portal (simulated)",
+        "gateId": "gate_e6r44x",
+        "publishedAt": "2026-10-21T11:40:06.388Z",
+        "publishedBy": "Verify Officer"
+      },
+      "standstill": {
+        "tenderId": "ZM-PROBE-114000",
+        "startsAt": "2026-10-21T11:40:06.388Z",
+        "endsAt": "2026-11-04T11:40:06.388Z",
+        "days": 10,
+        "status": "LIFTED"
+      },
+      "contract": {
+        "tenderId": "ZM-PROBE-114000",
+        "supplier": "BID BETA",
+        "value": 3900000,
+        "currency": "ZMW",
+        "openedAt": "2026-10-21T11:40:06.484Z",
+        "openedFromGate": "gate_360fmw",
+        "packMd": "# CONTRACT PACK — ZM-PROBE-114000\n\n**Supplier:** BID BETA\n**Contract value:** ZMW 3,900,000\n\n## Contents\n\n1. Contract ag",
+        "milestones": [],
+        "variations": [
+          {
+            "id": "var_xx5n5c",
+            "description": "Extra wards equipment",
+            "valueDelta": 900000,
+            "pctOfContract": 23.1,
+            "status": "APPROVED",
+            "at": "2026-10-21T11:40:06.515Z",
+            "gateId": "gate_tqw19a",
+            "decidedBy": "Verify Officer"
+          }
+        ],
+        "payments": [
+          {
+            "id": "pay_4rzyx4",
+            "description": "Mobilisation advance",
+            "amount": 1000000,
+            "currency": "ZMW",
+            "gateId": "gate_rlh5xq",
+            "certifiedAt": "2026-10-21T11:40:06.599Z",
+            "certifiedBy": "Verify Officer"
+          }
+        ],
+        "completedAt": "2026-10-21T11:40:06.655Z",
+        "completedBy": "Verify Officer"
+      }
+    },
+    {
+      "tenderId": "ZM-PROBE-114529",
+      "coi": [
+        {
+          "id": "coi_e9683745",
+          "tenderId": "ZM-PROBE-114529",
+          "member": "Dr. Chanda Mwale",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T11:45:34.338Z"
+        },
+        {
+          "id": "coi_4fb95a1c",
+          "tenderId": "ZM-PROBE-114529",
+          "member": "Eng. Bwalya Phiri",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T11:45:34.348Z"
+        },
+        {
+          "id": "coi_b6f073a7",
+          "tenderId": "ZM-PROBE-114529",
+          "member": "Dr. Nkhensani Bilmon",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T11:45:34.357Z"
+        }
+      ],
+      "alb": [],
+      "debriefs": [
+        {
+          "id": "dbr_z2816b",
+          "tenderId": "ZM-PROBE-114529",
+          "bidder": "BID ALPHA",
+          "md": "# DEBRIEF LETTER — BID ALPHA\n\nTender: ZM-PROBE-114529\n\nThank you for your bid. This debrief is qualitative: it explains why your bid did not succeed without disclosing another bidder's confidential pricing.\n\n**Outcome:** your bid was recorded as responsive at the responsiveness stage.\n\nNo findings stood against your bid specifically.\n\n_You may request a full administrative review under the applicable procurement law within the standstill window._",
+          "status": "DRAFT",
+          "createdAt": "2026-10-21T11:45:34.870Z"
+        }
+      ],
+      "complaints": [
+        {
+          "id": "cmp_74if8k",
+          "tenderId": "ZM-PROBE-114529",
+          "complainant": "Beta Pharma",
+          "subject": "Award challenge",
+          "body": "",
+          "receivedAt": "2026-10-21T11:45:34.899Z",
+          "duringStandstill": false,
+          "status": "ANSWERED",
+          "response": {
+            "md": "The complaint was reviewed; the award stands.",
+            "at": "2026-10-21T11:45:34.965Z",
+            "by": "Verify Officer",
+            "gateId": "gate_0dq9u7"
+          }
+        }
+      ],
+      "clarifications": [],
+      "addenda": [],
+      "notices": [],
+      "specs": [],
+      "createdAt": "2026-10-21T11:45:34.207Z",
+      "opening": {
+        "id": "open_0szy0b",
+        "tenderId": "ZM-PROBE-114529",
+        "createdAt": "2026-10-21T11:45:34.216Z",
+        "closingDate": "2026-11-30T14:00:00.000Z",
+        "rows": [
+          {
+            "bidder": "ALPHA MEDICAL",
+            "receivedAt": "2026-11-30T09:00:00Z",
+            "late": false,
+            "priceRead": "ZMW 4,100,000"
+          },
+          {
+            "bidder": "BETA PHARMA",
+            "receivedAt": "2026-11-30T16:30:00Z",
+            "late": true,
+            "priceRead": "ZMW 3,900,000"
+          }
+        ],
+        "minutesMd": "# BID OPENING REGISTER — ZM-PROBE-114529\n\nOpened: 2026-10-21T11:45:34.216Z\nClosing date on record: 2026-11-30T14:00:00.000Z\n\n| Bidder | Received | Late | Price read aloud |\n| --- | --- | --- | --- |\n| ALPHA MEDICAL | 2026-11-30T09:00:00Z | no | ZMW 4,100,000 |\n| BETA PHARMA | 2026-11-30T16:30:00Z | YES — rejected unopened | ZMW 3,900,000 |\n\n1 bid(s) admitted · 1 late\n\n_Bids were opened publicly; each bid and its price were read aloud and recorded above. The register is sealed with a sha-256 digest once certified by the procurement unit._",
+        "gateId": "gate_11egxi",
+        "certifiedAt": "2026-10-21T11:45:34.270Z",
+        "certifiedBy": "Verify Officer",
+        "sha": "0082fa7a72b16d0b4aee17645df01d53"
+      },
+      "matrix": {
+        "id": "mtx_v9rfux",
+        "tenderId": "ZM-PROBE-114529",
+        "runId": "run_d018667a",
+        "criteria": [
+          {
+            "id": "C-01",
+            "title": "Technical compliance",
+            "weight": 40
+          },
+          {
+            "id": "C-02",
+            "title": "Experience",
+            "weight": 30
+          },
+          {
+            "id": "C-03",
+            "title": "Delivery plan",
+            "weight": 30
+          }
+        ],
+        "technicalWeightPct": 80,
+        "bids": [
+          {
+            "bidder": "BID ALPHA",
+            "source": "91-bid-bid-alpha.md",
+            "late": false,
+            "responsiveness": "RESPONSIVE",
+            "reasons": [],
+            "technicalScores": [
+              {
+                "criterionId": "C-01",
+                "score": 0
+              },
+              {
+                "criterionId": "C-02",
+                "score": 0
+              },
+              {
+                "criterionId": "C-03",
+                "score": 0
+              }
+            ],
+            "technicalTotal": 0,
+            "financial": {
+              "amount": 4100000,
+              "currency": "ZMW",
+              "formulaScore": 95.1
+            },
+            "verdict": "NOT_RECOMMENDED",
+            "total": 19
+          },
+          {
+            "bidder": "BID BETA",
+            "source": "92-bid-bid-beta.md",
+            "late": false,
+            "responsiveness": "RESPONSIVE",
+            "reasons": [],
+            "technicalScores": [
+              {
+                "criterionId": "C-01",
+                "score": 0
+              },
+              {
+                "criterionId": "C-02",
+                "score": 0
+              },
+              {
+                "criterionId": "C-03",
+                "score": 0
+              }
+            ],
+            "technicalTotal": 0,
+            "financial": {
+              "amount": 3900000,
+              "currency": "ZMW",
+              "formulaScore": 100
+            },
+            "verdict": "NOT_RECOMMENDED",
+            "total": 20
+          }
+        ],
+        "status": "CERTIFIED",
+        "createdAt": "2026-10-21T11:45:34.307Z",
+        "gateId": "gate_ie5722",
+        "certifiedAt": "2026-10-21T11:45:34.392Z",
+        "certifiedBy": "Verify Officer"
+      },
+      "awardReport": {
+        "tenderId": "ZM-PROBE-114529",
+        "md": "# AWARD RECOMMENDATION REPORT\n\n**Tender:** ZM-PROBE-114529\n**Buyer:** —\n**Method:** —\n\n## 1. Process\n\nThe pack was reviewed by the quorum desk: requirements pinned from the notices, each bid read against them, every finding cited to its document and verified. The evaluation matrix below was certified by the evaluation committee.\n\n## 2. Findings carried into the decision\n\n- **R-DOC-MISSING** BID BETA — tax clearance certificate (MEDIUM)\n- **R-SUPPLIER-ID** BID BETA — Kenya KRA PIN (HIGH)\n- **R-BID-SECURITY** BID BETA — bid security amount (HIGH)\n\n## 3. Evaluation outcome\n\nCriteria: Technical compliance (40%), Experience (30%), Delivery plan (30%)\nTechnical/financial split: 80/20\n\n| Bidder | Responsive | Technical | Financial | Total | Verdict |\n| --- | --- | --- | --- | --- | --- |\n| BID ALPHA | RESPONSIVE | 0 | 95.1 | 19 | NOT_RECOMMENDED |\n| BID BETA | RESPONSIVE | 0 | 100 | 20 | NOT_RECOMMENDED |\n\n## 4. Recommendation\n\nAward to **BID BETA** at ZMW 3,900,000, subject to the accounting officer's signature and the statutory standstill.\n\n## 5. Signatures\n\n- Evaluation committee chair: _signed at the certification gate_\n- Accounting officer: _signed at the award-report gate_",
+        "sha": "4dd86f63776eeca55cce35df54938ee1",
+        "createdAt": "2026-10-21T11:45:34.424Z",
+        "recommendation": "BID BETA",
+        "gateId": "gate_55zqy2",
+        "signedAt": "2026-10-21T11:45:34.448Z",
+        "signedBy": "Verify Officer"
+      },
+      "awardNotice": {
+        "tenderId": "ZM-PROBE-114529",
+        "md": "# NOTICE OF AWARD\n\n**Reference:** ZM-PROBE-114529\n**Buyer:** —\n**Awarded to:** BID BETA\n**Published to:** egp-portal (simulated)\n\n_This notice is published through a simulated portal stub, labelled as such everywhere it appears. The standstill period gives unsuccessful bidders the chance to complain before the contract is signed._",
+        "sha": "d754ffa50f9ac04c1a8f4a2beedd2a3c",
+        "portal": "egp-portal (simulated)",
+        "gateId": "gate_iwfw4v",
+        "publishedAt": "2026-10-21T11:45:34.506Z",
+        "publishedBy": "Verify Officer"
+      },
+      "standstill": {
+        "tenderId": "ZM-PROBE-114529",
+        "startsAt": "2026-10-21T11:45:34.506Z",
+        "endsAt": "2026-11-04T11:45:34.506Z",
+        "days": 10,
+        "status": "LIFTED"
+      },
+      "contract": {
+        "tenderId": "ZM-PROBE-114529",
+        "supplier": "BID BETA",
+        "value": 3900000,
+        "currency": "ZMW",
+        "openedAt": "2026-10-21T11:45:34.615Z",
+        "openedFromGate": "gate_qquibz",
+        "packMd": "# CONTRACT PACK — ZM-PROBE-114529\n\n**Supplier:** BID BETA\n**Contract value:** ZMW 3,900,000\n\n## Contents\n\n1. Contract ag",
+        "milestones": [],
+        "variations": [
+          {
+            "id": "var_n7ygyo",
+            "description": "Extra wards equipment",
+            "valueDelta": 900000,
+            "pctOfContract": 23.1,
+            "status": "APPROVED",
+            "at": "2026-10-21T11:45:34.644Z",
+            "gateId": "gate_aabtr2",
+            "decidedBy": "Verify Officer"
+          }
+        ],
+        "payments": [
+          {
+            "id": "pay_a9054e",
+            "description": "Mobilisation advance",
+            "amount": 1000000,
+            "currency": "ZMW",
+            "gateId": "gate_px5e89",
+            "certifiedAt": "2026-10-21T11:45:34.746Z",
+            "certifiedBy": "Verify Officer"
+          }
+        ],
+        "completedAt": "2026-10-21T11:45:34.811Z",
+        "completedBy": "Verify Officer"
+      }
+    },
+    {
+      "tenderId": "ZM-PROBE-145738",
+      "coi": [
+        {
+          "id": "coi_5f68687a",
+          "tenderId": "ZM-PROBE-145738",
+          "member": "Dr. Chanda Mwale",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T14:57:44.390Z"
+        },
+        {
+          "id": "coi_7f5960a6",
+          "tenderId": "ZM-PROBE-145738",
+          "member": "Eng. Bwalya Phiri",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T14:57:44.402Z"
+        },
+        {
+          "id": "coi_1974ace8",
+          "tenderId": "ZM-PROBE-145738",
+          "member": "Dr. Nkhensani Bilmon",
+          "declaration": "NO_CONFLICT",
+          "declaredAt": "2026-10-21T14:57:44.443Z"
+        }
+      ],
+      "alb": [],
+      "debriefs": [
+        {
+          "id": "dbr_f43awk",
+          "tenderId": "ZM-PROBE-145738",
+          "bidder": "BID ALPHA",
+          "md": "# DEBRIEF LETTER — BID ALPHA\n\nTender: ZM-PROBE-145738\n\nThank you for your bid. This debrief is qualitative: it explains why your bid did not succeed without disclosing another bidder's confidential pricing.\n\n**Outcome:** your bid was recorded as responsive at the responsiveness stage.\n\nNo findings stood against your bid specifically.\n\n_You may request a full administrative review under the applicable procurement law within the standstill window._",
+          "status": "DRAFT",
+          "createdAt": "2026-10-21T14:57:45.376Z"
+        }
+      ],
+      "complaints": [
+        {
+          "id": "cmp_8y4mkq",
+          "tenderId": "ZM-PROBE-145738",
+          "complainant": "Beta Pharma",
+          "subject": "Award challenge",
+          "body": "",
+          "receivedAt": "2026-10-21T14:57:45.441Z",
+          "duringStandstill": false,
+          "status": "ANSWERED",
+          "response": {
+            "md": "The complaint was reviewed; the award stands.",
+            "at": "2026-10-21T14:57:45.560Z",
+            "by": "Verify Officer",
+            "gateId": "gate_s9q496"
+          }
+        }
+      ],
+      "clarifications": [],
+      "addenda": [],
+      "notices": [],
+      "specs": [],
+      "createdAt": "2026-10-21T14:57:44.165Z",
+      "opening": {
+        "id": "open_rqbgwn",
+        "tenderId": "ZM-PROBE-145738",
+        "createdAt": "2026-10-21T14:57:44.171Z",
+        "closingDate": "2026-11-30T14:00:00.000Z",
+        "rows": [
+          {
+            "bidder": "ALPHA MEDICAL",
+            "receivedAt": "2026-11-30T09:00:00Z",
+            "late": false,
+            "priceRead": "ZMW 4,100,000"
+          },
+          {
+            "bidder": "BETA PHARMA",
+            "receivedAt": "2026-11-30T16:30:00Z",
+            "late": true,
+            "priceRead": "ZMW 3,900,000"
+          }
+        ],
+        "minutesMd": "# BID OPENING REGISTER — ZM-PROBE-145738\n\nOpened: 2026-10-21T14:57:44.171Z\nClosing date on record: 2026-11-30T14:00:00.000Z\n\n| Bidder | Received | Late | Price read aloud |\n| --- | --- | --- | --- |\n| ALPHA MEDICAL | 2026-11-30T09:00:00Z | no | ZMW 4,100,000 |\n| BETA PHARMA | 2026-11-30T16:30:00Z | YES — rejected unopened | ZMW 3,900,000 |\n\n1 bid(s) admitted · 1 late\n\n_Bids were opened publicly; each bid and its price were read aloud and recorded above. The register is sealed with a sha-256 digest once certified by the procurement unit._",
+        "gateId": "gate_elx368",
+        "certifiedAt": "2026-10-21T14:57:44.274Z",
+        "certifiedBy": "Verify Officer",
+        "sha": "c4f3c2404af67f4257ed2adbce1a4115"
+      },
+      "matrix": {
+        "id": "mtx_oopp34",
+        "tenderId": "ZM-PROBE-145738",
+        "runId": "run_1e1e4e0c",
+        "criteria": [
+          {
+            "id": "C-01",
+            "title": "Technical compliance",
+            "weight": 40
+          },
+          {
+            "id": "C-02",
+            "title": "Experience",
+            "weight": 30
+          },
+          {
+            "id": "C-03",
+            "title": "Delivery plan",
+            "weight": 30
+          }
+        ],
+        "technicalWeightPct": 80,
+        "bids": [
+          {
+            "bidder": "BID ALPHA",
+            "source": "91-bid-bid-alpha.md",
+            "late": false,
+            "responsiveness": "RESPONSIVE",
+            "reasons": [],
+            "technicalScores": [
+              {
+                "criterionId": "C-01",
+                "score": 0
+              },
+              {
+                "criterionId": "C-02",
+                "score": 0
+              },
+              {
+                "criterionId": "C-03",
+                "score": 0
+              }
+            ],
+            "technicalTotal": 0,
+            "financial": {
+              "amount": 4100000,
+              "currency": "ZMW",
+              "formulaScore": 95.1
+            },
+            "verdict": "NOT_RECOMMENDED",
+            "total": 19
+          },
+          {
+            "bidder": "BID BETA",
+            "source": "92-bid-bid-beta.md",
+            "late": false,
+            "responsiveness": "RESPONSIVE",
+            "reasons": [],
+            "technicalScores": [
+              {
+                "criterionId": "C-01",
+                "score": 0
+              },
+              {
+                "criterionId": "C-02",
+                "score": 0
+              },
+              {
+                "criterionId": "C-03",
+                "score": 0
+              }
+            ],
+            "technicalTotal": 0,
+            "financial": {
+              "amount": 3900000,
+              "currency": "ZMW",
+              "formulaScore": 100
+            },
+            "verdict": "NOT_RECOMMENDED",
+            "total": 20
+          }
+        ],
+        "status": "CERTIFIED",
+        "createdAt": "2026-10-21T14:57:44.319Z",
+        "gateId": "gate_61s4rd",
+        "certifiedAt": "2026-10-21T14:57:44.539Z",
+        "certifiedBy": "Verify Officer"
+      },
+      "awardReport": {
+        "tenderId": "ZM-PROBE-145738",
+        "md": "# AWARD RECOMMENDATION REPORT\n\n**Tender:** ZM-PROBE-145738\n**Buyer:** —\n**Method:** —\n\n## 1. Process\n\nThe pack was reviewed by the quorum desk: requirements pinned from the notices, each bid read against them, every finding cited to its document and verified. The evaluation matrix below was certified by the evaluation committee.\n\n## 2. Findings carried into the decision\n\n- **R-DOC-MISSING** BID BETA — tax clearance certificate (MEDIUM)\n- **R-SUPPLIER-ID** BID BETA — Kenya KRA PIN (HIGH)\n- **R-BID-SECURITY** BID BETA — bid security amount (HIGH)\n\n## 3. Evaluation outcome\n\nCriteria: Technical compliance (40%), Experience (30%), Delivery plan (30%)\nTechnical/financial split: 80/20\n\n| Bidder | Responsive | Technical | Financial | Total | Verdict |\n| --- | --- | --- | --- | --- | --- |\n| BID ALPHA | RESPONSIVE | 0 | 95.1 | 19 | NOT_RECOMMENDED |\n| BID BETA | RESPONSIVE | 0 | 100 | 20 | NOT_RECOMMENDED |\n\n## 4. Recommendation\n\nAward to **BID BETA** at ZMW 3,900,000, subject to the accounting officer's signature and the statutory standstill.\n\n## 5. Signatures\n\n- Evaluation committee chair: _signed at the certification gate_\n- Accounting officer: _signed at the award-report gate_",
+        "sha": "019abf79d1816814f0f2428b80ee422c",
+        "createdAt": "2026-10-21T14:57:44.587Z",
+        "recommendation": "BID BETA",
+        "gateId": "gate_de9c47",
+        "signedAt": "2026-10-21T14:57:44.644Z",
+        "signedBy": "Verify Officer"
+      },
+      "awardNotice": {
+        "tenderId": "ZM-PROBE-145738",
+        "md": "# NOTICE OF AWARD\n\n**Reference:** ZM-PROBE-145738\n**Buyer:** —\n**Awarded to:** BID BETA\n**Published to:** egp-portal (simulated)\n\n_This notice is published through a simulated portal stub, labelled as such everywhere it appears. The standstill period gives unsuccessful bidders the chance to complain before the contract is signed._",
+        "sha": "2092315eddd295948424067761f384ca",
+        "portal": "egp-portal (simulated)",
+        "gateId": "gate_brq2qx",
+        "publishedAt": "2026-10-21T14:57:44.756Z",
+        "publishedBy": "Verify Officer"
+      },
+      "standstill": {
+        "tenderId": "ZM-PROBE-145738",
+        "startsAt": "2026-10-21T14:57:44.756Z",
+        "endsAt": "2026-11-04T14:57:44.756Z",
+        "days": 10,
+        "status": "LIFTED"
+      },
+      "contract": {
+        "tenderId": "ZM-PROBE-145738",
+        "supplier": "BID BETA",
+        "value": 3900000,
+        "currency": "ZMW",
+        "openedAt": "2026-10-21T14:57:44.938Z",
+        "openedFromGate": "gate_vqr03p",
+        "packMd": "# CONTRACT PACK — ZM-PROBE-145738\n\n**Supplier:** BID BETA\n**Contract value:** ZMW 3,900,000\n\n## Contents\n\n1. Contract ag",
+        "milestones": [],
+        "variations": [
+          {
+            "id": "var_f8j99d",
+            "description": "Extra wards equipment",
+            "valueDelta": 900000,
+            "pctOfContract": 23.1,
+            "status": "APPROVED",
+            "at": "2026-10-21T14:57:44.976Z",
+            "gateId": "gate_3qqey4",
+            "decidedBy": "Verify Officer"
+          }
+        ],
+        "payments": [
+          {
+            "id": "pay_y86zdn",
+            "description": "Mobilisation advance",
+            "amount": 1000000,
+            "currency": "ZMW",
+            "gateId": "gate_v6l48p",
+            "certifiedAt": "2026-10-21T14:57:45.171Z",
+            "certifiedBy": "Verify Officer"
+          }
+        ],
+        "completedAt": "2026-10-21T14:57:45.287Z",
+        "completedBy": "Verify Officer"
+      }
+    }
+  ],
+  "pipeline": []
+}

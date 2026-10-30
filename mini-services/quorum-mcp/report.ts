@@ -1,4 +1,4 @@
-import { state, toolLog, type Finding, type Gate, type Run } from "./store";
+import { state, toolLog, type Gate, type Run } from "./store";
 import { modelAttributionForRun } from "./model";
 
 /**

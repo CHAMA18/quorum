@@ -76,15 +76,17 @@ export function ProofBand() {
     let alive = true;
     (async () => {
       try {
-        const res = await fetch("/api/runs?XTransformPort=3031");
-        const json = (await res.json()) as { runs?: LiveRun[] };
+        /* The public counters come from the redacted summary — no bidder names,
+           no bid values, nothing that belongs to a signed-in desk. */
+        const res = await fetch("/api/public/summary");
+        const json = (await res.json()) as { counts?: { tenders?: number; findings?: number; drafts?: number; runs?: number } };
         if (!alive) return;
-        const runs = json.runs ?? [];
+        const counts = json.counts ?? {};
         setTotals({
-          tenders: new Set(runs.map((r) => r.tenderId)).size,
-          findings: runs.reduce((n, r) => n + (r.findings?.length ?? 0), 0),
-          drafts: runs.reduce((n, r) => n + (r.drafts?.length ?? 0), 0),
-          runs: runs.length,
+          tenders: counts.tenders ?? 0,
+          findings: counts.findings ?? 0,
+          drafts: counts.drafts ?? 0,
+          runs: counts.runs ?? 0,
         });
       } catch {
         /* Sidecar unreachable — counters stay at zero rather than showing invented numbers. */

@@ -1,0 +1,341 @@
+{
+  "ok": true,
+  "strict": false,
+  "browserSkipped": false,
+  "lint": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "filesScanned": 7
+  },
+  "runtime": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": []
+  },
+  "layout": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 5,
+    "findings": [
+      {
+        "code": "container_overflow",
+        "severity": "info",
+        "time": 0.778,
+        "selector": "#city-media",
+        "message": "Element extends outside a clipping layout container.",
+        "rect": {
+          "left": 1.82,
+          "top": -0.87,
+          "right": 1611.1,
+          "bottom": 904.35,
+          "width": 1609.28,
+          "height": 905.22
+        },
+        "containerSelector": "#city-host > div:nth-of-type(1)",
+        "fixHint": "Resize/reposition the child or container, or mark intentional overflow with data-layout-allow-overflow.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1600,
+          "bottom": 900,
+          "width": 1600,
+          "height": 900
+        },
+        "overflow": {
+          "right": 11.1,
+          "bottom": 4.35
+        },
+        "dataAttributes": {
+          "data-hf-id": "hf-w02z"
+        },
+        "sourceFile": "compositions/city.html",
+        "bbox": {
+          "x": 1.82,
+          "y": -0.87,
+          "width": 1609.28,
+          "height": 905.22
+        },
+        "firstSeen": 0.778,
+        "lastSeen": 2.333,
+        "occurrences": 2,
+        "heldMs": 0,
+        "times": [
+          0.778,
+          2.333
+        ]
+      },
+      {
+        "code": "container_overflow",
+        "severity": "info",
+        "time": 7,
+        "selector": "#warehouse-media",
+        "message": "Element extends outside a clipping layout container.",
+        "rect": {
+          "left": -49.04,
+          "top": -26.78,
+          "right": 1649.04,
+          "bottom": 928.39,
+          "width": 1698.08,
+          "height": 955.17
+        },
+        "containerSelector": "#warehouse-host > div:nth-of-type(1)",
+        "fixHint": "Resize/reposition the child or container, or mark intentional overflow with data-layout-allow-overflow.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1600,
+          "bottom": 900,
+          "width": 1600,
+          "height": 900
+        },
+        "overflow": {
+          "left": 49.04,
+          "right": 49.04,
+          "top": 26.78,
+          "bottom": 28.39
+        },
+        "dataAttributes": {
+          "data-hf-id": "hf-9mqp"
+        },
+        "sourceFile": "compositions/warehouse.html",
+        "bbox": {
+          "x": -49.04,
+          "y": -26.78,
+          "width": 1698.08,
+          "height": 955.17
+        },
+        "firstSeen": 7,
+        "lastSeen": 7,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          7
+        ]
+      },
+      {
+        "code": "container_overflow",
+        "severity": "info",
+        "time": 8.556,
+        "selector": "#clinic-media",
+        "message": "Element extends outside a clipping layout container.",
+        "rect": {
+          "left": 0.52,
+          "top": -1.8,
+          "right": 1605.64,
+          "bottom": 901.08,
+          "width": 1605.12,
+          "height": 902.88
+        },
+        "containerSelector": "#clinic-host > div:nth-of-type(1)",
+        "fixHint": "Resize/reposition the child or container, or mark intentional overflow with data-layout-allow-overflow.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1600,
+          "bottom": 900,
+          "width": 1600,
+          "height": 900
+        },
+        "overflow": {
+          "right": 5.64
+        },
+        "dataAttributes": {
+          "data-hf-id": "hf-wp3y"
+        },
+        "sourceFile": "compositions/clinic.html",
+        "bbox": {
+          "x": 0.52,
+          "y": -1.8,
+          "width": 1605.12,
+          "height": 902.88
+        },
+        "firstSeen": 8.556,
+        "lastSeen": 10.111,
+        "occurrences": 2,
+        "heldMs": 0,
+        "times": [
+          8.556,
+          10.111
+        ]
+      },
+      {
+        "code": "container_overflow",
+        "severity": "info",
+        "time": 11.667,
+        "selector": "#server-media",
+        "message": "Element extends outside a clipping layout container.",
+        "rect": {
+          "left": -31.67,
+          "top": -15.96,
+          "right": 1623.37,
+          "bottom": 915,
+          "width": 1655.04,
+          "height": 930.96
+        },
+        "containerSelector": "#server-host > div:nth-of-type(1)",
+        "fixHint": "Resize/reposition the child or container, or mark intentional overflow with data-layout-allow-overflow.",
+        "containerRect": {
+          "left": 0,
+          "top": 0,
+          "right": 1600,
+          "bottom": 900,
+          "width": 1600,
+          "height": 900
+        },
+        "overflow": {
+          "left": 31.67,
+          "right": 23.37,
+          "top": 15.96,
+          "bottom": 15
+        },
+        "dataAttributes": {
+          "data-hf-id": "hf-z6of"
+        },
+        "sourceFile": "compositions/server.html",
+        "bbox": {
+          "x": -31.67,
+          "y": -15.96,
+          "width": 1655.04,
+          "height": 930.96
+        },
+        "firstSeen": 11.667,
+        "lastSeen": 13.222,
+        "occurrences": 2,
+        "heldMs": 0,
+        "times": [
+          11.667,
+          13.222
+        ]
+      },
+      {
+        "code": "canvas_covered",
+        "severity": "info",
+        "time": 13.222,
+        "selector": "#server-host > div:nth-of-type(1)",
+        "message": "An opaque element covers the canvas above every other visible clip, so the frame shows only it.",
+        "rect": {
+          "left": 0,
+          "top": 0,
+          "right": 1600,
+          "bottom": 900,
+          "width": 1600,
+          "height": 900
+        },
+        "fixHint": "Move the full-frame element below the content (earlier in the DOM or a lower z-index / track), or mark a deliberate full-frame card with data-layout-allow-occlusion.",
+        "dataAttributes": {
+          "data-hf-inner-root": "true",
+          "data-hf-authored-id": "root",
+          "data-hf-id": "hf-7qwc",
+          "data-width": "1600",
+          "data-height": "900"
+        },
+        "sourceFile": "compositions/server.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 1600,
+          "height": 900
+        },
+        "firstSeen": 13.222,
+        "lastSeen": 13.222,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          13.222
+        ]
+      }
+    ],
+    "duration": 14,
+    "samples": [
+      0.778,
+      2.333,
+      3.889,
+      5.444,
+      7,
+      8.556,
+      10.111,
+      11.667,
+      13.222
+    ],
+    "transitionSamples": [],
+    "transitionSamplesDropped": 0,
+    "tolerance": 2,
+    "totalIssueCount": 5,
+    "truncated": false
+  },
+  "motion": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "enabled": false,
+    "samples": 0
+  },
+  "contrast": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "enabled": true,
+    "samples": [
+      0.778,
+      3.889,
+      7,
+      10.111,
+      13.222
+    ],
+    "checked": 0,
+    "passed": 0
+  },
+  "craft": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "enabled": true,
+    "step": 0.125,
+    "samples": 112
+  },
+  "audio": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 1,
+    "findings": [
+      {
+        "code": "audio_none",
+        "severity": "info",
+        "message": "The film has no sound: no clip in it plays audio.",
+        "selector": "[data-composition-id]",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0
+      }
+    ]
+  },
+  "hdr": {
+    "autoPromotion": null,
+    "inspection": "available"
+  },
+  "snapshots": {
+    "enabled": false,
+    "files": [],
+    "times": [],
+    "findingFiles": []
+  }
+}

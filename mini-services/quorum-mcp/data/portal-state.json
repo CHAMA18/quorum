@@ -1,114 +1,114 @@
 {
-  "updatedAt": "2026-10-22T08:42:26.260Z",
+  "updatedAt": "2026-10-30T14:26:22.168Z",
   "overrides": {
     "3": {
-      "enabled": false,
-      "at": "2026-10-22T08:42:26.260Z",
+      "enabled": true,
+      "at": "2026-10-30T04:20:29.837Z",
       "by": "Chungu Chipimo Chama"
     },
     "13": {
-      "enabled": false,
-      "at": "2026-10-22T08:42:21.797Z",
+      "enabled": true,
+      "at": "2026-10-30T04:20:20.972Z",
       "by": "Chungu Chipimo Chama"
     },
     "37": {
-      "enabled": false,
-      "at": "2026-10-22T08:42:20.313Z",
+      "enabled": true,
+      "at": "2026-10-30T04:20:23.191Z",
       "by": "Chungu Chipimo Chama"
     },
     "64": {
-      "enabled": false,
-      "at": "2026-10-22T08:42:20.313Z",
+      "enabled": true,
+      "at": "2026-10-30T04:20:23.191Z",
       "by": "Chungu Chipimo Chama"
     },
     "85": {
-      "enabled": false,
-      "at": "2026-10-22T08:42:23.044Z",
+      "enabled": true,
+      "at": "2026-10-30T14:26:22.168Z",
       "by": "Chungu Chipimo Chama"
     },
     "86": {
-      "enabled": false,
-      "at": "2026-10-22T08:42:20.313Z",
+      "enabled": true,
+      "at": "2026-10-30T04:20:23.191Z",
       "by": "Chungu Chipimo Chama"
     },
     "102": {
-      "enabled": false,
-      "at": "2026-10-22T08:42:20.313Z",
+      "enabled": true,
+      "at": "2026-10-30T04:20:23.191Z",
       "by": "Chungu Chipimo Chama"
     },
     "103": {
-      "enabled": false,
-      "at": "2026-10-22T08:42:20.313Z",
+      "enabled": true,
+      "at": "2026-10-30T04:20:23.191Z",
       "by": "Chungu Chipimo Chama"
     },
     "104": {
-      "enabled": false,
-      "at": "2026-10-22T08:42:20.313Z",
+      "enabled": true,
+      "at": "2026-10-30T04:20:23.191Z",
       "by": "Chungu Chipimo Chama"
     },
     "105": {
-      "enabled": false,
-      "at": "2026-10-22T08:42:20.313Z",
+      "enabled": true,
+      "at": "2026-10-30T04:20:23.191Z",
       "by": "Chungu Chipimo Chama"
     },
     "106": {
-      "enabled": false,
-      "at": "2026-10-22T08:42:20.313Z",
+      "enabled": true,
+      "at": "2026-10-30T04:20:23.191Z",
       "by": "Chungu Chipimo Chama"
     },
     "107": {
-      "enabled": false,
-      "at": "2026-10-22T08:42:20.313Z",
+      "enabled": true,
+      "at": "2026-10-30T04:20:23.191Z",
       "by": "Chungu Chipimo Chama"
     },
     "116": {
-      "enabled": false,
-      "at": "2026-10-22T08:42:20.313Z",
+      "enabled": true,
+      "at": "2026-10-30T04:20:23.191Z",
       "by": "Chungu Chipimo Chama"
     },
     "118": {
-      "enabled": false,
-      "at": "2026-10-22T08:42:20.313Z",
+      "enabled": true,
+      "at": "2026-10-30T04:20:23.191Z",
       "by": "Chungu Chipimo Chama"
     },
     "125": {
-      "enabled": false,
-      "at": "2026-10-22T08:42:20.313Z",
+      "enabled": true,
+      "at": "2026-10-30T04:20:23.191Z",
       "by": "Chungu Chipimo Chama"
     },
     "127": {
-      "enabled": false,
-      "at": "2026-10-22T08:42:20.313Z",
+      "enabled": true,
+      "at": "2026-10-30T04:20:23.191Z",
       "by": "Chungu Chipimo Chama"
     },
     "130": {
-      "enabled": false,
-      "at": "2026-10-22T08:42:25.629Z",
+      "enabled": true,
+      "at": "2026-10-30T04:20:27.771Z",
       "by": "Chungu Chipimo Chama"
     },
     "143": {
-      "enabled": false,
-      "at": "2026-10-22T08:42:18.577Z",
+      "enabled": true,
+      "at": "2026-10-30T04:20:25.316Z",
       "by": "Chungu Chipimo Chama"
     },
     "145": {
-      "enabled": false,
-      "at": "2026-10-22T08:42:19.427Z",
+      "enabled": true,
+      "at": "2026-10-30T04:20:24.800Z",
       "by": "Chungu Chipimo Chama"
     },
     "147": {
-      "enabled": false,
-      "at": "2026-10-22T08:42:21.797Z",
+      "enabled": true,
+      "at": "2026-10-30T04:20:20.972Z",
       "by": "Chungu Chipimo Chama"
     },
     "152": {
-      "enabled": false,
-      "at": "2026-10-22T08:42:17.274Z",
+      "enabled": true,
+      "at": "2026-10-30T04:20:26.901Z",
       "by": "Chungu Chipimo Chama"
     },
     "156": {
-      "enabled": false,
-      "at": "2026-10-22T08:42:20.941Z",
+      "enabled": true,
+      "at": "2026-10-30T04:20:22.026Z",
       "by": "Chungu Chipimo Chama"
     }
   }

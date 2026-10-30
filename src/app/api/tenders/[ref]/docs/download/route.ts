@@ -8,6 +8,7 @@ import {
   tenderDownloadFilename,
   verifyTenderDownload,
 } from "@/lib/tender-access";
+import { readLocalObject } from "@/lib/tender-local-store";
 
 /**
  * GET /api/tenders/:ref/docs/download?key=…&exp=…&sub=…&sig=… — stream a
@@ -18,9 +19,10 @@ import {
  *   2. a signature over (ref, key, expiry, user id) minted by
  *      `GET .../docs/link` for that same user, valid for five minutes.
  *
- * The R2 secret stays server-side: this route fetches the object through the
- * quorum-edge gate and streams it back as an attachment. A copied link cannot
- * be used by another account, and a tampered key or expiry fails the HMAC.
+ * The storage credentials stay server-side. A document held in this
+ * deployment's own tender store is read from disk; anything else is fetched
+ * through the quorum-edge gate. A copied link cannot be used by another
+ * account, and a tampered key or expiry fails the HMAC.
  *
  * A single `Range` request is forwarded to the gate, so a large document can
  * be resumed or paged without a second full transfer. The answer is then a
@@ -35,7 +37,7 @@ import {
  * and a recorded entry also exposes its seq/id/self hash on the response.
  *
  * 200 → the document  206 → the requested byte range  401 → no session
- * 403 → role/signature/user mismatch  404 → object not found
+ * 403 → role/signature/user mismatch  404 → object not in this store
  * 410 → expired link  416 → range outside the object  422 → unsafe ref/key
  * 429 → rate limited  502/503 → storage gate unavailable.
  */
@@ -49,6 +51,52 @@ function noStore(body: unknown, status: number) {
 function attachmentDisposition(name: string): string {
   const fallback = name.replace(/[^\x20-\x7E]/g, "_").replace(/["\\]/g, "_");
   return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(name).replace(/'/g, "%27")}`;
+}
+
+/**
+ * One byte range of a document held on this deployment. A malformed or
+ * multi-range header is answered with the full document, which HTTP permits;
+ * a range that lies outside the object is a 416. `If-Range` asks for the full
+ * representation when the validator does not match, and this store does not
+ * compare validators, so the full document is served.
+ */
+type LocalSlice =
+  | { ok: true; bytes: Uint8Array; partial: boolean; contentRange?: string }
+  | { ok: false; total: number };
+
+function sliceLocalDocument(range: string | null, bytes: Uint8Array): LocalSlice {
+  const total = bytes.byteLength;
+  if (!range) return { ok: true, bytes, partial: false };
+  const match = /^bytes=(\d*)-(\d*)$/.exec(range.trim());
+  if (!match || (!match[1] && !match[2])) return { ok: true, bytes, partial: false };
+
+  let from: number;
+  let to: number;
+  if (!match[1]) {
+    const suffix = Number(match[2]);
+    if (!Number.isFinite(suffix) || suffix <= 0) return { ok: true, bytes, partial: false };
+    from = Math.max(0, total - suffix);
+    to = total - 1;
+  } else {
+    from = Number(match[1]);
+    to = match[2] ? Number(match[2]) : total - 1;
+  }
+  if (
+    !Number.isSafeInteger(from) ||
+    !Number.isSafeInteger(to) ||
+    from < 0 ||
+    from >= total ||
+    to < from
+  ) {
+    return { ok: false, total };
+  }
+  to = Math.min(to, total - 1);
+  return {
+    ok: true,
+    bytes: bytes.subarray(from, to + 1),
+    partial: true,
+    contentRange: `bytes ${from}-${to}/${total}`,
+  };
 }
 
 export async function GET(
@@ -99,75 +147,116 @@ export async function GET(
     return noStore({ error: verdict.reason }, verdict.status);
   }
 
-  const edge = process.env.QUORUM_EDGE_URL?.trim().replace(/\/+$/, "") ?? "";
-  const secret = process.env.QUORUM_EDGE_SECRET?.trim() ?? "";
-  if (!edge || !secret) {
-    return noStore({ error: "The R2 edge gate is not configured on this deployment." }, 503);
-  }
-
   const range = req.headers.get("range");
   const ifRange = req.headers.get("if-range");
-  /* Ask the gate for the stored bytes, not a gzipped variant: compression of a
-     206 strips Content-Length and makes Content-Range ambiguous. */
-  const upstreamHeaders: Record<string, string> = {
-    "x-quorum-edge-key": secret,
-    "accept-encoding": "identity",
-  };
-  if (range) upstreamHeaders.range = range;
-  if (ifRange) upstreamHeaders["if-range"] = ifRange;
-
-  let upstream: Response;
-  try {
-    upstream = await fetch(`${edge}/__edge/object?key=${encodeURIComponent(key)}`, {
-      headers: upstreamHeaders,
-      cache: "no-store",
-      signal: AbortSignal.timeout(60_000),
-    });
-  } catch {
-    return noStore({ error: "The R2 edge gate is unreachable." }, 502);
-  }
-
-  if (upstream.status === 404) {
-    return noStore({ error: "That stored document was not found." }, 404);
-  }
-  if (upstream.status === 416) {
-    const headers = new Headers({ "cache-control": "no-store", "accept-ranges": "bytes" });
-    const contentRange = upstream.headers.get("content-range");
-    if (contentRange) headers.set("content-range", contentRange);
-    return NextResponse.json(
-      { error: "The requested byte range is not available for this document." },
-      { status: 416, headers },
-    );
-  }
-  if (!upstream.ok) {
-    return noStore(
-      { error: "The storage gate refused the download." },
-      upstream.status === 503 ? 503 : 502,
-    );
-  }
-
-  const partial = upstream.status === 206;
   const name = tenderDownloadFilename(key);
   const headers = new Headers({
-    "content-type": upstream.headers.get("content-type") ?? "application/octet-stream",
     "content-disposition": attachmentDisposition(name),
     "cache-control": "private, no-store, no-transform",
     "accept-ranges": "bytes",
     "x-content-type-options": "nosniff",
     "referrer-policy": "no-referrer",
   });
-  const length = upstream.headers.get("content-length");
-  if (length) headers.set("content-length", length);
-  const etag = upstream.headers.get("etag");
-  if (etag) headers.set("etag", etag);
-  const contentRange = upstream.headers.get("content-range");
-  if (partial && contentRange) {
-    headers.set("content-range", contentRange);
-    /* Some edge paths still chunk a 206; Content-Range carries the length. */
-    if (!headers.get("content-length")) {
-      const match = /^bytes (\d+)-(\d+)\/\d+$/.exec(contentRange);
-      if (match) headers.set("content-length", String(Number(match[2]) - Number(match[1]) + 1));
+  let body: BodyInit;
+  let status = 200;
+  let partial = false;
+  let contentRange: string | null = null;
+
+  /* A document this deployment holds is served from its own store; the edge is
+     only consulted for a key the local store does not have. */
+  const local = await readLocalObject(ref, key).catch(() => null);
+  if (local) {
+    const slice = sliceLocalDocument(ifRange ? null : range, local.bytes);
+    if (!slice.ok) {
+      return NextResponse.json(
+        { error: "The requested byte range is not available for this document." },
+        {
+          status: 416,
+          headers: {
+            "cache-control": "no-store",
+            "accept-ranges": "bytes",
+            "content-range": `bytes */${slice.total}`,
+          },
+        },
+      );
     }
+    headers.set("content-type", local.contentType || "application/octet-stream");
+    headers.set("content-length", String(slice.bytes.byteLength));
+    if (slice.contentRange) {
+      headers.set("content-range", slice.contentRange);
+      contentRange = slice.contentRange;
+    }
+    body = new Blob([new Uint8Array(slice.bytes)], {
+      type: local.contentType || "application/octet-stream",
+    });
+    partial = slice.partial;
+    status = partial ? 206 : 200;
+  } else {
+    const edge = process.env.QUORUM_EDGE_URL?.trim().replace(/\/+$/, "") ?? "";
+    const secret = process.env.QUORUM_EDGE_SECRET?.trim() ?? "";
+    if (!edge || !secret) {
+      return noStore(
+        { error: "That document is not held on this deployment, and no storage gate is configured." },
+        404,
+      );
+    }
+
+    /* Ask the gate for the stored bytes, not a gzipped variant: compression of a
+       206 strips Content-Length and makes Content-Range ambiguous. */
+    const upstreamHeaders: Record<string, string> = {
+      "x-quorum-edge-key": secret,
+      "accept-encoding": "identity",
+    };
+    if (range) upstreamHeaders.range = range;
+    if (ifRange) upstreamHeaders["if-range"] = ifRange;
+
+    let upstream: Response;
+    try {
+      upstream = await fetch(`${edge}/__edge/object?key=${encodeURIComponent(key)}`, {
+        headers: upstreamHeaders,
+        cache: "no-store",
+        signal: AbortSignal.timeout(60_000),
+      });
+    } catch {
+      return noStore({ error: "The storage gate is unreachable." }, 502);
+    }
+
+    if (upstream.status === 404) {
+      return noStore({ error: "That stored document was not found." }, 404);
+    }
+    if (upstream.status === 416) {
+      const headers416 = new Headers({ "cache-control": "no-store", "accept-ranges": "bytes" });
+      const rangeHeader = upstream.headers.get("content-range");
+      if (rangeHeader) headers416.set("content-range", rangeHeader);
+      return NextResponse.json(
+        { error: "The requested byte range is not available for this document." },
+        { status: 416, headers: headers416 },
+      );
+    }
+    if (!upstream.ok) {
+      return noStore(
+        { error: "The storage gate refused the download." },
+        upstream.status === 503 ? 503 : 502,
+      );
+    }
+
+    partial = upstream.status === 206;
+    headers.set("content-type", upstream.headers.get("content-type") ?? "application/octet-stream");
+    const length = upstream.headers.get("content-length");
+    if (length) headers.set("content-length", length);
+    const etag = upstream.headers.get("etag");
+    if (etag) headers.set("etag", etag);
+    contentRange = upstream.headers.get("content-range");
+    if (partial && contentRange) {
+      headers.set("content-range", contentRange);
+      /* Some edge paths still chunk a 206; Content-Range carries the length. */
+      if (!headers.get("content-length")) {
+        const match = /^bytes (\d+)-(\d+)\/\d+$/.exec(contentRange);
+        if (match) headers.set("content-length", String(Number(match[2]) - Number(match[1]) + 1));
+      }
+    }
+    body = upstream.body as ReadableStream<Uint8Array>;
+    status = partial ? 206 : 200;
   }
 
   /* The bytes are ready to stream; record the delivery. A failed append is
@@ -212,5 +301,5 @@ export async function GET(
     headers.set("x-quorum-audit-self", auditEntry.self as string);
   }
 
-  return new Response(upstream.body, { status: partial ? 206 : 200, headers });
+  return new Response(body, { status, headers });
 }

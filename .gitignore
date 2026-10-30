@@ -66,6 +66,9 @@ server.log
 # local test screenshots & runtime artifacts (never part of the product)
 /download/*.png
 *.pid
+# the sidecar's one-writer PID lock is created at runtime, never shipped
+mini-services/quorum-mcp/data/.writer.lock
+mini-services/quorum-mcp/data/ocp-refresh.json
 .zscripts/judge-cookies.txt
 
 # internal build log (agent work notes, never part of the product)

@@ -40,7 +40,7 @@
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { SAMPLE_TENDERS } from "./samples";
-import { state } from "./store";
+import { readPersistedGuardContext } from "./store";
 import type { Run } from "./store";
 import {
   bindEngine,
@@ -59,6 +59,11 @@ import { resolveDataDir } from "./paths";
 const MODEL_LED = process.argv.includes("--model");
 const SCALE = process.argv.includes("--scale");
 
+/* The desk's live guard record and supplier register. Read without booting or
+   writing the store, so the benchmark measures the engine under exactly the
+   settings the app obeys — its "record untouched" promise still holds. */
+const { guards: LIVE_GUARDS, registry: LIVE_REGISTRY } = await readPersistedGuardContext();
+
 /* The engine is bound exactly like the server does (index.ts), except runs and
    gates live in detached arrays and save() is a no-op — the graph exercises its
    full path, and nothing it writes reaches the durable record. */
@@ -66,14 +71,17 @@ const benchRuns: Run[] = [];
 bindEngine({
   runs: benchRuns,
   gates: [],
+  /* The benchmark runs outside any request context, so it reads the same
+     default workspace the engine falls back to. */
+  workspaceId: () => "demo",
   save() {
     /* no-op — the benchmark never writes state.json */
   },
   raiseGate() {
     /* no-op — gates are counted, not filed */
   },
-  guards: () => state.guards,
-  registry: () => state.suppliers.map((s) => ({ name: s.name, status: s.status })),
+  guards: () => LIVE_GUARDS,
+  registry: () => LIVE_REGISTRY,
 });
 
 const DATA = resolveDataDir();
@@ -189,7 +197,7 @@ async function scaleBench() {
     const planMs = performance.now() - t0;
 
     t0 = performance.now();
-    const { kept, rejected } = flagPack(pack, files, plan, { guards: state.guards, registry: state.suppliers.map((s) => ({ name: s.name, status: s.status })) });
+    const { kept, rejected } = flagPack(pack, files, plan, { guards: LIVE_GUARDS, registry: LIVE_REGISTRY });
     const flagMs = performance.now() - t0;
 
     t0 = performance.now();

@@ -15,6 +15,9 @@ const isStatic = process.env.STATIC_EXPORT === "1";
 const nextConfig: NextConfig = {
   output: isStatic ? "export" : "standalone",
   ...(isStatic ? { basePath: "/the-bid-box-challenge", images: { unoptimized: true } } : {}),
+  /* Public media referenced from plain <video>/<img> tags needs the same
+     prefix as the static export's basePath. */
+  env: { NEXT_PUBLIC_BASE_PATH: isStatic ? "/the-bid-box-challenge" : "" },
   /* Keep standalone output rooted in this app; a parent package-lock.json
      must not nest the server under an unrelated workspace directory. */
   turbopack: { root: process.cwd() },

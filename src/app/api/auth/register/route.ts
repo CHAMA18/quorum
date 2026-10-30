@@ -74,6 +74,7 @@ export async function POST(req: NextRequest) {
     email,
     password: passwordHash,
     organization: organization || null,
+    ...(usableInvite ? { workspaceId: usableInvite.workspaceId } : {}),
     ...(usableInvite && isAssignableRole(usableInvite.role) ? { role: usableInvite.role } : {}),
   });
 
@@ -84,7 +85,7 @@ export async function POST(req: NextRequest) {
       claimedBy: user.id,
       claimedByEmail: user.email,
       claimedAt: new Date(),
-    });
+    }, usableInvite.workspaceId);
     claimedInvite = { code: usableInvite.code, role: usableInvite.role };
   }
 

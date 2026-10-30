@@ -6,6 +6,7 @@
  *  GET  /api/tools                → the five tools, with their kind (READ / WRITES / IRREVERSIBLE)
  *  GET  /api/architecture         → the stack, for the console UI
  *  GET  /api/log?limit=           → the audit log (every tool call, newest first)
+ *  GET  /api/log/export          → the full audit log, oldest first (evidence export)
  *  GET  /api/runs                 → orchestrated runs
  *  POST /api/runs {tenderId, detail?} → launch a LangGraph review run
  *                                     (detail = the tender's typed record:
@@ -36,9 +37,13 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import {
   appendLog,
   attestVerify,
+  withWorkspace,
+  currentWorkspaceId,
+  workspaceRows,
   auditHealth,
   DATA,
   loadState,
@@ -46,25 +51,30 @@ import {
   shaOf,
   state,
   toolLog,
+  readLogEntries,
   verifyToolLogFile,
+  DATA_DIR,
   type Gate,
   type Guards,
   type Run,
   type Supplier,
   type SupplierApplication,
 } from "./store";
+import { acquireWriterLock, postgresHandle } from "./writer";
+import { appendDecision, mirrorDecision, readLedger, verifyLedger } from "./decisions-ledger";
 import { handleReportRequest } from "./report";
 import { recordTenderDownload } from "./tender-downloads";
 import { recordTenderDeletion } from "./tender-deletions";
 import { listSampleTenders, readSampleDocument } from "./samples";
 import { ZAMBIA_METHODS } from "./methods";
 import { ZPPA_ROLL, ZPPA_SOURCE } from "./zppa";
-import { OCP_AFRICA, OCP_AFRICA_SOURCE } from "./ocp-africa";
-import { rollupAfrica } from "./ocp-africa-roll";
+import { getOcpDatasets, loadOcpSnapshot } from "./ocp-live";
+import { rollupCountries } from "./ocp-africa-roll";
+import { ocpRefreshStatus, refreshOcpRegistry, startOcpAutoRefresh } from "./ocp-refresh";
 import { connectMany, loadPortalLinks } from "./portal-links";
 import { disabledPortalIds, loadPortalState, setPortalsEnabled } from "./portal-state";
-import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
-import { TENDERS_DIR } from "./engine";
+import { mkdirSync, writeFileSync, existsSync } from "node:fs";
+import { loadPack, TENDERS_DIR } from "./engine";
 import { modelAttributionForRun, modelStatus } from "./model";
 import { parseClosingDate } from "./cycle";
 import {
@@ -73,6 +83,120 @@ import {
   validateApplicationAdmission,
   validateApplicationRequest,
 } from "./marketplace";
+
+/* ── The record's own files and the governance rules that read it ─────────── */
+
+const DECISIONS_FILE = DATA_DIR + "decisions.jsonl";
+const ANCHORS_FILE = DATA_DIR + "log-anchors.jsonl";
+
+interface AnchorRecord {
+  at: string;
+  lines: number;
+  head: string;
+  ledgerHead: string;
+  ledgerLines: number;
+  sig: string;
+}
+
+function readAnchorFile(): AnchorRecord[] {
+  try {
+    return readFileSync(ANCHORS_FILE, "utf8")
+      .split("\n")
+      .filter((line) => line.trim().length > 0)
+      .map((line) => JSON.parse(line) as AnchorRecord);
+  } catch {
+    return [];
+  }
+}
+
+/** Members who declared a conflict on this tender leave its quorum. */
+function conflictedMembers(tenderId: string): Set<string> {
+  const cycle = state.cycle.find(
+    (c) => c.tenderId === tenderId && (c.workspaceId ?? "demo") === currentWorkspaceId(),
+  );
+  const names = new Set<string>();
+  for (const declaration of cycle?.coi ?? []) {
+    if (declaration.declaration === "CONFLICT_DECLARED") names.add(declaration.member.trim().toLowerCase());
+  }
+  return names;
+}
+
+/**
+ * Separation of duties. Whoever ran, opened or certified the evaluation cannot
+ * approve its outcome, and a member who declared a conflict cannot sign the
+ * tender at all. Returning a file to the agent is not covered: it confers no
+ * benefit and must stay available to the officer who knows the file.
+ */
+function separationOfDuties(gate: Gate, approver: string): string | null {
+  const who = approver.trim().toLowerCase();
+  if (conflictedMembers(gate.tenderId).has(who)) {
+    return `${approver.trim()} declared a conflict of interest on ${gate.tenderId} — another officer must sign this decision.`;
+  }
+  const cycle = state.cycle.find(
+    (c) => c.tenderId === gate.tenderId && (c.workspaceId ?? "demo") === currentWorkspaceId(),
+  );
+  const run = state.runs.find((r) => r.id === gate.runId && (r.workspaceId ?? "demo") === currentWorkspaceId());
+  const preparers: { role: string; name?: string | null }[] = [
+    { role: "ran the evaluation", name: run?.startedBy },
+    { role: "opened the bids", name: cycle?.opening?.certifiedBy },
+    { role: "certified the evaluation matrix", name: cycle?.matrix?.certifiedBy },
+  ];
+  for (const preparer of preparers) {
+    if (preparer.name && preparer.name.trim().toLowerCase() === who) {
+      return `${approver.trim()} ${preparer.role} — a different officer must sign this decision (four eyes).`;
+    }
+  }
+  return null;
+}
+
+/** The stated value of a gate, parsed from "RWF 2,150,000,000" or a number. */
+function gateValue(gate: Gate): number | null {
+  const inputs = (gate.inputs ?? {}) as Record<string, unknown>;
+  const raw = inputs.value ?? inputs.amount ?? inputs.awardValue;
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+  if (typeof raw !== "string") return null;
+  const digits = raw.replace(/[^0-9.]/g, "");
+  if (!digits) return null;
+  const value = Number(digits);
+  return Number.isFinite(value) ? value : null;
+}
+
+/** Above the configured threshold, an approval needs two different officers. */
+function requiresDualApproval(gate: Gate): boolean {
+  const threshold = state.guards.dualApprovalThreshold;
+  if (!threshold || threshold <= 0) return false;
+  const value = gateValue(gate);
+  return value !== null && value >= threshold;
+}
+
+/** One append-only line per act, mirrored to Postgres when configured. */
+function recordDecision(gate: Gate, decision: "APPROVE" | "REJECT", actor: string, workspaceId: string) {
+  try {
+    const row = appendDecision(DECISIONS_FILE, {
+      gateId: gate.id,
+      tenderId: gate.tenderId,
+      workspaceId,
+      actor,
+      decision,
+      gateStatus: gate.status,
+      signatureKeyId: gate.signature?.keyId ?? null,
+      payloadHash: gate.signature?.payloadHash ?? null,
+    });
+    void mirrorDecision(postgresHandle(), row);
+  } catch (err) {
+    console.error("[decisions] the ledger write failed — the gate is signed but the act is not in the ledger:", err);
+    appendLog({
+      actor,
+      server: "quorum-mcp",
+      tool: "decision_ledger_write",
+      kind: "IRREVERSIBLE",
+      inputs: { gateId: gate.id, decision },
+      outputs: { error: (err as Error).message },
+      status: "ERROR",
+      durationMs: 0,
+    });
+  }
+}
 import {
   approverAllowed,
   bindEngine,
@@ -155,8 +279,10 @@ function latestModelCall() {
 bindEngine({
   runs: state.runs,
   gates: state.gates,
+  workspaceId: () => currentWorkspaceId(),
   save: saveState,
   raiseGate(g) {
+    g.workspaceId = currentWorkspaceId();
     state.gates.unshift(g);
     saveState();
     notifyWebSoon({ type: "GATE_WAITING", gateId: g.id, tenderId: g.tenderId, tool: g.tool, requiredOffice: g.requiredOffice });
@@ -172,6 +298,7 @@ async function raiseGateTool(args: { tenderId: string; bundle: Record<string, un
   const gate: Gate = {
     id: gateId,
     runId: runId ?? "mcp-direct",
+    workspaceId: currentWorkspaceId(),
     tenderId: args.tenderId,
     tool: "file_gate_submission",
     inputs: args.bundle,
@@ -299,14 +426,46 @@ function handInkFrom(body: unknown): { image: string; signedAt: string; strokes:
   };
 }
 
-async function decideGate(id: string, decision: string, approver: string, note?: string, signedInAs?: string, stepUpToken?: string, hand?: { image: string; signedAt: string; strokes: number }) {
-  const gate = state.gates.find((g) => g.id === id);
+async function decideGate(id: string, decision: string, approver: string, note?: string, signedInAs?: string, stepUpToken?: string, workspaceId = currentWorkspaceId(), hand?: { image: string; signedAt: string; strokes: number }) {
+  const gate = state.gates.find((g) => g.id === id && (g.workspaceId ?? "demo") === workspaceId);
   if (!gate) return { error: "gate not found", code: 404 };
-  if (gate.status !== "PENDING") return { error: `gate already ${gate.status}`, code: 409 };
+  const awaitingSecond = gate.status === "AWAITING_SECOND";
+  if (gate.status !== "PENDING" && !awaitingSecond)
+    return { error: `gate already ${gate.status}`, code: 409 };
   const name = approver?.trim();
   if (!name || name.length < 3) return { error: "A named human is required — provide the approving officer's full name.", code: 422 };
   if (decision !== "APPROVE" && decision !== "REJECT") {
     return { error: "Decision must be APPROVE or REJECT.", code: 422 };
+  }
+  if (awaitingSecond && decision === "REJECT") {
+    return {
+      error: "This gate is awaiting a second approver — it can be approved by another officer, or withdrawn by an administrator.",
+      code: 409,
+    };
+  }
+
+  /* A decision may only be added to a record that proves itself. Verification
+     covers the whole log against its signed epochs, so a restarted or edited
+     chain stops new decisions instead of quietly accepting them. */
+  const audit = await verifyToolLogFile();
+  if (!audit.ok) {
+    appendLog({
+      actor: name,
+      server: "quorum-mcp",
+      tool: "gate_decision",
+      kind: "GATE_DECISION",
+      runId: gate.runId,
+      inputs: { gateId: id, decision, approver: name },
+      outputs: { refused: "the audit record does not verify", brokenAt: audit.brokenAt, registerReason: audit.registerReason },
+      status: "ERROR",
+      durationMs: 0,
+    });
+    return {
+      error:
+        "The audit record does not verify, so no new decision can be recorded. Repair and re-verify the chain before signing.",
+      code: 503,
+      audit,
+    };
   }
 
   /* The e-signature: a session alone is not enough for an irreversible act.
@@ -335,8 +494,27 @@ async function decideGate(id: string, decision: string, approver: string, note?:
   }
 
   /* Approval only by a name on the committee roster (or the signed-in officer). Checked before anything changes. */
+  /* A member who declared a conflict on this tender leaves its quorum and
+     cannot sign it — the declaration has to change the outcome, not just the
+     paperwork. */
+  const conflicted = conflictedMembers(gate.tenderId);
+  const roster = quorum.members.filter((member) => !conflicted.has(member.name.trim().toLowerCase()));
   if (decision !== "REJECT") {
-    const roster = quorum.members;
+    const duty = separationOfDuties(gate, name);
+    if (duty) {
+      appendLog({
+        actor: name,
+        server: "quorum-mcp",
+        tool: "gate_decision",
+        kind: "GATE_DECISION",
+        runId: gate.runId,
+        inputs: { gateId: id, decision, approver: name },
+        outputs: { refused: duty },
+        status: "ERROR",
+        durationMs: 0,
+      });
+      return { error: duty, code: 403 };
+    }
     const verdict = approverAllowed(name, signedInAs?.trim(), roster);
     if (!verdict.ok) {
       appendLog({ actor: "quorum-mcp", server: "quorum-mcp", tool: "gate_decision", kind: "GATE_DECISION", runId: gate.runId, inputs: { gateId: id, decision, approver: name }, outputs: { refused: verdict.reason }, status: "ERROR", durationMs: 0 });
@@ -353,7 +531,7 @@ async function decideGate(id: string, decision: string, approver: string, note?:
   /* A gate decision is a committee act. The roll must carry before any state
      changes, including a return. The count is recomputed from the member rows
      and the attested gavel, never trusted from the published `present` field. */
-  const roll = quorumCheck(quorum, signedInAs?.trim());
+  const roll = quorumCheck({ ...quorum, members: roster }, signedInAs?.trim());
   if (!roll.ok) {
     appendLog({ actor: "quorum-mcp", server: "quorum-mcp", tool: "gate_decision", kind: "GATE_DECISION", runId: gate.runId, inputs: { gateId: id, decision, approver: name }, outputs: { refused: roll.reason, quorum: roll }, status: "ERROR", durationMs: 0 });
     return { error: roll.reason, code: 409, quorum: roll };
@@ -364,6 +542,56 @@ async function decideGate(id: string, decision: string, approver: string, note?:
   if (!consumeStepUp(step.payload)) {
     appendLog({ actor: "quorum-mcp", server: "quorum-mcp", tool: "gate_decision", kind: "GATE_DECISION", runId: gate.runId, inputs: { gateId: id, decision, approver: name }, outputs: { refused: "step-up token already consumed" }, status: "ERROR", durationMs: 0 });
     return { error: "This step-up signature was already used. Re-authenticate for a fresh one.", code: 409 };
+  }
+
+  /* Two pairs of eyes above the configured threshold. The first approval
+     records who opened the gate and executes nothing; a different officer has
+     to complete it with their own step-up before the act runs. */
+  if (decision === "APPROVE" && awaitingSecond) {
+    if (gate.firstApproval && gate.firstApproval.by.trim().toLowerCase() === name.toLowerCase()) {
+      appendLog({
+        actor: name,
+        server: "quorum-mcp",
+        tool: "gate_decision",
+        kind: "GATE_DECISION",
+        runId: gate.runId,
+        inputs: { gateId: id, decision, approver: name },
+        outputs: { refused: "the first approver cannot complete a dual approval" },
+        status: "ERROR",
+        durationMs: 0,
+      });
+      return {
+        error: "Dual approval needs two different officers — the officer who opened this gate cannot also complete it.",
+        code: 403,
+      };
+    }
+    gate.secondApprover = { by: name, at: new Date().toISOString(), stepUpJti: step.payload.jti };
+  } else if (decision === "APPROVE" && requiresDualApproval(gate)) {
+    gate.firstApproval = {
+      by: name,
+      at: new Date().toISOString(),
+      stepUpJti: step.payload.jti,
+      note: note?.trim() || undefined,
+    };
+    gate.status = "AWAITING_SECOND";
+    appendLog({
+      actor: name,
+      server: "quorum-mcp",
+      tool: "gate_decision",
+      kind: "GATE_DECISION",
+      runId: gate.runId,
+      inputs: { gateId: id, decision, approver: name },
+      outputs: {
+        status: "AWAITING_SECOND",
+        firstApprover: name,
+        threshold: state.guards.dualApprovalThreshold,
+        note: "Above the dual-approval threshold — a second, different officer must complete this gate.",
+      },
+      status: "OK",
+      durationMs: 0,
+    });
+    saveState();
+    return { gate, awaitingSecond: true };
   }
 
   gate.approver = name;
@@ -387,6 +615,12 @@ async function decideGate(id: string, decision: string, approver: string, note?:
        records WHO refused and why) — the rejection executor runs before the
        log line so the outcome is one fact, not two. */
     const refused = executeCycleGateRejection(gate);
+    const sealed = verifyGateSignature(gate);
+    gate.evidential = sealed.ok;
+    gate.evidentialNote = sealed.ok
+      ? undefined
+      : `Receipt verification failed — ${sealed.reason ?? "unknown"}. The decision is recorded but not evidential.`;
+    recordDecision(gate, "REJECT", name, workspaceId);
     appendLog({
       actor: name,
       server: "quorum-mcp",
@@ -398,7 +632,7 @@ async function decideGate(id: string, decision: string, approver: string, note?:
       status: "OK",
       durationMs: 0,
     });
-    const run = state.runs.find((r) => r.id === gate.runId);
+    const run = state.runs.find((r) => r.id === gate.runId && (r.workspaceId ?? "demo") === workspaceId);
     if (run) {
       run.status = "REJECTED";
       run.updatedAt = gate.decidedAt;
@@ -419,6 +653,28 @@ async function decideGate(id: string, decision: string, approver: string, note?:
   gate.executedAt = new Date().toISOString();
   gate.receipt = out.receipt ?? undefined;
   gate.signature = signGate(gate);
+  /* The act has run. Verify the seal it produced before anyone reads the gate
+     as evidence: a decision without a valid receipt is marked, never passed
+     off as signed. */
+  const sealed = verifyGateSignature(gate);
+  gate.evidential = sealed.ok;
+  gate.evidentialNote = sealed.ok
+    ? undefined
+    : `Receipt verification failed after execution — ${sealed.reason ?? "unknown"}. The act ran; the receipt is quarantined.`;
+  recordDecision(gate, "APPROVE", name, workspaceId);
+  if (!sealed.ok) {
+    appendLog({
+      actor: name,
+      server: "quorum-mcp",
+      tool: "gate_decision",
+      kind: "IRREVERSIBLE",
+      runId: gate.runId,
+      inputs: { gateId: id, decision },
+      outputs: { warning: gate.evidentialNote },
+      status: "ERROR",
+      durationMs: 0,
+    });
+  }
   const run = state.runs.find((r) => r.id === gate.runId);
   if (run) {
     run.status = "FILED";
@@ -469,22 +725,26 @@ Bun.serve({
        (POST /mcp) stays the documented agent door: its irreversible steps
        halt behind named-human gates regardless of who connects. */
     let attestedActor = "";
-    if (req.method !== "GET" && req.method !== "HEAD" && req.method !== "OPTIONS" && path !== "/mcp") {
+    let workspaceId = "demo";
+    if (path !== "/mcp" && req.method !== "OPTIONS") {
       const seal = attestVerify(req.method, path, req.headers);
       if (seal.ok) {
         attestedActor = seal.actor;
-      } else {
-        const sessionActor = await verifySessionActor(req.headers.get("cookie"));
-        if (!sessionActor) {
-          return json(
-            {
-              error: `${seal.reason} Sign in (a verified session is accepted) and retry.`,
-            },
-            401,
-          );
+        workspaceId = req.headers.get("x-quorum-workspace")?.trim() ?? "";
+        if (!workspaceId) return json({ error: "The gateway seal is missing its workspace scope." }, 401);
+      } else if (req.method !== "GET" && req.method !== "HEAD") {
+        const session = await verifySessionActor(req.headers.get("cookie"));
+        if (!session) {
+          return json({ error: `${seal.reason} Sign in (a verified session is accepted) and retry.` }, 401);
         }
-        attestedActor = sessionActor;
+        attestedActor = session.actor;
+        workspaceId = session.workspaceId;
+      } else {
+        workspaceId = req.headers.get("x-quorum-workspace")?.trim() || "demo";
       }
+    }
+    if (req.method !== "GET" && req.method !== "HEAD" && path !== "/mcp" && state.agentMode === "disabled") {
+      return json({ error: "The agent is disabled; all changes are paused." }, 423);
     }
 
     /* MCP surface */
@@ -506,6 +766,7 @@ Bun.serve({
         version: "1.0.0",
         uptimeSec: Math.round(performance.now() / 1000),
         fsMcp: { status: fsMcp.status, tools: fsMcp.tools },
+        agent: { mode: state.agentMode, storage: process.env.DATABASE_URL ? "postgres-configured" : "json" },
         graphs: ["review_graph (8 nodes)", "filing_graph (2 nodes)"],
         /* Configured endpoint + the newest real model answer in the log. */
         model: { ...modelStatus(), lastCall: latestModelCall() },
@@ -515,9 +776,27 @@ Bun.serve({
           stateSaveFailing: auditHealth.stateSaveFailing,
           stateCorrupt: auditHealth.stateCorrupt,
           stateCorruptFile: auditHealth.stateCorruptFile,
+          snapshotOverwriteRefused: auditHealth.snapshotOverwriteRefused,
+          /* Decided gates with neither a signature nor a consumed step-up. */
+          unsignedExecuted: auditHealth.unsignedExecuted,
           logChainEntries: toolLog.length,
+          decisions: readLedger(DECISIONS_FILE).length,
         },
       });
+    }
+
+    if (path === "/api/agent-mode" && req.method === "GET") return json({ mode: state.agentMode });
+    if (path === "/api/agent-mode" && req.method === "PATCH") {
+      const body = await readBody(req);
+      const mode = body.mode;
+      if (mode !== "enabled" && mode !== "read-only" && mode !== "disabled") return json({ error: "mode must be enabled, read-only or disabled" }, 422);
+      const previous = state.agentMode;
+      if (previous !== mode) {
+        state.agentMode = mode;
+        saveState();
+        appendLog({ actor: attestedActor || "unknown", server: "quorum-mcp", tool: "set_agent_mode", kind: "WRITES", inputs: { previous }, outputs: { mode }, status: "OK", durationMs: 0 });
+      }
+      return json({ mode: state.agentMode, changed: previous !== mode });
     }
 
     if (path === "/api/tools") return json({ tools: TOOLS });
@@ -591,8 +870,54 @@ Bun.serve({
       });
     }
 
+    /* The full chain for an evidence export, oldest first. `/api/log` above
+       serves the recent in-memory window the UI streams; an audit package
+       must carry every line from the append-only file, in chain order. */
+    if (path === "/api/log/export" && req.method === "GET") {
+      const entries = await readLogEntries();
+      return json({
+        entries,
+        lines: entries.length,
+        head: entries.length ? entries[entries.length - 1].self ?? "" : "",
+      });
+    }
+
     if (path === "/api/log/verify" && req.method === "GET") {
       return json(await verifyToolLogFile());
+    }
+
+    /* The daily anchor is the independent witness: it seals the head of the
+       log and of the decision ledger at a point in time, on a schedule the
+       app itself cannot rewrite. */
+    if (path === "/api/log/anchor" && req.method === "GET") {
+      const anchors = readAnchorFile();
+      return json({ anchor: anchors[anchors.length - 1] ?? null, count: anchors.length });
+    }
+
+    /* The decision ledger — the acts, independent of the working snapshot. */
+    if (path === "/api/decisions" && req.method === "GET") {
+      const rows = readLedger(DECISIONS_FILE).filter((row) => row.workspaceId === workspaceId);
+      return json({ ledger: verifyLedger(rows), decisions: rows.slice(-50).reverse() });
+    }
+
+    /* Every read of supplier, bid or gate data through the gateway is written
+       to the same spine as the mutations. Attested by the gateway, like every
+       other state-changing call. */
+    if (path === "/api/audit/read" && req.method === "POST") {
+      if (!attestedActor) return json({ error: "unattested" }, 401);
+      const body = await readBody(req);
+      const target = String(body.path ?? "").slice(0, 200);
+      appendLog({
+        actor: attestedActor,
+        server: "quorum-mcp",
+        tool: "record_read",
+        kind: "READ",
+        inputs: { path: target },
+        outputs: { status: Number(body.status ?? 200) || 200 },
+        status: "OK",
+        durationMs: 0,
+      });
+      return json({ logged: true });
     }
 
     /* Receipt verification is deliberately offline-friendly: the signature
@@ -600,7 +925,7 @@ Bun.serve({
        this service. This endpoint is the same check for the UI. */
     if (/^\/api\/(?:gates|receipts)\/[^/]+\/verify$/.test(path) && req.method === "GET") {
       const id = decodeURIComponent(path.split("/")[3] ?? "");
-      const gate = state.gates.find((g) => g.id === id);
+      const gate = state.gates.find((g) => g.id === id && (g.workspaceId ?? "demo") === currentWorkspaceId());
       if (!gate) return json({ error: "gate not found" }, 404);
       const verdict = verifyGateSignature(gate);
       return json({
@@ -621,8 +946,8 @@ Bun.serve({
       /* Each run carries its REAL seal — the executed gate's receipt hash (a
          sha-256 of the sealed bundle), computed by the filing graph. The UI
          displays this; it never synthesizes one. */
-      const runs = [...state.runs].reverse().map((r) => {
-        const gate = r.gateId ? state.gates.find((g) => g.id === r.gateId) : undefined;
+      const runs = [...workspaceRows(state.runs)].reverse().map((r) => {
+        const gate = r.gateId ? state.gates.find((g) => g.id === r.gateId && (g.workspaceId ?? "demo") === workspaceId) : undefined;
         return {
           ...r,
           /* Stored facts, not the current env: plan source/model, draft
@@ -754,8 +1079,10 @@ Bun.serve({
       }
       const run: Run = {
         id: `run_${randomUUID().slice(0, 8)}`,
+        workspaceId: currentWorkspaceId(),
         tenderId,
         status: "RUNNING",
+        startedBy: attestedActor || undefined,
         startedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         progress: [`▸ review_graph invoked — langgraph.js · tender ${tenderId}`],
@@ -1016,20 +1343,83 @@ Bun.serve({
       return json({ ZM: ZAMBIA_METHODS });
     }
 
-    /* ── The ZPPA roll — the published e-GP record, read in at intake ───── */
-    if (path === "/api/zppa-roll") {
-      return json({ source: ZPPA_SOURCE, roll: ZPPA_ROLL });
+    /* ── Published procurement records are read-only; no authenticated e-GP write API is configured. ── */
+    if (path === "/api/egp-status") {
+      return json({
+        available: false,
+        mode: "read-only-demo",
+        message: "Authenticated e-GP submission and publication are unavailable. Portal actions in this demo create local simulated records only.",
+        configuredWriteConnectors: [],
+      });
     }
 
-    /* ── The OCP Data Registry, read for Africa — as published, nothing added */
+    /* ── The ZPPA roll — the published e-GP record, read in at intake ───── */
+    if (path === "/api/zppa-roll") {
+      return json({ source: ZPPA_SOURCE, roll: ZPPA_ROLL, writeAccess: { available: false, statusUrl: "/api/egp-status" } });
+    }
+
+    /* ── OCDS records already staged in a tender pack, exposed read-only. ── */
+    if (path === "/api/ocds-feed" && req.method === "GET") {
+      const ref = (url.searchParams.get("ref") ?? "").trim();
+      if (!ref) {
+        return json({
+          standard: "OCDS 1.1",
+          mode: "staged-records-only",
+          recordsUrl: "/api/ocds-feed?ref=<tender-reference>",
+          registries: loadOcpSnapshot().all.map((dataset) => ({
+            country: dataset.country,
+            publisher: dataset.publisher,
+            publicationId: dataset.publicationId,
+            registryUrl: dataset.registryUrl,
+            downloads: dataset.downloads,
+            lastRetrieved: dataset.lastRetrieved,
+            stale: dataset.stale,
+          })),
+          writeAccess: { available: false, statusUrl: "/api/egp-status" },
+        });
+      }
+      if (!/^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$/.test(ref)) return json({ error: "invalid tender reference" }, 422);
+      const { files, pack } = await loadPack(ref);
+      if (!files.length) return json({ error: "no staged tender pack found" }, 404);
+      const records = pack.records.map((record) => ({
+        ocid: record.ocid,
+        source: record.source,
+        tender: { title: record.notice, ...(record.tenderValue ? { value: record.tenderValue } : {}) },
+        bids: { details: record.bids.map((bid) => ({ tenderers: [{ name: bid.bidder }], value: bid.value === undefined ? undefined : { amount: bid.value, currency: bid.currency }, documents: bid.text ? [{ title: bid.text }] : [], _source: bid.source, _ref: bid.ref })) },
+        awards: record.awards.map((award) => ({ suppliers: [{ name: award.supplier }], value: { amount: award.value, currency: award.currency }, _ref: award.ref })),
+      }));
+      return json({ standard: "OCDS 1.1", ref, records, sourceFiles: files.filter((file) => file.endsWith(".json")), writeAccess: { available: false, statusUrl: "/api/egp-status" } });
+    }
+
+    /* ── The OCP Data Registry — Africa first, the world beside it ───────── */
     if (path === "/api/ocp-africa") {
+      const snapshot = loadOcpSnapshot();
       return json({
-        source: OCP_AFRICA_SOURCE,
-        countries: rollupAfrica(OCP_AFRICA),
-        datasets: OCP_AFRICA,
+        source: snapshot.africa.source,
+        countries: rollupCountries(snapshot.africa.datasets),
+        datasets: snapshot.africa.datasets,
+        global: {
+          source: snapshot.global.source,
+          countries: rollupCountries(snapshot.global.datasets),
+          datasets: snapshot.global.datasets,
+        },
         links: loadPortalLinks(),
         state: loadPortalState(),
+        refresh: ocpRefreshStatus(),
       });
+    }
+
+    /* ── The registry refresh — automatic, and forceable by the desk ─────── */
+    if (path === "/api/ocp-refresh" && req.method === "GET") {
+      return json({ status: ocpRefreshStatus() });
+    }
+    if (path === "/api/ocp-refresh" && req.method === "POST") {
+      const body = await readBody(req);
+      const result = await refreshOcpRegistry({
+        force: body.force !== false,
+        actor: attestedActor || "scheduled-refresh",
+      });
+      return json(result, result.ok ? 200 : 502);
     }
 
     /* ── Portal enable/disable — the committee's switch, persisted and logged */
@@ -1040,7 +1430,7 @@ Bun.serve({
         return json({ error: "publicationIds must be a non-empty array of the registry's publication ids" }, 422);
       }
       const ids = [...new Set(rawIds.map((x: unknown) => Number(x)).filter((n: number) => Number.isInteger(n)))];
-      const known = new Set(OCP_AFRICA.map((d) => d.publicationId));
+      const known = new Set(getOcpDatasets().map((d) => d.publicationId));
       if (ids.length === 0 || ids.some((n: number) => !known.has(n))) {
         return json({ error: "publicationIds must name portals from the registry" }, 422);
       }
@@ -1091,7 +1481,7 @@ Bun.serve({
       let skippedDisabled: number[] = [];
       if (ids === null) {
         skippedDisabled = [...disabled];
-        ids = disabled.size > 0 ? OCP_AFRICA.filter((d) => !disabled.has(d.publicationId)).map((d) => d.publicationId) : null;
+        ids = disabled.size > 0 ? getOcpDatasets().filter((d) => !disabled.has(d.publicationId)).map((d) => d.publicationId) : null;
       } else if (disabled.size > 0) {
         skippedDisabled = ids.filter((n) => disabled.has(n));
         ids = ids.filter((n) => !disabled.has(n));
@@ -1131,7 +1521,12 @@ Bun.serve({
 
     if (path === "/api/guards" && (req.method === "PATCH" || req.method === "PUT")) {
       const body = await readBody(req);
-      if (body.priceVariancePct === undefined && body.checklist === undefined && body.registryCrossCheck === undefined) {
+      if (
+        body.priceVariancePct === undefined &&
+        body.checklist === undefined &&
+        body.registryCrossCheck === undefined &&
+        body.dualApprovalThreshold === undefined
+      ) {
         return json({ error: "no guard fields supplied" }, 422);
       }
       const actor = (attestedActor || strOpt(body.actor) || "unknown").slice(0, 80);
@@ -1139,6 +1534,7 @@ Bun.serve({
         priceVariancePct: state.guards.priceVariancePct,
         checklist: state.guards.checklist,
         registryCrossCheck: state.guards.registryCrossCheck,
+        dualApprovalThreshold: state.guards.dualApprovalThreshold,
       };
       const next = { ...before };
       if (body.priceVariancePct !== undefined) {
@@ -1154,11 +1550,19 @@ Bun.serve({
         if (typeof body.registryCrossCheck !== "boolean") return json({ error: "registryCrossCheck must be true or false" }, 422);
         next.registryCrossCheck = body.registryCrossCheck;
       }
+      if (body.dualApprovalThreshold !== undefined) {
+        const threshold = Number(body.dualApprovalThreshold);
+        if (!Number.isFinite(threshold) || threshold < 0) {
+          return json({ error: "dualApprovalThreshold must be a number at or above 0 (0 disables dual approval)" }, 422);
+        }
+        next.dualApprovalThreshold = threshold;
+      }
       /* A no-op is not a change — nothing moves, nothing is logged. */
       const touched =
         before.priceVariancePct !== next.priceVariancePct ||
         before.checklist !== next.checklist ||
-        before.registryCrossCheck !== next.registryCrossCheck;
+        before.registryCrossCheck !== next.registryCrossCheck ||
+        before.dualApprovalThreshold !== next.dualApprovalThreshold;
       if (touched) {
         state.guards = { ...next, updatedAt: new Date().toISOString(), updatedBy: actor };
         saveState();
@@ -1519,6 +1923,7 @@ Bun.serve({
         body.note ? String(body.note) : undefined,
         attestedActor || undefined,
         req.headers.get("x-quorum-stepup") ?? undefined,
+        workspaceId,
         ink,
       );
       if (out.error) return json(out, out.code ?? 400);
@@ -1527,7 +1932,7 @@ Bun.serve({
 
     if (path === "/api/gates") {
       return json({
-        gates: state.gates.map((g) => ({ ...g, signatureValid: g.signature ? verifyGateSignature(g).ok : false })),
+        gates:      workspaceRows(state.gates).map((g) => ({ ...g, signatureValid: g.signature ? verifyGateSignature(g).ok : false })),
       });
     }
 
@@ -1652,16 +2057,28 @@ Bun.serve({
     /* ── The tender cycle — solicitation to closure (waves 1-3) ───────── */
     if (path.startsWith("/api/cycle") || path.startsWith("/api/procurement-file") || path.startsWith("/api/pipeline") || /^\/api\/tenders\/[A-Za-z0-9._-]+\/(closing|opening|coi|matrix|alb|award-report|award-notice|standstill|debrief|contract|complaints|clarifications|addenda|notices|specs|dissents)/.test(path) || /^\/api\/tenders\/[A-Za-z0-9._-]+$/.test(path)) {
       const cycleBody = req.method === "POST" ? await readBody(req) : {};
-      return (await handleCycleRoutes(path, req.method, cycleBody)) ?? json({ error: "not found" }, 404);
+      return withWorkspace(workspaceId, () => handleCycleRoutes(path, req.method, cycleBody, attestedActor, workspaceId)).then((response) => response ?? json({ error: "not found" }, 404));
     }
 
     return json({ error: "not found" }, 404);
   },
 });
 
+/* One writer, or none: a second process on the same record would silently
+   overwrite the first one's decisions. The lock is taken before any read that
+   could lead to a write. */
+const writer = await acquireWriterLock(DATA_DIR + ".writer.lock");
+if (!writer.ok) {
+  console.error(`[quorum-mcp] refusing to start — ${writer.reason}`);
+  process.exit(78);
+}
+
 await loadState();
 void initFsMcp();
-console.log(`quorum-mcp listening on :${PORT} — MCP surface POST /mcp · audit ${toolLog.length} calls restored`);
+startOcpAutoRefresh();
+console.log(
+  `quorum-mcp listening on :${PORT} — MCP surface POST /mcp · audit ${toolLog.length} calls restored · writer lock ${writer.mode}`,
+);
 
 /* The register verifies staged/pack documents by re-reading the file from the
    tenders directory — the same jail the filesystem MCP uses (no traversal). */

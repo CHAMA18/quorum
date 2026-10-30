@@ -17,18 +17,19 @@ import {
   loadPortalState,
   setPortalsEnabled,
 } from "./portal-state";
-import { OCP_AFRICA } from "./ocp-africa";
+import { OCP_GLOBAL } from "./ocp-global";
+import { OCP_REGISTRY } from "./ocp-registry";
 
 const tmp = mkdtempSync(join(tmpdir(), "portal-state-"));
 const statePath = join(tmp, "portal-state.json");
-const realId = OCP_AFRICA[0].publicationId;
-const otherId = OCP_AFRICA[1].publicationId;
+const realId = OCP_REGISTRY[0].publicationId;
+const otherId = OCP_REGISTRY[1].publicationId;
 
 describe("portal enable/disable state", () => {
   test("absence of the file means every portal enabled", () => {
     expect(loadPortalState(statePath).overrides).toEqual({});
     expect(disabledPortalIds(loadPortalState(statePath)).size).toBe(0);
-    expect(enabledPortalIds(loadPortalState(statePath))).toHaveLength(OCP_AFRICA.length);
+    expect(enabledPortalIds(loadPortalState(statePath))).toHaveLength(OCP_REGISTRY.length);
   });
 
   test("a disable transition persists actor, instant and state", () => {
@@ -49,13 +50,22 @@ describe("portal enable/disable state", () => {
     expect(reloaded.overrides["999999"]).toBeUndefined();
   });
 
+  test("a non-African portal is a first-class switch target too", () => {
+    const globalId = OCP_GLOBAL[0].publicationId;
+    const file = setPortalsEnabled([globalId], false, "Global Verifier", statePath);
+    expect(file.overrides[String(globalId)].enabled).toBe(false);
+    expect(disabledPortalIds(loadPortalState(statePath)).has(globalId)).toBe(true);
+    setPortalsEnabled([globalId], true, "Global Verifier", statePath);
+    expect(disabledPortalIds(loadPortalState(statePath)).has(globalId)).toBe(false);
+  });
+
   test("re-enabling restores the all-enabled default and keeps the actor", () => {
     setPortalsEnabled([realId], true, "Verify Runner", statePath);
     const reloaded = loadPortalState(statePath);
     expect(reloaded.overrides[String(realId)].enabled).toBe(true);
     expect(reloaded.overrides[String(realId)].by).toBe("Verify Runner");
     expect(disabledPortalIds(reloaded).size).toBe(0);
-    expect(enabledPortalIds(reloaded)).toHaveLength(OCP_AFRICA.length);
+    expect(enabledPortalIds(reloaded)).toHaveLength(OCP_REGISTRY.length);
   });
 
   test("a mixed state answers both directions correctly", () => {

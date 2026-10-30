@@ -18,6 +18,7 @@ import { isWorkspaceRole, type WorkspaceRole } from "@/lib/permissions";
 
 export interface UserRow {
   id: string;
+  workspaceId: string;
   name: string;
   email: string;
   password: string; // scrypt:salt:hash, or "oauth:google" for Google-only accounts
@@ -209,6 +210,7 @@ export type InviteStatus = "PENDING" | "CLAIMED" | "REVOKED";
 
 export interface InviteRow {
   id: string;
+  workspaceId?: string;
   code: string;
   email: string | null;
   role: string; // OFFICER | COMMITTEE
@@ -271,6 +273,7 @@ export interface OrgPasswordResetRow {
 }
 
 interface StoreShape {
+  workspaceId: string;
   users: UserRow[];
   sessions: SessionRow[];
   contacts: ContactRow[];
@@ -409,6 +412,7 @@ function reviveMeetings(rows: unknown): ScheduledMeetingRow[] {
 
 function load(): StoreShape {
   const empty: StoreShape = {
+    workspaceId: randomUUID(),
     users: [],
     sessions: [],
     contacts: [],
@@ -442,7 +446,8 @@ function load(): StoreShape {
   }
   const raw = JSON.parse(readFileSync(FILE, "utf8")) as Partial<Record<keyof StoreShape, unknown>>;
   return {
-    users: revive<UserRow>(raw.users),
+    workspaceId: typeof raw.workspaceId === "string" && raw.workspaceId ? raw.workspaceId : randomUUID(),
+    users: revive<UserRow>(raw.users).map((user) => ({ ...user, workspaceId: user.workspaceId || (typeof raw.workspaceId === "string" ? raw.workspaceId : "") })),
     sessions: revive<SessionRow>(raw.sessions),
     contacts: revive<ContactRow>(raw.contacts),
     committeeMembers: revive<CommitteeMemberRow>(raw.committeeMembers),
@@ -467,6 +472,8 @@ globalForStore.__quorumStore = store;
 
 /* A hot reload keeps the old store object alive across a schema addition —
    backfill new collections so the store is never half-shaped. */
+if (!store.workspaceId) store.workspaceId = randomUUID();
+for (const user of store.users) if (!user.workspaceId) user.workspaceId = store.workspaceId;
 if (!Array.isArray(store.sittings)) store.sittings = [];
 if (!Array.isArray(store.scheduledMeetings)) store.scheduledMeetings = [];
 if (!Array.isArray(store.organizations)) store.organizations = [];
@@ -487,7 +494,7 @@ if (store.users.length > 0) {
   for (const user of store.users) {
     if (!isWorkspaceRole(user.role)) {
       const claimed = store.invites.find(
-        (inv) => inv.claimedByEmail === user.email && inv.claimedByEmail !== null
+        (inv) => inv.claimedByEmail === user.email && inv.claimedByEmail !== null && inv.workspaceId === user.workspaceId
       );
       user.role = isWorkspaceRole(claimed?.role)
         ? claimed.role
@@ -523,15 +530,16 @@ const newId = () => randomUUID();
 /* ── Users ──────────────────────────────────────────────────────────────── */
 
 export function findUserByEmail(email: string): UserRow | null {
-  return store.users.find((u) => u.email === email) ?? null;
+  return store.users.find((user) => user.email === email) ?? null;
 }
 
-export function findUserById(id: string): UserRow | null {
-  return store.users.find((u) => u.id === id) ?? null;
+export function findUserById(id: string, workspaceId?: string): UserRow | null {
+  return store.users.find((user) => user.id === id && (!workspaceId || user.workspaceId === workspaceId)) ?? null;
 }
 
-export function listUsers(): UserRow[] {
-  return [...store.users].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+export function listUsers(workspaceId?: string): UserRow[] {
+  const scopedWorkspace = workspaceId ?? store.users[0]?.workspaceId ?? store.workspaceId;
+  return store.users.filter((user) => user.workspaceId === scopedWorkspace).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 }
 
 export function createUser(data: {
@@ -542,14 +550,19 @@ export function createUser(data: {
   emailVerified?: boolean;
   role?: WorkspaceRole;
   status?: "ACTIVE" | "SUSPENDED";
+  workspaceId?: string;
 }): UserRow {
   if (findUserByEmail(data.email)) throw new Error(`User already exists: ${data.email}`);
   const at = now();
   /* The first account owns the workspace. An invite can grant any other
      non-owner role, but it can never make the first account a non-owner. */
-  const role: WorkspaceRole = store.users.length === 0 ? "OWNER" : data.role ?? "OFFICER";
+  const workspaceUsers = store.users.filter((user) => user.workspaceId === (data.workspaceId ?? store.workspaceId));
+  const workspaceId = data.workspaceId ?? (workspaceUsers.length === 0 && store.users.length === 0 ? store.workspaceId : randomUUID());
+  const scopedUsers = store.users.filter((existing) => existing.workspaceId === workspaceId);
+  const role: WorkspaceRole = scopedUsers.length === 0 ? "OWNER" : data.role ?? "OFFICER";
   const user: UserRow = {
     id: newId(),
+    workspaceId,
     name: data.name,
     email: data.email,
     password: data.password,
@@ -887,32 +900,34 @@ export function setSetting(key: string, value: string): void {
 
 /* ── Workspace invites ──────────────────────────────────────────────────── */
 
-export function listInvites(take = 100): InviteRow[] {
-  return [...store.invites]
+export function listInvites(take = 100, workspaceId = store.workspaceId): InviteRow[] {
+  return store.invites.filter((invite) => invite.workspaceId === workspaceId)
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .slice(0, take);
 }
 
-export function findInviteById(id: string): InviteRow | null {
-  return store.invites.find((i) => i.id === id) ?? null;
+export function findInviteById(id: string, workspaceId = store.workspaceId): InviteRow | null {
+  return store.invites.find((invite) => invite.id === id && invite.workspaceId === workspaceId) ?? null;
 }
 
-export function findInviteByCode(code: string): InviteRow | null {
-  return store.invites.find((i) => i.code === code) ?? null;
+export function findInviteByCode(code: string, workspaceId = store.workspaceId): InviteRow | null {
+  return store.invites.find((invite) => invite.code === code && invite.workspaceId === workspaceId) ?? null;
 }
 
 export function createInvite(data: {
   code: string;
+  workspaceId?: string;
   email: string | null;
   role: string;
   createdBy: string;
   inviterName: string;
 }): InviteRow {
-  if (findInviteByCode(data.code)) throw new Error("Invite code collision");
+  if (store.invites.some((invite) => invite.code === data.code && invite.workspaceId === (data.workspaceId ?? store.workspaceId))) throw new Error("Invite code collision");
   const at = now();
   const row: InviteRow = {
     id: newId(),
     ...data,
+    workspaceId: data.workspaceId ?? store.workspaceId,
     claimedBy: null,
     claimedByEmail: null,
     status: "PENDING",
@@ -927,9 +942,10 @@ export function createInvite(data: {
 
 export function updateInvite(
   id: string,
-  patch: Partial<Pick<InviteRow, "status" | "claimedBy" | "claimedByEmail" | "claimedAt">>
+  patch: Partial<Pick<InviteRow, "status" | "claimedBy" | "claimedByEmail" | "claimedAt">>,
+  workspaceId = store.workspaceId,
 ): InviteRow | null {
-  const row = findInviteById(id);
+  const row = store.invites.find((invite) => invite.id === id && invite.workspaceId === workspaceId) ?? null;
   if (!row) return null;
   Object.assign(row, patch, { updatedAt: now() });
   persist();

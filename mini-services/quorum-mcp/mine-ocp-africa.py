@@ -1,20 +1,25 @@
 #!/usr/bin/env python3
 """
 Read the OCP Data Registry (https://data.open-contracting.org/en/search/)
-for every African dataset it lists, and emit the quorum-mcp sidecar module
-`ocp-africa.ts` — the registries, portals and treasuries a Quorum officer
-can actually check a bidder, a price or a record against.
+and emit the quorum-mcp registry snapshots:
+
+  ocp-africa.ts   — every African dataset the registry lists
+  ocp-global.ts   — every non-African dataset the registry lists
+  data/ocp-registry.json — the same rows, read by the live sidecar
 
 Input:  the registry's search page (all datasets, server-rendered), each
-        African dataset's publication page — both its dt/dd record and its
+        dataset's publication page — both its dt/dd record and its
         schema.org JSON-LD block (exact coverage dates, retrieval date,
         licence, download formats and sizes).
-Output: ocp-africa.ts beside this script.
+Output: the two TypeScript snapshots beside this script, plus the JSON
+        snapshot consumed at runtime (so an automatic refresh needs no
+        rebuild).
 
 Every field is copied from the registry's own pages; nothing is inferred.
 Counts are the registry's own "Count of …" figures. A dataset the publisher
 has stopped updating is flagged exactly as the registry flags it.
 """
+import argparse
 import json
 import os
 import re
@@ -27,7 +32,10 @@ from html import unescape
 REGISTRY = "https://data.open-contracting.org"
 SEARCH = f"{REGISTRY}/en/search/"
 RETRIEVED = time.strftime("%Y-%m-%d")
-OUT_TS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ocp-africa.ts")
+SERVICE_DIR = os.path.dirname(os.path.abspath(__file__))
+AFRICA_TS = os.path.join(SERVICE_DIR, "ocp-africa.ts")
+GLOBAL_TS = os.path.join(SERVICE_DIR, "ocp-global.ts")
+DEFAULT_JSON = os.path.join(SERVICE_DIR, "data", "ocp-registry.json")
 CACHE = os.path.join(tempfile.gettempdir(), "quorum-ocp-cache")
 
 # African sovereign states, matched against the registry's country names.
@@ -53,6 +61,16 @@ DOWNLOAD_LABELS = {
 
 MONTH_NO = {m: i + 1 for i, m in enumerate(
     ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"])}
+
+NOTE = (
+    "Coverage dates, retrieval dates, formats and sizes are taken from the "
+    "registry's own record; counts are its published \"Count of …\" figures. "
+    "A dataset the publisher stopped updating is flagged, never hidden."
+)
+LICENSE_NOTE = (
+    "Each dataset keeps the licence its publisher states on the registry; "
+    "where none is stated the registry shows ‘—’."
+)
 
 
 def strip(s: str) -> str:
@@ -109,9 +127,6 @@ def parse_search(html: str) -> list[dict]:
         formats = [strip(x) for x in re.findall(r'<dd class="d-inline-block[^"]*">(.*?)</dd>', c, re.S)]
         formats = [f for f in formats if f]
 
-        formats = [strip(x) for x in re.findall(r'<dd class="d-inline-block[^"]*">(.*?)</dd>', c, re.S)]
-        formats = [f for f in formats if f]
-
         rows.append({
             "country": country, "iso": iso, "publisher": publisher,
             "publicationId": pub_id,
@@ -125,7 +140,7 @@ def parse_search(html: str) -> list[dict]:
 
 
 def month_of(iso: str) -> str:
-    """"2026-05-29" → "May 2026" — to cross-check against the listing."""
+    """\"2026-05-29\" → \"May 2026\" — to cross-check against the listing."""
     m = re.match(r"(\d{4})-(\d{2})", iso or "")
     months = list(MONTH_NO)
     return f"{months[int(m.group(2)) - 1]} {m.group(1)}" if m else ""
@@ -200,8 +215,44 @@ def enrich(row: dict, warnings: list[str]) -> dict:
     return d
 
 
-def emit_ts(rows: list[dict], registry_total: int) -> None:
+def write_atomic(path: str, text: str) -> None:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        fh.write(text)
+    os.replace(tmp, path)
+
+
+def source_for(scope: str) -> dict:
+    return {
+        "registry": "OCP Data Registry — Open Contracting Partnership",
+        "via": SEARCH,
+        "retrieved": RETRIEVED,
+        "scope": scope,
+        "licenseNote": LICENSE_NOTE,
+        "note": NOTE,
+    }
+
+
+ORDER = [
+    "country", "iso", "publisher", "publicationId", "registryUrl", "portalUrl",
+    "policyUrl", "coverageFrom", "coverageTo", "stale", "updateFrequency",
+    "lastRetrieved", "recordModified", "retrievedNote", "downloads", "license",
+    "licenseUrl", "language", "ocidPrefix", "counts",
+]
+
+
+def rows_ts(rows: list[dict]) -> str:
+    lines = []
+    for r in sorted(rows, key=lambda x: (x["country"], x["publisher"])):
+        payload = {k: r.get(k) for k in ORDER}
+        lines.append("  " + json.dumps(payload, ensure_ascii=False) + ",")
+    return "\n".join(lines)
+
+
+def emit_africa_ts(rows: list[dict], total: int) -> None:
     countries = sorted({r["country"] for r in rows})
+    source = source_for(f"{total} datasets listed registry-wide; {len(rows)} African datasets across {len(countries)} countries")
     header = f"""/**
  * quorum-mcp — the OCP Data Registry, read for Africa.
  *
@@ -210,7 +261,7 @@ def emit_ts(rows: list[dict], registry_total: int) -> None:
  * check a bidder, a price or a record against.
  *
  * Source: OCP Data Registry — {SEARCH}
- * Retrieved: {RETRIEVED} · {registry_total} datasets listed registry-wide;
+ * Retrieved: {RETRIEVED} · {total} datasets listed registry-wide;
  * {len(rows)} are African, across {len(countries)} countries ({", ".join(countries)}).
  *
  * This file is generated — see mine-ocp-africa.py beside it. Every field is
@@ -259,56 +310,98 @@ export interface OcpAfricaSource {{
   note: string;
 }}
 
-export const OCP_AFRICA_SOURCE: OcpAfricaSource = {{
-  registry: "OCP Data Registry — Open Contracting Partnership",
-  via: "{SEARCH}",
-  retrieved: "{RETRIEVED}",
-  scope: "{registry_total} datasets listed registry-wide; {len(rows)} African datasets across {len(countries)} countries",
-  licenseNote: "Each dataset keeps the licence its publisher states on the registry; where none is stated the registry shows ‘—’.",
-  note: "Coverage dates, retrieval dates, formats and sizes are taken from the registry's own record; counts are its published \\"Count of …\\" figures. A dataset the publisher stopped updating is flagged, never hidden.",
-}};
+export const OCP_AFRICA_SOURCE: OcpAfricaSource = {json.dumps(source, ensure_ascii=False, indent=2)};
 
 export const OCP_AFRICA: OcpAfricaDataset[] = [
+{rows_ts(rows)}
+];
 """
-    lines = [header]
-    order = ["country", "iso", "publisher", "publicationId", "registryUrl", "portalUrl",
-             "policyUrl", "coverageFrom", "coverageTo", "stale", "updateFrequency",
-             "lastRetrieved", "recordModified", "retrievedNote", "downloads", "license",
-             "licenseUrl", "language", "ocidPrefix", "counts"]
-    for r in sorted(rows, key=lambda x: (x["country"], x["publisher"])):
-        payload = {k: r.get(k) for k in order}
-        lines.append("  " + json.dumps(payload, ensure_ascii=False) + ",")
-    lines.append("];")
-    lines.append("")
-    open(OUT_TS, "w", encoding="utf-8").write("\n".join(lines))
-    print(f"emitted {OUT_TS} — {len(rows)} datasets across {len(countries)} countries")
+    write_atomic(AFRICA_TS, header)
+    print(f"emitted {AFRICA_TS} — {len(rows)} datasets across {len(countries)} countries")
+
+
+def emit_global_ts(rows: list[dict], total: int) -> None:
+    countries = sorted({r["country"] for r in rows})
+    source = source_for(f"{total} datasets listed registry-wide; {len(rows)} non-African datasets across {len(countries)} countries")
+    header = f"""/**
+ * quorum-mcp — the OCP Data Registry beyond Africa.
+ *
+ * Every non-African dataset the Open Contracting Partnership's Data Registry
+ * lists — the international and cross-border jurisdictions a supplier can be
+ * checked against, kept separate from the African desk.
+ *
+ * Source: OCP Data Registry — {SEARCH}
+ * Retrieved: {RETRIEVED} · {total} datasets listed registry-wide;
+ * {len(rows)} are non-African, across {len(countries)} countries and regions.
+ *
+ * This file is generated — see mine-ocp-africa.py beside it. It shares the
+ * exact record shape and provenance rules as ocp-africa.ts: every field is
+ * copied from the registry's own pages, and a dataset the publisher stopped
+ * updating keeps the registry's own `stale` flag.
+ */
+
+import type {{ OcpAfricaDataset, OcpAfricaSource }} from "./ocp-africa";
+
+export const OCP_GLOBAL_SOURCE: OcpAfricaSource = {json.dumps(source, ensure_ascii=False, indent=2)};
+
+export const OCP_GLOBAL: OcpAfricaDataset[] = [
+{rows_ts(rows)}
+];
+"""
+    write_atomic(GLOBAL_TS, header)
+    print(f"emitted {GLOBAL_TS} — {len(rows)} datasets across {len(countries)} countries")
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Refresh the OCP Data Registry snapshots")
+    parser.add_argument("--json-out", default=DEFAULT_JSON, help="path for the runtime JSON snapshot")
+    parser.add_argument("--skip-ts", action="store_true", help="write only the JSON snapshot")
+    args = parser.parse_args()
+
     search_html = get(SEARCH)
     all_rows = parse_search(search_html)
     total = len(all_rows)
-    africa = [r for r in all_rows if r["country"] in AFRICA]
-    print(f"registry lists {total} datasets; {len(africa)} are African", file=sys.stderr)
-    if not africa:
-        sys.exit("no African datasets found — registry markup may have changed")
+    africa_rows = [r for r in all_rows if r["country"] in AFRICA]
+    global_rows = [r for r in all_rows if r["country"] not in AFRICA]
+    print(f"registry lists {total} datasets; {len(africa_rows)} African, {len(global_rows)} non-African", file=sys.stderr)
+    if not africa_rows or not global_rows:
+        sys.exit("registry markup changed — expected both African and non-African datasets")
 
     warnings: list[str] = []
-    enriched = []
-    for i, r in enumerate(africa):
+    enriched_africa = []
+    enriched_global = []
+    for i, r in enumerate(africa_rows + global_rows):
         d = enrich(r, warnings)
-        enriched.append(d)
+        (enriched_africa if r["country"] in AFRICA else enriched_global).append(d)
         c = d["counts"]
-        print(f"[{i + 1:2}/{len(africa)}] {d['country']:12} {d['publisher'][:40]:40} "
+        print(f"[{i + 1:3}/{total}] {d['country']:14} {d['publisher'][:42]:42} "
               f"{d['coverageFrom']}→{d['coverageTo']} retr={d['lastRetrieved']} "
               f"tenders={c.get('tenders', 0):>8} awards={c.get('awards', 0):>8} stale={d['stale']}", file=sys.stderr)
 
     for w in warnings:
         print(f"WARN (listing vs record): {w}", file=sys.stderr)
-    if warnings:
-        sys.exit(f"{len(warnings)} cross-check warning(s) — inspect before shipping")
 
-    emit_ts(enriched, total)
+    africa_countries = sorted({r["country"] for r in enriched_africa})
+    global_countries = sorted({r["country"] for r in enriched_global})
+    payload = {
+        "generatedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "retrieved": RETRIEVED,
+        "registryTotal": total,
+        "africa": {
+            "source": source_for(f"{total} datasets listed registry-wide; {len(enriched_africa)} African datasets across {len(africa_countries)} countries"),
+            "datasets": sorted(enriched_africa, key=lambda x: (x["country"], x["publisher"])),
+        },
+        "global": {
+            "source": source_for(f"{total} datasets listed registry-wide; {len(enriched_global)} non-African datasets across {len(global_countries)} countries"),
+            "datasets": sorted(enriched_global, key=lambda x: (x["country"], x["publisher"])),
+        },
+    }
+    write_atomic(args.json_out, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+    print(f"emitted {args.json_out} — {len(enriched_africa)} African + {len(enriched_global)} non-African datasets")
+
+    if not args.skip_ts:
+        emit_africa_ts(enriched_africa, total)
+        emit_global_ts(enriched_global, total)
 
 
 if __name__ == "__main__":

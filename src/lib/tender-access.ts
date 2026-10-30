@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import { secretFor } from "@/lib/secrets";
 
 /**
  * Signed, expiring access to stored tender documents.
@@ -18,18 +19,10 @@ export const SIGNED_DOWNLOAD_TTL_MS = 5 * 60 * 1000;
 /* A verifier accepts at most the issued lifetime plus one minute of clock skew. */
 export const MAX_SIGNED_DOWNLOAD_TTL_MS = SIGNED_DOWNLOAD_TTL_MS + 60 * 1000;
 
-const DEV_DOWNLOAD_SECRET = "quorum-dev-download-secret";
 const REF = /^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$/;
 
 function downloadSecret(): string {
-  const explicit = process.env.QUORUM_DOWNLOAD_SECRET?.trim();
-  const secret = explicit || process.env.GATE_SECRET?.trim() || DEV_DOWNLOAD_SECRET;
-  if (process.env.NODE_ENV === "production" && secret === DEV_DOWNLOAD_SECRET) {
-    throw new Error(
-      "QUORUM_DOWNLOAD_SECRET (or GATE_SECRET) must be set to a real secret in production — refusing to sign a download link.",
-    );
-  }
-  return secret;
+  return secretFor("download");
 }
 
 export function isSafeTenderRef(value: unknown): value is string {

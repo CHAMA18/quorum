@@ -212,7 +212,7 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
         <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="type-display text-[32px] text-ink-950 sm:text-[40px]">Every action, checkable.</h1>
-            <p className="type-lede mt-3 max-w-[62ch] text-ink-600">
+            <p className="type-lede mt-3 text-ink-600">
               The sidecar appends every tool call to a hash-chained log, and every executed gate carries an Ed25519
               signature over its inputs, approver and receipt. Verify the chain, inspect a receipt, export the file.
             </p>

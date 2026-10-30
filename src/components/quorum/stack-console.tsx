@@ -638,7 +638,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
         <h1 id="mc-stack-h" className="type-display mt-6 text-[32px] text-ink-950 sm:text-[40px]">
           Every claim, wired to a real service.
         </h1>
-        <p className="type-lede mt-4 max-w-[62ch] text-ink-600">
+        <p className="type-lede mt-4 text-ink-600">
           This console talks to <span className="font-code text-[13px] text-ink-900">quorum-mcp</span> — our own MCP
           server — as it runs. Five tools, three of which change state. Documents are read by the official filesystem
           MCP server. The graph is LangGraph.js, and it halts at the gate. Every call lands in the audit log below.

@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import { secretFor } from "@/lib/secrets";
 import {
   createNotification,
   findUserById,
@@ -20,10 +21,8 @@ import {
 
 const SIDECAR = process.env.QUORUM_SIDECAR_URL ?? "http://127.0.0.1:3031";
 const APP_URL = (process.env.QUORUM_APP_URL ?? "http://127.0.0.1:3000").replace(/\/$/, "");
-const DEV_SECRET = "quorum-dev-attest-secret";
-
 export function notificationSecret(): string {
-  return process.env.NOTIFY_SECRET?.trim() || process.env.GATE_SECRET?.trim() || DEV_SECRET;
+  return secretFor("notify");
 }
 
 export function signNotificationBody(body: string): string {

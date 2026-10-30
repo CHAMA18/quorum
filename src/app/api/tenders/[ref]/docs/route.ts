@@ -8,18 +8,25 @@ import {
   tenderDownloadFilename,
 } from "@/lib/tender-access";
 import { extractTenderText } from "@/lib/tender-extract";
+import {
+  deleteLocalObject,
+  hasLocalObject,
+  listLocalObjects,
+  putLocalObject,
+} from "@/lib/tender-local-store";
 
 /**
- * POST /api/tenders/:ref/docs — store a tender document through the R2 edge
- * gate.
+ * POST /api/tenders/:ref/docs — store a tender document.
  *
  * The browser sends multipart form data (`file`); this route:
  *   1. requires a signed-in workspace user with `run_reviews` (owner, admin,
  *      officer) — the edge secret never reaches the browser;
  *   2. validates the tender reference, the extension and a 10 MB ceiling;
  *   3. extracts readable text (PDF/DOCX/XLSX/text) before anything is staged;
- *   4. PUTs the bytes to `${QUORUM_EDGE_URL}/__edge/upload?key=tenders/<ref>/…`
- *      with `x-quorum-edge-key`, hosted by the quorum-edge Worker;
+ *   4. stores the bytes — through the quorum-edge Worker when it is configured,
+ *      otherwise in this deployment's own tender directory; both use the same
+ *      `tenders/<ref>/…` key, so nothing downstream needs to know which one
+ *      answered;
  *   5. stages the extracted text through the sidecar's attested
  *      `POST /api/tenders/:ref/docs`, which writes the notice/bid files the
  *      review graph reads;
@@ -27,24 +34,24 @@ import { extractTenderText } from "@/lib/tender-extract";
  *      its attested `POST /api/tender-uploads`, whether or not the text could
  *      be staged. Storage is never silent.
  *
- * The object key and audit sequence are returned so the caller can cite them. If extraction finds
- * no text (a scanned PDF, for example), the file is still stored in R2 and the
- * response says `staged: false` with a reason — OCR is not claimed. If the
- * edge is not configured or R2 is not bound, the route fails closed, and the
- * wizard marks the document `LOCAL`.
+ * The object key, storage location and audit sequence are returned so the
+ * caller can cite them. If extraction finds no text (a scanned PDF, for
+ * example), the file is still stored and the response says `staged: false`
+ * with a reason — OCR is not claimed.
  *
- * GET /api/tenders/:ref/docs — list every stored R2 object under this tender's
- * prefix. Requires `read_documents` (committee members and auditors included)
- * and reads through the same edge gate, so the bucket is never public. Each
- * object carries its key, filename, size, type and upload time; the browser
- * mints a signed URL per chosen object through `.../docs/link`, so listing
- * does not hand out credentials or links that outlive the page.
+ * GET /api/tenders/:ref/docs — list every stored object under this tender's
+ * prefix, from the edge and from this deployment's own store. Requires
+ * `read_documents` (committee members and auditors included), so neither
+ * store is public. Each object carries its key, filename, size, type and
+ * upload time; the browser mints a signed URL per chosen object through
+ * `.../docs/link`, so listing does not hand out credentials or links that
+ * outlive the page.
  *
  * DELETE /api/tenders/:ref/docs?key=… — operator-only removal of one stored
  * object. Requires `run_reviews`, validates the key against the tender's
- * prefix, deletes through the edge gate and appends a `tender_delete` line to
- * the hash-chained audit trail. A failed audit append never pretends the
- * object is still there, and never hides the deletion.
+ * prefix, deletes it from whichever store holds it and appends a
+ * `tender_delete` line to the hash-chained audit trail. A failed audit append
+ * never pretends the object is still there, and never hides the deletion.
  */
 
 export const runtime = "nodejs";
@@ -103,6 +110,17 @@ function listingError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status, headers: { "cache-control": "no-store" } });
 }
 
+/**
+ * The edge is preferred when both its URL and its key are set. A deployment
+ * without them is not broken: the local store answers, and the response says
+ * which store did.
+ */
+function edgeConfig(): { edge: string; secret: string; configured: boolean } {
+  const edge = process.env.QUORUM_EDGE_URL?.trim().replace(/\/+$/, "") ?? "";
+  const secret = process.env.QUORUM_EDGE_SECRET?.trim() ?? "";
+  return { edge, secret, configured: Boolean(edge && secret) };
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ ref: string }> },
@@ -121,14 +139,27 @@ export async function GET(
     return listingError("Too many document listings; wait a minute and try again.", 429);
   }
 
-  const edge = process.env.QUORUM_EDGE_URL?.trim().replace(/\/+$/, "") ?? "";
-  const secret = process.env.QUORUM_EDGE_SECRET?.trim() ?? "";
-  if (!edge || !secret) {
-    return listingError("The R2 edge gate is not configured on this deployment.", 503);
+  const { edge, secret, configured } = edgeConfig();
+  const local = await listLocalObjects(ref).catch(() => []);
+  if (!configured) {
+    const totalBytes = local.reduce((sum, object) => sum + object.bytes, 0);
+    return NextResponse.json(
+      {
+        tender: ref,
+        objects: local,
+        count: local.length,
+        totalBytes,
+        truncated: false,
+        storage: "local",
+      },
+      { headers: { "cache-control": "no-store" } },
+    );
   }
 
-  const objects: StoredObject[] = [];
-  const seen = new Set<string>();
+  /* Both stores are real: a deployment can have documents from before the
+     local store existed and from after it. Dedupe by key, newest first. */
+  const objects: StoredObject[] = [...local];
+  const seen = new Set<string>(local.map((object) => object.key));
   let cursor: string | undefined;
   let more = false;
   do {
@@ -198,6 +229,8 @@ export async function GET(
     (a, b) => (b.uploaded ?? "").localeCompare(a.uploaded ?? "") || a.filename.localeCompare(b.filename),
   );
   const totalBytes = objects.reduce((sum, object) => sum + object.bytes, 0);
+  const storage =
+    local.length === 0 ? "r2" : objects.length > local.length ? "mixed" : "local";
 
   return NextResponse.json(
     {
@@ -206,6 +239,7 @@ export async function GET(
       count: objects.length,
       totalBytes,
       truncated: more,
+      storage,
     },
     { headers: { "cache-control": "no-store" } },
   );
@@ -253,14 +287,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ref
     );
   }
 
-  const edge = process.env.QUORUM_EDGE_URL?.trim().replace(/\/+$/, "") ?? "";
-  const secret = process.env.QUORUM_EDGE_SECRET?.trim() ?? "";
-  if (!edge || !secret) {
-    return NextResponse.json(
-      { error: "The R2 edge gate is not configured on this deployment; the document stays in the local vault." },
-      { status: 503 },
-    );
-  }
+  const { edge, secret, configured } = edgeConfig();
 
   let bytes: ArrayBuffer;
   try {
@@ -276,36 +303,56 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ref
   const extracted = await extractTenderText(bytes, file.name || "document").catch(() => null);
 
   const key = `tenders/${ref}/${Date.now()}-${parsed.stem}${parsed.ext}`;
-  let edgeResponse: Response;
-  try {
-    edgeResponse = await fetch(`${edge}/__edge/upload?key=${encodeURIComponent(key)}`, {
-      method: "PUT",
-      headers: {
-        "x-quorum-edge-key": secret,
-        "content-type": contentType,
-      },
-      body: bytes,
-      cache: "no-store",
-      signal: AbortSignal.timeout(60_000),
-    });
-  } catch {
-    return NextResponse.json(
-      { error: "The R2 edge gate is unreachable; the document stays in the local vault." },
-      { status: 502 },
-    );
-  }
+  const storage: "local" | "r2" = configured ? "r2" : "local";
 
-  const result = (await edgeResponse.json().catch(() => ({}))) as { error?: string };
-  if (!edgeResponse.ok) {
-    const detail = typeof result.error === "string" ? result.error : `the edge gate refused the upload (HTTP ${edgeResponse.status})`;
-    return NextResponse.json({ error: detail }, { status: edgeResponse.status === 503 ? 503 : 502 });
+  if (configured) {
+    let edgeResponse: Response;
+    try {
+      edgeResponse = await fetch(`${edge}/__edge/upload?key=${encodeURIComponent(key)}`, {
+        method: "PUT",
+        headers: {
+          "x-quorum-edge-key": secret,
+          "content-type": contentType,
+        },
+        body: bytes,
+        cache: "no-store",
+        signal: AbortSignal.timeout(60_000),
+      });
+    } catch {
+      return NextResponse.json(
+        { error: "The storage gate is unreachable; the document was not stored." },
+        { status: 502 },
+      );
+    }
+
+    const result = (await edgeResponse.json().catch(() => ({}))) as { error?: string };
+    if (!edgeResponse.ok) {
+      const detail = typeof result.error === "string" ? result.error : `the edge gate refused the upload (HTTP ${edgeResponse.status})`;
+      return NextResponse.json({ error: detail }, { status: edgeResponse.status === 503 ? 503 : 502 });
+    }
+  } else {
+    /* No edge on this deployment: the bytes go to the application's own tender
+       directory, indexed and hash-described. The rest of the pipeline — the
+       extraction, the staging call and the audit append — is unchanged. */
+    try {
+      await putLocalObject(ref, key, new Uint8Array(bytes), contentType);
+    } catch (err) {
+      return NextResponse.json(
+        {
+          error:
+            (err as Error).message ||
+            "The document could not be written to this deployment's tender store.",
+        },
+        { status: 500 },
+      );
+    }
   }
 
   let staged = false;
   let stageReason: string | undefined;
   let files: string[] = [];
   if (extracted && extracted.text.trim()) {
-    /* The bytes are already durable in R2; an attestation failure (a missing
+    /* The bytes are already durable; an attestation failure (a missing
        GATE_SECRET, say) must not turn the upload into a 500. It becomes an
        honest "stored, not staged" result instead. */
     const stage: { status: number; data: Record<string, unknown> } = await sidecarFetch(
@@ -318,8 +365,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ref
         actor: user.name,
       },
     ).catch(() => ({
-      status: 502,
-      data: { error: "The procurement service could not be reached; the document is stored in R2 only." },
+      status: 502,        data: { error: "The procurement service could not be reached; the document is stored but not staged for review." },
     }));
     staged = stage.status === 201;
     if (staged) {
@@ -332,7 +378,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ref
   } else {
     stageReason =
       extracted?.note ??
-      "Text extraction is not available for this file type; the document is stored in R2 only.";
+      "Text extraction is not available for this file type; the document is stored but not staged for review.";
   }
 
   /* The bytes are durable at this point. Record the object itself — not only
@@ -387,6 +433,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ref
       key,
       bytes: size,
       contentType,
+      storage,
       extracted: Boolean(extracted?.text.trim()),
       staged,
       kind: extracted?.kind,
@@ -430,28 +477,39 @@ export async function DELETE(
     return listingError("The document key must live under this tender's storage prefix.", 422);
   }
 
-  const edge = process.env.QUORUM_EDGE_URL?.trim().replace(/\/+$/, "") ?? "";
-  const secret = process.env.QUORUM_EDGE_SECRET?.trim() ?? "";
-  if (!edge || !secret) {
-    return listingError("The R2 edge gate is not configured on this deployment.", 503);
-  }
-
-  let upstream: Response;
-  try {
-    upstream = await fetch(`${edge}/__edge/delete?key=${encodeURIComponent(key)}`, {
-      method: "DELETE",
-      headers: { "x-quorum-edge-key": secret },
-      cache: "no-store",
-      signal: AbortSignal.timeout(20_000),
-    });
-  } catch {
-    return listingError("The R2 edge gate is unreachable.", 502);
-  }
-  if (!upstream.ok) {
-    return listingError(
-      "The storage gate refused the removal.",
-      upstream.status === 503 ? 503 : 502,
-    );
+  const { edge, secret, configured } = edgeConfig();
+  /* Whichever store holds the object answers the removal. A local object is
+     removed from disk; anything else must be removed through the edge. */
+  const storage: "local" | "r2" = (await hasLocalObject(ref, key)) ? "local" : "r2";
+  if (storage === "local") {
+    try {
+      await deleteLocalObject(ref, key);
+    } catch (err) {
+      return listingError(
+        (err as Error).message || "The stored document could not be removed.",
+        500,
+      );
+    }
+  } else if (configured) {
+    let upstream: Response;
+    try {
+      upstream = await fetch(`${edge}/__edge/delete?key=${encodeURIComponent(key)}`, {
+        method: "DELETE",
+        headers: { "x-quorum-edge-key": secret },
+        cache: "no-store",
+        signal: AbortSignal.timeout(20_000),
+      });
+    } catch {
+      return listingError("The storage gate is unreachable.", 502);
+    }
+    if (!upstream.ok) {
+      return listingError(
+        "The storage gate refused the removal.",
+        upstream.status === 503 ? 503 : 502,
+      );
+    }
+  } else {
+    return listingError("That document is not held on this deployment.", 404);
   }
 
   const filename = tenderDownloadFilename(key);
@@ -464,6 +522,7 @@ export async function DELETE(
         tenderId: ref,
         key,
         filename,
+        storage,
         userId: user.id,
         role: user.role,
         durationMs: Date.now() - startedAt,
@@ -491,6 +550,7 @@ export async function DELETE(
       ok: true,
       key,
       filename,
+      storage,
       audited,
       audit: audited && auditEntry && typeof auditEntry.seq === "number"
         ? { seq: auditEntry.seq, id: auditEntry.id as string, self: auditEntry.self as string }

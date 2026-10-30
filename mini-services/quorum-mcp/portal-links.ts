@@ -1,8 +1,9 @@
 /**
  * quorum-mcp — portal connections.
  *
- * "Connected" is not a badge. For every African dataset on the OCP Data
- * Registry this module runs a real handshake: it opens the dataset's
+ * "Connected" is not a badge. For every dataset on the OCP Data Registry —
+ * the African desk and the global jurisdictions — this module runs a real
+ * handshake: it opens the dataset's
  * published JSONL, reads a small slice, decompresses it, parses the first
  * OCDS release and keeps its OCID as proof; it also checks the publisher's
  * own portal over HTTP. Every check is dated and kept on disk — a failed
@@ -12,7 +13,8 @@
 import { createGunzip } from "node:zlib";
 import { resolveDataDir } from "./paths";
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { OCP_AFRICA, type OcpAfricaDataset } from "./ocp-africa";
+import type { OcpAfricaDataset } from "./ocp-africa";
+import { getOcpDatasets } from "./ocp-live";
 
 export interface RegistryHandshake {
   ok: boolean;
@@ -204,7 +206,7 @@ export async function connectOne(d: OcpAfricaDataset, fetchImpl: typeof fetch = 
 }
 
 export function loadPortalLinks(): PortalLinksFile {
-  const known = new Set(OCP_AFRICA.map((d) => String(d.publicationId)));
+  const known = new Set(getOcpDatasets().map((d) => String(d.publicationId)));
   try {
     const raw = JSON.parse(readFileSync(LINKS_FILE, "utf8")) as Partial<PortalLinksFile>;
     if (raw && typeof raw === "object" && raw.links && typeof raw.links === "object") {
@@ -231,11 +233,11 @@ export function savePortalLinks(file: PortalLinksFile): void {
   }
 }
 
-/* Connect the named datasets (null = every African dataset), one at a time,
-   saving after each — a dropped connection loses one check, not the run. */
+/* Connect the named datasets (null = every dataset), one at a time, saving
+   after each — a dropped connection loses one check, not the run. */
 export async function connectMany(ids: number[] | null, fetchImpl: typeof fetch = fetch): Promise<PortalLinksFile> {
   const wanted = ids && ids.length > 0 ? new Set(ids) : null;
-  const targets = OCP_AFRICA.filter((d) => !wanted || wanted.has(d.publicationId));
+  const targets = getOcpDatasets().filter((d) => !wanted || wanted.has(d.publicationId));
   const file = loadPortalLinks();
   for (const d of targets) {
     file.links[String(d.publicationId)] = await connectOne(d, fetchImpl);

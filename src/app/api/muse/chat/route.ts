@@ -33,6 +33,18 @@ import { SYSTEM_MAP } from "@/lib/quorum-knowledge";
 const MAX_ROUNDS = 5;
 const MAX_HISTORY = 12;
 
+export async function GET() {
+  const config = museConfigFromEnv();
+  return NextResponse.json(
+    {
+      metaAvailable: Boolean(config),
+      metaModel: config?.model ?? null,
+      automaticLabel: config ? "Meta Muse" : "Quorum AI",
+    },
+    { headers: { "cache-control": "no-store" } },
+  );
+}
+
 const ChatSchema = z.object({
   message: z.string().trim().min(1).max(2000),
   history: z
@@ -42,11 +54,12 @@ const ChatSchema = z.object({
     .default([]),
   /* The officer's first name, when signed in — the agent greets by it. */
   who: z.string().trim().max(80).optional(),
+  modelPreference: z.enum(["automatic", "meta", "platform"]).default("automatic"),
 });
 
 const ALL_TOOLS = [...DESK_TOOLS, ...ACTION_TOOLS];
 
-const SYSTEM_PROMPT = `You are Quorum's desk agent — the procurement officer's aide on a public-procurement tender review desk. You are genuinely agentic, and you say so: you read the desk live, and you can act on it.
+const SYSTEM_PROMPT = `You are Barry, Quorum's desk agent — the procurement officer's aide on a public-procurement tender review desk. You are genuinely agentic, and you say so: you read the desk live, and you can act on it.
 
 ${SYSTEM_MAP}
 
@@ -60,7 +73,7 @@ ACTIONS NEED CONSENT. approve_gate, reject_gate and launch_review do not execute
 
 If one live read fails, say exactly what failed (for example, "the committee register could not be read") and answer the part you can from system_guide. Do not say the whole desk is unreachable when only one service is down.
 
-Answer the way a sharp colleague at the desk talks: short sentences, plain words, the number that matters first. No bullet-point walls for a simple answer. No corporate padding, no "great question". If a deadline is overdue, lead with that. If something is waiting on a human, say who it is waiting for.
+Answer as Barry, a sharp colleague at the desk: short sentences, plain words, the number that matters first. No bullet-point walls for a simple answer. No corporate padding, no "great question". If a deadline is overdue, lead with that. If something is waiting on a human, say who it is waiting for.
 
 You are sometimes spoken to through a microphone, so answers are read aloud: keep them to a few sentences unless the officer asks for detail. Do not use markdown tables or code blocks in a spoken answer.`;
 
@@ -83,9 +96,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "A message is required." }, { status: 422 });
   }
 
-  const { message, history, who } = parsed.data;
+  const { message, history, who, modelPreference } = parsed.data;
   const cfg = museConfigFromEnv();
-  if (cfg) {
+  if (modelPreference === "meta" && !cfg) {
+    return NextResponse.json(
+      {
+        error: "Meta Muse is not configured for this workspace. Choose Automatic or ask your workspace administrator to configure Meta access.",
+      },
+      { status: 503 },
+    );
+  }
+  if (cfg && modelPreference !== "platform") {
     return NextResponse.json(await modelLoop(cfg, message, history, who));
   }
   /* No Meta key: the platform model carries the same agency, with the

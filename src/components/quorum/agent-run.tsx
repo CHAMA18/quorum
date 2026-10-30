@@ -138,16 +138,16 @@ export function AgentRun() {
     const pull = async () => {
       try {
         const [res, statusRes] = await Promise.all([
-          fetch("/api/log?limit=14&XTransformPort=3031"),
+          fetch("/api/public/summary"),
           fetch("/api/agent-status").catch(() => null),
         ]);
-        const j = (await res.json()) as { entries?: LiveEntry[]; total?: number };
+        const j = (await res.json()) as { activity?: LiveEntry[]; total?: number };
         const status = statusRes?.ok
           ? ((await statusRes.json()) as { health?: { model?: ModelStatus } })
           : null;
         if (!alive) return;
         if (status?.health?.model) setModelStatus(status.health.model);
-        const next = j.entries ?? [];
+        const next = j.activity ?? [];
         const sig = next.map((e) => e.id ?? e.seq).join(",");
         const force = forceReplayRef.current;
         if (sig !== sigRef.current || force) {
