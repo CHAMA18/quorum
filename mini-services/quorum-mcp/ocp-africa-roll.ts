@@ -32,7 +32,7 @@ export interface OcpCountryRow {
   searchUrl: string;
 }
 
-export function rollupAfrica(datasets: OcpAfricaDataset[]): OcpCountryRow[] {
+export function rollupCountries(datasets: OcpAfricaDataset[]): OcpCountryRow[] {
   const byCountry = new Map<string, OcpCountryRow>();
   for (const d of datasets) {
     let row = byCountry.get(d.country);
@@ -62,4 +62,9 @@ export function rollupAfrica(datasets: OcpAfricaDataset[]): OcpCountryRow[] {
     }
   }
   return [...byCountry.values()];
+}
+
+/** The African desk's original name — kept for the existing callers. */
+export function rollupAfrica(datasets: OcpAfricaDataset[]): OcpCountryRow[] {
+  return rollupCountries(datasets);
 }

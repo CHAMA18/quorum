@@ -1,4 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from "crypto";
+import { secretFor } from "@/lib/secrets";
 
 /**
  * Step-up tokens — the second signature on an irreversible act.
@@ -34,11 +35,7 @@ export interface StepUpPayload {
 }
 
 export function stepUpSecret(): string {
-  const secret = process.env.STEP_UP_SECRET?.trim() || process.env.GATE_SECRET?.trim() || DEV_STEP_UP_SECRET;
-  if (process.env.NODE_ENV === "production" && secret === DEV_STEP_UP_SECRET) {
-    throw new Error("STEP_UP_SECRET (or GATE_SECRET) must be set to a real secret in production.");
-  }
-  return secret;
+  return secretFor("stepup");
 }
 
 /** The exact same canonicalisation the sidecar uses in store.shaOf(). */

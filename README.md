@@ -47,13 +47,15 @@ refusal as proof the agent cannot file.
   - **Muse Image** regenerates the five-chapter demo film — prompt pack, frame
     generator and ffmpeg assembler live in
     [`SUBMISSION/muse-film-kit/`](SUBMISSION/muse-film-kit/README.md).
-  - **The desk assistant** uses Muse Spark for the read-only tool loop and Muse
+  - **Barry, the desk assistant,** uses Muse Spark for the read-only tool loop and Muse
     Voice Transcribe for the mic. Spoken replies use a real neural voice —
     Deepgram Aura-2 through Cloudflare Workers AI, with MeloTTS then the
     browser's installed voice as fallbacks. It answers from live desk tools
     (runs, gates, deadlines, committee, audit, suppliers, one tender) and from
     Quorum's own operating manual, so it can explain the product as well as
-    report its state. It cannot sign, award, return, file or summon.
+    report its state. The chat bubble includes Chat, Model and Support sections;
+    officers can choose Automatic, Meta Muse or Quorum AI for replies. Barry
+    cannot sign, award, return, file or summon without the officer's consent.
 - **Submission kit.** Pitch page: [`SUBMISSION/submission.html`](SUBMISSION/submission.html) ·
   one-page brief: [`META_HACKATHON.md`](META_HACKATHON.md).
 
@@ -130,9 +132,11 @@ clock) on the landing page. For this edition the chapters are being regenerated 
 11. [Human-in-the-loop workflow](#human-in-the-loop-workflow)
 12. [Technology stack](#technology-stack)
 13. [Setup / installation](#setup--installation)
-14. [Usage instructions](#usage-instructions)
-15. [Limitations](#limitations)
-16. [Future improvements](#future-improvements)
+14. [Integrations](#integrations)
+15. [VS Code integration](#vs-code-integration)
+16. [Usage instructions](#usage-instructions)
+17. [Limitations](#limitations)
+18. [Future improvements](#future-improvements)
 
 ---
 
@@ -173,6 +177,8 @@ The public portals split the tender cycle in two, and this README states the spl
 - **Prove everything.** One append-only line per tool call lands in `tool-log.jsonl`, and each approved filing writes a sha-256-sealed receipt into `data/submissions/`.
 
 The product surfaces this as **Workspace** (live run register, human-gate queue, decision ledger, agent feed) and a **live stack console** on the landing page.
+
+**Tender-cycle intake:** “Plan a tender,” pipeline linking, document management and the cycle's write workflows open in focused, keyboard-accessible dialogs. A tender notice can be read locally (including bounded Tesseract OCR for scanned PDFs); with explicit officer consent, only the extracted text is sent to the configured Meta model for structured suggestions. The model can prefill the title, office, publication date, budget and currency. Evidence excerpts, confidence cues, unreadable fields and conflicts with existing entries are shown for officer review. On creation, the original notice is stored against the issued tender reference, staged for review when text extraction succeeds, and recorded in the document audit trail. If upload fails after the pipeline record is created, the form keeps the reference and offers a retry without creating a duplicate. The model never files or approves a tender.
 
 ---
 
@@ -357,6 +363,18 @@ Copy `.env.example` — every variable is optional; the product runs fully witho
 **Authorised domains (required for Google sign-in).** Firebase enforces the origin of every browser sign-in server-side: `signInWithPopup`/`signInWithRedirect` fail with `auth/unauthorized-domain` unless the address the app is served from is whitelisted in the project. When Google sign-in reports *"can't run from this address yet"*, add the deployment's hostname (e.g. your EC2 domain or preview host, and `localhost` for development — already on the default list) under **Firebase console → Authentication → Settings → Authorised domains → Add domain**. There is deliberately no code-side bypass: the whitelist is enforced by Google's servers, and any workaround would be a security regression. The email/passphrase path is unaffected by this list.
 
 **Password reset (self-service).** *Forgot access?* on the sign-in screen emails a real reset link through Firebase (`accounts:sendOobCode` — no SMTP to configure; the link is hosted on the project's own authorised auth domain, so the reset completes regardless of where this app is deployed). After the passphrase is changed, the next sign-in reconciles the local scrypt hash automatically (Firebase is the source of truth after a drift), and an account that was verified at Firebase but lost from the local store is restored on verified proof only. Requests are rate-limited and the reply is uniform, so the endpoint never reveals whether an address has an account.
+
+---
+
+## Integrations
+
+The workspace sidebar's **Integrations** section is a setup catalog for WhatsApp Business, Slack, Microsoft Teams, email, calendars, document storage, and procurement data feeds. It shows provider requirements and does not claim that a provider is connected.
+
+## VS Code integration
+
+The source extension is in [`vscode-extension/`](vscode-extension/README.md). Install its dependencies with `npm install --prefix vscode-extension`, open the extension folder in an Extension Development Host (or package it as a VSIX), then start Quorum with `bun run dev`. Run **Quorum MCP: Check Local Connection**, then **Quorum MCP: Configure Read-only Server** from the Command Palette. The extension adds `servers.quorumMcp` to `.vscode/mcp.json`; enable or reload it in VS Code Chat to use Quorum's read-only MCP tools.
+
+The VS Code bridge accepts only the local sidecar at `127.0.0.1:3031` and filters out every tool not marked `READ`. Gate decisions, writes, and other irreversible actions are intentionally unavailable through this extension.
 
 ---
 

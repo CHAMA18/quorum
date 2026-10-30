@@ -27,7 +27,6 @@ import {
   X,
 } from "lucide-react";
 import { QuorumLogo } from "@/components/quorum/logo";
-import { MasterSwitcher } from "@/components/quorum/master-switcher";
 import { SearchSelect, type SelectOption } from "@/components/quorum/org/search-select";
 import { COUNTRIES, SUGGESTED_COUNTRIES, findCountry, type Country } from "@/lib/countries";
 import { LEGAL_FORMS, LEGAL_FORM_GROUPS, LEGAL_FORM_OTHER } from "@/lib/legal-forms";
@@ -1088,36 +1087,6 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
             >
               <Search className="h-4 w-4" aria-hidden="true" />
             </button>
-
-            <span
-              className={cn(
-                "hidden h-9 items-center gap-2 rounded-full border px-3 type-micro sm:inline-flex",
-                org.status === "ACTIVE"
-                  ? "border-emerald-500/25 bg-emerald-500/[0.08] text-emerald-700 dark:text-emerald-300"
-                  : "border-brand-500/30 bg-brand-500/[0.08] text-brand-700 dark:text-brand-300",
-              )}
-            >
-              <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
-                <span
-                  className={cn(
-                    "absolute inline-flex h-full w-full animate-ping rounded-full opacity-70",
-                    org.status === "ACTIVE" ? "bg-emerald-500" : "bg-brand-500",
-                  )}
-                />
-                <span
-                  className={cn(
-                    "relative inline-flex h-1.5 w-1.5 rounded-full",
-                    org.status === "ACTIVE" ? "bg-emerald-500" : "bg-brand-500",
-                  )}
-                />
-              </span>
-              {org.status}
-            </span>
-
-            {/* The master switcher rides the console bar — the officer desk is one tab away */}
-            <div className="hidden lg:inline-flex">
-              <MasterSwitcher active="supplier" />
-            </div>
 
             <Link
               href="/"

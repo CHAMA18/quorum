@@ -18,6 +18,7 @@ import { SiteFooter } from "@/components/quorum/site-footer";
 import { AuthScreen } from "@/components/quorum/auth-screen";
 import { NoiseOverlay, ScrollProgress } from "@/components/quorum/motion-kit";
 import { Dashboard } from "@/components/quorum/dashboard";
+import { MuseAssistant } from "@/components/quorum/muse-assistant";
 import type { AuthMode, AuthUser } from "@/lib/auth-types";
 
 /**
@@ -55,6 +56,7 @@ export default function Home() {
 
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const officerFirstName = user?.name?.trim().split(/\s+/)[0] || undefined;
   const [toast, setToast] = useState<string | null>(null);
   const scrollYRef = useRef(0);
   const prevViewRef = useRef<"landing" | "auth" | "dashboard">("landing");
@@ -232,6 +234,11 @@ export default function Home() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* The voice desk tool rides the workspace only — the landing page and
+          the auth door never show it. Mounted outside the animated view so
+          "fixed" is measured against the viewport, not a transformed parent. */}
+      {view === "dashboard" && user && <MuseAssistant name={officerFirstName} />}
 
       {/* Toast */}
       <AnimatePresence>

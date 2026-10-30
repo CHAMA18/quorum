@@ -1,0 +1,98 @@
+<template>
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: #0c0d10;
+    }
+    #seal-glow {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(30% 24% at 50% 50%, rgba(232, 56, 42, 0.2) 0%, rgba(232, 56, 42, 0) 72%);
+      opacity: 0;
+    }
+    #seal-group {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 360px;
+      height: 360px;
+      margin: -180px 0 0 -180px;
+      color: var(--accent, #e8382a);
+      opacity: 0;
+    }
+    #seal-group svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      filter: drop-shadow(0 0 14px rgba(232, 56, 42, 0.28));
+    }
+    .seal-outer {
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.4;
+      stroke-linecap: round;
+      stroke-dasharray: 942.48;
+      stroke-dashoffset: 942.48;
+    }
+    .seal-inner {
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 0.65;
+      opacity: 0.38;
+    }
+    .seal-tick {
+      stroke: currentColor;
+      stroke-width: 1;
+      opacity: 0.6;
+    }
+    .seal-core {
+      fill: currentColor;
+    }
+    #seal-fade {
+      position: absolute;
+      inset: 0;
+      background: #0c0d10;
+      opacity: 0;
+      pointer-events: none;
+    }
+  </style>
+
+  <div id="root" data-composition-id="seal" data-width="1080" data-height="1350">
+    <div id="seal-glow"></div>
+
+
+    <div id="seal-group" aria-hidden="true">
+      <svg viewBox="0 0 360 360">
+        <circle class="seal-outer" cx="180" cy="180" r="150" />
+        <circle class="seal-inner" cx="180" cy="180" r="101" />
+        <line class="seal-tick" x1="180" y1="16" x2="180" y2="40" />
+        <line class="seal-tick" x1="180" y1="320" x2="180" y2="344" />
+        <line class="seal-tick" x1="16" y1="180" x2="40" y2="180" />
+        <line class="seal-tick" x1="320" y1="180" x2="344" y2="180" />
+        <circle class="seal-core" cx="180" cy="180" r="3.2" />
+      </svg>
+    </div>
+
+    <div id="seal-fade"></div>
+  </div>
+
+  <script>
+    const tl = gsap.timeline({ paused: true });
+
+    tl.fromTo("#seal-group", { opacity: 0, scale: 0.92 }, { opacity: 1, scale: 1, duration: 0.22, ease: "power3.out" }, 0);
+    tl.fromTo("#seal-glow", { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "power1.out" }, 0);
+    tl.fromTo(
+      ".seal-outer",
+      { strokeDashoffset: 942.48 },
+      { strokeDashoffset: 0, duration: 0.52, ease: "power2.inOut" },
+      0.06
+    );
+    tl.fromTo(".seal-tick", { opacity: 0, scaleY: 0.4 }, { opacity: 0.6, scaleY: 1, duration: 0.25, stagger: 0.03, ease: "power3.out" }, 0.18);
+    tl.fromTo(".seal-core", { scale: 0 }, { scale: 1, duration: 0.24, ease: "back.out(1.6)" }, 0.24);
+    tl.to("#seal-fade", { opacity: 1, duration: 0.16, ease: "power2.in" }, 0.94);
+
+    window.__timelines["seal"] = tl;
+  </script>
+</template>

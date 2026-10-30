@@ -42,6 +42,12 @@ export function StepUpHost() {
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  /* Signers must hold a second factor. When the account has none, the dialog
+     switches to enrolment instead of refusing and leaving the officer stuck. */
+  const [stage, setStage] = useState<"sign" | "enrol">("sign");
+  const [enrolment, setEnrolment] = useState<{ secret: string; uri: string } | null>(null);
+  const [enrolBusy, setEnrolBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const settle = useCallback((token: string | null) => {
@@ -54,6 +60,32 @@ export function StepUpHost() {
     current?.resolve(token);
   }, []);
 
+  const beginEnrolment = useCallback(async () => {
+    setStage("enrol");
+    setEnrolBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/auth/totp", { method: "POST" });
+      const data = (await res.json().catch(() => ({}))) as {
+        secret?: string;
+        uri?: string;
+        error?: string;
+      };
+      if (!res.ok || !data.secret || !data.uri) {
+        setError(data.error ?? "An authenticator key could not be issued. Try again.");
+        setEnrolBusy(false);
+        return;
+      }
+      setEnrolment({ secret: data.secret, uri: data.uri });
+      setTotpEnabled(false);
+      setValue("");
+      window.setTimeout(() => inputRef.current?.focus(), 80);
+    } catch {
+      setError("The signature service is unreachable. Try again.");
+    }
+    setEnrolBusy(false);
+  }, []);
+
   useEffect(() => {
     const onRequest: Listener = (next) => {
       const previous = pendingRef.current;
@@ -63,9 +95,16 @@ export function StepUpHost() {
       setValue("");
       setError("");
       setMode("password");
+      setStage("sign");
+      setEnrolment(null);
+      setCopied(false);
       void fetch("/api/auth/totp")
         .then((r) => (r.ok ? r.json() : null))
-        .then((d: { enabled?: boolean } | null) => setTotpEnabled(d?.enabled === true))
+        .then((d: { enabled?: boolean; required?: boolean } | null) => {
+          const enabled = d?.enabled === true;
+          setTotpEnabled(enabled);
+          if (!enabled && d?.required !== false) void beginEnrolment();
+        })
         .catch(() => setTotpEnabled(false));
       window.setTimeout(() => inputRef.current?.focus(), 80);
     };
@@ -74,7 +113,7 @@ export function StepUpHost() {
       const at = listeners.indexOf(onRequest);
       if (at !== -1) listeners.splice(at, 1);
     };
-  }, []);
+  }, [beginEnrolment]);
 
   useEffect(() => {
     if (!pending) return;
@@ -85,26 +124,27 @@ export function StepUpHost() {
     return () => window.removeEventListener("keydown", onKey);
   }, [pending, busy, settle]);
 
-  const submit = async () => {
-    if (!pending || busy) return;
-    const clean = value.trim();
-    if (!clean) {
-      setError(mode === "totp" ? "Enter the current six-digit code." : "Enter your passphrase.");
-      inputRef.current?.focus();
-      return;
-    }
+  const sign = async (credentials: { code?: string; password?: string }) => {
+    if (!pending) return;
     setBusy(true);
     setError("");
     try {
       const res = await fetch("/api/auth/step-up", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          gateId: pending.gateId,
-          ...(mode === "totp" ? { code: clean } : { password: value }),
-        }),
+        body: JSON.stringify({ gateId: pending.gateId, ...credentials }),
       });
-      const data = (await res.json().catch(() => ({}))) as { token?: string; error?: string };
+      const data = (await res.json().catch(() => ({}))) as {
+        token?: string;
+        error?: string;
+        totpRequired?: boolean;
+      };
+      if (data.totpRequired) {
+        setBusy(false);
+        await beginEnrolment();
+        setError(data.error ?? "Enrol an authenticator app before signing.");
+        return;
+      }
       if (!res.ok || !data.token) {
         setError(data.error ?? "The step-up was refused. Try again.");
         setBusy(false);
@@ -117,6 +157,60 @@ export function StepUpHost() {
       setError("The signature service is unreachable. Try again.");
       setBusy(false);
     }
+  };
+
+  const confirmEnrolment = async (code: string) => {
+    if (!pending || enrolBusy) return;
+    setBusy(true);
+    setEnrolBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/auth/totp", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { enabled?: boolean; error?: string };
+      if (!res.ok || data.enabled !== true) {
+        setError(data.error ?? "That code was not accepted. Check the app's clock and try the current code.");
+        setBusy(false);
+        setEnrolBusy(false);
+        inputRef.current?.focus();
+        return;
+      }
+      setTotpEnabled(true);
+      setStage("sign");
+      setMode("totp");
+      setEnrolBusy(false);
+      /* The same code is still current — finish the signature now rather than
+         asking for a second glance at the phone. */
+      await sign({ code });
+    } catch {
+      setError("The signature service is unreachable. Try again.");
+      setBusy(false);
+      setEnrolBusy(false);
+    }
+  };
+
+  const submit = async () => {
+    if (!pending || busy) return;
+    const clean = value.trim();
+    if (!clean) {
+      setError(
+        stage === "enrol"
+          ? "Enter the six-digit code from your authenticator app."
+          : mode === "totp"
+            ? "Enter the current six-digit code."
+            : "Enter your passphrase.",
+      );
+      inputRef.current?.focus();
+      return;
+    }
+    if (stage === "enrol") {
+      await confirmEnrolment(clean);
+      return;
+    }
+    await sign(mode === "totp" ? { code: clean } : { password: value });
   };
 
   return (
@@ -151,8 +245,9 @@ export function StepUpHost() {
                     Sign this gate
                   </h2>
                   <p className="mt-1 max-w-[32ch] text-[11.5px] leading-relaxed text-ink-500">
-                    Re-authenticate to sign <span className="font-code text-[10.5px] text-ink-800">{pending.gateId}</span>.
-                    The signature is single-use and expires in two minutes.
+                    {stage === "enrol" ? "Set up an authenticator, then sign" : "Re-authenticate to sign"}{" "}
+                    <span className="font-code text-[10.5px] text-ink-800">{pending.gateId}</span>. The signature is
+                    single-use and expires in two minutes.
                   </p>
                 </div>
               </div>
@@ -167,7 +262,7 @@ export function StepUpHost() {
             </div>
 
             <div className="px-5 py-4">
-              {totpEnabled && (
+              {stage === "sign" && totpEnabled && (
                 <div className="mb-4 grid grid-cols-2 gap-1 rounded-lg border border-ink-200/80 bg-paper p-1">
                   <button
                     type="button"
@@ -200,8 +295,53 @@ export function StepUpHost() {
                 </div>
               )}
 
+              {stage === "enrol" && (
+                <div className="mb-4 rounded-lg border border-ink-200/80 bg-paper px-3.5 py-3">
+                  <p className="text-[11.5px] leading-relaxed text-ink-600">
+                    A passphrase alone cannot sign a gate. Add Quorum to any authenticator app, then enter the
+                    current six-digit code it shows.
+                  </p>
+                  {enrolment ? (
+                    <>
+                      <p className="mt-3 font-code text-[8px] font-bold tracking-[0.18em] text-ink-500">SETUP KEY</p>
+                      <div className="mt-1.5 flex items-center gap-2">
+                        <code className="flex-1 select-all overflow-hidden rounded-md border border-ink-200 bg-white px-2.5 py-2 font-code text-[10.5px] tracking-[0.06em] text-ink-900">
+                          {enrolment.secret.replace(/(.{4})/g, "$1 ").trim()}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void navigator.clipboard
+                              ?.writeText(enrolment.secret)
+                              .then(() => {
+                                setCopied(true);
+                                window.setTimeout(() => setCopied(false), 2000);
+                              })
+                              .catch(() => setCopied(false));
+                          }}
+                          className="h-8 shrink-0 rounded-md border border-ink-200 bg-white px-2.5 font-code text-[8px] font-bold tracking-[0.12em] text-ink-700 transition-colors hover:bg-ink-50"
+                        >
+                          {copied ? "COPIED" : "COPY"}
+                        </button>
+                      </div>
+                      <a
+                        href={enrolment.uri}
+                        className="mt-2 inline-block font-code text-[8px] font-bold tracking-[0.12em] text-brand-700 underline decoration-brand-300 underline-offset-2"
+                      >
+                        OPEN IN AUTHENTICATOR APP
+                      </a>
+                    </>
+                  ) : (
+                    <p className="mt-2 inline-flex items-center gap-1.5 text-[10.5px] text-ink-500">
+                      <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                      Issuing a setup key…
+                    </p>
+                  )}
+                </div>
+              )}
+
               <label htmlFor="stepup-value" className="font-code text-[8px] font-bold tracking-[0.2em] text-ink-500">
-                {mode === "totp" ? "SIX-DIGIT CODE" : "PASSPHRASE"}
+                {stage === "enrol" ? "SIX-DIGIT CODE" : mode === "totp" ? "SIX-DIGIT CODE" : "PASSPHRASE"}
               </label>
               <input
                 ref={inputRef}
@@ -227,9 +367,11 @@ export function StepUpHost() {
                 </p>
               ) : (
                 <p className="mt-2.5 text-[10.5px] leading-relaxed text-ink-400">
-                  {mode === "totp"
-                    ? "Open your authenticator app and enter the current code for Quorum."
-                    : "Your passphrase is checked by the web app; the sidecar verifies the signed token."}
+                  {stage === "enrol"
+                    ? "Confirming this code turns on your second factor and signs the gate in one step."
+                    : mode === "totp"
+                      ? "Open your authenticator app and enter the current code for Quorum."
+                      : "Your passphrase is checked by the web app; the sidecar verifies the signed token."}
                 </p>
               )}
 
@@ -245,11 +387,11 @@ export function StepUpHost() {
                 <button
                   type="button"
                   onClick={() => void submit()}
-                  disabled={busy || !value.trim()}
+                  disabled={busy || !value.trim() || (stage === "enrol" && !enrolment)}
                   className="inline-flex h-10 flex-[1.35] items-center justify-center gap-2 rounded-lg bg-ink-950 px-3 text-[11px] font-semibold text-white transition-colors hover:bg-ink-800 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Fingerprint className="h-3.5 w-3.5" aria-hidden="true" />}
-                  {busy ? "Signing…" : "Sign gate"}
+                  {busy ? "Signing…" : stage === "enrol" ? "Confirm and sign" : "Sign gate"}
                 </button>
               </div>
 

@@ -10,7 +10,7 @@
 
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { OCP_AFRICA } from "./ocp-africa";
+import { getOcpDatasets } from "./ocp-live";
 
 export interface PortalOverride {
   /** The portal's current state. Absent from the map means enabled. */
@@ -29,15 +29,18 @@ export interface PortalStateFile {
 const DATA_DIR = fileURLToPath(new URL("./data/", import.meta.url));
 const STATE_FILE = DATA_DIR + "portal-state.json";
 
-const KNOWN_IDS = new Set(OCP_AFRICA.map((d) => String(d.publicationId)));
+function knownIds(): Set<string> {
+  return new Set(getOcpDatasets().map((d) => String(d.publicationId)));
+}
 
 export function loadPortalState(path: string = STATE_FILE): PortalStateFile {
+  const known = knownIds();
   try {
     const raw = JSON.parse(readFileSync(path, "utf8")) as Partial<PortalStateFile>;
     if (raw && typeof raw === "object" && raw.overrides && typeof raw.overrides === "object") {
       const overrides: Record<string, PortalOverride> = {};
       for (const [key, value] of Object.entries(raw.overrides)) {
-        if (KNOWN_IDS.has(key) && value && typeof value === "object" && typeof (value as PortalOverride).enabled === "boolean") {
+        if (known.has(key) && value && typeof value === "object" && typeof (value as PortalOverride).enabled === "boolean") {
           overrides[key] = {
             enabled: Boolean((value as PortalOverride).enabled),
             at: typeof (value as PortalOverride).at === "string" ? (value as PortalOverride).at : "",
@@ -79,8 +82,9 @@ export function setPortalsEnabled(ids: number[], enabled: boolean, by: string, p
 /** The publication ids currently switched off. */
 export function disabledPortalIds(file: PortalStateFile = loadPortalState()): Set<number> {
   const out = new Set<number>();
+  const known = knownIds();
   for (const [key, value] of Object.entries(file.overrides)) {
-    if (!value.enabled && KNOWN_IDS.has(key)) out.add(Number(key));
+    if (!value.enabled && known.has(key)) out.add(Number(key));
   }
   return out;
 }
@@ -88,5 +92,5 @@ export function disabledPortalIds(file: PortalStateFile = loadPortalState()): Se
 /** The publication ids currently in use — the ones a bulk pass may probe. */
 export function enabledPortalIds(file: PortalStateFile = loadPortalState()): number[] {
   const disabled = disabledPortalIds(file);
-  return OCP_AFRICA.filter((d) => !disabled.has(d.publicationId)).map((d) => d.publicationId);
+  return getOcpDatasets().filter((d) => !disabled.has(d.publicationId)).map((d) => d.publicationId);
 }

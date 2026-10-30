@@ -828,3 +828,109 @@
     background: #2b303a;
   }
 }
+
+/*
+ * ── Hero film ─────────────────────────────────────────────────────────────
+ * The landing hero runs the same documentary register as the two doors: real
+ * procurement footage — city, port, medical store, clinic, server room, seal —
+ * beneath the claim. The film is a ground, never a feature: a scrim heavy
+ * enough that the type always wins, a mask that dissolves it back into paper
+ * long before the counted contract, and a slower, greyer plate in daylight so
+ * the editorial page still reads as paper rather than as a video panel.
+ */
+.hero-film {
+  position: absolute;
+  inset: 0 0 auto;
+  height: min(1060px, 128vh);
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 46%, transparent 94%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 46%, transparent 94%);
+}
+
+.hero-film__video,
+.hero-film__poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 44%;
+}
+
+/* Daylight: an archival grey plate, warmed a touch so it sits in the paper. */
+.hero-film__video,
+.hero-film__poster {
+  opacity: 0.34;
+  filter: grayscale(1) sepia(0.14) contrast(1.04) brightness(1.06);
+}
+
+.hero-film__poster {
+  display: none;
+}
+
+.hero-film__scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(250, 250, 248, 0.95) 0%,
+      rgba(250, 250, 248, 0.88) 30%,
+      rgba(250, 250, 248, 0.68) 62%,
+      rgba(250, 250, 248, 0.56) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(250, 250, 248, 0.62) 0%,
+      rgba(250, 250, 248, 0.22) 30%,
+      rgba(250, 250, 248, 0.58) 74%,
+      rgba(250, 250, 248, 0.95) 100%
+    );
+}
+
+.hero-film__vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(116% 76% at 52% 34%, transparent 42%, rgba(250, 250, 248, 0.72) 100%);
+}
+
+/* Night: the room the run panel is lit in. The left column keeps its own
+   deep scrim for the headline; the right side clears so the footage reads. */
+.dark .hero-film__video,
+.dark .hero-film__poster {
+  opacity: 0.82;
+  filter: saturate(0.78) contrast(1.05) brightness(0.9);
+}
+
+.dark .hero-film__scrim {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(12, 13, 16, 0.94) 0%,
+      rgba(12, 13, 16, 0.84) 28%,
+      rgba(12, 13, 16, 0.52) 58%,
+      rgba(12, 13, 16, 0.34) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(12, 13, 16, 0.8) 0%,
+      rgba(12, 13, 16, 0.3) 26%,
+      rgba(12, 13, 16, 0.42) 58%,
+      rgba(12, 13, 16, 0.86) 86%,
+      rgba(12, 13, 16, 0.97) 100%
+    );
+}
+
+.dark .hero-film__vignette {
+  background: radial-gradient(116% 76% at 52% 34%, transparent 38%, rgba(12, 13, 16, 0.78) 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-film__video {
+    display: none;
+  }
+  .hero-film__poster {
+    display: block;
+  }
+}

@@ -42,7 +42,7 @@ describe("the OCP registry snapshot — data integrity", () => {
 
   test("declares its provenance", () => {
     expect(OCP_AFRICA_SOURCE.via).toBe("https://data.open-contracting.org/en/search/");
-    expect(OCP_AFRICA_SOURCE.scope).toContain("135 datasets");
+    expect(OCP_AFRICA_SOURCE.scope).toContain("136 datasets");
     expect(OCP_AFRICA_SOURCE.scope).toContain("22 African datasets across 9 countries");
   });
 });
@@ -70,8 +70,8 @@ describe("the African roll-up", () => {
     expect(nigeria.datasets).toBe(13);
     expect(nigeria.stale).toBe(9);
     expect(nigeria.coverageFrom).toBe("2014-03-10"); // Anambra State
-    expect(nigeria.coverageTo).toBe("2026-09-09"); // Bureau of Public Procurement
-    expect(nigeria.lastRetrieved).toBe("2026-10-05"); // Osun State
+    expect(nigeria.coverageTo).toBe("2026-10-13"); // Bureau of Public Procurement
+    expect(nigeria.lastRetrieved).toBe("2026-10-20"); // Bureau of Public Procurement
     expect(nigeria.publishers).toContain("Bureau of Public Procurement (BPP)");
     expect(nigeria.searchUrl).toBe("https://data.open-contracting.org/en/search/?country=Nigeria");
   });

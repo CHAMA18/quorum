@@ -26,6 +26,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Too many step-up attempts. Wait a few minutes and try again." }, { status: 429 });
   }
 
+  /* Anyone who can sign must hold a second factor. Set
+     QUORUM_TOTP_POLICY=optional only on a machine that cannot run an
+     authenticator app; the default is a hard requirement. */
+  const totpPolicy = (process.env.QUORUM_TOTP_POLICY ?? "required").trim().toLowerCase();
+  if (totpPolicy !== "optional" && user.totpEnabled !== true) {
+    return NextResponse.json(
+      {
+        error:
+          "An authenticator app is required before you can sign a gate. Set one up now — it takes about a minute.",
+        totpRequired: true,
+      },
+      { status: 403 },
+    );
+  }
+
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   if (!body) return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   const gateId = typeof body.gateId === "string" ? body.gateId.trim() : "";
@@ -49,7 +64,10 @@ export async function POST(req: NextRequest) {
   let method: "password" | "totp" | null = null;
   if (code) {
     if (!user.totpEnabled || !user.totpSecret) {
-      return NextResponse.json({ error: "No authenticator is enrolled for this account." }, { status: 422 });
+      return NextResponse.json(
+        { error: "No authenticator is enrolled for this account.", totpRequired: true },
+        { status: 422 },
+      );
     }
     if (!verifyTotp(user.totpSecret, code)) {
       return NextResponse.json({ error: "That authenticator code is not valid. Try the current code." }, { status: 401 });

@@ -1,10 +1,11 @@
 "use client";
 
 /**
- * MuseAssistant — the agentic voice chat bubble that sits on every screen.
+ * MuseAssistant — the agentic voice chat bubble for the desk screens.
  *
- * One floating button, bottom right, over the landing page, the workspace
- * and the docs alike. Press it and you get a panel you can either talk into
+ * One floating button, bottom right, over the workspace, the docs and the
+ * org portal — never the public landing page or the auth door. Press it and
+ * you get a panel you can either talk into
  * or type into:
  *
  *   · hearing  — the mic captures raw PCM, the browser encodes a WAV, and
@@ -35,7 +36,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Ban, Check, Mic, Send, ShieldAlert, Sparkles, Square, Volume2, VolumeX, X } from "lucide-react";
+import { Ban, BrainCircuit, Check, CircleHelp, Mic, MessageSquare, Send, ShieldAlert, Sparkles, Square, Volume2, VolumeX, X } from "lucide-react";
 import { requestStepUp, StepUpHost } from "@/components/quorum/step-up";
 import type { Proposal } from "@/lib/muse-actions";
 import { cn } from "@/lib/utils";
@@ -62,6 +63,9 @@ const SUGGESTIONS = [
 ];
 
 const VOICE_KEY = "quorum.muse.voice";
+const MODEL_KEY = "quorum.barry.model";
+type ModelPreference = "automatic" | "meta" | "platform";
+type AssistantSection = "chat" | "model" | "support";
 
 /** Cloudflare Workers AI speakers; "browser" skips the edge and uses the device. */
 const VOICE_PRESETS = [
@@ -345,6 +349,10 @@ const nextId = () => `t${++turnSeq}`;
 export function MuseAssistant({ name }: { name?: string }) {
   const reduce = useReducedMotion();
   const [open, setOpen] = useState(false);
+  const [section, setSection] = useState<AssistantSection>("chat");
+  const [modelPreference, setModelPreference] = useState<ModelPreference>("automatic");
+  const [metaModel, setMetaModel] = useState<string | null>(null);
+  const [metaAvailable, setMetaAvailable] = useState(false);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -384,6 +392,16 @@ export function MuseAssistant({ name }: { name?: string }) {
   useEffect(() => {
     if (open) {
       window.setTimeout(() => inputRef.current?.focus(), 220);
+      fetch("/api/muse/chat", { cache: "no-store" })
+        .then((response) => response.json())
+        .then((data: { metaAvailable?: boolean; metaModel?: string | null }) => {
+          setMetaAvailable(data.metaAvailable === true);
+          setMetaModel(typeof data.metaModel === "string" ? data.metaModel : null);
+        })
+        .catch(() => {
+          setMetaAvailable(false);
+          setMetaModel(null);
+        });
       /* One probe decides the mic's path before the officer presses it —
          the answer never names a key or a setup step, it only picks ears. */
       let alive = true;
@@ -432,15 +450,21 @@ export function MuseAssistant({ name }: { name?: string }) {
         const res = await fetch("/api/muse/chat", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ message: text, history, ...(name ? { who: name } : {}) }),
+          body: JSON.stringify({
+            message: text,
+            history,
+            modelPreference,
+            ...(name ? { who: name } : {}),
+          }),
         });
         const data = (await res.json().catch(() => ({}))) as {
           reply?: string;
           toolsRead?: string[];
           model?: string;
           proposal?: Proposal;
+          error?: string;
         };
-        const reply = (data.reply ?? "I could not answer that just now.").trim();
+        const reply = (data.reply ?? data.error ?? "I could not answer that just now.").trim();
         setTurns((prev) => [
           ...prev,
           {
@@ -461,7 +485,7 @@ export function MuseAssistant({ name }: { name?: string }) {
         setBusy(false);
       }
     },
-    [busy, name, speak, turns]
+    [busy, modelPreference, name, speak, turns]
   );
 
   /* ── Acting: consent first, always ───────────────────────────────────── */
@@ -772,13 +796,18 @@ export function MuseAssistant({ name }: { name?: string }) {
           if (open) {
             shut();
           } else {
+            const savedModel = window.localStorage.getItem(MODEL_KEY);
+            if (savedModel === "automatic" || savedModel === "meta" || savedModel === "platform") {
+              setModelPreference(savedModel);
+            }
+            setSection("chat");
             prime();
             setOpen(true);
           }
         }}
         aria-label={open ? "Close the desk assistant" : "Open the desk assistant — talk or type"}
         aria-expanded={open}
-        title={open ? "Close the desk assistant" : "Ask the desk"}
+        title={open ? "Close Barry" : "Ask Barry"}
         className="focus-brand group fixed bottom-5 right-5 z-[75] grid h-14 w-14 place-items-center rounded-full bg-brand-600 p-0 text-white shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_18px_40px_-16px_rgba(217,38,22,0.85)] transition-colors hover:bg-brand-700 sm:bottom-7 sm:right-7"
         whileHover={reduce ? undefined : { y: -2 }}
         whileTap={reduce ? undefined : { scale: 0.97 }}
@@ -809,7 +838,7 @@ export function MuseAssistant({ name }: { name?: string }) {
             exit={reduce ? { opacity: 0 } : { opacity: 0, y: 12, scale: 0.98 }}
             transition={{ duration: 0.26, ease: EASE }}
             role="dialog"
-            aria-label="Desk assistant — powered by Muse"
+            aria-label="Barry — Quorum AI assistant"
             className="fixed bottom-24 right-4 z-[76] flex max-h-[72vh] w-[min(400px,calc(100vw-2rem))] flex-col overflow-hidden rounded-[12px] border border-white/10 bg-night text-white shadow-[0_1px_0_rgba(255,255,255,0.07)_inset,0_40px_90px_-30px_rgba(11,12,15,0.9)] sm:right-7"
           >
             <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-50" aria-hidden="true" />
@@ -823,7 +852,7 @@ export function MuseAssistant({ name }: { name?: string }) {
               <div className="min-w-0">
                 <p className="flex items-center gap-1.5 font-code text-[8px] font-bold tracking-[0.22em] text-brand-400">
                   <Sparkles className="h-3 w-3" aria-hidden="true" />
-                  DESK ASSISTANT · MUSE
+                  BARRY · QUORUM AI ASSISTANT
                 </p>
                 <p className="mt-1 truncate text-[12.5px] font-semibold text-ink-100">
                   Reads the desk · acts on your consent · signs only with you
@@ -861,16 +890,45 @@ export function MuseAssistant({ name }: { name?: string }) {
               </div>
             </header>
 
+            <nav className="relative grid grid-cols-3 gap-1 border-b border-white/10 px-3 py-2" aria-label="Barry assistant sections">
+              {([
+                { id: "chat", label: "Chat", Icon: MessageSquare },
+                { id: "model", label: "Model", Icon: BrainCircuit },
+                { id: "support", label: "Support", Icon: CircleHelp },
+              ] as const).map(({ id, label, Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  id={`barry-tab-${id}`}
+                  aria-selected={section === id}
+                  aria-controls={`barry-panel-${id}`}
+                  onClick={() => setSection(id)}
+                  className={cn(
+                    "inline-flex h-9 items-center justify-center gap-1.5 rounded-lg font-code text-[8px] font-bold tracking-[0.12em] transition-colors",
+                    section === id
+                      ? "bg-white/[0.1] text-white"
+                      : "text-ink-400 hover:bg-white/[0.05] hover:text-ink-200",
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+                  {label.toUpperCase()}
+                </button>
+              ))}
+            </nav>
+
             {/* Transcript */}
             <div
               ref={scrollerRef}
-              className="relative min-h-[180px] flex-1 space-y-3 overflow-y-auto px-4 py-4 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/15 [&::-webkit-scrollbar]:w-1"
+              className="relative min-h-[180px] flex-1 overflow-y-auto px-4 py-4 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/15 [&::-webkit-scrollbar]:w-1"
               aria-live="polite"
             >
+              {section === "chat" ? (
+                <div id="barry-panel-chat" role="tabpanel" aria-labelledby="barry-tab-chat" className="space-y-3">
               {turns.length === 0 && (
                 <div className="space-y-3">
                   <p className="text-[13px] leading-relaxed text-ink-300">
-                    This is the desk agent — it reads the live record (evaluations, approvals, quorum, statutory clocks,
+                    Barry is your desk agent — he reads the live record (evaluations, approvals, quorum, statutory clocks,
                     audit, suppliers, one tender&apos;s file) and it can act: approve or return a file at the gate, launch a
                     review on a tender. Nothing moves on its word alone — every action lands as a confirmation card, and a
                     gate decision still wants your step-up signature. Answers are read aloud in a real neural voice.
@@ -1023,10 +1081,104 @@ export function MuseAssistant({ name }: { name?: string }) {
                   {voiceNote.toUpperCase()}
                 </p>
               )}
+                </div>
+              ) : null}
+              {section === "model" ? (
+                <section id="barry-panel-model" role="tabpanel" aria-labelledby="barry-tab-model" className="space-y-4">
+                  <div>
+                    <p className="font-code text-[8px] font-bold tracking-[0.18em] text-brand-300">MODEL PREFERENCES</p>
+                    <h3 className="mt-1 text-[17px] font-bold text-white">Choose Barry&apos;s model</h3>
+                    <p className="mt-1 text-[11.5px] leading-relaxed text-ink-300">
+                      This choice applies to your next message and is saved on this device.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    {([
+                      {
+                        id: "automatic",
+                        title: "Automatic · recommended",
+                        detail: `Use the workspace default${metaAvailable ? ` (${metaModel ?? "Meta model"})` : " and fall back when needed"}.`,
+                        disabled: false,
+                      },
+                      {
+                        id: "meta",
+                        title: "Meta Muse",
+                        detail: metaAvailable
+                          ? `Use ${metaModel ?? "the configured Meta model"} for chat.`
+                          : "Unavailable: Meta access is not configured for this workspace.",
+                        disabled: !metaAvailable,
+                      },
+                      {
+                        id: "platform",
+                        title: "Quorum AI",
+                        detail: "Use the platform-hosted model, with the local desk assistant as fallback.",
+                        disabled: false,
+                      },
+                    ] as const).map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        disabled={option.disabled}
+                        aria-pressed={modelPreference === option.id}
+                        onClick={() => {
+                          setModelPreference(option.id);
+                          window.localStorage.setItem(MODEL_KEY, option.id);
+                        }}
+                        className={cn(
+                          "w-full rounded-xl border px-3.5 py-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-45",
+                          modelPreference === option.id
+                            ? "border-brand-400/70 bg-brand-500/10"
+                            : "border-white/10 bg-white/[0.025] hover:border-white/25",
+                        )}
+                      >
+                        <span className="flex items-center justify-between gap-2">
+                          <span className="text-[12px] font-semibold text-ink-100">{option.title}</span>
+                          {modelPreference === option.id ? <Check className="h-4 w-4 text-brand-300" aria-hidden="true" /> : null}
+                        </span>
+                        <span className="mt-1 block text-[10.5px] leading-relaxed text-ink-400">{option.detail}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[10px] leading-relaxed text-ink-400">
+                    Barry shows the model that actually answered beneath each reply. Provider availability can depend on workspace configuration.
+                  </p>
+                </section>
+              ) : null}
+              {section === "support" ? (
+                <section id="barry-panel-support" role="tabpanel" aria-labelledby="barry-tab-support" className="space-y-4">
+                  <div>
+                    <p className="font-code text-[8px] font-bold tracking-[0.18em] text-brand-300">BARRY · SUPPORT</p>
+                    <h3 className="mt-1 text-[17px] font-bold text-white">How can we help?</h3>
+                    <p className="mt-1 text-[11.5px] leading-relaxed text-ink-300">
+                      Quick guidance for using the assistant and getting a useful answer.
+                    </p>
+                  </div>
+                  <div className="space-y-3 rounded-xl border border-white/10 bg-white/[0.03] p-3.5">
+                    <div>
+                      <p className="text-[11px] font-semibold text-ink-100">Ask about live desk work</p>
+                      <p className="mt-1 text-[10.5px] leading-relaxed text-ink-400">Try “What is waiting at the gate?”, “Is quorum present?” or name a tender reference.</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold text-ink-100">Actions always need your approval</p>
+                      <p className="mt-1 text-[10.5px] leading-relaxed text-ink-400">Barry stages proposed actions for your review. Gate decisions still require your signature.</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold text-ink-100">Something not working?</p>
+                      <p className="mt-1 text-[10.5px] leading-relaxed text-ink-400">Retry once, then contact your workspace administrator with the error and tender reference. Do not send passwords or confidential bid documents in a support request.</p>
+                    </div>
+                  </div>
+                  <a
+                    href="/docs"
+                    className="inline-flex h-9 items-center justify-center rounded-lg border border-white/15 px-3 text-[10px] font-semibold text-ink-200 transition-colors hover:border-brand-400/60 hover:text-white"
+                  >
+                    Open Quorum guide
+                  </a>
+                </section>
+              ) : null}
             </div>
 
             {/* Composer */}
-            <div className="relative border-t border-white/10 px-3 py-3">
+            {section === "chat" ? <div className="relative border-t border-white/10 px-3 py-3">
               {/* The meter — the mic is honest about hearing you */}
               {hearing && (
                 <div className="mb-2.5 flex items-center gap-2.5 rounded-xl bg-white/[0.05] px-3 py-2">
@@ -1080,7 +1232,7 @@ export function MuseAssistant({ name }: { name?: string }) {
                   ref={inputRef}
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
-                  placeholder={hearing ? "Listening…" : "Ask the desk…"}
+                  placeholder={hearing ? "Listening…" : "Ask Barry…"}
                   disabled={hearing || busy}
                   maxLength={2000}
                   className="h-11 min-w-0 flex-1 rounded-full border border-white/12 bg-white/[0.05] px-4 text-[13px] text-white outline-none transition-colors placeholder:text-ink-500 focus:border-brand-500/60 disabled:opacity-60"
@@ -1094,7 +1246,7 @@ export function MuseAssistant({ name }: { name?: string }) {
                   <Send className="h-4 w-4" aria-hidden="true" />
                 </button>
               </form>
-            </div>
+            </div> : null}
           </motion.div>
         )}
       </AnimatePresence>

@@ -38,6 +38,7 @@ import {
   TENDERS_DIR,
   verifyFinding,
 } from "./engine";
+import { readPersistedGuardContext } from "./store";
 import type { Finding } from "./store";
 
 interface GoldItem {
@@ -66,6 +67,11 @@ const RUNS = runsFlag >= 0 ? Number(process.argv[runsFlag + 1]) : 5;
    Hitting it means findings may be silently dropped. */
 const RULE_CAP = RULE_OUTPUT_CAP;
 
+/* The desk's live guard record and the supplier register it screens against.
+   The harness measures the engine the app runs, under the settings the officer
+   set — not a fixed default. Read-only: nothing here writes state. */
+const { guards, registry } = await readPersistedGuardContext();
+
 const BID_VALUE_LINE = /(\*\*Bid value:\*\*\s*[A-Z]{3}\s*)([\d,]+(?:\.\d+)?)/;
 const CEILING_LINE = /^\*\*Budget ceiling:\*\*.*$/m;
 
@@ -79,7 +85,7 @@ async function readPack(tenderId: string) {
 
 function evalSources(files: string[], sources: Record<string, string>): Finding[] {
   const pack = buildPack(files, sources);
-  const { kept } = flagPack(pack, files);
+  const { kept } = flagPack(pack, files, undefined, { guards, registry });
   return kept.filter((f) => verifyFinding(f, sources));
 }
 
@@ -87,7 +93,7 @@ async function runOnce(tenderId: string) {
   const { files, sources } = await readPack(tenderId);
   const started = performance.now();
   const pack = buildPack(files, sources);
-  const { kept, rejected } = flagPack(pack, files);
+  const { kept, rejected } = flagPack(pack, files, undefined, { guards, registry });
   const findings = kept.filter((f) => verifyFinding(f, sources));
   const ms = performance.now() - started;
 
@@ -96,7 +102,7 @@ async function runOnce(tenderId: string) {
     ms,
     rejectedCount: rejected.length,
     droppedBySelfCheck: kept.length - findings.length,
-    ruleCapHit: runRules(pack.bids, "", "").length >= RULE_CAP,
+    ruleCapHit: runRules(pack.bids, "", "", guards).length >= RULE_CAP,
   };
 }
 
@@ -387,6 +393,13 @@ const packMedians = tenderIds.map((id) => results[id].medianMs);
 const summary = {
   runsPerTender: RUNS,
   tenders: tenderIds.length,
+  /* The settings these scores were measured under — the report says it, so a
+     reader never has to guess which guard set produced the numbers. */
+  guards: {
+    priceVariancePct: guards.priceVariancePct,
+    checklist: guards.checklist,
+    registryCrossCheck: guards.registryCrossCheck,
+  },
   original: original.summary,
   adjudicated: adjudicated.summary,
   identicalAcrossRuns: `${identicalRuns}/${tenderIds.length} tenders`,

@@ -14,6 +14,8 @@ export interface TenderStorageResult {
   key: string;
   bytes: number;
   contentType: string;
+  /** Where the bytes are held: the edge bucket, or this deployment's own store. */
+  storage?: "local" | "r2";
   /** Text was extracted and staged into the sidecar's tender directory. */
   staged: boolean;
   extracted: boolean;
@@ -199,6 +201,7 @@ export async function uploadTenderDocument(
       key: data.key,
       bytes: typeof data.bytes === "number" ? data.bytes : file.size,
       contentType: typeof data.contentType === "string" ? data.contentType : file.type,
+      storage: data.storage === "local" || data.storage === "r2" ? data.storage : undefined,
       extracted: data.extracted === true,
       staged: data.staged === true,
       kind: data.kind === "notice" || data.kind === "bid" ? data.kind : undefined,

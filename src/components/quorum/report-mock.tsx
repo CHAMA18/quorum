@@ -111,17 +111,26 @@ export function ReportMock() {
     let alive = true;
     const pull = async () => {
       try {
-        const [runsRes, logRes] = await Promise.all([
-          fetch("/api/runs?XTransformPort=3031"),
-          fetch("/api/log?limit=40&XTransformPort=3031"),
-        ]);
-        const runsJson = (await runsRes.json()) as { runs?: LiveRun[] };
-        const logJson = (await logRes.json()) as { entries?: LiveLogEntry[] };
+        /* The public page reads the redacted summary: which tender, how it
+           ended and how much it produced — never a bidder's name or price. */
+        const summaryRes = await fetch("/api/public/summary");
+        const summary = (await summaryRes.json()) as {
+          sample?: { tenderId?: string; status?: string; updatedAt?: string };
+          activity?: LiveLogEntry[];
+        };
         if (!alive) return;
-        const runs = runsJson.runs ?? [];
-        /* Newest run that has produced findings; otherwise the newest run. */
-        setRun(runs.find((r) => (r.findings?.length ?? 0) > 0) ?? runs[0] ?? null);
-        setLog(logJson.entries ?? []);
+        setRun(
+          summary.sample
+            ? ({
+                tenderId: summary.sample.tenderId,
+                status: summary.sample.status,
+                updatedAt: summary.sample.updatedAt,
+                findings: [],
+                drafts: [],
+              } as unknown as LiveRun)
+            : null,
+        );
+        setLog(summary.activity ?? []);
       } catch {
         /* sidecar unreachable — keep the last snapshot */
       } finally {

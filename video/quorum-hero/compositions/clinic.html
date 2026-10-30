@@ -1,0 +1,172 @@
+<template>
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: #08090c;
+    }
+    #clinic-media {
+      position: absolute;
+      inset: 0;
+      transform-origin: 58% 58%;
+      will-change: transform;
+    }
+    #clinic-video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .clinic-shade {
+      position: absolute;
+      z-index: 1;
+      inset: 0;
+      background:
+        linear-gradient(90deg, rgba(8, 9, 12, 0.32) 0%, rgba(8, 9, 12, 0.02) 44%, rgba(8, 9, 12, 0.2) 100%),
+        linear-gradient(180deg, rgba(8, 9, 12, 0.4) 0%, rgba(8, 9, 12, 0) 28%, rgba(8, 9, 12, 0.08) 62%, rgba(8, 9, 12, 0.68) 100%);
+    }
+    .clinic-vignette {
+      position: absolute;
+      z-index: 1;
+      inset: -1px;
+      background: radial-gradient(112% 90% at 54% 50%, transparent 36%, rgba(8, 9, 12, 0.56) 100%);
+    }
+    #clinic-line-wrap {
+      position: absolute;
+      z-index: 2;
+      left: 16%;
+      right: 16%;
+      top: 72%;
+      height: 1.5px;
+    }
+    #clinic-line {
+      position: absolute;
+      inset: 0;
+      background: var(--accent, #e8382a);
+      transform-origin: left center;
+      opacity: 0.95;
+      box-shadow:
+        0 0 10px rgba(232, 56, 42, 0.7),
+        0 0 32px rgba(232, 56, 42, 0.3);
+    }
+    #clinic-dot {
+      position: absolute;
+      left: 0;
+      top: -3.5px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent, #e8382a);
+      box-shadow:
+        0 0 14px 4px rgba(232, 56, 42, 0.55),
+        0 0 36px 9px rgba(232, 56, 42, 0.2);
+    }
+    #clinic-mark {
+      position: absolute;
+      z-index: 2;
+      left: 62%;
+      top: 64%;
+      width: 64px;
+      height: 64px;
+      margin: -32px 0 0 -32px;
+      color: var(--accent, #e8382a);
+      opacity: 0;
+      filter: drop-shadow(0 0 10px rgba(232, 56, 42, 0.35));
+    }
+    #clinic-mark svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+    #clinic-mark .ring,
+    #clinic-mark .tick {
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.1;
+    }
+    #clinic-mark .ring {
+      stroke-dasharray: 138.2;
+      stroke-dashoffset: 138.2;
+    }
+    #clinic-mark .core {
+      fill: currentColor;
+    }
+    #clinic-pulse {
+      position: absolute;
+      z-index: 2;
+      left: 62%;
+      top: 64%;
+      width: 64px;
+      height: 64px;
+      margin: -32px 0 0 -32px;
+      border: 1.2px solid var(--accent, #e8382a);
+      border-radius: 50%;
+      opacity: 0;
+      box-shadow: 0 0 18px rgba(232, 56, 42, 0.35);
+    }
+  </style>
+
+  <div data-hf-id="hf-xoi7" id="root" data-composition-id="clinic" data-width="1600" data-height="900">
+    <div data-hf-id="hf-wp3y" id="clinic-media">
+      <video data-color-grading="{&quot;preset&quot;:null,&quot;intensity&quot;:1,&quot;adjust&quot;:{&quot;exposure&quot;:0,&quot;contrast&quot;:0.1,&quot;highlights&quot;:-0.18,&quot;shadows&quot;:0.05,&quot;whites&quot;:0,&quot;blacks&quot;:-0.08,&quot;temperature&quot;:0.12,&quot;tint&quot;:0.02,&quot;vibrance&quot;:0.01,&quot;saturation&quot;:-0.7},&quot;details&quot;:{&quot;vignette&quot;:0.2,&quot;vignetteMidpoint&quot;:0.5,&quot;vignetteRoundness&quot;:0,&quot;vignetteFeather&quot;:0.68,&quot;grain&quot;:0.06,&quot;grainSize&quot;:0.28,&quot;grainRoughness&quot;:0.58},&quot;effects&quot;:{&quot;blur&quot;:0,&quot;pixelate&quot;:0,&quot;chromaBleed&quot;:0,&quot;tapeDamage&quot;:0,&quot;tapeTracking&quot;:0,&quot;tapeNoise&quot;:1,&quot;tapeSpeed&quot;:0.5,&quot;filmArtifacts&quot;:0,&quot;halftone&quot;:0,&quot;halftoneSize&quot;:0,&quot;twoInkPrint&quot;:0,&quot;twoInkPrintSize&quot;:0,&quot;ascii&quot;:0,&quot;asciiSize&quot;:0.06578947368421052,&quot;asciiInvert&quot;:0,&quot;asciiStyle&quot;:0,&quot;asciiColor&quot;:1,&quot;asciiRotation&quot;:0,&quot;dither&quot;:0,&quot;ditherSize&quot;:0,&quot;bloom&quot;:0,&quot;bloomRadius&quot;:8,&quot;monoScreen&quot;:0,&quot;monoScreenSize&quot;:0,&quot;monoScreenAngle&quot;:0,&quot;monoScreenSpread&quot;:0,&quot;monoScreenShape&quot;:0,&quot;monoScreenInvert&quot;:0,&quot;scanlines&quot;:0,&quot;scanlineCount&quot;:0,&quot;scanlineSoftness&quot;:0,&quot;chromaticAberration&quot;:0,&quot;chromaticAngle&quot;:0,&quot;crtCurvature&quot;:0,&quot;digitalGlitch&quot;:0,&quot;digitalGlitchColorSplit&quot;:0,&quot;digitalGlitchLineTear&quot;:0,&quot;digitalGlitchPixelate&quot;:0,&quot;digitalGlitchBlockAmount&quot;:0,&quot;digitalGlitchBlockDisplacement&quot;:0,&quot;digitalGlitchBlockOpacity&quot;:0,&quot;digitalGlitchSpeed&quot;:0,&quot;engraving&quot;:0,&quot;engravingSpacing&quot;:0.4117647058823529,&quot;engravingMinThickness&quot;:0.2,&quot;engravingMaxThickness&quot;:0.4571428571428572,&quot;engravingAngle&quot;:0.25,&quot;engravingContrast&quot;:0.4666666666666667,&quot;engravingSharpness&quot;:0.59,&quot;engravingWave&quot;:0.2,&quot;engravingWaveFrequency&quot;:0.2222222222222222,&quot;crosshatch&quot;:0,&quot;crosshatchSpacing&quot;:0.28,&quot;crosshatchThickness&quot;:0.25,&quot;crosshatchAngle&quot;:0.25,&quot;crosshatchContrast&quot;:0.3333333333333333,&quot;crosshatchEdges&quot;:0.5,&quot;crosshatchLineWeight&quot;:0,&quot;crosshatchWave&quot;:0.33,&quot;crosshatchWaveFrequency&quot;:0.2222222222222222,&quot;kuwahara&quot;:0,&quot;kuwaharaRadius&quot;:0.14285714285714285,&quot;kuwaharaSharpness&quot;:0.3125,&quot;kuwaharaSaturation&quot;:0.5},&quot;lut&quot;:null,&quot;colorSpace&quot;:&quot;rec709&quot;}" data-hf-id="hf-doxz" id="clinic-video" class="clip" data-start="0" data-duration="3" src="assets/clinic.mp4" muted playsinline preload="auto"></video>
+    </div>
+    <div data-hf-id="hf-4kpc" class="clinic-shade"></div>
+    <div data-hf-id="hf-glr3" class="clinic-vignette"></div>
+
+    <div data-hf-id="hf-tgml" id="clinic-line-wrap">
+      <div data-hf-id="hf-4yxc" id="clinic-line"></div>
+      <div data-hf-id="hf-nc1v" id="clinic-dot"></div>
+    </div>
+
+    <div data-hf-id="hf-oq90" id="clinic-mark" aria-hidden="true">
+      <svg data-hf-id="hf-l6o9" viewBox="0 0 64 64">
+        <circle data-hf-id="hf-gae3" class="ring" cx="32" cy="32" r="22" />
+        <line data-hf-id="hf-h6rt" class="tick" x1="32" y1="2" x2="32" y2="14" />
+        <line data-hf-id="hf-qebf" class="tick" x1="32" y1="50" x2="32" y2="62" />
+        <line data-hf-id="hf-niql" class="tick" x1="2" y1="32" x2="14" y2="32" />
+        <line data-hf-id="hf-j82r" class="tick" x1="50" y1="32" x2="62" y2="32" />
+        <circle data-hf-id="hf-jj2a" class="core" cx="32" cy="32" r="2.4" />
+      </svg>
+    </div>
+    <div data-hf-id="hf-qva9" id="clinic-pulse"></div>
+  </div>
+
+  <script>
+    const tl = gsap.timeline({ paused: true });
+
+    tl.fromTo(
+      "#clinic-media",
+      { scale: 1.0, x: 4, y: 0 },
+      { scale: 1.05, x: -4, y: -2, duration: 3, ease: "power1.inOut" },
+      0
+    );
+
+    tl.fromTo("#clinic-line", { scaleX: 0 }, { scaleX: 1, duration: 1.5, ease: "power2.inOut" }, 0.2);
+    tl.fromTo("#clinic-dot", { x: 0, opacity: 0 }, { x: 1088, opacity: 1, duration: 1.5, ease: "power2.inOut" }, 0.2);
+
+    tl.fromTo("#clinic-mark", { opacity: 0, scale: 1.35 }, { opacity: 0.85, scale: 1, duration: 0.45, ease: "power3.out" }, 0.55);
+    tl.fromTo(
+      "#clinic-mark .ring",
+      { strokeDashoffset: 138.2 },
+      { strokeDashoffset: 0, duration: 0.5, ease: "power2.inOut" },
+      0.55
+    );
+
+    tl.to("#clinic-mark .core", { scale: 2.1, duration: 0.12, ease: "power2.out" }, 2.62);
+    tl.to("#clinic-mark .core", { scale: 1, duration: 0.22, ease: "power2.inOut" }, 2.74);
+    tl.fromTo(
+      "#clinic-pulse",
+      { opacity: 0.8, scale: 0.4 },
+      { opacity: 0, scale: 2.6, duration: 0.55, ease: "power2.out" },
+      2.58
+    );
+
+    tl.to("#clinic-line", { opacity: 0.4, duration: 0.4, ease: "power1.inOut" }, 2.35);
+    tl.to("#clinic-dot", { opacity: 0.3, duration: 0.4, ease: "power1.inOut" }, 2.35);
+    tl.to("#clinic-mark", { opacity: 0.35, duration: 0.3, ease: "power1.inOut" }, 2.7);
+
+    window.__timelines["clinic"] = tl;
+  </script>
+</template>

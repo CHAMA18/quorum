@@ -11,10 +11,20 @@
 
 import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { AsyncLocalStorage } from "node:async_hooks";
-import { appendFileSync, renameSync } from "node:fs";
+import { appendFileSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { resolveDataDir } from "./paths";
 import { initializePersistence, readJsonSnapshot, readSnapshot, writeSnapshot, persistenceStatus } from "./postgres";
+import {
+  hashLogEntry,
+  splitSegments,
+  reconcileRegister,
+  verifyChain,
+  type ChainEntry,
+  type ChainVerdict,
+  type SegmentRecord,
+} from "./audit-chain";
+import { secretFor } from "./secrets";
 
 export type ToolKind = "READ" | "WRITES" | "IRREVERSIBLE" | "GATE_DECISION";
 
@@ -85,7 +95,7 @@ export interface Gate {
   tenderId: string;
   tool: string;
   inputs: unknown;
-  status: "PENDING" | "APPROVED" | "REJECTED" | "EXECUTED";
+  status: "PENDING" | "AWAITING_SECOND" | "APPROVED" | "REJECTED" | "EXECUTED";
   createdAt: string;
   decidedAt?: string;
   approver?: string;
@@ -107,6 +117,14 @@ export interface Gate {
      member must HOLD this office to approve. The signed-in officer (the gavel)
      is the accounting officer and may always sign. */
   requiredOffice?: Office;
+  /* Evidential weight. A decided gate is evidence only when it carries both a
+     step-up assertion and an Ed25519 receipt; legacy decisions are marked. */
+  evidential?: boolean;
+  evidentialNote?: string;
+  /* Dual approval above the configured threshold: the first signature records
+     who opened the gate, the second names the officer who completed it. */
+  firstApproval?: { by: string; at: string; stepUpJti: string; note?: string };
+  secondApprover?: { by: string; at: string; stepUpJti: string };
 }
 
 /* The named offices of a procurement desk. The committee roster carries one
@@ -141,6 +159,9 @@ export interface Run {
   workspaceId?: string;
   tenderId: string;
   status: "RUNNING" | "AWAITING_GATE" | "REJECTED" | "FILED" | "FAILED";
+  /* The attested officer who launched the review — four eyes compares the
+     signer against this, so preparing and approving cannot be one act. */
+  startedBy?: string;
   startedAt: string;
   updatedAt: string;
   progress: string[];
@@ -169,6 +190,8 @@ export interface RosterMemberForGate {
 
 /* fileURLToPath decodes %20 etc. — .pathname breaks on paths with spaces. */
 const DATA = resolveDataDir();
+/** The record directory — the sidecar's own data files live here. */
+export const DATA_DIR = DATA;
 
 function cap(value: unknown, max = 420): unknown {
   const s = typeof value === "string" ? value : JSON.stringify(value);
@@ -190,10 +213,34 @@ export const auditHealth = {
   stateSaveFailing: false,
   stateCorrupt: false,
   stateCorruptFile: null as string | null,
+  /* A snapshot write was refused because the persisted record held decisions
+     this process does not have. Nothing was overwritten. */
+  snapshotOverwriteRefused: false,
+  /* Decided gates on the record with neither a signature nor a step-up. */
+  unsignedExecuted: 0,
+  /* Epochs sealed when the segment register was introduced or extended. */
+  auditRegisterAdded: 0,
 };
 
 function hashOfEntry(entry: Omit<LogEntry, "self">): string {
-  return createHash("sha256").update(JSON.stringify(entry)).digest("hex").slice(0, 16);
+  return hashLogEntry(entry as Record<string, unknown>);
+}
+
+/* A decided gate is evidence only when it carries both a step-up assertion and
+   an Ed25519 receipt. Decisions recorded before that became mandatory stay on
+   the record — deleting history would be worse — but they are marked, so no
+   screen or export can present them as signed approvals. */
+function markLegacyDecisions() {
+  let unsigned = 0;
+  for (const gate of state.gates) {
+    if (gate.status !== "EXECUTED" && gate.status !== "APPROVED") continue;
+    if (gate.signature && gate.stepUp) continue;
+    gate.evidential = false;
+    gate.evidentialNote =
+      "UNSIGNED — decided before signatures were mandatory. The decision stands as a record of what happened, but it is not evidence of a signed approval.";
+    unsigned += 1;
+  }
+  auditHealth.unsignedExecuted = unsigned;
 }
 
 export function appendLog(e: Omit<LogEntry, "seq" | "id" | "ts" | "prev" | "self">): LogEntry {
@@ -225,29 +272,69 @@ export function appendLog(e: Omit<LogEntry, "seq" | "id" | "ts" | "prev" | "self
   return logged;
 }
 
-/* Verifies the prev/self hash chain of in-memory or parsed-from-disk entries. */
-export function verifyLogChain(entries: LogEntry[]): { ok: boolean; brokenAt: number | null; checked: number } {
-  let expected = "genesis";
-  for (let i = 0; i < entries.length; i++) {
-    const { self, ...rest } = entries[i];
-    const h = hashOfEntry(rest as Omit<LogEntry, "self">);
-    if (!self || self !== h || entries[i].prev !== expected) return { ok: false, brokenAt: i, checked: i + 1 };
-    expected = self;
+/* ── The segment register — signed epochs across restarts ────────────────
+   A restart begins again at genesis; that is a fact of operating the service,
+   not a tampering event. Each segment of the log is sealed under the audit key
+   with its first and last line and its head hash, and verification checks the
+   segments and their records together. An unrecorded restart still fails, so
+   the epochs make restarts attributable instead of invisible. */
+export const AUDIT_REGISTER = DATA + "log-segments.jsonl";
+
+function readRegister(): SegmentRecord[] {
+  try {
+    return readFileSync(AUDIT_REGISTER, "utf8")
+      .split("\n")
+      .filter((line) => line.trim().length > 0)
+      .map((line) => JSON.parse(line) as SegmentRecord);
+  } catch {
+    return [];
   }
-  return { ok: true, brokenAt: null, checked: entries.length };
 }
 
-export async function verifyToolLogFile(): Promise<{ ok: boolean; brokenAt: number | null; checked: number; lines: number; error?: string }> {
+export async function readLogEntries(): Promise<LogEntry[]> {
   try {
     const raw = await readFile(DATA + "tool-log.jsonl", "utf8");
-    const lines = raw
+    return raw
       .split("\n")
-      .filter((l) => l.trim().length > 0)
-      .map((l) => JSON.parse(l) as LogEntry);
-    return { ...verifyLogChain(lines), lines: lines.length };
+      .filter((line) => line.trim().length > 0)
+      .map((line) => JSON.parse(line) as LogEntry);
   } catch {
-    return { ok: true, brokenAt: null, checked: 0, lines: 0, error: "no log file yet" };
+    return [];
   }
+}
+
+/** Seal every segment the register does not cover yet. Existing records are
+    never rewritten: a disagreement has to fail loudly, not be papered over. */
+export async function reconcileAuditRegister(): Promise<{ added: number; epochs: number }> {
+  const entries = await readLogEntries();
+  if (!entries.length) return { added: 0, epochs: readRegister().length };
+  const { register, added } = reconcileRegister(
+    entries as unknown as ChainEntry[],
+    readRegister(),
+    secretFor("audit"),
+    "quorum-mcp",
+  );
+  if (added.length) {
+    writeFileSync(AUDIT_REGISTER, register.map((record) => JSON.stringify(record)).join("\n") + "\n");
+    auditHealth.auditRegisterAdded += added.length;
+  }
+  return { added: added.length, epochs: register.length };
+}
+
+/** Verify the whole log against its register — what /api/log/verify reports. */
+export async function verifyToolLogFile(): Promise<ChainVerdict> {
+  const entries = await readLogEntries();
+  if (!entries.length) {
+    return { ok: true, brokenAt: null, checked: 0, lines: 0, segments: 0, restarts: [], epochs: [], error: "no log file yet" };
+  }
+  return verifyChain(entries as unknown as ChainEntry[], readRegister(), secretFor("audit"));
+}
+
+/** In-memory chain check for callers that already hold the entries. */
+export function verifyLogChain(entries: LogEntry[]): { ok: boolean; brokenAt: number | null; checked: number } {
+  const segments = splitSegments(entries as unknown as ChainEntry[]);
+  const broken = segments.find((segment) => !segment.ok);
+  return { ok: !broken, brokenAt: broken ? broken.brokenAt : null, checked: entries.length };
 }
 
 /* ── Gateway attestation — WHO the web layer vouches for ─────────────────
@@ -257,20 +344,13 @@ export async function verifyToolLogFile(): Promise<{ ok: boolean; brokenAt: numb
    identity can no longer be typed by the caller — it is attested by the
    process that verified the session. GATE_SECRET overrides the shipped
    development default on real deployments. */
-const DEV_GATE_SECRET = "quorum-dev-attest-secret";
-
 /**
- * GATE_SECRET resolves lazily, per signature, and then fails closed: the
- * guard lives at the first use, not at module evaluation. Production builds
- * import this module with no runtime secrets in scope and must still load;
- * a production PROCESS without a real GATE_SECRET still refuses to sign.
+ * The attestation key. Purpose-scoped secrets live in ./secrets: ATTEST_SECRET
+ * first, GATE_SECRET as the shared fallback, and the shipped development
+ * default refused outright in a production process.
  */
 export function gateSecret(): string {
-  const secret = process.env.GATE_SECRET?.trim() || DEV_GATE_SECRET;
-  if (process.env.NODE_ENV === "production" && secret === DEV_GATE_SECRET) {
-    throw new Error("GATE_SECRET must be set to a real secret in production — refusing to run with the shipped default.");
-  }
-  return secret;
+  return secretFor("attest");
 }
 export const ATTEST_SKEW_MS = 5 * 60 * 1000;
 
@@ -733,6 +813,9 @@ export interface Guards {
   priceVariancePct: 15 | 25 | 40;
   checklist: "STANDARD" | "STRICT";
   registryCrossCheck: boolean;
+  /* A gate whose stated value is at or above this figure needs two named
+     approvals from two different officers. 0 disables the rule. */
+  dualApprovalThreshold: number;
   /* Who last moved a guard, and when — the audit line on the page. */
   updatedAt: string | null;
   updatedBy: string | null;
@@ -742,9 +825,30 @@ export const DEFAULT_GUARDS: Guards = {
   priceVariancePct: 25,
   checklist: "STANDARD",
   registryCrossCheck: true,
+  dualApprovalThreshold: 0,
   updatedAt: null,
   updatedBy: null,
 };
+
+/* One normaliser for every reader of the guards — the live store, the offline
+   eval and the benchmark parse the same record the same way, so a harness can
+   never drift from the settings the desk set. */
+export function normalizeGuards(raw: unknown): Guards {
+  const g = (raw ?? {}) as Partial<Guards>;
+  return {
+    priceVariancePct: ([15, 25, 40] as const).includes(g.priceVariancePct as 15 | 25 | 40)
+      ? (g.priceVariancePct as Guards["priceVariancePct"])
+      : DEFAULT_GUARDS.priceVariancePct,
+    checklist: g.checklist === "STRICT" ? "STRICT" : "STANDARD",
+    registryCrossCheck: typeof g.registryCrossCheck === "boolean" ? g.registryCrossCheck : DEFAULT_GUARDS.registryCrossCheck,
+    dualApprovalThreshold:
+      typeof g.dualApprovalThreshold === "number" && g.dualApprovalThreshold > 0
+        ? g.dualApprovalThreshold
+        : DEFAULT_GUARDS.dualApprovalThreshold,
+    updatedAt: typeof g.updatedAt === "string" ? g.updatedAt : null,
+    updatedBy: typeof g.updatedBy === "string" ? g.updatedBy : null,
+  };
+}
 
 export interface StepUpUse {
   jti: string;
@@ -844,20 +948,14 @@ export async function loadState() {
     state.agentMode = raw.agentMode === "read-only" || raw.agentMode === "disabled" ? raw.agentMode : DEFAULT_AGENT_MODE;
     /* Merged over the defaults so a store written before the guards existed
        still boots with the carved settings. */
-    const g = (raw.guards ?? {}) as Partial<Guards>;
-    state.guards = {
-      priceVariancePct: ([15, 25, 40] as const).includes(g.priceVariancePct as 15 | 25 | 40)
-        ? (g.priceVariancePct as Guards["priceVariancePct"])
-        : DEFAULT_GUARDS.priceVariancePct,
-      checklist: g.checklist === "STRICT" ? "STRICT" : "STANDARD",
-      registryCrossCheck: typeof g.registryCrossCheck === "boolean" ? g.registryCrossCheck : DEFAULT_GUARDS.registryCrossCheck,
-      updatedAt: typeof g.updatedAt === "string" ? g.updatedAt : null,
-      updatedBy: typeof g.updatedBy === "string" ? g.updatedBy : null,
-    };
+    state.guards = normalizeGuards(raw.guards);
     seq = raw.seq ?? 0;
   } catch {
     /* first boot */
   }
+  /* Mark decisions that predate mandatory signatures before anything reads
+     them. This is a label, never a delete: the record of what happened stays. */
+  markLegacyDecisions();
   /* The audit spine continues across restarts: the on-disk log is read back so
      the next append's `prev` points at the last line's hash, not at genesis —
      an append-only chain is only append-only if boot never pretends it is
@@ -880,32 +978,149 @@ export async function loadState() {
   } catch {
     /* no log file yet — genesis it is */
   }
+  /* Seal every segment the register does not cover yet. A fresh restart point
+     becomes an epoch, so it is visible rather than mistaken for a break. */
+  try {
+    const sealed = await reconcileAuditRegister();
+    if (sealed.added) console.log(`[audit-spine] sealed ${sealed.added} new epoch(s) in the segment register`);
+  } catch (err) {
+    console.error("[audit-spine] the segment register could not be sealed — verification will report the truth:", err);
+  }
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingSnapshot: ReturnType<typeof setTimeout> | null = null;
+const DECIDED_STATUSES = new Set<Gate["status"]>(["APPROVED", "EXECUTED", "REJECTED"]);
+
+/* A deliberate removal (the probe purge, an archive-and-remove) is the one case
+   where losing rows is the intent. It must be declared up front, with a reason,
+   and the spine records it — so the override is auditable rather than a hole. */
+let intentionalRemoval: string | null = null;
+export function allowIntentionalRemoval(reason: string) {
+  intentionalRemoval = reason.slice(0, 400);
+}
+let guardCache: { mtimeMs: number; gates: Gate[] } | null = null;
+
+/** The gates in the persisted snapshot, cached by mtime. */
+async function persistedGates(): Promise<Gate[]> {
+  try {
+    const file = Bun.file(DATA + "state.json");
+    const mtimeMs = (await file.stat()).mtimeMs;
+    if (guardCache && guardCache.mtimeMs === mtimeMs) return guardCache.gates;
+    const parsed = (await file.json()) as { gates?: Gate[] };
+    guardCache = { mtimeMs, gates: parsed.gates ?? [] };
+    return guardCache.gates;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Refuse to write a snapshot that would erase a decision this process does not
+ * hold. The failure this prevents is real: two processes, one data directory,
+ * last write wins — and a signed, executed gate disappears from the record.
+ */
+async function overwriteRefusal(): Promise<string | null> {
+  if (persistenceStatus() !== "json") return null;
+  if (intentionalRemoval) {
+    appendLog({
+      actor: "quorum-mcp",
+      server: "quorum-mcp",
+      tool: "record_removal",
+      kind: "IRREVERSIBLE",
+      inputs: { reason: intentionalRemoval },
+      outputs: { override: "the snapshot overwrite guard was waived for this declared removal" },
+      status: "OK",
+      durationMs: 0,
+    });
+    return null;
+  }
+  const persisted = await persistedGates();
+  for (const gate of persisted) {
+    const decided = DECIDED_STATUSES.has(gate.status) || !!gate.signature;
+    if (!decided) continue;
+    const live = state.gates.find(
+      (g) => g.id === gate.id && (g.workspaceId ?? "demo") === (gate.workspaceId ?? "demo"),
+    );
+    if (!live) {
+      return `gate ${gate.id} (${gate.status}${gate.signature ? ", signed" : ""}) is in the persisted record but not in this process's memory`;
+    }
+    if (!DECIDED_STATUSES.has(live.status) && live.status !== gate.status) {
+      return `gate ${gate.id} is ${live.status} in memory but ${gate.status} in the persisted record`;
+    }
+  }
+  return null;
+}
+
+async function persist(snapshot: unknown) {
+  const refusal = await overwriteRefusal();
+  if (refusal) {
+    auditHealth.stateSaveFailing = true;
+    auditHealth.snapshotOverwriteRefused = true;
+    console.error(
+      `[audit-spine] snapshot write REFUSED — ${refusal}. The persisted record is newer than this process; nothing was overwritten.`,
+    );
+    try {
+      appendLog({
+        actor: "quorum-mcp",
+        server: "quorum-mcp",
+        tool: "state_write_refused",
+        kind: "WRITES",
+        inputs: {},
+        outputs: { refused: refusal },
+        status: "ERROR",
+        durationMs: 0,
+      });
+    } catch {
+      /* appendLog carries its own failure flag */
+    }
+    return;
+  }
+  try {
+    await writeSnapshot(snapshot);
+    auditHealth.stateSaveFailing = false;
+    auditHealth.snapshotOverwriteRefused = false;
+    intentionalRemoval = null;
+  } catch (err) {
+    auditHealth.stateSaveFailing = true;
+    console.error("[audit-spine] state snapshot write FAILED — gates/runs/cycle are memory-only until this resolves:", err);
+  }
+}
+
+/* Read the guards and the supplier register WITHOUT booting or writing the
+   store. The offline eval and the benchmark use this so they measure the same
+   engine the app runs, under the settings the desk set — never a fixed
+   default. Read-only: no snapshot is written. */
+export async function readPersistedGuardContext(): Promise<{
+  guards: Guards;
+  registry: { name: string; status: string }[];
+}> {
+  try {
+    const storage = await initializePersistence();
+    let raw: any = await readSnapshot();
+    if (raw === null && storage === "postgres") raw = await readJsonSnapshot();
+    const suppliers = (raw?.suppliers ?? []) as { name?: unknown; status?: unknown }[];
+    return {
+      guards: normalizeGuards(raw?.guards),
+      registry: suppliers
+        .filter((s) => s && typeof s.name === "string" && s.name.length > 0)
+        .map((s) => ({ name: String(s.name), status: String(s.status ?? "ACTIVE") })),
+    };
+  } catch {
+    return { guards: { ...DEFAULT_GUARDS }, registry: [] };
+  }
+}
+
 export function saveState() {
   if (saveTimer) clearTimeout(saveTimer);
   if (pendingSnapshot) clearTimeout(pendingSnapshot);
   saveTimer = setTimeout(() => {
     const snapshot = { ...state, seq };
     if (persistenceStatus() === "postgres") {
-      void writeSnapshot(snapshot)
-      .then(() => {
-        auditHealth.stateSaveFailing = false;
-      })
-      .catch((err) => {
-        auditHealth.stateSaveFailing = true;
-        console.error("[audit-spine] state snapshot write FAILED — gates/runs/cycle are memory-only until this resolves:", err);
-      });
+      void persist(snapshot);
     } else {
       pendingSnapshot = setTimeout(() => {
-        void writeSnapshot(snapshot)
-          .then(() => { auditHealth.stateSaveFailing = false; })
-          .catch((err) => {
-            auditHealth.stateSaveFailing = true;
-            console.error("[audit-spine] state.json write FAILED — gates/runs/cycle are memory-only until this resolves:", err);
-          });
+        void persist(snapshot);
       }, 0);
     }
   }, 120);

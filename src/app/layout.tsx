@@ -5,7 +5,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseAnalytics } from "@/components/quorum/firebase-analytics";
 import { ThemeProvider } from "@/components/quorum/theme-toggle";
-import { MuseAssistant } from "@/components/quorum/muse-assistant";
+import { MuseAssistantGate } from "@/components/quorum/muse-assistant-gate";
 import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
 
 // Self-hosted via next/font — zero runtime requests to Google, so the page
@@ -96,9 +96,9 @@ export default async function RootLayout({
       >
         <ThemeProvider>
           {children}
-          {/* The voice assistant bubble rides above every screen — landing,
-              workspace, docs and org portal alike. */}
-          <MuseAssistant name={firstName} />
+          {/* The voice assistant is a desk tool: it rides the workspace, docs
+              and org portal — never the public landing or auth door. */}
+          <MuseAssistantGate name={firstName} />
           <FirebaseAnalytics />
           <Toaster />
         </ThemeProvider>

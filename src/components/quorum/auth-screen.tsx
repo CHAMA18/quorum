@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
 import { ArrowRight, CircleAlert, Eye, EyeOff, FileText, Landmark, Loader2, Lock, ShieldCheck, UserRound } from "lucide-react";
+import { AuthFilm } from "@/components/quorum/auth-film";
 import { QuorumLogo } from "@/components/quorum/logo";
 import { MasterSwitcher } from "@/components/quorum/master-switcher";
 import type { AuthMode, AuthUser } from "@/lib/auth-types";
@@ -124,11 +125,11 @@ function GateTerminal({ grantedFirstName }: { grantedFirstName: string | null })
     let alive = true;
     const pull = async () => {
       try {
-        const res = await fetch("/api/log?limit=8&XTransformPort=3031");
-        const j = (await res.json()) as { entries?: LiveLogEntry[] };
+        const res = await fetch("/api/public/summary");
+        const j = (await res.json()) as { activity?: LiveLogEntry[] };
         if (!alive) return;
         setFeed(
-          (j.entries ?? []).slice(0, 8).reverse().map((e) => {
+          (j.activity ?? []).slice(0, 8).reverse().map((e) => {
             const status = e.status ?? "";
             const kind: LineKind = status === "PENDING_GATE" ? "gate" : status === "OK" ? "ok" : "step";
             const prefix = kind === "gate" ? "⏸" : kind === "ok" ? "✓" : "▸";
@@ -200,6 +201,7 @@ function GateTerminal({ grantedFirstName }: { grantedFirstName: string | null })
 function StoryPanel({ grantedFirstName }: { grantedFirstName: string | null }) {
   return (
     <aside className="relative hidden overflow-hidden bg-night lg:flex lg:flex-col lg:justify-between lg:p-12">
+      <AuthFilm />
       <div
         className="pointer-events-none absolute inset-0 opacity-40"
         style={{
@@ -256,6 +258,7 @@ function StoryPanel({ grantedFirstName }: { grantedFirstName: string | null }) {
 function MobileBrandBand() {
   return (
     <div className="relative mb-5 overflow-hidden rounded-[10px] bg-night p-5 lg:hidden">
+      <AuthFilm compact />
       <div className="pointer-events-none absolute inset-0 bg-grid-dark opacity-60" aria-hidden="true" />
       <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-brand-600/20 blur-[70px]" aria-hidden="true" />
       <div className="relative">

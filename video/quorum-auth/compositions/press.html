@@ -1,0 +1,114 @@
+<template>
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: #0c0d10;
+      clip-path: inset(0 0 0 100%);
+    }
+    #press-media {
+      position: absolute;
+      inset: 0;
+      transform-origin: 58% 42%;
+      will-change: transform;
+    }
+    #press-video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .press-shade {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, rgba(12, 13, 16, 0.52) 0%, rgba(12, 13, 16, 0.08) 42%, rgba(12, 13, 16, 0.22) 100%),
+        linear-gradient(180deg, rgba(12, 13, 16, 0.46) 0%, rgba(12, 13, 16, 0.02) 30%, rgba(12, 13, 16, 0.1) 64%, rgba(12, 13, 16, 0.74) 100%);
+    }
+    .press-vignette {
+      position: absolute;
+      inset: -1px;
+      background: radial-gradient(110% 86% at 54% 48%, transparent 40%, rgba(12, 13, 16, 0.54) 100%);
+    }
+    #press-mark {
+      position: absolute;
+      left: 72%;
+      top: 14%;
+      width: 64px;
+      height: 64px;
+      color: var(--accent, #e8382a);
+      opacity: 0;
+      filter: drop-shadow(0 0 10px rgba(232, 56, 42, 0.35));
+    }
+    #press-mark svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+    #press-mark .ring {
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.1;
+    }
+    #press-mark .tick {
+      stroke: currentColor;
+      stroke-width: 1.1;
+    }
+    #press-mark .core {
+      fill: currentColor;
+    }
+  </style>
+
+  <div data-hf-id="hf-xhuh" id="root" data-composition-id="press" data-width="1080" data-height="1350">
+    <div data-hf-id="hf-fvgd" id="press-media">
+      <video data-color-grading="{&quot;preset&quot;:null,&quot;intensity&quot;:1,&quot;adjust&quot;:{&quot;exposure&quot;:0,&quot;contrast&quot;:0.14,&quot;highlights&quot;:-0.1,&quot;shadows&quot;:0.05,&quot;whites&quot;:0,&quot;blacks&quot;:-0.1,&quot;temperature&quot;:0.2,&quot;tint&quot;:0.02,&quot;vibrance&quot;:0.02,&quot;saturation&quot;:-0.62},&quot;details&quot;:{&quot;vignette&quot;:0.2,&quot;vignetteMidpoint&quot;:0.5,&quot;vignetteRoundness&quot;:0,&quot;vignetteFeather&quot;:0.68,&quot;grain&quot;:0.09,&quot;grainSize&quot;:0.28,&quot;grainRoughness&quot;:0.58},&quot;effects&quot;:{&quot;blur&quot;:0,&quot;pixelate&quot;:0,&quot;chromaBleed&quot;:0,&quot;tapeDamage&quot;:0,&quot;tapeTracking&quot;:0,&quot;tapeNoise&quot;:1,&quot;tapeSpeed&quot;:0.5,&quot;filmArtifacts&quot;:0,&quot;halftone&quot;:0,&quot;halftoneSize&quot;:0,&quot;twoInkPrint&quot;:0,&quot;twoInkPrintSize&quot;:0,&quot;ascii&quot;:0,&quot;asciiSize&quot;:0.06578947368421052,&quot;asciiInvert&quot;:0,&quot;asciiStyle&quot;:0,&quot;asciiColor&quot;:1,&quot;asciiRotation&quot;:0,&quot;dither&quot;:0,&quot;ditherSize&quot;:0,&quot;bloom&quot;:0,&quot;bloomRadius&quot;:8,&quot;monoScreen&quot;:0,&quot;monoScreenSize&quot;:0,&quot;monoScreenAngle&quot;:0,&quot;monoScreenSpread&quot;:0,&quot;monoScreenShape&quot;:0,&quot;monoScreenInvert&quot;:0,&quot;scanlines&quot;:0,&quot;scanlineCount&quot;:0,&quot;scanlineSoftness&quot;:0,&quot;chromaticAberration&quot;:0,&quot;chromaticAngle&quot;:0,&quot;crtCurvature&quot;:0,&quot;digitalGlitch&quot;:0,&quot;digitalGlitchColorSplit&quot;:0,&quot;digitalGlitchLineTear&quot;:0,&quot;digitalGlitchPixelate&quot;:0,&quot;digitalGlitchBlockAmount&quot;:0,&quot;digitalGlitchBlockDisplacement&quot;:0,&quot;digitalGlitchBlockOpacity&quot;:0,&quot;digitalGlitchSpeed&quot;:0,&quot;engraving&quot;:0,&quot;engravingSpacing&quot;:0.4117647058823529,&quot;engravingMinThickness&quot;:0.2,&quot;engravingMaxThickness&quot;:0.4571428571428572,&quot;engravingAngle&quot;:0.25,&quot;engravingContrast&quot;:0.4666666666666667,&quot;engravingSharpness&quot;:0.59,&quot;engravingWave&quot;:0.2,&quot;engravingWaveFrequency&quot;:0.2222222222222222,&quot;crosshatch&quot;:0,&quot;crosshatchSpacing&quot;:0.28,&quot;crosshatchThickness&quot;:0.25,&quot;crosshatchAngle&quot;:0.25,&quot;crosshatchContrast&quot;:0.3333333333333333,&quot;crosshatchEdges&quot;:0.5,&quot;crosshatchLineWeight&quot;:0,&quot;crosshatchWave&quot;:0.33,&quot;crosshatchWaveFrequency&quot;:0.2222222222222222,&quot;kuwahara&quot;:0,&quot;kuwaharaRadius&quot;:0.14285714285714285,&quot;kuwaharaSharpness&quot;:0.3125,&quot;kuwaharaSaturation&quot;:0.5},&quot;lut&quot;:null,&quot;colorSpace&quot;:&quot;rec709&quot;}" data-hf-id="hf-yp7v" id="press-video" class="clip" data-start="0" data-duration="3.15" src="assets/press.mp4" muted playsinline preload="auto"></video>
+    </div>
+    <div data-hf-id="hf-5kal" class="press-shade"></div>
+    <div data-hf-id="hf-vm70" class="press-vignette"></div>
+
+
+    <div data-hf-id="hf-bhgz" id="press-mark" aria-hidden="true">
+      <svg data-hf-id="hf-0fmv" viewBox="0 0 76 76">
+        <circle data-hf-id="hf-72rr" class="ring" cx="38" cy="38" r="22" />
+        <line data-hf-id="hf-zuxr" class="tick" x1="38" y1="3" x2="38" y2="17" />
+        <line data-hf-id="hf-4dok" class="tick" x1="38" y1="59" x2="38" y2="73" />
+        <line data-hf-id="hf-ob5z" class="tick" x1="3" y1="38" x2="17" y2="38" />
+        <line data-hf-id="hf-4uy4" class="tick" x1="59" y1="38" x2="73" y2="38" />
+        <circle data-hf-id="hf-ue60" class="core" cx="38" cy="38" r="2.2" />
+      </svg>
+    </div>
+  </div>
+
+  <script>
+    const tl = gsap.timeline({ paused: true });
+
+    /* The scanner opens the second frame from the right edge. */
+    tl.fromTo(
+      "#root",
+      { clipPath: "inset(0 0 0 100%)" },
+      { clipPath: "inset(0 0 0 0%)", duration: 0.38, ease: "power2.inOut" },
+      0
+    );
+
+    /* The mechanism advances, slow enough to read as weight. */
+    tl.fromTo(
+      "#press-media",
+      { scale: 1.04, x: 10, y: 2 },
+      { scale: 1.098, x: -8, y: -6, duration: 3.2, ease: "power1.inOut" },
+      0
+    );
+
+    /* One registration mark, placed like a printer's proof. */
+    tl.fromTo(
+      "#press-mark",
+      { opacity: 0, scale: 1.45, rotate: -14 },
+      { opacity: 0.76, scale: 1, rotate: 0, duration: 0.55, ease: "power3.out" },
+      0.38
+    );
+    tl.to("#press-mark", { opacity: 0.55, duration: 0.6, ease: "power1.inOut" }, 2.5);
+
+    window.__timelines["press"] = tl;
+  </script>
+</template>

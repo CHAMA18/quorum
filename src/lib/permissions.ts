@@ -87,6 +87,27 @@ export function canAssignRole(actor: WorkspaceRole, target: WorkspaceRole): bool
 }
 
 /**
+ * The same-origin sidecar gateway: which workspace role may read a given
+ * sidecar path. Every read now needs a session; this decides whether that
+ * session may see the particular surface. An auditor sees the audit trail and
+ * the file, not the rule configuration; only the desk's administrators do.
+ */
+export function canReadSidecar(role: WorkspaceRole | null | undefined, path: string): boolean {
+  if (!role) return false;
+  if (path.startsWith("/api/guards") || path.startsWith("/api/settings")) return can(role, "manage_rules");
+  if (path.startsWith("/api/portal-state") || path.startsWith("/api/portal-connect") || path.startsWith("/api/portal-links")) {
+    return can(role, "manage_sources");
+  }
+  if (path.startsWith("/api/suppliers")) return can(role, "manage_suppliers") || role === "AUDITOR" || role === "COMMITTEE";
+  if (path.startsWith("/api/applications")) return can(role, "manage_suppliers") || role === "COMMITTEE";
+  if (path.startsWith("/api/log") || path.startsWith("/api/decisions")) return can(role, "read_audit");
+  if (path.startsWith("/api/tenders") || path.includes("/docs")) return can(role, "read_documents");
+  /* The rest of the desk (runs, gates, committee, cycle, samples) is readable
+     by every signed-in desk role — auditors included, they oversee it. */
+  return true;
+}
+
+/**
  * The same-origin sidecar gateway: which workspace role may perform a mutation
  * on a given sidecar path. Reads stay open to authenticated desk users; the
  * irreversible and configuration surfaces are the ones that matter.
@@ -107,7 +128,7 @@ export function canMutateSidecar(
   if (path.startsWith("/api/suppliers") || path.startsWith("/api/applications")) {
     return can(role, "manage_suppliers");
   }
-  if (path.startsWith("/api/source-requests") || path.startsWith("/api/pack-binding")) {
+  if (path.startsWith("/api/source-requests") || path.startsWith("/api/ocp-refresh") || path.startsWith("/api/pack-binding")) {
     return can(role, "manage_sources");
   }
   if (

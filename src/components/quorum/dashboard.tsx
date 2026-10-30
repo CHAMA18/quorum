@@ -43,7 +43,6 @@ import {
   Scale,
   Search,
   ScrollText,
-  ServerCog,
   Settings,
   ShieldCheck,
   Stamp,
@@ -59,10 +58,10 @@ import {
 import { AuditView } from "@/components/quorum/audit-view";
 import { OversightView } from "@/components/quorum/oversight-view";
 import { CalendarView } from "@/components/quorum/calendar-view";
+import { IntegrationsView } from "@/components/quorum/integrations-view";
 import { CycleView } from "@/components/quorum/cycle-view";
 import { SpecBar } from "@/components/quorum/reveal";
 import { QuorumLogo } from "@/components/quorum/logo";
-import { MasterSwitcher } from "@/components/quorum/master-switcher";
 import { NotificationBell } from "@/components/quorum/notification-bell";
 import { StackConsole } from "@/components/quorum/stack-console";
 import { StepUpHost, requestStepUp } from "@/components/quorum/step-up";
@@ -126,6 +125,9 @@ export type McRun = {
   unsourced: number;
   status: RunStatus;
   startedAt: string;
+  /* The exact backend instant behind `startedAt` — the date filter reads
+     this, never the human clock string. */
+  startedAtIso: string;
   /* The REAL seal from the sidecar — the executed gate's receipt hash, a
      sha-256 of the sealed bundle. Null until the gate signs. */
   seal?: string | null;
@@ -383,6 +385,7 @@ function useMissionData() {
           unsourced: r.findings.length - citations,
           status: RUN_STATUS[r.status],
           startedAt: clockOf(r.startedAt),
+          startedAtIso: r.startedAt,
           seal: r.seal ?? null,
           sealedBy: r.sealedBy ?? null,
         };
@@ -472,6 +475,7 @@ type SectionId =
   | "mc-oversight"
   | "mc-calendar"
   | "mc-suppliers"
+  | "mc-integrations"
   | "mc-rules"
   | "mc-stack"
   | "mc-audit"
@@ -491,8 +495,8 @@ const NAV_GROUPS: {
       { id: "mc-overview", label: "Overview", icon: Gauge },
       { id: "mc-runs", label: "Evaluations", icon: Terminal, badge: "runs" },
       { id: "mc-gates", label: "Approvals", icon: Stamp, badge: "gates" },
-      { id: "mc-cycle", label: "Tender cycle", icon: Workflow },
-      { id: "mc-activity", label: "Live activity", icon: Radio },
+      { id: "mc-cycle", label: "Tender Cycle", icon: Workflow },
+      { id: "mc-activity", label: "Live Activity", icon: Radio },
     ],
   },
   {
@@ -500,13 +504,13 @@ const NAV_GROUPS: {
     items: [
       { id: "mc-findings", label: "Findings", icon: ListChecks, badge: "findings" },
       { id: "mc-reports", label: "Reports", icon: Files },
-      { id: "mc-sources", label: "Data sources", icon: Database },
+      { id: "mc-sources", label: "Data Sources", icon: Database },
     ],
   },
   {
     group: "COMMITTEE",
     items: [
-      { id: "mc-ledger", label: "Award history", icon: Gavel },
+      { id: "mc-ledger", label: "Award History", icon: Gavel },
       { id: "mc-committee", label: "Committee", icon: Users },
       { id: "mc-calendar", label: "Calendar", icon: CalendarDays },
     ],
@@ -520,13 +524,11 @@ const NAV_GROUPS: {
   {
     group: "SYSTEM",
     items: [
-      { id: "mc-stack", label: "Tools & models", icon: ServerCog },
       { id: "mc-oversight", label: "Oversight", icon: Scale },
-      { id: "mc-audit", label: "Audit trail", icon: ScrollText },
-      { id: "mc-rules", label: "Rules & safeguards", icon: ShieldCheck },
+      { id: "mc-audit", label: "Audit Trail", icon: ScrollText },
+      { id: "mc-rules", label: "Rules & Safeguards", icon: ShieldCheck },
       { id: "mc-settings", label: "Settings", icon: Settings },
       { id: "docs", label: "Documentation", icon: Library, href: "/docs" },
-      { id: "mc-walkthrough", label: "Walkthrough", icon: BookOpen },
     ],
   },
 ];
@@ -546,7 +548,6 @@ const SECTION_CAPABILITY: Partial<Record<SectionId, Capability>> = {
   "mc-calendar": "manage_meetings",
   "mc-suppliers": "manage_suppliers",
   "mc-rules": "manage_rules",
-  "mc-stack": "manage_rules",
   "mc-oversight": "view_oversight",
   "mc-audit": "read_audit",
 };
@@ -928,25 +929,27 @@ function StatCard({
       transition={{ duration: 0.6, delay, ease: EASE }}
       className={cn(
         /* Flat editorial cell — the stat band wrapper owns the frame, the
-           hairlines and the rounding; the featured cell keeps the night fill. */
+           hairlines, the rounding and the elevation. The featured cell keeps
+           the light surface by day and earns its weight from the brand rule,
+           the pulse and the red suffix; only after dark does it go night. */
         "relative h-full overflow-hidden p-5 transition-colors duration-300 lg:p-6",
         featured
-          ? "bg-night text-white"
+          ? "bg-paper text-ink-950 dark:bg-night dark:text-white"
           : "bg-paper hover:bg-white dark:hover:bg-white/[0.03]"
       )}
     >
       {featured && (
         <>
-          <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
+          <div className="bg-grid-dark pointer-events-none absolute inset-0 hidden opacity-60 dark:block" aria-hidden="true" />
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand-500/70 to-transparent"
+            className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand-600/70 to-transparent dark:via-brand-500/70"
           />
         </>
       )}
       <div className="relative flex h-full flex-col">
         <div className="flex items-center justify-between gap-2">
-          <p className={cn("type-micro", featured ? "text-ink-300" : "text-ink-400")}>
+          <p className={cn("type-micro text-ink-400", featured && "dark:text-ink-300")}>
             {index} · {label}
           </p>
           {pulse && (
@@ -959,13 +962,13 @@ function StatCard({
         <p className="type-num mt-5 flex items-baseline gap-1 text-[42px] lg:text-[46px]">
           {n}
           {suffix && (
-            <span className={cn("text-[24px]", featured ? "text-brand-400" : "text-brand-600")}>
+            <span className={cn("text-[24px] text-brand-600", featured && "dark:text-brand-400")}>
               {suffix}
             </span>
           )}
         </p>
         <div className="mt-auto flex items-end justify-between gap-3 pt-5">
-          <p className={cn("type-micro leading-[1.9]", featured ? "text-ink-400" : "text-ink-500")}>
+          <p className={cn("type-micro leading-[1.9] text-ink-500", featured && "dark:text-ink-400")}>
             {sub}
           </p>
           {spark && <Spark data={spark} tone={featured ? "brand" : "ink"} />}
@@ -2174,6 +2177,19 @@ const RUN_FILTERS: { id: RunFilter; label: string }[] = [
   { id: "done", label: "COMPLETED" },
 ];
 
+type RunDateWindow = "all" | "7d" | "30d" | "90d";
+
+const RUN_DATE_WINDOWS: { id: RunDateWindow; label: string; days: number }[] = [
+  { id: "all", label: "ALL DATES", days: 0 },
+  { id: "7d", label: "LAST 7 DAYS", days: 7 },
+  { id: "30d", label: "LAST 30 DAYS", days: 30 },
+  { id: "90d", label: "LAST 90 DAYS", days: 90 },
+];
+
+function runDateLabel(window: RunDateWindow): string {
+  return RUN_DATE_WINDOWS.find((w) => w.id === window)?.label ?? "ALL DATES";
+}
+
 function RunRegister({
   runs,
   query,
@@ -2194,6 +2210,7 @@ function RunRegister({
   canDeleteDocuments?: boolean;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [dateWindow, setDateWindow] = useState<RunDateWindow>("all");
 
   const filtered = runs.filter((r) => {
     const q = query.trim().toLowerCase();
@@ -2207,7 +2224,11 @@ function RunRegister({
       (filter === "live" && (r.status === "running" || r.status === "queued")) ||
       (filter === "gates" && r.status === "gate") ||
       (filter === "done" && r.status === "complete");
-    return matches && inFilter;
+    const windowDays = RUN_DATE_WINDOWS.find((w) => w.id === dateWindow)?.days ?? 0;
+    const inWindow =
+      windowDays === 0 ||
+      Date.parse(r.startedAtIso) >= Date.now() - windowDays * 24 * 60 * 60 * 1000;
+    return matches && inFilter && inWindow;
   });
 
   /* Bids are a property of the register, not a column: the count rides with each
@@ -2232,7 +2253,7 @@ function RunRegister({
               </span>
             </h2>
             <p className="mt-1 type-micro text-ink-400">
-              Last 7 days · {filtered.length} of {runs.length} evaluations
+              {runDateLabel(dateWindow)} · {filtered.length} of {runs.length} evaluations
             </p>
           </div>
           <div
@@ -2267,6 +2288,59 @@ function RunRegister({
             ))}
           </div>
         </header>
+
+        {/* The register's own search — the top-bar search stays, but the
+            section is usable on its own once the officer has scrolled here. */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-ink-200/70 px-5 py-3 dark:border-white/10">
+          <label className="relative block w-full min-w-0 flex-1">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => onQuery(e.target.value)}
+              placeholder="Search by reference, title or buyer…"
+              aria-label="Search recent evaluations by reference, title or buyer"
+              className="focus-brand h-9 w-full rounded-lg border border-ink-200/80 bg-[#fffdfb] pl-9 pr-3.5 text-[12.5px] text-ink-900 shadow-[inset_0_1px_1px_rgba(11,12,15,0.03)] outline-none transition-[border-color,background-color] duration-300 placeholder:text-ink-400 focus:border-ink-950 focus:ring-[3px] focus:ring-ink-950/[0.07] dark:border-white/[0.1] dark:bg-white/[0.04] dark:focus:border-white/35 dark:focus:ring-white/[0.06]"
+            />
+          </label>
+          <label className="relative inline-flex h-9 shrink-0 items-center">
+            <span className="sr-only">Filter evaluations by date</span>
+            <select
+              value={dateWindow}
+              onChange={(e) => setDateWindow(e.target.value as RunDateWindow)}
+              aria-label="Filter evaluations by date"
+              className="focus-brand h-9 appearance-none rounded-lg border border-ink-200/80 bg-[#fffdfb] pl-3 pr-8 font-code text-[8px] font-bold tracking-[0.14em] text-ink-600 outline-none transition-colors focus:border-ink-950 focus:ring-[3px] focus:ring-ink-950/[0.07] dark:border-white/[0.1] dark:bg-white/[0.04] dark:text-ink-300 dark:focus:border-white/35 dark:focus:ring-white/[0.06]"
+            >
+              {RUN_DATE_WINDOWS.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              className="pointer-events-none absolute right-2.5 h-3 w-3 text-ink-400"
+              aria-hidden="true"
+            />
+          </label>
+          {query && (
+            <button
+              type="button"
+              onClick={() => onQuery("")}
+              className="font-code text-[8px] font-bold tracking-[0.16em] text-ink-500 transition-colors hover:text-ink-950"
+            >
+              CLEAR
+            </button>
+          )}
+          <span
+            aria-live="polite"
+            className="ml-auto shrink-0 font-code text-[8px] font-bold tracking-[0.16em] text-ink-400 tabular"
+          >
+            {filtered.length} OF {runs.length} RESULTS
+          </span>
+        </div>
 
         {/* Table */}
         <div data-tour="run-rows" className="overflow-x-auto">
@@ -2470,17 +2544,20 @@ function RunRegister({
                 <tr>
                   <td colSpan={7} className="px-5 py-10 text-center">
                     <p className="font-code text-[10px] tracking-[0.18em] text-ink-400">
-                      NO RUNS MATCH “{query.toUpperCase()}”
+                      {query.trim()
+                        ? `NO RUNS MATCH “${query.trim().toUpperCase()}”`
+                        : `NO RUNS IN ${runDateLabel(dateWindow)}`}
                     </p>
                     <button
                       type="button"
                       onClick={() => {
                         onQuery("");
                         onFilter("all");
+                        setDateWindow("all");
                       }}
                       className="mt-3 inline-flex h-8 items-center rounded-lg border border-ink-200 px-3.5 text-[12px] font-semibold text-ink-600 transition-colors hover:border-ink-400"
                     >
-                      Clear search & filters
+                      Clear search, filters & dates
                     </button>
                   </td>
                 </tr>
@@ -2645,6 +2722,8 @@ export function GateQueue({
   onReturn,
   onOpenRoll,
   canSign = true,
+  query,
+  onQuery,
 }: {
   queue: GateItem[];
   ledger: LedgerRow[];
@@ -2654,10 +2733,32 @@ export function GateQueue({
   onOpenRoll?: () => void;
   /* Read-only roles see the queue but never the signature controls. */
   canSign?: boolean;
+  /* GatesView owns the term so the authority strip shares it; the overview
+     screen leaves these out and the queue keeps its own. */
+  query?: string;
+  onQuery?: (value: string) => void;
 }) {
   const [, setDecided] = useState<Record<string, "AWARDED" | "RETURNED">>({});
   /* The ink receipt opened from the decision history. */
   const [receiptRow, setReceiptRow] = useState<SignatureReceipt | null>(null);
+  /* The section-wide term, lifted so the authority strip reads it too. */
+  const [localQ, setLocalQ] = useState("");
+  const q = query ?? localQ;
+  const setQ = onQuery ?? setLocalQ;
+  const needle = q.trim().toLowerCase();
+  const visible = needle
+    ? queue.filter((g) =>
+        `${g.tender} ${g.title} ${g.supplier} ${GATE_TOOL_LABEL[g.tool] ?? g.tool}`
+          .toLowerCase()
+          .includes(needle),
+      )
+    : queue;
+  /* The same term reads the ledger below the queue. */
+  const visibleLedger = needle
+    ? ledger.filter((row) =>
+        `${row.tender} ${row.action} ${row.by} ${row.toolLabel ?? ""}`.toLowerCase().includes(needle),
+      )
+    : ledger;
   const presentCount = quorum ? quorumPresentCount(quorum) : 0;
   const blocked = !!quorum && presentCount < quorum.required;
   const short = quorum ? Math.max(0, quorum.required - presentCount) : 0;
@@ -2706,11 +2807,45 @@ export function GateQueue({
           </span>
         </header>
 
+        {/* The queue's own search — the top-bar search covers runs, so the
+            decision register carries a filter of its own. */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-ink-200/70 px-5 py-3 dark:border-white/10">
+          <label className="relative block w-full min-w-0 flex-1">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search by reference, title, supplier or office…"
+              aria-label="Search approvals by reference, title, supplier or office"
+              className="focus-brand h-9 w-full rounded-lg border border-ink-200/80 bg-[#fffdfb] pl-9 pr-3.5 text-[12.5px] text-ink-900 shadow-[inset_0_1px_1px_rgba(11,12,15,0.03)] outline-none transition-[border-color,background-color] duration-300 placeholder:text-ink-400 focus:border-ink-950 focus:ring-[3px] focus:ring-ink-950/[0.07] dark:border-white/[0.1] dark:bg-white/[0.04] dark:focus:border-white/35 dark:focus:ring-white/[0.06]"
+            />
+          </label>
+          {needle && (
+            <button
+              type="button"
+              onClick={() => setQ("")}
+              className="font-code text-[8px] font-bold tracking-[0.16em] text-ink-500 transition-colors hover:text-ink-950"
+            >
+              CLEAR
+            </button>
+          )}
+          <span
+            aria-live="polite"
+            className="ml-auto shrink-0 font-code text-[8px] font-bold tracking-[0.16em] text-ink-400 tabular"
+          >
+            {visible.length} OF {queue.length} GATES
+          </span>
+        </div>
+
         <QuorumRoll quorum={quorum} onOpenRoll={onOpenRoll} />
 
         <div className="grid flex-1 grid-cols-1 items-start gap-3 px-4 py-4" aria-live="polite">
           <AnimatePresence initial={false}>
-            {queue.map((g) => (
+            {visible.map((g) => (
               <motion.article
                 key={g.id}
                 layout
@@ -2813,6 +2948,12 @@ export function GateQueue({
               </p>
             </motion.div>
           )}
+
+          {queue.length > 0 && visible.length === 0 && (
+            <p className="rounded-xl border border-dashed border-ink-200 px-4 py-10 text-center font-code text-[8.5px] font-bold tracking-[0.16em] text-ink-400 dark:border-white/10">
+              NO GATE MATCHES “{q.trim().toUpperCase()}”
+            </p>
+          )}
         </div>
 
         {/* Ledger */}
@@ -2820,7 +2961,7 @@ export function GateQueue({
           <p className="type-micro text-ink-400">Decision history</p>
           <ul className="mt-2.5 space-y-2">
             <AnimatePresence initial={false}>
-              {ledger.slice(0, 4).map((row) => (
+              {visibleLedger.slice(0, 4).map((row) => (
                 <motion.li
                   key={row.id ?? `${row.tender}-${row.at}-${row.action}`}
                   layout
@@ -2860,8 +3001,10 @@ export function GateQueue({
                 </motion.li>
               ))}
             </AnimatePresence>
-            {ledger.length === 0 && (
-              <li className="font-code text-[8.5px] tracking-[0.12em] text-ink-400">NO DECISIONS YET</li>
+            {visibleLedger.length === 0 && (
+              <li className="font-code text-[8.5px] tracking-[0.12em] text-ink-400">
+                {ledger.length === 0 ? "NO DECISIONS YET" : `NO DECISION MATCHES “${q.trim().toUpperCase()}”`}
+              </li>
             )}
           </ul>
         </div>
@@ -2957,12 +3100,40 @@ interface OcpPortalState {
   overrides: Record<string, { enabled: boolean; at: string; by: string }>;
 }
 
+interface OcpSource {
+  registry: string;
+  via: string;
+  retrieved: string;
+  scope: string;
+  licenseNote: string;
+  note: string;
+}
+
+interface OcpRefreshStatus {
+  enabled: boolean;
+  running: boolean;
+  intervalDays: number;
+  lastAttemptAt: string | null;
+  lastSuccessAt: string | null;
+  lastError: string | null;
+  nextDueAt: string | null;
+  sourceRetrieved: string | null;
+  generatedAt: string | null;
+  fromRuntimeSnapshot: boolean;
+}
+
 interface OcpRegistry {
-  source: { registry: string; via: string; retrieved: string; scope: string; licenseNote: string; note: string };
+  source: OcpSource;
   countries: OcpCountry[];
   datasets: OcpDataset[];
+  global?: {
+    source: OcpSource;
+    countries: OcpCountry[];
+    datasets: OcpDataset[];
+  };
   links: OcpLinks;
   state?: OcpPortalState;
+  refresh?: OcpRefreshStatus;
 }
 
 const ISO_MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
@@ -2981,6 +3152,24 @@ function codeStamp(iso: string) {
   return `${String(d.getDate()).padStart(2, "0")} ${ISO_MONTHS[d.getMonth()]} ${d.getFullYear()} ${String(d.getHours()).padStart(2, "0")}:${String(
     d.getMinutes(),
   ).padStart(2, "0")}`;
+}
+
+/* The registry refreshes itself in the sidecar; this line states what really
+   happened, including a failure, so an old snapshot is never dressed as new. */
+function refreshStatusLine(refresh: OcpRefreshStatus | undefined): string {
+  if (!refresh) return "AUTO-REFRESH · STATUS NOT REPORTED";
+  if (!refresh.enabled) return "AUTO-REFRESH · OFF";
+  const last = refresh.lastSuccessAt
+    ? `LAST SUCCESS ${codeStamp(refresh.lastSuccessAt)}`
+    : refresh.generatedAt
+      ? `SNAPSHOT GENERATED ${codeStamp(refresh.generatedAt)}`
+      : "NOT YET";
+  const next = refresh.nextDueAt ? codeDate(refresh.nextDueAt.slice(0, 10)) : "NOW";
+  if (refresh.running) return `AUTO-REFRESH · RUNNING NOW · ${last}`;
+  if (refresh.lastError) {
+    return `AUTO-REFRESH · LAST ATTEMPT FAILED — ${refresh.lastError.slice(0, 140).toUpperCase()} · ${last} · NEXT ${next}`;
+  }
+  return `AUTO-REFRESH · EVERY ${refresh.intervalDays} DAY${refresh.intervalDays === 1 ? "" : "S"} · ${last} · NEXT ${next}`;
 }
 
 function useOcpRegistry() {
@@ -3149,7 +3338,7 @@ function OcpDatasetRow({
         <p className="mt-1 font-code text-[7.5px] leading-[1.9] tracking-[0.14em] text-ink-400">
           RECORD {d.coverageFrom} → {d.coverageTo}
           {d.updateFrequency ? ` · ${d.updateFrequency.toUpperCase()}` : ""}
-          {" · "}RETRIEVED {d.lastRetrieved}
+          {" · "}RETRIEVED {d.lastRetrieved || "NOT STATED"}
           {d.retrievedNote ? ` (${d.retrievedNote})` : ""}
           {d.ocidPrefix ? ` · ${d.ocidPrefix}` : ""}
         </p>
@@ -3239,6 +3428,179 @@ function OcpDatasetRow({
   );
 }
 
+function RegistryCountries({
+  countries,
+  datasets,
+  links,
+  overrides,
+  pendingToggleIds,
+  togglePortals,
+  connectDatasets,
+  connecting,
+  rechecking,
+  query = "",
+  emptyNote = "NO JURISDICTION MATCHES THAT FILTER",
+}: {
+  countries: OcpCountry[];
+  datasets: OcpDataset[];
+  links: Record<string, OcpPortalLink>;
+  overrides: Record<string, { enabled: boolean; at: string; by: string }>;
+  pendingToggleIds: number[];
+  togglePortals: (ids: number[], enabled: boolean, okMsg: string) => Promise<void>;
+  connectDatasets: (ids: number[]) => Promise<void>;
+  connecting: boolean;
+  rechecking: number | null;
+  query?: string;
+  emptyNote?: string;
+}) {
+  const [openCountry, setOpenCountry] = useState<string | null>(null);
+  const enabledOf = (id: number) => overrides[String(id)]?.enabled ?? true;
+  const needle = query.trim().toLowerCase();
+  const visible = countries.filter((c) => {
+    if (!needle) return true;
+    if (c.country.toLowerCase().includes(needle)) return true;
+    return datasets.some((d) => d.country === c.country && d.publisher.toLowerCase().includes(needle));
+  });
+
+  if (visible.length === 0) {
+    return (
+      <p className="px-5 py-6 font-code text-[8px] tracking-[0.18em] text-ink-400">{emptyNote}</p>
+    );
+  }
+
+  return (
+    <ul>
+      {visible.map((c) => {
+        const rows = datasets.filter((d) => d.country === c.country);
+        const open = openCountry === c.country;
+        const status = c.stale === c.datasets ? "ARCHIVED" : "UPDATING";
+        /* The country's master switch: all-on flips the whole country off;
+           mixed or all-off brings every portal back. */
+        const offInCountry = rows.filter((d) => !enabledOf(d.publicationId)).length;
+        const allOn = offInCountry === 0;
+        const mixedCountry = offInCountry > 0 && offInCountry < rows.length;
+        const countryBusy = rows.some((d) => pendingToggleIds.includes(d.publicationId));
+        const masterToggle = () => {
+          const ids = rows.map((d) => d.publicationId);
+          const turnOn = !allOn;
+          const n = ids.length;
+          void togglePortals(
+            ids,
+            turnOn,
+            turnOn
+              ? `${c.country.toUpperCase()} ON — ${n} PORTAL${n === 1 ? "" : "S"} BACK IN THE PASS`
+              : `${c.country.toUpperCase()} OFF — ${n} PORTAL${n === 1 ? "" : "S"} OUT OF THE PASS`,
+          );
+        };
+        return (
+          <li key={c.country} className="border-b border-ink-100 last:border-b-0">
+            <div className="flex w-full items-center gap-3 px-5 py-4">
+              <button
+                type="button"
+                onClick={() => setOpenCountry(open ? null : c.country)}
+                aria-expanded={open}
+                className="flex min-w-0 flex-1 flex-wrap items-center gap-3 text-left transition-colors hover:bg-sand/50"
+              >
+                <span
+                  className={cn(
+                    "h-2 w-2 shrink-0 rounded-full",
+                    offInCountry === rows.length ? "bg-ink-300" : status === "ARCHIVED" ? "bg-ink-400" : "bg-ink-950",
+                  )}
+                  aria-hidden="true"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={cn(
+                        "font-code text-[10px] font-bold tracking-[0.12em]",
+                        offInCountry === rows.length ? "text-ink-400" : "text-ink-950",
+                      )}
+                    >
+                      {c.country.toUpperCase()}
+                    </span>
+                    <span className="rounded border border-ink-200 px-1 py-px font-code text-[7px] tracking-[0.16em] text-ink-400">
+                      {c.iso}
+                    </span>
+                    <span
+                      className={cn(
+                        "rounded-full px-2 py-0.5 font-code text-[7px] font-bold tracking-[0.16em] text-white",
+                        status === "UPDATING" ? "bg-ink-950" : "bg-ink-400",
+                      )}
+                      title={
+                        status === "UPDATING"
+                          ? c.stale > 0
+                            ? `The live portals are still being updated · ${c.stale} archived dataset${c.stale === 1 ? "" : "s"} stay readable and are flagged individually`
+                            : "Every dataset from this country is still being updated by its publisher"
+                          : "Every dataset from this country is no longer updated by its publisher"
+                      }
+                    >
+                      {status}
+                    </span>
+                    {offInCountry > 0 && (
+                      <span className="rounded-full bg-ink-500 px-2 py-0.5 font-code text-[7px] font-bold tracking-[0.16em] text-white">
+                        {offInCountry === rows.length ? "ALL OFF" : `${offInCountry} OFF`}
+                      </span>
+                    )}
+                  </span>
+                  <span className="mt-1 block font-code text-[7.5px] tracking-[0.18em] text-ink-400">
+                    {c.datasets} {c.datasets === 1 ? "DATASET" : "DATASETS"} · {c.publishers.length}{" "}
+                    {c.publishers.length === 1 ? "PUBLISHER" : "PUBLISHERS"} · RECORD {c.coverageFrom} →{" "}
+                    {c.coverageTo} · RETRIEVED {c.lastRetrieved || "NOT STATED"}
+                  </span>
+                </span>
+                <ChevronDown
+                  className={cn("h-3.5 w-3.5 shrink-0 text-ink-400 transition-transform", open && "rotate-180")}
+                  aria-hidden="true"
+                />
+              </button>
+              <PortalSwitch
+                on={allOn}
+                mixed={mixedCountry}
+                busy={countryBusy}
+                ariaLabel={`Turn ${c.country}'s ${rows.length} portal${rows.length === 1 ? "" : "s"} ${allOn ? "off" : "on"}`}
+                title={
+                  allOn
+                    ? `Turn all ${rows.length} of ${c.country}'s portals off — none of them will be probed or read`
+                    : mixedCountry
+                      ? `${offInCountry} of ${rows.length} of ${c.country}'s portals are off — click to bring them all back on`
+                      : `Turn ${c.country}'s portals back on — they rejoin the connection passes immediately`
+                }
+                onToggle={masterToggle}
+              />
+            </div>
+            {open && (
+              <ul className="bg-sand/40">
+                {rows.map((d) => (
+                  <OcpDatasetRow
+                    key={d.publicationId}
+                    d={d}
+                    link={links[String(d.publicationId)]}
+                    onRecheck={(id) => void connectDatasets([id])}
+                    rechecking={rechecking === d.publicationId}
+                    busy={connecting || rechecking !== null}
+                    enabled={enabledOf(d.publicationId)}
+                    override={overrides[String(d.publicationId)]}
+                    toggling={pendingToggleIds.includes(d.publicationId)}
+                    onToggle={(id, on) =>
+                      void togglePortals(
+                        [id],
+                        on,
+                        on
+                          ? `PORTAL ON — ${d.publisher.toUpperCase()} IS BACK IN THE PASS`
+                          : `PORTAL OFF — ${d.publisher.toUpperCase()} IS OUT OF THE PASS`,
+                      )
+                    }
+                  />
+                ))}
+              </ul>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function PortalSync() {
   const { data, failed } = useOcpRegistry();
   const countries = data?.countries ?? [];
@@ -3274,7 +3636,7 @@ function PortalSync() {
                 <span className="flex items-baseline justify-between gap-2">
                   <span className="truncate type-micro text-ink-800">{c.country}</span>
                   <span className="shrink-0 type-micro text-ink-400 tabular">
-                    retr. {c.lastRetrieved}
+                    retr. {c.lastRetrieved || "not stated"}
                   </span>
                 </span>
                 <span className="mt-1 block type-micro text-ink-400 tabular">
@@ -3389,21 +3751,37 @@ function StageStrip({
   label,
   meta,
   items,
+  search,
 }: {
   label: string;
   meta?: ReactNode;
   items: { key: string; label: string; count: number; caption: string; tone?: "brand" | "emerald" | "idle" }[];
+  /* An optional local filter, rendered in the strip's own header. */
+  search?: ReactNode;
 }) {
   const total = items.reduce((sum, item) => sum + item.count, 0);
   return (
     <section className="panel overflow-hidden rounded-[12px]" aria-label={label}>
       <div className="flex flex-wrap items-center justify-between gap-3 px-5 pb-3.5 pt-4">
         <p className="eyebrow">{label}</p>
-        {meta ? (
-          <div className="font-code text-[8.5px] font-bold tracking-[0.16em] text-ink-400 tabular">{meta}</div>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-3">
+          {search}
+          {meta ? (
+            <div className="font-code text-[8.5px] font-bold tracking-[0.16em] text-ink-400 tabular">{meta}</div>
+          ) : null}
+        </div>
       </div>
-      <div className="grid grid-cols-2 gap-px border-t border-ink-100/80 bg-ink-100/70 sm:grid-cols-4 dark:border-white/[0.06] dark:bg-white/[0.07]">
+      {items.length === 0 ? (
+        <p className="border-t border-ink-100/80 px-5 py-5 font-code text-[8.5px] font-bold tracking-[0.16em] text-ink-400 dark:border-white/[0.06]">
+          NO OFFICE MATCHES THIS SEARCH
+        </p>
+      ) : (
+      <div
+        className={cn(
+          "grid grid-cols-2 gap-px border-t border-ink-100/80 bg-ink-100/70 dark:border-white/[0.06] dark:bg-white/[0.07]",
+          items.length >= 4 ? "sm:grid-cols-4" : items.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2",
+        )}
+      >
         {items.map((item) => {
           const share = total > 0 ? Math.round((item.count / total) * 100) : 0;
           const tone = item.tone ?? "idle";
@@ -3445,6 +3823,7 @@ function StageStrip({
           );
         })}
       </div>
+      )}
     </section>
   );
 }
@@ -4302,10 +4681,11 @@ function RequestsPanel({ requests }: { requests: SourceRequestRow[] }) {
 function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; firstName: string }) {
   const standards = ["OCDS 1.1", "MCP TOOLS", "LLM DRAFTING", "PAGE CITATIONS"];
   const { data: registry, failed: registryFailed, reload: reloadRegistry, setData: setRegistry } = useOcpRegistry();
-  const [openCountry, setOpenCountry] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [connectProgress, setConnectProgress] = useState<{ done: number; total: number } | null>(null);
   const [rechecking, setRechecking] = useState<number | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [globalQuery, setGlobalQuery] = useState("");
 
   /* Connection truth, straight from the sidecar's saved checks. */
   const links = registry?.links?.links ?? {};
@@ -4317,6 +4697,14 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
   const linkedCount = datasets.filter((d) => links[String(d.publicationId)]?.registry.ok).length;
   const portalUpCount = datasets.filter((d) => links[String(d.publicationId)]?.portal.ok).length;
   const missingLinks = datasets.filter((d) => enabledOf(d.publicationId) && !links[String(d.publicationId)]?.registry.ok).length;
+  const global = registry?.global;
+  const globalDatasets = global?.datasets ?? [];
+  const globalCountries = global?.countries ?? [];
+  const globalDisabledCount = globalDatasets.filter((d) => !enabledOf(d.publicationId)).length;
+  const globalLinkedCount = globalDatasets.filter((d) => links[String(d.publicationId)]?.registry.ok).length;
+  const globalPortalUpCount = globalDatasets.filter((d) => links[String(d.publicationId)]?.portal.ok).length;
+  const globalMissingLinks = globalDatasets.filter((d) => enabledOf(d.publicationId) && !links[String(d.publicationId)]?.registry.ok).length;
+  const refresh = registry?.refresh;
 
   /* Live source requests from the quorum-mcp sidecar — pending ones show
      up right on the page; every request is audit-logged on the sidecar. */
@@ -4443,10 +4831,32 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
     [firstName, onToast, reloadRegistry],
   );
 
+  /* The registry is refreshed automatically in the sidecar. This is the
+     officer's force button: run the miner now, then read the new snapshot. */
+  const refreshNow = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const res = await fetch("/api/ocp-refresh?XTransformPort=3031", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ force: true }),
+      });
+      const d = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      if (!res.ok || !d?.ok) throw new Error(d?.error || `HTTP ${res.status}`);
+      reloadRegistry();
+      onToast("OCP REGISTRY REFRESHED — THE LIVE SNAPSHOT IS UPDATED");
+    } catch {
+      reloadRegistry();
+      onToast("THE REGISTRY REFRESH FAILED — THE LAST SNAPSHOT IS STILL IN USE");
+    } finally {
+      setRefreshing(false);
+    }
+  }, [onToast, reloadRegistry]);
+
   return (
     <ViewShell
       fig="10"
-      title="Data sources"
+      title="Data Sources"
       sub="A finding is only as lawful as its source. Every bid is read against national portals, supplier registries and the OCDS record — and each finding cites which."
       action={
         <button
@@ -4484,7 +4894,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
           <div data-tour="sources-portals" className="overflow-hidden rounded-[12px] panel shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
             <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 px-5 py-4">
               <div>
-                <h2 className="font-display text-[17px] font-black tracking-[-0.01em] text-ink-950">Connected portals</h2>
+                <h2 className="font-display text-[17px] font-black tracking-[-0.01em] text-ink-950">Connected portals — Africa</h2>
                 <p className="mt-0.5 font-code text-[8.5px] tracking-[0.2em] text-ink-400">
                   {registry
                     ? `${registry.countries.length} COUNTRIES · ${registry.datasets.length} DATASETS · ${linkedCount}/${registry.datasets.length} LINKED · ${
@@ -4500,6 +4910,19 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
                   <span className="h-1.5 w-1.5 rounded-full bg-ink-950" aria-hidden="true" />
                   OCP REGISTRY{registry ? ` · ${codeDate(registry.source.retrieved)}` : ""}
                 </span>
+                <button
+                  type="button"
+                  onClick={() => void refreshNow()}
+                  disabled={refreshing || Boolean(refresh?.running)}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 font-code text-[8px] font-bold tracking-[0.16em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-50"
+                  title="Refresh the OCP registry snapshot now — the source pages are read again and the new record is saved"
+                >
+                  <RefreshCw
+                    className={cn("h-3 w-3", (refreshing || refresh?.running) && "animate-spin")}
+                    aria-hidden="true"
+                  />
+                  {refreshing || refresh?.running ? "REFRESHING" : "REFRESH"}
+                </button>
                 <button
                   type="button"
                   onClick={() => void connectDatasets(datasets.filter((d) => enabledOf(d.publicationId)).map((d) => d.publicationId))}
@@ -4539,132 +4962,17 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
                 </button>
               </div>
             ) : (
-              <ul>
-                {(registry?.countries ?? []).map((c) => {
-                  const rows = (registry?.datasets ?? []).filter((d) => d.country === c.country);
-                  const open = openCountry === c.country;
-                  const status = c.stale === 0 ? "UPDATING" : c.stale === c.datasets ? "ARCHIVED" : "PARTIAL";
-                  /* The country's master switch: all-on flips the whole
-                     country off; mixed or all-off brings every portal back. */
-                  const offInCountry = rows.filter((d) => !enabledOf(d.publicationId)).length;
-                  const allOn = offInCountry === 0;
-                  const mixedCountry = offInCountry > 0 && offInCountry < rows.length;
-                  const countryBusy = rows.some((d) => pendingToggleIds.includes(d.publicationId));
-                  const masterToggle = () => {
-                    const ids = rows.map((d) => d.publicationId);
-                    const turnOn = !allOn;
-                    const n = ids.length;
-                    void togglePortals(
-                      ids,
-                      turnOn,
-                      turnOn
-                        ? `${c.country.toUpperCase()} ON — ${n} PORTAL${n === 1 ? "" : "S"} BACK IN THE PASS`
-                        : `${c.country.toUpperCase()} OFF — ${n} PORTAL${n === 1 ? "" : "S"} OUT OF THE PASS`,
-                    );
-                  };
-                  return (
-                    <li key={c.country} className="border-b border-ink-100 last:border-b-0">
-                      <div className="flex w-full items-center gap-3 px-5 py-4">
-                        <button
-                          type="button"
-                          onClick={() => setOpenCountry(open ? null : c.country)}
-                          aria-expanded={open}
-                          className="flex min-w-0 flex-1 flex-wrap items-center gap-3 text-left transition-colors hover:bg-sand/50"
-                        >
-                          <span
-                            className={cn("h-2 w-2 shrink-0 rounded-full", offInCountry === rows.length ? "bg-ink-300" : c.stale > 0 ? "bg-brand-600" : "bg-ink-950")}
-                            aria-hidden="true"
-                          />
-                          <span className="min-w-0 flex-1">
-                            <span className="flex flex-wrap items-center gap-2">
-                              <span
-                                className={cn(
-                                  "font-code text-[10px] font-bold tracking-[0.12em]",
-                                  offInCountry === rows.length ? "text-ink-400" : "text-ink-950",
-                                )}
-                              >
-                                {c.country.toUpperCase()}
-                              </span>
-                              <span className="rounded border border-ink-200 px-1 py-px font-code text-[7px] tracking-[0.16em] text-ink-400">
-                                {c.iso}
-                              </span>
-                              <span
-                                className={cn(
-                                  "rounded-full px-2 py-0.5 font-code text-[7px] font-bold tracking-[0.16em] text-white",
-                                  status === "UPDATING" ? "bg-ink-950" : status === "PARTIAL" ? "bg-brand-600" : "bg-ink-400"
-                                )}
-                                title={
-                                  status === "UPDATING"
-                                    ? "Every dataset from this country is still being updated by its publisher"
-                                    : status === "PARTIAL"
-                                      ? "Some datasets from this country are no longer updated by their publishers"
-                                      : "Every dataset from this country is no longer updated by its publisher"
-                                }
-                              >
-                                {status}
-                              </span>
-                              {offInCountry > 0 && (
-                                <span className="rounded-full bg-ink-500 px-2 py-0.5 font-code text-[7px] font-bold tracking-[0.16em] text-white">
-                                  {offInCountry === rows.length ? "ALL OFF" : `${offInCountry} OFF`}
-                                </span>
-                              )}
-                            </span>
-                            <span className="mt-1 block font-code text-[7.5px] tracking-[0.18em] text-ink-400">
-                              {c.datasets} {c.datasets === 1 ? "DATASET" : "DATASETS"} · {c.publishers.length}{" "}
-                              {c.publishers.length === 1 ? "PUBLISHER" : "PUBLISHERS"} · RECORD {c.coverageFrom} →{" "}
-                              {c.coverageTo} · RETRIEVED {c.lastRetrieved}
-                            </span>
-                          </span>
-                          <ChevronDown
-                            className={cn("h-3.5 w-3.5 shrink-0 text-ink-400 transition-transform", open && "rotate-180")}
-                            aria-hidden="true"
-                          />
-                        </button>
-                        <PortalSwitch
-                          on={allOn}
-                          mixed={mixedCountry}
-                          busy={countryBusy}
-                          ariaLabel={`Turn ${c.country}'s ${rows.length} portal${rows.length === 1 ? "" : "s"} ${allOn ? "off" : "on"}`}
-                          title={
-                            allOn
-                              ? `Turn all ${rows.length} of ${c.country}'s portals off — none of them will be probed or read`
-                              : mixedCountry
-                                ? `${offInCountry} of ${rows.length} of ${c.country}'s portals are off — click to bring them all back on`
-                                : `Turn ${c.country}'s portals back on — they rejoin the connection passes immediately`
-                          }
-                          onToggle={masterToggle}
-                        />
-                      </div>
-                      {open && (
-                        <ul className="bg-sand/40">
-                          {rows.map((d) => (
-                            <OcpDatasetRow
-                              key={d.publicationId}
-                              d={d}
-                              link={links[String(d.publicationId)]}
-                              onRecheck={(id) => void connectDatasets([id])}
-                              rechecking={rechecking === d.publicationId}
-                              busy={connecting || rechecking !== null}
-                              enabled={enabledOf(d.publicationId)}
-                              override={overrides[String(d.publicationId)]}
-                              toggling={pendingToggleIds.includes(d.publicationId)}
-                              onToggle={(id, on) =>
-                                void togglePortals(
-                                  [id],
-                                  on,
-                                  on
-                                    ? `PORTAL ON — ${d.publisher.toUpperCase()} IS BACK IN THE PASS`
-                                    : `PORTAL OFF — ${d.publisher.toUpperCase()} IS OUT OF THE PASS`,
-                                )
-                              }
-                            />
-                          ))}
-                        </ul>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
+              <RegistryCountries
+                countries={registry?.countries ?? []}
+                datasets={datasets}
+                links={links}
+                overrides={overrides}
+                pendingToggleIds={pendingToggleIds}
+                togglePortals={togglePortals}
+                connectDatasets={connectDatasets}
+                connecting={connecting}
+                rechecking={rechecking}
+              />
             )}
             <footer className="border-t border-ink-100 bg-sand px-5 py-3.5">
               <p className="font-code text-[7px] leading-[2] tracking-[0.14em] text-ink-500">
@@ -4690,6 +4998,118 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
                       registry.links.updatedAt ? codeStamp(registry.links.updatedAt) : "NOT YET"
                     }`
                   : "CONNECTIONS · THE SIDECAR OPENS EVERY PUBLISHED FILE AND CHECKS EACH PUBLISHER PORTAL."}
+                <br />
+                {refreshStatusLine(refresh)}
+              </p>
+            </footer>
+          </div>
+
+          {/* Global jurisdictions — the same registry, kept separate from the
+              African desk so a cross-border supplier can still be checked. */}
+          <div data-tour="sources-global" className="mt-4 overflow-hidden rounded-[12px] panel shadow-[0_1px_2px_rgba(11,12,15,0.04)] sm:mt-6">
+            <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 px-5 py-4">
+              <div>
+                <h2 className="font-display text-[17px] font-black tracking-[-0.01em] text-ink-950">Global jurisdictions</h2>
+                <p className="mt-0.5 font-code text-[8.5px] tracking-[0.2em] text-ink-400">
+                  {registry
+                    ? `${globalCountries.length} COUNTRIES · ${globalDatasets.length} DATASETS · ${globalLinkedCount}/${globalDatasets.length} LINKED · ${
+                        globalDatasets.filter((d) => d.stale).length
+                      } NO LONGER UPDATED${globalDisabledCount > 0 ? ` · ${globalDisabledCount} SWITCHED OFF` : ""}`
+                    : registryFailed
+                      ? "THE GLOBAL SNAPSHOT COULD NOT BE READ"
+                      : "READING THE OCP DATA REGISTRY…"}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <span className="inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white px-3 py-1.5 font-code text-[8px] font-semibold tracking-[0.18em] text-ink-600">
+                  <span className="h-1.5 w-1.5 rounded-full bg-ink-950" aria-hidden="true" />
+                  NON-AFRICAN{global ? ` · ${codeDate(global.source.retrieved)}` : ""}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void connectDatasets(globalDatasets.filter((d) => enabledOf(d.publicationId)).map((d) => d.publicationId))}
+                  disabled={!registry || connecting || rechecking !== null || globalDisabledCount === globalDatasets.length}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 font-code text-[8px] font-bold tracking-[0.16em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-50"
+                  title={
+                    globalDisabledCount === globalDatasets.length
+                      ? "Every global portal is switched off — turn one on and the connection pass can run again"
+                      : "Open every global published file in use, read its first OCDS release, and check the publisher's portal — each result is dated and saved"
+                  }
+                >
+                  {connecting ? (
+                    <RefreshCw className="h-3 w-3 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Cable className="h-3 w-3" aria-hidden="true" />
+                  )}
+                  {connecting && connectProgress
+                    ? `CHECKING ${connectProgress.done}/${connectProgress.total}`
+                    : globalMissingLinks > 0
+                      ? `CONNECT ${globalMissingLinks} PORTAL${globalMissingLinks === 1 ? "" : "S"}`
+                      : "RE-CHECK CONNECTIONS"}
+                </button>
+              </div>
+            </header>
+            {registryFailed && !registry ? (
+              <div className="flex flex-wrap items-center gap-3 px-5 py-5">
+                <p className="min-w-0 flex-1 font-code text-[8.5px] leading-[1.9] tracking-[0.16em] text-ink-400">
+                  THE GLOBAL SNAPSHOT COULD NOT BE READ — THE quorum-mcp SIDECAR IS NOT RESPONDING
+                </p>
+                <button
+                  type="button"
+                  onClick={reloadRegistry}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-ink-200 px-3 font-code text-[8px] font-bold tracking-[0.16em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950"
+                >
+                  <RefreshCw className="h-3 w-3" aria-hidden="true" />
+                  RETRY
+                </button>
+              </div>
+            ) : !registry ? (
+              <p className="px-5 py-6 font-code text-[8.5px] tracking-[0.16em] text-ink-400">READING THE OCP DATA REGISTRY…</p>
+            ) : globalDatasets.length === 0 ? (
+              <p className="px-5 py-6 font-code text-[8.5px] tracking-[0.16em] text-ink-400">NO GLOBAL SNAPSHOT IS PRESENT — REFRESH THE REGISTRY</p>
+            ) : (
+              <>
+                <div className="border-b border-ink-100 px-5 py-3">
+                  <label className="relative block max-w-md">
+                    <Search
+                      className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400"
+                      aria-hidden="true"
+                    />
+                    <input
+                      type="search"
+                      value={globalQuery}
+                      onChange={(e) => setGlobalQuery(e.target.value)}
+                      placeholder={`Filter ${globalCountries.length} countries or publishers…`}
+                      aria-label="Filter global jurisdictions"
+                      className="focus-brand h-9 w-full rounded-xl border border-ink-200 bg-white pl-9 pr-3 text-[12.5px] text-ink-900 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
+                    />
+                  </label>
+                </div>
+                <div className="max-h-[34rem] overflow-y-auto">
+                  <RegistryCountries
+                    countries={globalCountries}
+                    datasets={globalDatasets}
+                    links={links}
+                    overrides={overrides}
+                    pendingToggleIds={pendingToggleIds}
+                    togglePortals={togglePortals}
+                    connectDatasets={connectDatasets}
+                    connecting={connecting}
+                    rechecking={rechecking}
+                    query={globalQuery}
+                    emptyNote="NO GLOBAL JURISDICTION MATCHES THAT FILTER"
+                  />
+                </div>
+              </>
+            )}
+            <footer className="border-t border-ink-100 bg-sand px-5 py-3.5">
+              <p className="font-code text-[7px] leading-[2] tracking-[0.14em] text-ink-500">
+                SAME OCP RETRIEVAL AS THE AFRICAN DESK ·{" "}
+                {global ? `${global.source.scope.toUpperCase()} · RETRIEVED ${codeDate(global.source.retrieved)}` : "READ FROM THE OCP DATA REGISTRY"}
+                <br />
+                {global
+                  ? `GLOBAL CONNECTIONS · ${globalLinkedCount}/${globalDatasets.length} LINKED · ${globalPortalUpCount}/${globalDatasets.length} PUBLISHER PORTALS ANSWERED${globalDisabledCount > 0 ? ` · ${globalDisabledCount} SWITCHED OFF AND SKIPPED BY THE PASS` : ""}`
+                  : "GLOBAL CONNECTIONS · EVERY PUBLISHED FILE OPENED AND EACH PUBLISHER PORTAL CHECKED."}
               </p>
             </footer>
           </div>
@@ -4858,7 +5278,7 @@ function AwardLedgerView({
   return (
     <ViewShell
       fig="11"
-      title="Award history"
+      title="Award History"
       sub="Every decision made at a gate — who signed, what they signed, and when. The agent writes everything else; only this page carries the gavel."
     >
       <div className="grid grid-cols-1 gap-4 sm:gap-6">
@@ -4886,7 +5306,7 @@ function AwardLedgerView({
           <div data-tour="ledger-rows" className="overflow-hidden rounded-[12px] panel shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[640px] border-collapse text-left">
-                <caption className="sr-only">Award history — decisions signed at the approval gate</caption>
+                <caption className="sr-only">Award History — decisions signed at the approval gate</caption>
                 <thead>
                   <tr className="border-b border-ink-100 bg-paper/60">
                     {["TENDER", "DECISION", "SIGNED BY", "LOGGED", "INK"].map((h) => (
@@ -8209,6 +8629,7 @@ function AddSupplierModal({
                 </div>
               )}
             </div>
+            )}
 
             {/* What the record already knew — still every field the officer's */}
             {picked && (
@@ -8230,8 +8651,7 @@ function AddSupplierModal({
                 <p className="mt-1.5 font-code text-[7.5px] leading-[1.9] tracking-[0.14em] text-ink-400">
                   EVERY FIELD IS STILL YOURS TO CORRECT — THE RECORD SUGGESTS, THE OFFICER CONFIRMS.
                 </p>
-            </div>
-            )}
+              </div>
             )}
 
             <AnimatePresence mode="wait" initial={false}>
@@ -8863,9 +9283,12 @@ function RulesView({
   const [loadFailed, setLoadFailed] = useState(false);
   const [register, setRegister] = useState<{ total: number; flagged: number } | null>(null);
 
-  /* The page reads server truth on mount — the pills are never a local wish. */
+  /* The page reads server truth — on mount and whenever it regains focus. The
+     guards are one application-wide record, so a change made in another tab or
+     by another officer is picked up here instead of leaving a stale pill. */
+  const loadSeq = useRef(0);
   const load = useCallback(() => {
-    let stale = false;
+    const seq = ++loadSeq.current;
     setLoadFailed(false);
     fetch("/api/guards?XTransformPort=3031")
       .then((r) => {
@@ -8873,16 +9296,26 @@ function RulesView({
         return r.json();
       })
       .then((d: { guards?: GuardSettings }) => {
-        if (!stale && d.guards) setGuards(d.guards);
+        if (seq === loadSeq.current && d.guards) setGuards(d.guards);
       })
       .catch(() => {
-        if (!stale) setLoadFailed(true);
+        if (seq === loadSeq.current) setLoadFailed(true);
       });
-    return () => {
-      stale = true;
-    };
   }, []);
-  useEffect(load, [load]);
+  useEffect(() => {
+    load();
+    const onFocus = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+      /* Reads still in flight after unmount must not land on a dead page. */
+      loadSeq.current += 1;
+    };
+  }, [load]);
 
   /* The register the cross-check reads — shown live beside guard 03. */
   useEffect(() => {
@@ -8991,7 +9424,7 @@ function RulesView({
   return (
     <ViewShell
       fig="13"
-      title="Rules & safeguards"
+      title="Rules & Safeguards"
       sub="The thresholds the agent must obey inside a run. Three clauses are carved; the guards below are tunable — and every change is written to the audit trail with your name on it."
     >
       {/* Full-width: guards flow edge-to-edge in a two-column grid,
@@ -9190,6 +9623,13 @@ function GatesView({
     OVERSIGHT: "AUDIT AND ASSURANCE",
   };
   const unassigned = queue.filter((g) => !g.requiredOffice).length;
+  /* One term for the whole section: the queue, its ledger and the authority
+     strip all read this query. */
+  const [q, setQ] = useState("");
+  const needle = q.trim().toLowerCase();
+  const offices = officeOrder.filter((o) =>
+    `${MEMBER_OFFICE_LABELS[o]} ${officeRole[o]}`.toLowerCase().includes(needle),
+  );
 
   return (
     <ViewShell
@@ -9204,13 +9644,30 @@ function GatesView({
       summary={
         <StageStrip
           label="Decision authority"
+          search={
+            <label className="relative block w-52">
+              <Search
+                className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-ink-400"
+                aria-hidden="true"
+              />
+              <input
+                type="search"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search approvals…"
+                aria-label="Search approvals by tender, office or supplier"
+                className="focus-brand h-7 w-full rounded-md border border-ink-200/80 bg-[#fffdfb] pl-7 pr-2.5 font-code text-[9px] font-semibold tracking-[0.06em] text-ink-900 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-950 dark:border-white/[0.1] dark:bg-white/[0.04] dark:text-white dark:placeholder:text-ink-500 dark:focus:border-white/35"
+              />
+            </label>
+          }
           meta={
             <>
               {queue.length} WAITING · {ledger.length} ON THE RECORD
               {unassigned > 0 ? ` · ${unassigned} UNASSIGNED` : ""}
+              {needle ? ` · ${offices.length} OF ${officeOrder.length} OFFICES` : ""}
             </>
           }
-          items={officeOrder.map((office) => {
+          items={offices.map((office) => {
             const count = queue.filter((g) => g.requiredOffice === office).length;
             return {
               key: office,
@@ -9232,6 +9689,8 @@ function GatesView({
             onSign={onSign}
             onReturn={onReturn}
             onOpenRoll={onGoCommittee}
+            query={q}
+            onQuery={setQ}
           />
         </div>
         <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
@@ -9263,7 +9722,7 @@ function FeedView() {
   return (
     <ViewShell
       fig="07"
-      title="Live activity"
+      title="Live Activity"
       sub="The work, streaming. Ingest, checklist, registry, flags, citations — watch a run the way the committee will read it: line by line, every claim sourced."
     >
       <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
@@ -9736,6 +10195,8 @@ export function Dashboard({
         );
       case "mc-suppliers":
         return <SuppliersView firstName={firstName} onToast={onToast} />;
+      case "mc-integrations":
+        return <IntegrationsView />;
       default:
         return null;
     }
@@ -9950,10 +10411,6 @@ export function Dashboard({
                 onNavigate={(section) => switchTo(section as SectionId)}
                 onToast={onToast}
               />
-              {/* The master switcher rides the utility bar — the desk is one tab away */}
-              <div className="hidden xl:inline-flex">
-                <MasterSwitcher active="quorum" />
-              </div>
             </div>
           </div>
         </div>
@@ -9996,10 +10453,6 @@ export function Dashboard({
                   </span>
                   <span className="text-brand-600 dark:text-brand-400">.</span>
                 </h1>
-                <p className="type-lede mt-4 text-ink-600">
-                  The agent has been in the files since 06:00. Everything below is cited — and the gavel
-                  stays with you.
-                </p>
               </div>
               <div className="flex flex-col items-start gap-3.5 sm:items-end">
                 <p className="type-micro text-ink-400">{now ? dateLine(now) : "—"}</p>
@@ -10022,7 +10475,7 @@ export function Dashboard({
             {/* Stats — a hairline-divided editorial band, not floating cards */}
             <div
               data-tour="ov-stats"
-              className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-[12px] border border-ink-200/70 bg-ink-200/60 xl:grid-cols-4 dark:border-white/10 dark:bg-white/10"
+              className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-[12px] border border-ink-200/70 bg-ink-200/60 shadow-[0_1px_2px_rgba(11,12,15,0.04),0_18px_40px_-24px_rgba(11,12,15,0.26)] xl:grid-cols-4 dark:border-white/10 dark:bg-white/10 dark:shadow-[0_1px_0_rgba(255,255,255,0.05)_inset,0_22px_55px_-30px_rgba(0,0,0,0.8)]"
             >
               <StatCard
                 index="01"
@@ -10082,11 +10535,11 @@ export function Dashboard({
           </div>
 
           {/* Feed + portals */}
-          <div className="mt-6 grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
-            <div id="mc-activity" className="min-w-0 scroll-mt-24 lg:col-span-2">
+          <div className="mt-6 grid grid-cols-1 gap-4 sm:gap-6">
+            <div id="mc-activity" className="min-w-0 scroll-mt-24">
               <AgentFeed />
             </div>
-            <div className="grid content-start gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 content-start gap-4 sm:gap-6 md:grid-cols-2">
               <PortalSync />
               <StandingRuleCard />
             </div>

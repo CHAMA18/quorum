@@ -19,7 +19,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { QuorumLogo } from "@/components/quorum/logo";
+import { AuthFilm } from "@/components/quorum/auth-film";
 import { MasterSwitcher } from "@/components/quorum/master-switcher";
 import { RegisterShowcase } from "@/components/quorum/org/register-showcase";
 import { SearchSelect, type SelectOption } from "@/components/quorum/org/search-select";
@@ -204,137 +204,15 @@ function PassphraseMeter({ password }: { password: string }) {
   );
 }
 
-/* ── The live audit spine, from the supplier's seat ──────────────────────── */
-
-type PulseRow = {
-  key: string;
-  kind: "received" | "refused" | "enrolled";
-  phrase: string;
-  detail: string;
-  title: string;
-  ts: string;
-};
-
-function AuditPulse() {
-  const [rows, setRows] = useState<PulseRow[]>([]);
-
-  useEffect(() => {
-    let alive = true;
-    const pull = async () => {
-      try {
-        const res = await fetch("/api/log?limit=80&XTransformPort=3031");
-        const j = (await res.json()) as {
-          entries?: { tool?: string; status?: string; ts?: string; actor?: string; inputs?: string; outputs?: string }[];
-        };
-        if (!alive) return;
-        const pulse = (j.entries ?? [])
-          .filter((e) => e.tool === "supplier_application" || e.tool === "supplier_add")
-          .slice(0, 4)
-          .map((e, i): PulseRow => {
-            let name = "";
-            if (e.actor) name = e.actor.replace(/^org:/, "");
-            let inputs: Record<string, unknown> = {};
-            let outputs: Record<string, unknown> = {};
-            try { inputs = JSON.parse(e.inputs ?? "{}") as Record<string, unknown>; } catch { /* unstructured input — ignore */ }
-            try { outputs = JSON.parse(e.outputs ?? "{}") as Record<string, unknown>; } catch { /* unstructured output — ignore */ }
-            const ref = String(inputs.tenderRef ?? inputs.tenderId ?? "");
-            const reg = String(inputs.registrationNo ?? "");
-            const refused = typeof outputs.refused === "string" ? outputs.refused : "";
-            const kind: PulseRow["kind"] =
-              e.tool === "supplier_add" ? "enrolled" : e.status === "ERROR" ? "refused" : "received";
-            const ts = e.ts
-              ? new Date(e.ts).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
-              : "";
-            const phrase =
-              kind === "received" ? "application received" : kind === "refused" ? "application refused" : "supplier enrolled";
-            const detail =
-              kind === "received"
-                ? [name, ref].filter(Boolean).join(" → ")
-                : kind === "refused"
-                  ? (refused || "the filing did not pass the disciplines").slice(0, 92)
-                  : [name, reg].filter(Boolean).join(" · ");
-            return {
-              key: `${e.tool}-${e.ts ?? ""}-${i}`,
-              kind,
-              phrase,
-              detail,
-              title: refused || [name, ref].filter(Boolean).join(" → "),
-              ts,
-            };
-          });
-        setRows(pulse);
-      } catch {
-        /* sidecar briefly down — keep the last snapshot */
-      }
-    };
-    void pull();
-    const id = setInterval(() => void pull(), 5000);
-    return () => {
-      alive = false;
-      clearInterval(id);
-    };
-  }, []);
-
-  return (
-    <div className="w-full max-w-md overflow-hidden rounded-[10px] border border-white/10 bg-night-2/90 shadow-[0_36px_90px_rgba(0,0,0,0.5)]">
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-        <p className="font-code text-[9px] font-semibold tracking-[0.22em] text-ink-400">
-          SUPPLIER REGISTER · LIVE AUDIT
-        </p>
-        <span className="flex items-center gap-1.5 font-code text-[9px] tracking-[0.18em] text-brand-400">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-brand-500" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-600" />
-          </span>
-          APPEND-ONLY
-        </span>
-      </div>
-      <div className="space-y-2.5 px-4 py-3.5 min-h-[112px]">
-        {rows.length === 0 ? (
-          <p className="py-5 text-center font-code text-[10px] leading-relaxed tracking-[0.14em] text-ink-500">
-            NO SUPPLIER EVENTS YET — THE FIRST APPLICATION WILL APPEAR HERE
-          </p>
-        ) : (
-          rows.map((r) => (
-            <motion.div
-              key={r.key}
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3, ease: EASE }}
-              className="font-code text-[10px]"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <span
-                  className={cn(
-                    "flex items-center gap-1.5",
-                    r.kind === "refused" ? "text-brand-300" : "text-ink-200",
-                  )}
-                >
-                  {r.kind === "refused" ? (
-                    <X className="h-3 w-3 text-brand-400" aria-hidden="true" />
-                  ) : (
-                    <Check className="h-3 w-3 text-brand-400" aria-hidden="true" />
-                  )}
-                  {r.phrase}
-                </span>
-                <span className="shrink-0 text-ink-500">{r.ts}</span>
-              </div>
-              {r.detail ? (
-                <p className="mt-0.5 truncate pl-[18px] text-[9.5px] tracking-[0.02em] text-ink-500" title={r.title}>
-                  {r.detail}
-                </p>
-              ) : null}
-            </motion.div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
-
 /* ── The wizard ──────────────────────────────────────────────────────────── */
 
-function RegisterWizard({ onRegistered }: { onRegistered: (name: string) => void }) {
+function RegisterWizard({
+  onRegistered,
+  onBusyChange,
+}: {
+  onRegistered: (name: string) => void;
+  onBusyChange: (busy: boolean) => void;
+}) {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -396,6 +274,7 @@ function RegisterWizard({ onRegistered }: { onRegistered: (name: string) => void
     if (busy) return;
     if (!validateStep(1) || !validateStep(4)) return;
     setBusy(true);
+    onBusyChange(true);
     setBanner(null);
     try {
       const res = await fetch("/api/org/auth/register", {
@@ -416,6 +295,7 @@ function RegisterWizard({ onRegistered }: { onRegistered: (name: string) => void
       setBanner("The portal is unreachable — try again shortly.");
     } finally {
       setBusy(false);
+      onBusyChange(false);
     }
   };
 
@@ -1252,24 +1132,15 @@ function SignIn({ onDone }: { onDone: () => void }) {
 
 /* ── The screen ──────────────────────────────────────────────────────────── */
 
-function ThemedLogo() {
-  return (
-    <>
-      <span className="dark:hidden">
-        <QuorumLogo />
-      </span>
-      <span className="hidden dark:inline-flex">
-        <QuorumLogo variant="light" />
-      </span>
-    </>
-  );
-}
-
 export function OrgAuthScreen() {
   const router = useRouter();
   const [mode, setMode] = useState<"signin" | "register">("register");
+  const [registerOpen, setRegisterOpen] = useState(false);
+  const [registerBusy, setRegisterBusy] = useState(false);
   const [existingOrg, setExistingOrg] = useState<OrgProfile | null>(null);
   const [registeredName, setRegisteredName] = useState<string | null>(null);
+  const registerButtonRef = useRef<HTMLButtonElement | null>(null);
+  const registerDialogRef = useRef<HTMLDivElement | null>(null);
 
   const checkExisting = useCallback(async () => {
     try {
@@ -1298,15 +1169,56 @@ export function OrgAuthScreen() {
   const onRegistered = useCallback(
     (name: string) => {
       setRegisteredName(name);
+      setRegisterOpen(false);
       void checkExisting();
     },
     [checkExisting],
   );
 
+  const closeRegistration = useCallback(() => {
+    if (registerBusy) return;
+    setRegisterOpen(false);
+    window.requestAnimationFrame(() => registerButtonRef.current?.focus());
+  }, [registerBusy]);
+
+  useEffect(() => {
+    if (!registerOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !registerBusy) closeRegistration();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [registerOpen, registerBusy, closeRegistration]);
+
+  const trapRegistrationTab = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Tab") return;
+    const focusable = Array.from(
+      registerDialogRef.current?.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ) ?? [],
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && (document.activeElement === first || !registerDialogRef.current?.contains(document.activeElement))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
   return (
     <div className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
       {/* Story panel */}
       <div className="relative hidden overflow-hidden bg-night lg:flex lg:flex-col lg:justify-between lg:p-12">
+        <AuthFilm />
         <div
           className="pointer-events-none absolute inset-0 opacity-40"
           style={{
@@ -1317,10 +1229,6 @@ export function OrgAuthScreen() {
         />
         <div className="pointer-events-none absolute -left-44 top-1/3 h-[420px] w-[420px] rounded-full bg-brand-600/10 blur-[130px]" aria-hidden="true" />
         <div className="pointer-events-none absolute inset-0 bg-grid-dark opacity-60" aria-hidden="true" />
-        <div className="relative flex items-center justify-between">
-          <QuorumLogo variant="light" />
-        </div>
-
         <div className="relative max-w-xl space-y-6">
           <h1 className="type-display text-[42px] text-white">
             The supplier side
@@ -1337,25 +1245,22 @@ export function OrgAuthScreen() {
           <RegisterShowcase />
         </div>
 
-        <div className="relative">
-          <AuditPulse />
-        </div>
       </div>
 
       {/* Auth panel */}
       <div className="flex flex-col bg-paper dark:bg-night">
         {/* pt-5 — the portal switcher now lives in the card, so the mobile header needs no clearance */}
-        <div className="flex items-center justify-between px-5 pb-4 pt-5 lg:hidden">
-          <ThemedLogo />
+        <div className="flex items-center justify-end px-5 pb-4 pt-5 lg:hidden">
           <Link href="/" className="font-code text-[10px] font-semibold tracking-[0.16em] text-ink-500 hover:text-ink-900 dark:hover:text-white">
             OFFICER DESK →
           </Link>
         </div>
 
-        <div className="flex flex-1 items-center justify-center px-4 pb-10 pt-4 lg:px-12">
+        <div className="flex flex-1 items-start justify-center px-4 pb-10 pt-4 lg:px-12 lg:pt-12">
           <div className="w-full max-w-[480px]">
             {/* Mobile brand band — the door's identity, compact */}
             <div className="relative mb-5 overflow-hidden rounded-[10px] bg-night p-5 lg:hidden">
+              <AuthFilm compact />
               <div className="pointer-events-none absolute inset-0 bg-grid-dark opacity-60" aria-hidden="true" />
               <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-brand-600/20 blur-[70px]" aria-hidden="true" />
               <div className="relative">
@@ -1400,17 +1305,20 @@ export function OrgAuthScreen() {
               </div>
             ) : (
               <div className="rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-6 shadow-[0_16px_48px_rgba(11,12,15,0.08)] sm:p-8 dark:border-white/10 dark:bg-night-2">
-                <div className="mb-6 space-y-4">
+                <div className="mb-6">
                   <MasterSwitcher active="supplier" className="w-full [&>button]:flex-1" />
-                  <ThemedLogo />
                 </div>
                 <div className="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-ink-50 p-1 ring-1 ring-inset ring-ink-200 dark:bg-white/[0.04] dark:ring-white/10">
                   {(["register", "signin"] as const).map((m) => (
                     <button
                       key={m}
                       type="button"
+                      ref={m === "register" ? registerButtonRef : undefined}
                       aria-pressed={mode === m}
-                      onClick={() => setMode(m)}
+                      onClick={() => {
+                        setMode(m);
+                        if (m === "register") setRegisterOpen(true);
+                      }}
                       className={cn(
                         "relative rounded-lg py-2.5 text-[13px] font-semibold transition-colors",
                         mode === m ? "text-white" : "text-ink-500 hover:text-ink-900 dark:hover:text-white",
@@ -1435,11 +1343,102 @@ export function OrgAuthScreen() {
                     exit={{ opacity: 0, y: -8 }}
                     transition={{ duration: 0.22, ease: EASE }}
                   >
-                    {mode === "register" ? <RegisterWizard onRegistered={onRegistered} /> : <SignIn onDone={onDone} />}
+                    {mode === "register" ? (
+                      <div className="rounded-xl border border-ink-100 bg-sand/70 p-5 dark:border-white/10 dark:bg-white/[0.03] sm:p-6">
+                        <div className="flex items-start gap-3">
+                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-ink-950 text-white dark:bg-white dark:text-ink-950">
+                            <Building2 className="h-4.5 w-4.5" aria-hidden="true" />
+                          </span>
+                          <div>
+                            <p className="font-code text-[9px] font-semibold tracking-[0.18em] text-brand-700 dark:text-brand-400">
+                              ORGANIZATION ONBOARDING
+                            </p>
+                            <h2 className="mt-1 text-[17px] font-bold text-ink-950 dark:text-white">
+                              Put your organization on the record.
+                            </h2>
+                            <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-500 dark:text-ink-400">
+                              Create a verified profile in four clear steps: legal identity, statutory details,
+                              capabilities, and secure account access.
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setRegisterOpen(true)}
+                          className="group mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink-950 px-5 text-[14px] font-semibold text-white shadow-[0_8px_20px_rgba(11,12,15,0.18)] transition-all hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-night-2"
+                        >
+                          <Building2 className="h-4 w-4" aria-hidden="true" />
+                          Register organization
+                          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                        </button>
+                        <p className="mt-3 text-center font-code text-[8.5px] tracking-[0.12em] text-ink-400">
+                          FOUR STEPS · REVIEW BEFORE YOU CREATE
+                        </p>
+                      </div>
+                    ) : (
+                      <SignIn onDone={onDone} />
+                    )}
                   </motion.div>
                 </AnimatePresence>
               </div>
             )}
+
+            <AnimatePresence>
+              {registerOpen && mode === "register" && !registeredName ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="fixed inset-0 z-[80] grid place-items-center bg-night/70 p-3 backdrop-blur-sm sm:p-5"
+                  onMouseDown={(event) => {
+                    if (event.target === event.currentTarget) closeRegistration();
+                  }}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="org-registration-title"
+                >
+                  <motion.div
+                    ref={registerDialogRef}
+                    initial={{ opacity: 0, y: 18, scale: 0.985 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 12, scale: 0.99 }}
+                    transition={{ duration: 0.28, ease: EASE }}
+                    onKeyDown={trapRegistrationTab}
+                    className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-[16px] border border-white/10 bg-white shadow-[0_36px_100px_rgba(0,0,0,0.45)] dark:bg-night-2"
+                  >
+                    <div className="flex shrink-0 items-start justify-between gap-4 border-b border-ink-100 px-5 py-4 dark:border-white/10 sm:px-7 sm:py-5">
+                      <div>
+                        <p className="font-code text-[9px] font-semibold tracking-[0.22em] text-brand-700 dark:text-brand-400">
+                          SUPPLIER PORTAL · ORGANIZATION INTAKE
+                        </p>
+                        <h2 id="org-registration-title" className="mt-1 text-[19px] font-bold tracking-tight text-ink-950 dark:text-white sm:text-[22px]">
+                          Register your organization
+                        </h2>
+                        <p className="mt-1 max-w-xl text-[12px] leading-relaxed text-ink-500 dark:text-ink-400">
+                          Build your legal profile once. You can review everything before creating the account.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={closeRegistration}
+                        disabled={registerBusy}
+                        aria-label="Close organization registration"
+                        className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-ink-50 hover:text-ink-900 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-white/[0.06] dark:hover:text-white"
+                      >
+                        <X className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    </div>
+                    <div className="overflow-y-auto overscroll-contain p-5 sm:p-7">
+                      <RegisterWizard
+                        onRegistered={onRegistered}
+                        onBusyChange={setRegisterBusy}
+                      />
+                    </div>
+                  </motion.div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
 
             <p className="mt-5 text-center text-[12px] leading-relaxed text-ink-400 dark:text-ink-500">
               Organizations sign in here only — officers have their own door on the main site.

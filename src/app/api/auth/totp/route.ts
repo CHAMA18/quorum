@@ -14,7 +14,11 @@ import { generateTotpSecret, otpauthUrl, verifyTotp } from "@/lib/totp";
 export async function GET(req: NextRequest) {
   const user = await getUserFromToken(req.cookies.get(SESSION_COOKIE)?.value);
   if (!user) return NextResponse.json({ error: "Sign in." }, { status: 401 });
-  return NextResponse.json({ enabled: user.totpEnabled === true, pending: Boolean(user.totpSecret) && !user.totpEnabled });
+  return NextResponse.json({
+    enabled: user.totpEnabled === true,
+    pending: Boolean(user.totpSecret) && !user.totpEnabled,
+    required: (process.env.QUORUM_TOTP_POLICY ?? "required").trim().toLowerCase() !== "optional",
+  });
 }
 
 export async function POST(req: NextRequest) {

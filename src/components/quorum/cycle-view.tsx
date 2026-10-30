@@ -20,9 +20,11 @@
  * variant, tokens do the rest.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { createPortal } from "react-dom";
 import {
+  AlertTriangle,
   ArrowRight,
   CalendarClock,
   Check,
@@ -34,12 +36,15 @@ import {
   Download,
   FileSignature,
   Flag,
+  Loader2,
   Play,
   Plus,
   Scale,
   Search,
   Stamp,
+  Upload,
   Workflow,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StoredDocsBrowser } from "@/components/quorum/stored-docs-browser";
@@ -48,11 +53,18 @@ const SVC = "?XTransformPort=3031";
 const EASE = [0.22, 1, 0.36, 1] as const;
 
 const OFFICES = ["PROCUREMENT_UNIT", "EVALUATION_COMMITTEE", "ACCOUNTING_OFFICER", "OVERSIGHT"] as const;
+const CURRENCIES = ["ZMW", "KES", "USD", "RWF"] as const;
 const OFFICE_LABELS: Record<string, string> = {
   PROCUREMENT_UNIT: "Procurement unit",
   EVALUATION_COMMITTEE: "Evaluation committee",
   ACCOUNTING_OFFICER: "Accounting officer",
   OVERSIGHT: "Oversight / audit",
+};
+const OFFICE_BLURBS: Record<string, string> = {
+  PROCUREMENT_UNIT: "Runs the pack and keeps the file.",
+  EVALUATION_COMMITTEE: "Scores the bids and certifies the matrix.",
+  ACCOUNTING_OFFICER: "Signs the award and the contract.",
+  OVERSIGHT: "Reads the record; never writes it.",
 };
 
 type OpeningRow = { id: string; bidder: string; receivedAt: string; late: boolean; priceRead?: string };
@@ -131,6 +143,24 @@ type PipelineDto = {
 };
 type DeadlineDto = { tenderId: string; kind: string; dueAt: string; ref?: string; overdue?: boolean };
 type MemberDto = { name: string; office?: string; status: string };
+type TenderExtractionField<T> = { value: T | null; confidence: number; evidence: string | null };
+type TenderExtraction = {
+  title: TenderExtractionField<string>;
+  responsibleOffice: TenderExtractionField<(typeof OFFICES)[number]>;
+  publicationDate: TenderExtractionField<string>;
+  budgetEstimate: TenderExtractionField<number>;
+  currency: TenderExtractionField<(typeof CURRENCIES)[number]>;
+  warnings: string[];
+};
+type NoticeAnalysisState = {
+  status: "idle" | "analyzing" | "ready" | "error";
+  fileName?: string;
+  model?: string;
+  extractionNote?: string;
+  error?: string;
+  fields?: TenderExtraction;
+  conflicts: string[];
+};
 
 /* A cycle row is written by several cores over time; a partially-written row
    can omit any of its nested collections. Normalize once at ingest so every
@@ -353,20 +383,6 @@ const inputCls =
 const planInput =
   "h-11 w-full min-w-0 rounded-xl border border-ink-200/90 bg-[#fffdfb] px-3 text-[13px] text-ink-900 shadow-[inset_0_1px_1px_rgba(11,12,15,0.03)] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-ink-400 hover:border-ink-300 focus:border-ink-950 focus:ring-[3px] focus:ring-ink-950/[0.08] dark:border-white/[0.13] dark:bg-[#0b0d12] dark:text-ink-900 dark:placeholder:text-ink-500 dark:hover:border-white/25 dark:focus:border-white/40 dark:focus:ring-white/[0.07] dark:[color-scheme:dark]";
 
-function PlanField({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
-  return (
-    <label className="block min-w-0">
-      <span className="mb-1.5 flex items-baseline justify-between gap-2">
-        <span className="eyebrow text-[9px]">{label}</span>
-        {hint ? (
-          <span className="truncate font-code text-[8.5px] tracking-[0.1em] text-ink-400">{hint}</span>
-        ) : null}
-      </span>
-      {children}
-    </label>
-  );
-}
-
 function Btn({
   onClick,
   children,
@@ -399,7 +415,170 @@ function Btn({
   );
 }
 
-function Card({ title, sub, right, children }: { title: string; sub?: string; right?: ReactNode; children: ReactNode }) {
+function Card({
+  title,
+  sub,
+  right,
+  children,
+  teaser,
+  workflow = false,
+  busy = false,
+  actionLabel = "Open workflow",
+}: {
+  title: string;
+  sub?: string;
+  right?: ReactNode;
+  children: ReactNode | ((close: () => void) => ReactNode);
+  teaser?: string;
+  workflow?: boolean;
+  busy?: boolean;
+  actionLabel?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const dialogId = useId();
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+
+  const close = useCallback(() => {
+    if (busy) return;
+    setOpen(false);
+  }, [busy]);
+
+  /* A workflow that finishes its own write closes itself — the busy flag is
+     already settled by the time the write reports success. */
+  const closeNow = useCallback(() => setOpen(false), []);
+
+  /* Hand focus back to the trigger only after a dialog that had been open. */
+  const wasOpenRef = useRef(false);
+  useEffect(() => {
+    if (open) {
+      wasOpenRef.current = true;
+      return;
+    }
+    if (!wasOpenRef.current) return;
+    wasOpenRef.current = false;
+    window.requestAnimationFrame(() => triggerRef.current?.focus());
+  }, [open]);
+
+  useEffect(() => {
+    if (!workflow || !open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const focusTimer = window.setTimeout(() => dialogRef.current?.focus(), 0);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+      if (event.key !== "Tab") return;
+      const nodes = Array.from(
+        dialogRef.current?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      );
+      if (nodes.length === 0) return;
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !dialogRef.current?.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.clearTimeout(focusTimer);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [workflow, open, close]);
+
+  if (workflow) {
+    return (
+      <>
+        <section className="panel flex min-w-0 flex-col overflow-hidden rounded-[12px]">
+          <div className="flex flex-wrap items-start justify-between gap-3 px-5 pb-4 pt-[18px]">
+            <div className="min-w-0">
+              <h3 className="font-display text-[15px] font-bold tracking-[-0.015em] text-ink-950">{title}</h3>
+              {sub ? <p className="mt-1.5 max-w-[52ch] font-code text-[9px] leading-[1.6] tracking-[0.12em] text-ink-500 dark:text-ink-400">{sub}</p> : null}
+            </div>
+            {right ? <div className="shrink-0">{right}</div> : null}
+          </div>
+          <div className="flex flex-1 items-end justify-between gap-4 border-t border-ink-100/80 px-5 py-4 dark:border-white/[0.055]">
+            <p className="max-w-[46ch] text-[11.5px] leading-relaxed text-ink-500 dark:text-ink-400">
+              {teaser ?? "Open the guided workflow to review details and complete this action."}
+            </p>
+            <button
+              ref={triggerRef}
+              type="button"
+              onClick={() => setOpen(true)}
+              disabled={busy}
+              className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg bg-ink-950 px-3.5 text-[11px] font-semibold text-white transition-colors hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-ink-950 dark:hover:bg-brand-400"
+            >
+              {actionLabel}
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          </div>
+        </section>
+        {typeof document !== "undefined"
+          ? createPortal(
+              <AnimatePresence>
+                {open ? (
+                  <motion.div
+                    key={`cycle-workflow-${dialogId}`}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="fixed inset-0 z-[90] grid place-items-center bg-night/70 p-3 backdrop-blur-sm sm:p-5"
+                    onMouseDown={(event) => {
+                      if (event.target === event.currentTarget) close();
+                    }}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby={`cycle-workflow-${dialogId}`}
+                  >
+                    <motion.div
+                      ref={dialogRef}
+                      tabIndex={-1}
+                      initial={{ opacity: 0, y: 18, scale: 0.985 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 12, scale: 0.99 }}
+                      transition={{ duration: 0.28, ease: EASE }}
+                      className="panel panel-lift flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-[12px] outline-none"
+                    >
+                      <header className="flex shrink-0 items-start justify-between gap-4 border-b border-ink-100 px-5 py-4 dark:border-white/[0.06] sm:px-7 sm:py-5">
+                        <div className="min-w-0">
+                          <p className="font-code text-[8.5px] font-bold tracking-[0.2em] text-brand-700 dark:text-brand-300">TENDER CYCLE · GUIDED WORKFLOW</p>
+                          <h3 id={`cycle-workflow-${dialogId}`} className="mt-1 font-display text-[20px] font-black tracking-[-0.02em] text-ink-950 dark:text-white sm:text-[22px]">{title}</h3>
+                          {sub ? <p className="mt-1.5 max-w-[65ch] text-[11.5px] leading-relaxed text-ink-500 dark:text-ink-400">{sub}</p> : null}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={close}
+                          disabled={busy}
+                          aria-label={`Close ${title} workflow`}
+                          className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-900 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-white/[0.06] dark:hover:text-white"
+                        >
+                          <X className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      </header>
+                      <div
+                        data-cycle-workflow-body
+                        className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-7 sm:py-5"
+                      >
+                        {typeof children === "function" ? children(closeNow) : children}
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>,
+              document.body,
+            )
+          : null}
+      </>
+    );
+  }
+
   return (
     <section className="panel flex min-w-0 flex-col overflow-hidden rounded-[12px]">
       <div className="flex flex-wrap items-start justify-between gap-3 px-5 pb-4 pt-[18px]">
@@ -413,7 +592,9 @@ function Card({ title, sub, right, children }: { title: string; sub?: string; ri
         </div>
         {right ? <div className="shrink-0">{right}</div> : null}
       </div>
-      <div className="flex-1 border-t border-ink-100/80 px-5 pb-5 pt-4 dark:border-white/[0.055]">{children}</div>
+      <div className="flex-1 border-t border-ink-100/80 px-5 pb-5 pt-4 dark:border-white/[0.055]">
+        {typeof children === "function" ? null : children}
+      </div>
     </section>
   );
 }
@@ -1146,6 +1327,425 @@ function VitalStrip({ cycle }: { cycle: CycleDto | null }) {
   );
 }
 
+/* ── tender comparison ─────────────────────────────────────────────────────── */
+
+interface CompareRow {
+  ref: string;
+  title: string;
+  closing?: string;
+  stageLabel: string;
+  stageCaption: string;
+  pct: number;
+  bids: number;
+  portalBids: number;
+  value?: number;
+  currency?: string;
+  valueKind: "contract" | "estimate" | null;
+  complaints: number;
+  alb: number;
+}
+
+/* One comparison row, read from the tender's own cycle record — every figure
+   is stored, none inferred. Missing data renders as a dash, never as zero. */
+function compareRowOf(
+  ref: string,
+  title: string,
+  cycles: CycleDto[],
+  pipeline: PipelineDto[],
+  applications: PortalAppRow[],
+): CompareRow {
+  const cycle = cycles.find((c) => c.tenderId === ref) ?? null;
+  const { stages, doneCount, currentIndex } = deriveStages(cycle);
+  const stage = stages[currentIndex];
+  const plan = pipeline.find((p) => p.linkedTenderId === ref || p.ref === ref);
+  const contractValue = cycle?.contract?.value;
+  return {
+    ref,
+    title,
+    ...(cycle?.closingDate ? { closing: cycle.closingDate } : {}),
+    stageLabel: stage?.label ?? "Not started",
+    stageCaption: stage?.caption ?? "No record yet",
+    pct: Math.round((doneCount / stages.length) * 100),
+    bids: cycle?.opening?.rows.length ?? cycle?.matrix?.bids.length ?? 0,
+    portalBids: applications.filter((a) => a.tenderId === ref).length,
+    ...(contractValue !== undefined
+      ? { value: contractValue, currency: cycle?.contract?.currency, valueKind: "contract" as const }
+      : plan?.budgetEstimate !== undefined
+        ? { value: plan.budgetEstimate, currency: plan.currency, valueKind: "estimate" as const }
+        : { valueKind: null }),
+    complaints: cycle?.complaints.filter((c) => c.status === "OPEN").length ?? 0,
+    alb: cycle?.alb.length ?? 0,
+  };
+}
+
+function TenderCompare({
+  tenders,
+  cycles,
+  pipeline,
+  applications,
+  current,
+  onSelect,
+}: {
+  tenders: { ref: string; title: string }[];
+  cycles: CycleDto[];
+  pipeline: PipelineDto[];
+  applications: PortalAppRow[];
+  current: string;
+  onSelect: (ref: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
+  const dialogId = useId();
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    const prior = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", onKey);
+    closeRef.current?.focus();
+    return () => {
+      document.body.style.overflow = prior;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const start = () => {
+    const others = tenders.filter((t) => t.ref !== current).map((t) => t.ref);
+    setPicked([current, ...others].filter(Boolean).slice(0, 3));
+    setOpen(true);
+  };
+
+  const toggle = (r: string) =>
+    setPicked((list) =>
+      list.includes(r) ? list.filter((x) => x !== r) : list.length >= 4 ? list : [...list, r],
+    );
+
+  const rows = picked
+    .map((r) => {
+      const t = tenders.find((x) => x.ref === r);
+      return t ? compareRowOf(t.ref, t.title, cycles, pipeline, applications) : null;
+    })
+    .filter((r): r is CompareRow => r !== null);
+
+  /* The earliest closing among the picked tenders — the fact a comparison is
+     usually opened for. */
+  let earliest: string | undefined;
+  for (const r of rows) {
+    if (!r.closing) continue;
+    if (!earliest || new Date(r.closing).getTime() < new Date(earliest).getTime()) earliest = r.closing;
+  }
+
+  const facts: { label: string; value: (r: CompareRow) => ReactNode }[] = [
+    {
+      label: "Closes",
+      value: (r) => (
+        <>
+          <p className="text-[11.5px] font-semibold text-ink-800 dark:text-ink-100">{fmtDate(r.closing)}</p>
+          <p
+            className={cn(
+              "mt-0.5 font-code text-[7.5px] font-bold tracking-[0.14em]",
+              r.closing && (daysUntil(r.closing) ?? 0) < 0 ? "text-brand-700 dark:text-brand-300" : "text-ink-400",
+            )}
+          >
+            {r.closing ? relDays(r.closing).toUpperCase() : "NO DATE ON RECORD"}
+          </p>
+        </>
+      ),
+    },
+    {
+      label: "Stage",
+      value: (r) => (
+        <>
+          <p className="text-[11.5px] font-semibold text-ink-800 dark:text-ink-100">{r.stageLabel}</p>
+          <span className="mt-1.5 block h-[2px] w-full overflow-hidden rounded-full bg-ink-100 dark:bg-white/[0.08]">
+            <span className="block h-full rounded-full bg-brand-500" style={{ width: `${r.pct}%` }} />
+          </span>
+          <p className="mt-1 font-code text-[7px] tracking-[0.12em] text-ink-400">
+            {r.pct}% COMPLETE · {r.stageCaption.toUpperCase()}
+          </p>
+        </>
+      ),
+    },
+    {
+      label: "Bids read",
+      value: (r) => (
+        <>
+          <p className="font-display text-[20px] font-bold leading-none text-ink-950 tabular dark:text-white">{r.bids}</p>
+          <p className="mt-1 font-code text-[7px] tracking-[0.12em] text-ink-400">
+            {r.bids === 1 ? "BID ON THE REGISTER" : "BIDS ON THE REGISTER"}
+          </p>
+        </>
+      ),
+    },
+    {
+      label: "Portal bids",
+      value: (r) => (
+        <>
+          <p className="font-display text-[20px] font-bold leading-none text-ink-950 tabular dark:text-white">{r.portalBids}</p>
+          <p className="mt-1 font-code text-[7px] tracking-[0.12em] text-ink-400">RECEIVED FROM SUPPLIERS</p>
+        </>
+      ),
+    },
+    {
+      label: "Value",
+      value: (r) =>
+        r.value !== undefined ? (
+          <>
+            <p className="font-code text-[11px] font-bold tracking-[0.04em] text-ink-900 tabular dark:text-ink-100">
+              {r.currency ? `${r.currency} ` : ""}
+              {fmtMoney(r.value)}
+            </p>
+            <p className="mt-1 font-code text-[7px] tracking-[0.12em] text-ink-400">
+              {r.valueKind === "contract" ? "CONTRACT ON RECORD" : "BUDGET ESTIMATE"}
+            </p>
+          </>
+        ) : (
+          <p className="text-[11.5px] text-ink-400">—</p>
+        ),
+    },
+    {
+      label: "Risk flags",
+      value: (r) => (
+        <>
+          <p className="text-[11.5px] font-semibold text-ink-800 dark:text-ink-100">
+            {r.complaints} {r.complaints === 1 ? "open complaint" : "open complaints"}
+          </p>
+          <p className="mt-0.5 font-code text-[7.5px] tracking-[0.12em] text-ink-400">
+            {r.alb} ALB {r.alb === 1 ? "DOSSIER" : "DOSSIERS"}
+          </p>
+        </>
+      ),
+    },
+  ];
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={start}
+        disabled={tenders.length < 2}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-controls={`${dialogId}-dialog`}
+        title={tenders.length < 2 ? "Stage at least two tenders to compare them" : "Compare the tenders on the desk"}
+        className="focus-brand inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-[10px] border border-ink-200/80 bg-[#fffdfb] px-4 font-code text-[8.5px] font-bold tracking-[0.16em] text-ink-800 shadow-[0_1px_2px_rgba(11,12,15,0.04)] transition-colors hover:border-brand-400 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.1] dark:bg-white/[0.04] dark:text-ink-200 dark:hover:border-brand-500/50 dark:hover:text-brand-300 sm:h-auto sm:self-stretch"
+      >
+        <Scale className="h-3.5 w-3.5" aria-hidden="true" />
+        COMPARE
+        <span className="rounded-full bg-ink-950 px-1.5 py-0.5 text-[7px] font-bold tracking-[0.1em] text-white dark:bg-white dark:text-ink-950">
+          {tenders.length}
+        </span>
+      </button>
+
+      {typeof document !== "undefined"
+        ? createPortal(
+            <AnimatePresence>
+              {open ? (
+                <motion.div
+                  key={`compare-${dialogId}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="fixed inset-0 z-[90] grid place-items-center bg-night/70 p-3 backdrop-blur-sm sm:p-5"
+                  onMouseDown={(event) => {
+                    if (event.target === event.currentTarget) setOpen(false);
+                  }}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby={`${dialogId}-title`}
+                >
+                  <motion.div
+                    initial={{ opacity: 0, y: 18, scale: 0.985 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 12, scale: 0.99 }}
+                    transition={{ duration: 0.28, ease: EASE }}
+                    className="panel panel-lift flex max-h-[92dvh] w-full max-w-6xl flex-col overflow-hidden rounded-[12px]"
+                  >
+                    <header className="flex shrink-0 items-start justify-between gap-4 border-b border-ink-100 px-5 py-4 dark:border-white/[0.06] sm:px-7 sm:py-5">
+                      <div className="min-w-0">
+                        <p className="font-code text-[8.5px] font-bold tracking-[0.2em] text-brand-700 dark:text-brand-300">
+                          TENDER CYCLE · COMPARISON
+                        </p>
+                        <h3
+                          id={`${dialogId}-title`}
+                          className="mt-1 font-display text-[20px] font-black tracking-[-0.02em] text-ink-950 dark:text-white sm:text-[22px]"
+                        >
+                          Compare bidding tenders
+                        </h3>
+                        <p className="mt-1.5 max-w-[70ch] text-[11.5px] leading-relaxed text-ink-500 dark:text-ink-400">
+                          Closing, stage, bids and value side by side — read live from each tender&apos;s own cycle record. Pick up to four.
+                        </p>
+                      </div>
+                      <button
+                        ref={closeRef}
+                        type="button"
+                        onClick={() => setOpen(false)}
+                        aria-label="Close tender comparison"
+                        className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-900 dark:hover:bg-white/[0.06] dark:hover:text-white"
+                      >
+                        <X className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    </header>
+
+                    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                      {/* The desk's whole register, one tap each — the selection
+                          IS the comparison. */}
+                      <div className="border-b border-ink-100/80 px-5 py-3 dark:border-white/[0.06] sm:px-7">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {tenders.map((t) => {
+                            const on = picked.includes(t.ref);
+                            const full = !on && picked.length >= 4;
+                            return (
+                              <button
+                                key={t.ref}
+                                type="button"
+                                onClick={() => toggle(t.ref)}
+                                aria-pressed={on}
+                                disabled={full}
+                                title={t.title}
+                                className={cn(
+                                  "focus-brand inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-code text-[8px] font-bold tracking-[0.1em] transition-colors",
+                                  on
+                                    ? "border-ink-950 bg-ink-950 text-white dark:border-white dark:bg-white dark:text-ink-950"
+                                    : "border-ink-200 bg-white text-ink-500 hover:border-ink-400 hover:text-ink-900 dark:border-white/[0.12] dark:bg-white/[0.03] dark:text-ink-400 dark:hover:border-white/30 dark:hover:text-white",
+                                  full && "cursor-not-allowed opacity-35",
+                                )}
+                              >
+                                <span
+                                  className={cn("h-1 w-1 rounded-full", on ? "bg-emerald-400" : "bg-ink-300 dark:bg-white/25")}
+                                  aria-hidden="true"
+                                />
+                                {t.ref}
+                              </button>
+                            );
+                          })}
+                          <span className="ml-auto font-code text-[7.5px] font-bold tracking-[0.16em] text-ink-400">
+                            {picked.length} OF 4 SELECTED
+                          </span>
+                        </div>
+                      </div>
+
+                      {rows.length === 0 ? (
+                        <p className="px-5 py-12 text-center text-[12.5px] text-ink-500 sm:px-7">
+                          Pick at least one tender to compare.
+                        </p>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full min-w-[560px] border-collapse text-left">
+                            <thead>
+                              <tr className="border-b border-ink-100 dark:border-white/[0.07]">
+                                <th
+                                  scope="col"
+                                  className="sticky left-0 z-10 w-[128px] bg-[#fffdfb] px-4 py-3 font-code text-[7.5px] font-bold tracking-[0.2em] text-ink-400 dark:bg-[#12141a]"
+                                >
+                                  TENDER
+                                </th>
+                                {rows.map((r) => (
+                                  <th
+                                    key={r.ref}
+                                    scope="col"
+                                    className="min-w-[176px] border-l border-ink-100/70 px-3 py-3 align-top dark:border-white/[0.055]"
+                                  >
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      <span className="font-code text-[9.5px] font-bold tracking-[0.08em] text-ink-950 dark:text-white">
+                                        {r.ref}
+                                      </span>
+                                      {r.ref === current ? (
+                                        <span className="rounded-full bg-ink-950 px-1.5 py-0.5 font-code text-[6.5px] font-bold tracking-[0.14em] text-white dark:bg-white dark:text-ink-950">
+                                          ON DESK
+                                        </span>
+                                      ) : null}
+                                      {rows.length > 1 && earliest === r.closing ? (
+                                        <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 font-code text-[6.5px] font-bold tracking-[0.12em] text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+                                          CLOSES FIRST
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                    <p className="mt-1 line-clamp-2 text-[10.5px] font-medium leading-snug text-ink-500 dark:text-ink-400">
+                                      {r.title}
+                                    </p>
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {facts.map((fact) => (
+                                <tr
+                                  key={fact.label}
+                                  className="border-b border-ink-100/60 last:border-0 dark:border-white/[0.045]"
+                                >
+                                  <th
+                                    scope="row"
+                                    className="sticky left-0 z-10 bg-[#fffdfb] px-4 py-3.5 align-top font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-400 dark:bg-[#12141a]"
+                                  >
+                                    {fact.label.toUpperCase()}
+                                  </th>
+                                  {rows.map((r) => (
+                                    <td
+                                      key={r.ref}
+                                      className="border-l border-ink-100/70 px-3 py-3.5 align-top dark:border-white/[0.055]"
+                                    >
+                                      {fact.value(r)}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                              <tr>
+                                <td className="sticky left-0 z-10 bg-[#fffdfb] px-4 py-3 dark:bg-[#12141a]" />
+                                {rows.map((r) => (
+                                  <td
+                                    key={r.ref}
+                                    className="border-l border-ink-100/70 px-3 py-3 dark:border-white/[0.055]"
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        onSelect(r.ref);
+                                        setOpen(false);
+                                      }}
+                                      className="focus-brand inline-flex items-center gap-1 font-code text-[7.5px] font-bold tracking-[0.16em] text-brand-700 transition-colors hover:text-brand-800 dark:text-brand-300 dark:hover:text-brand-200"
+                                    >
+                                      OPEN DOSSIER
+                                      <ArrowRight className="h-2.5 w-2.5" aria-hidden="true" />
+                                    </button>
+                                  </td>
+                                ))}
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+
+                    <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-ink-100 px-5 py-3.5 dark:border-white/[0.06] sm:px-7">
+                      <p className="max-w-[60ch] text-[10.5px] leading-relaxed text-ink-400">
+                        Every figure is stored on the tender&apos;s cycle record — closing date, opening register, portal
+                        applications, contract value. Nothing here is inferred.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setOpen(false)}
+                        className="inline-flex h-8 items-center rounded-lg border border-ink-200/80 px-3 font-code text-[8px] font-bold tracking-[0.16em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 dark:border-white/[0.12] dark:text-ink-300 dark:hover:border-white/30 dark:hover:text-white"
+                      >
+                        CLOSE
+                      </button>
+                    </footer>
+                  </motion.div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>,
+            document.body,
+          )
+        : null}
+    </>
+  );
+}
+
 /* ── the desk ───────────────────────────────────────────────────────────────── */
 
 export function CycleView({
@@ -1165,11 +1765,13 @@ export function CycleView({
   const [analytics, setAnalytics] = useState<Record<string, number | string> | null>(null);
   const [members, setMembers] = useState<MemberDto[]>([]);
   const [busy, setBusy] = useState(false);
-  /* When the desk last heard from quorum-mcp — shown in the header, so the
-     officer can tell a stale screen from a live one at a glance. */
-  const [syncedAt, setSyncedAt] = useState<Date | null>(null);
   /* Draft inputs, one record shared across the tab forms. */
   const [d, setD] = useState<Record<string, string>>({});
+  const [noticeAnalysis, setNoticeAnalysis] = useState<NoticeAnalysisState>({ status: "idle", conflicts: [] });
+  const [noticeFile, setNoticeFile] = useState<File | null>(null);
+  const [pendingUploadRef, setPendingUploadRef] = useState("");
+  const [noticeUploadMessage, setNoticeUploadMessage] = useState("");
+  const [metaConsent, setMetaConsent] = useState(false);
   const [openRows, setOpenRows] = useState<{ bidder: string; receivedAt: string; priceRead: string }[]>([
     { bidder: "", receivedAt: "", priceRead: "" },
   ]);
@@ -1181,7 +1783,88 @@ export function CycleView({
      refreshed when the publication year or currency changes. */
   const [autoRef, setAutoRef] = useState("");
   const [refLoading, setRefLoading] = useState(true);
-  const set = (k: string, v: string) => setD((p) => ({ ...p, [k]: v }));
+  const set = (k: string, v: string) => {
+    setD((p) => ({ ...p, [k]: v }));
+    /* Editing a field IS the officer's call on a notice conflict. */
+    setNoticeAnalysis((current) =>
+      current.conflicts.includes(k)
+        ? { ...current, conflicts: current.conflicts.filter((conflict) => conflict !== k) }
+        : current,
+    );
+  };
+
+  const analyzeTenderNotice = async (file: File, consentConfirmed = metaConsent) => {
+    if (!consentConfirmed) {
+      setNoticeAnalysis({
+        status: "error",
+        fileName: file.name,
+        error: "Confirm the Meta AI data notice before analyzing this document.",
+        conflicts: [],
+      });
+      return;
+    }
+
+    setNoticeAnalysis({ status: "analyzing", fileName: file.name, conflicts: [] });
+    const form = new FormData();
+    form.append("file", file);
+    form.append("metaConsent", "true");
+    try {
+      const response = await fetch("/api/cycle/parse-tender", { method: "POST", body: form });
+      const result = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        model?: string;
+        extractionNote?: string;
+        fields?: TenderExtraction;
+      };
+      if (!response.ok || !result.fields) {
+        setNoticeAnalysis({
+          status: "error",
+          fileName: file.name,
+          extractionNote: result.extractionNote,
+          error: result.error ?? `Document analysis failed (HTTP ${response.status}).`,
+          conflicts: [],
+        });
+        return;
+      }
+
+      const extracted = result.fields;
+      const candidates: { key: string; label: string; value: string | null }[] = [
+        { key: "pipeTitle", label: "Tender title", value: extracted.title.value },
+        { key: "pipeOffice", label: "Responsible office", value: extracted.responsibleOffice.value },
+        { key: "pipePub", label: "Publication date", value: extracted.publicationDate.value },
+        { key: "pipeEst", label: "Budget estimate", value: extracted.budgetEstimate.value === null ? null : String(extracted.budgetEstimate.value) },
+        { key: "pipeCur", label: "Currency", value: extracted.currency.value },
+      ].filter((field) => field.key !== "pipePub" || !field.value || /^\d{4}-\d{2}-\d{2}$/.test(field.value));
+
+      const conflicts: string[] = [];
+      const next = { ...d };
+      for (const candidate of candidates) {
+        if (!candidate.value) continue;
+        const existing = d[candidate.key]?.trim();
+        if (existing && existing.toLocaleLowerCase() !== candidate.value.toLocaleLowerCase()) {
+          conflicts.push(candidate.key);
+          continue;
+        }
+        next[candidate.key] = candidate.value;
+      }
+      setD(next);
+      setNoticeAnalysis({
+        status: "ready",
+        fileName: file.name,
+        model: result.model,
+        extractionNote: result.extractionNote,
+        fields: extracted,
+        conflicts,
+      });
+    } catch (error) {
+      setNoticeAnalysis({
+        status: "error",
+        fileName: file.name,
+        error: error instanceof Error ? error.message : "The document analysis service could not be reached.",
+        conflicts: [],
+      });
+    }
+  };
 
   const cycle = useMemo(() => cycles.find((c) => c.tenderId === ref) ?? null, [cycles, ref]);
 
@@ -1222,7 +1905,6 @@ export function CycleView({
       setMembers(((cm.members ?? []) as MemberDto[]).filter((m) => m.status === "PRESENT"));
       setPortalApps(((ap.applications ?? []) as PortalAppRow[]).filter((a) => a.status === "RECEIVED"));
       setRef((cur) => cur || list[0]?.ref || "");
-      setSyncedAt(new Date());
     } catch {
       /* the desk renders what it last had; the poll retries */
     }
@@ -1279,6 +1961,104 @@ export function CycleView({
     }
   };
 
+  const createPipelineEntry = async (): Promise<boolean> => {
+    setBusy(true);
+    setNoticeUploadMessage("");
+    let createdRef = pendingUploadRef;
+    try {
+      if (!createdRef) {
+        const response = await fetch(`/api/pipeline${SVC}`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            title: d.pipeTitle,
+            office: d.pipeOffice || undefined,
+            budgetEstimate: Number(d.pipeEst) || undefined,
+            currency: d.pipeCur || undefined,
+            expectedPublication: d.pipePub || undefined,
+          }),
+        });
+        const result = (await response.json().catch(() => ({}))) as {
+          error?: string;
+          entry?: { ref?: string };
+        };
+        if (!response.ok) {
+          onToast((result.error ?? `THE CYCLE SERVICE REFUSED (HTTP ${response.status})`).toUpperCase());
+          return false;
+        }
+        if (!result.entry?.ref) {
+          onToast("THE PIPELINE SERVICE CREATED NO USABLE TENDER REFERENCE — REFRESH THE PIPELINE BEFORE RETRYING");
+          await pull();
+          return false;
+        }
+        createdRef = result.entry.ref;
+        setPendingUploadRef(createdRef);
+      }
+
+      const uploadWarnings: string[] = [];
+      if (noticeFile) {
+        const form = new FormData();
+        form.append("file", noticeFile);
+        const uploadResponse = await fetch(`/api/tenders/${encodeURIComponent(createdRef)}/docs`, {
+          method: "POST",
+          body: form,
+        });
+        const upload = (await uploadResponse.json().catch(() => ({}))) as {
+          error?: string;
+          key?: string;
+          staged?: boolean;
+          audited?: boolean;
+          reason?: string;
+          note?: string;
+          auditReason?: string;
+        };
+        if (!uploadResponse.ok || !upload.key) {
+          const message = upload.error ?? `The notice could not be attached (HTTP ${uploadResponse.status}).`;
+          setNoticeUploadMessage(`Tender ${createdRef} is already in the pipeline. ${message} Retry here to attach the notice without creating a duplicate.`);
+          onToast(`TENDER ${createdRef} CREATED · NOTICE UPLOAD FAILED — RETRY TO ATTACH`);
+          await pull();
+          return false;
+        }
+        if (!upload.staged) {
+          uploadWarnings.push(`stored, but not staged for review${upload.reason || upload.note ? `: ${upload.reason ?? upload.note}` : ""}`);
+        }
+        if (!upload.audited) {
+          uploadWarnings.push(`stored, but audit recording failed${upload.auditReason ? `: ${upload.auditReason}` : ""}`);
+        }
+      }
+
+      setPendingUploadRef("");
+      setNoticeFile(null);
+      setNoticeUploadMessage("");
+      setNoticeAnalysis({ status: "idle", conflicts: [] });
+      setMetaConsent(false);
+      setD((current) => ({ ...current, pipeTitle: "", pipeEst: "", pipePub: "" }));
+      onToast(
+        noticeFile
+          ? uploadWarnings.length
+            ? `TENDER ${createdRef} CREATED · NOTICE ${uploadWarnings.join(" · ")}`.toUpperCase()
+            : `TENDER ${createdRef} CREATED · NOTICE STORED AND AUDITED`.toUpperCase()
+          : `TENDER ${createdRef} ADDED TO THE PIPELINE`,
+      );
+      await pull();
+      void refreshNextRef();
+      return true;
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "The service could not be reached.";
+      if (createdRef && noticeFile) {
+        setPendingUploadRef(createdRef);
+        setNoticeUploadMessage(`Tender ${createdRef} is already in the pipeline. ${reason} Retry here to attach the notice without creating a duplicate.`);
+        onToast(`TENDER ${createdRef} CREATED · NOTICE UPLOAD FAILED — RETRY TO ATTACH`);
+        await pull();
+      } else {
+        onToast(`THE PIPELINE SERVICE DID NOT ANSWER — ${reason}`.toUpperCase());
+      }
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const refreshCycle = () => void pull();
 
   /* ── Tab: pipeline (G17) ─────────────────────────────────────────────────── */
@@ -1287,156 +2067,53 @@ export function CycleView({
   const estimates = pipeline.filter((p) => p.budgetEstimate);
   const sameCur = estimates.length && estimates.every((p) => (p.currency ?? "") === (estimates[0].currency ?? ""));
   const combined = sameCur ? estimates.reduce((s, p) => s + (p.budgetEstimate ?? 0), 0) : 0;
-  const CURRENCIES = ["ZMW", "KES", "USD", "RWF"];
-
   const PipelineTab = (
     <div className="grid gap-4 xl:gap-5">
-      <Card title="Plan a tender" sub="PRE-STAGES THE DESK — A PACK BEFORE ADVERTISEMENT">
-        <div className="grid gap-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <PlanField label="Reference" hint="SYSTEM-GENERATED">
-              <div className="relative">
-                <input
-                  className={cn(planInput, "cursor-default bg-ink-50/60 pr-16 font-code tracking-[0.06em] text-ink-700 dark:bg-white/[0.025] dark:text-ink-300")}
-                  value={refLoading ? "Issuing…" : autoRef || "Issued on save"}
-                  readOnly
-                  aria-readonly="true"
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-                <span className="pointer-events-none absolute right-2.5 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 rounded-full border border-ink-200/70 bg-white/80 px-1.5 py-0.5 font-code text-[7px] font-bold tracking-[0.14em] text-ink-400 dark:border-white/10 dark:bg-white/[0.05] dark:text-ink-400">
-                  <span className="h-1 w-1 rounded-full bg-brand-500" aria-hidden="true" /> AUTO
-                </span>
-              </div>
-            </PlanField>
-            <PlanField label="Publication">
-              <input
-                className={planInput}
-                type="date"
-                value={d.pipePub ?? ""}
-                onChange={(e) => set("pipePub", e.target.value)}
-              />
-            </PlanField>
-          </div>
-
-          <PlanField label="Title" hint="WHAT THE MARKET WILL SEE">
-            <input
-              className={planInput}
-              value={d.pipeTitle ?? ""}
-              onChange={(e) => set("pipeTitle", e.target.value)}
-              placeholder="Supply of iodised salt — provincial depots"
-              autoComplete="off"
-            />
-          </PlanField>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <PlanField label="Responsible office">
-              <div className="relative">
-                <select
-                  className={cn(planInput, "cursor-pointer appearance-none pr-9")}
-                  value={d.pipeOffice ?? ""}
-                  onChange={(e) => set("pipeOffice", e.target.value)}
-                >
-                  <option value="">Select an office</option>
-                  {OFFICES.map((o) => (
-                    <option key={o} value={o}>
-                      {OFFICE_LABELS[o]}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400"
-                  aria-hidden="true"
-                />
-              </div>
-            </PlanField>
-
-            {/* Currency and amount are one value, so they share one field. */}
-            <PlanField label="Budget estimate" hint="OPTIONAL">
-              <div className="flex h-11 items-stretch overflow-hidden rounded-xl border border-ink-200/90 bg-[#fffdfb] shadow-[inset_0_1px_1px_rgba(11,12,15,0.03)] transition-[border-color,box-shadow] duration-150 focus-within:border-ink-950 focus-within:ring-[3px] focus-within:ring-ink-950/[0.08] hover:border-ink-300 dark:border-white/[0.13] dark:bg-[#0b0d12] dark:focus-within:border-white/40 dark:focus-within:ring-white/[0.07] dark:hover:border-white/25">
-                <div className="relative shrink-0">
-                  <select
-                    aria-label="Currency"
-                    value={d.pipeCur ?? ""}
-                    onChange={(e) => set("pipeCur", e.target.value)}
-                    className="h-full cursor-pointer appearance-none bg-ink-50/70 pl-3 pr-6 font-code text-[10px] font-bold tracking-[0.1em] text-ink-600 outline-none dark:bg-white/[0.05] dark:text-ink-300 dark:[color-scheme:dark]"
-                  >
-                    <option value="">—</option>
-                    {CURRENCIES.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown
-                    className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-ink-400"
-                    aria-hidden="true"
-                  />
-                </div>
-                <span className="w-px shrink-0 bg-ink-200/80 dark:bg-white/10" aria-hidden="true" />
-                <input
-                  className="h-full min-w-0 flex-1 bg-transparent px-3 font-code text-[13px] tabular text-ink-900 outline-none placeholder:text-ink-400 dark:text-ink-900"
-                  type="number"
-                  min={0}
-                  inputMode="decimal"
-                  value={d.pipeEst ?? ""}
-                  onChange={(e) => set("pipeEst", e.target.value)}
-                  placeholder="25 000 000"
-                  aria-label="Budget estimate"
-                />
-              </div>
-            </PlanField>
-          </div>
-
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-ink-100/80 bg-ink-50/50 px-3 py-2.5 dark:border-white/[0.06] dark:bg-white/[0.025]">
-            <span className="eyebrow text-[7.5px] tracking-[0.2em]">Budget on the record</span>
-            <span className="truncate font-code text-[11px] font-bold tabular tracking-[0.06em] text-ink-800">
-              {d.pipeEst && Number.isFinite(Number(d.pipeEst))
-                ? `${d.pipeCur || "—"} ${fmtMoney(Number(d.pipeEst))}`
-                : "—"}
-            </span>
-          </div>
-
-          <button
-            type="button"
-            disabled={busy || !d.pipeTitle}
-            onClick={() =>
-              act(
-                "/api/pipeline",
-                {
-                  title: d.pipeTitle,
-                  office: d.pipeOffice || undefined,
-                  budgetEstimate: Number(d.pipeEst) || undefined,
-                  currency: d.pipeCur || undefined,
-                  expectedPublication: d.pipePub || undefined,
-                },
-                "PIPELINE ENTRY ADDED",
-              ).then((ok) => {
-                if (!ok) return;
-                setD((p) => ({ ...p, pipeTitle: "", pipeEst: "", pipePub: "" }));
-                void refreshNextRef();
-              })
-            }
-            className="group relative mt-0.5 inline-flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-brand-600 text-[13.5px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_14px_30px_-16px_rgba(217,38,22,0.85)] transition-[background-color,box-shadow,transform] duration-200 hover:bg-brand-500 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_18px_36px_-16px_rgba(217,38,22,0.95)] active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fffdfb] disabled:cursor-not-allowed disabled:bg-ink-100 disabled:text-ink-400 disabled:shadow-none disabled:active:scale-100 dark:focus-visible:ring-offset-[#111318] dark:disabled:bg-white/[0.06] dark:disabled:text-ink-500"
-          >
-            <Plus className="relative h-4 w-4" aria-hidden="true" />
-            <span className="relative">Add to pipeline</span>
-            <ArrowRight
-              className="relative h-4 w-4 transition-transform duration-200 group-hover:translate-x-1"
-              aria-hidden="true"
-            />
-          </button>
-
-          <p className="flex items-start gap-2 text-[11px] leading-relaxed text-ink-400">
-            <span className="mt-[6px] h-1 w-1 shrink-0 rounded-full bg-brand-500" aria-hidden="true" />
-            Planning is free. The entry links to a live tender when its pack lands — the cycle rail then takes
-            over the record.
-          </p>
-        </div>
+      <Card
+        title="Plan a tender"
+        sub="ONE DETAIL AT A TIME — ONLY A TITLE IS REQUIRED"
+        workflow
+        busy={busy}
+        actionLabel="Create a tender"
+        teaser="Start from the notice or type the title — one question at a time. The reference is issued on save."
+        right={pendingUploadRef ? <Chip tone="warn">NOTICE PENDING · {pendingUploadRef}</Chip> : undefined}
+      >
+        {(close) => (
+          <PlanTenderIntake
+            d={d}
+            set={set}
+            autoRef={autoRef}
+            refLoading={refLoading}
+            busy={busy}
+            noticeFile={noticeFile}
+            onPickNotice={(file) => {
+              setNoticeFile(file);
+              setNoticeUploadMessage("");
+              void analyzeTenderNotice(file);
+            }}
+            noticeAnalysis={noticeAnalysis}
+            noticeUploadMessage={noticeUploadMessage}
+            metaConsent={metaConsent}
+            onMetaConsent={(value) => {
+              setMetaConsent(value);
+              if (value && noticeFile && noticeAnalysis.status === "error") {
+                void analyzeTenderNotice(noticeFile, true);
+              }
+            }}
+            pendingUploadRef={pendingUploadRef}
+            onApplyExtracted={(key, value) => set(key, value)}
+            onCreate={createPipelineEntry}
+            onCreated={close}
+          />
+        )}
       </Card>
 
       <Card
         title="Pipeline"
+        workflow
+        busy={busy}
+        actionLabel="Manage pipeline"
+        teaser="Every pack staged before advertisement — link one to a live tender when it lands."
         sub={
           pipeline.length
             ? `${pipeline.length} ENTR${pipeline.length === 1 ? "Y" : "IES"}${combined ? ` · ${estimates[0].currency ?? ""} ${fmtMoney(combined)} COMBINED` : ""}`
@@ -1467,6 +2144,7 @@ export function CycleView({
                 key={p.id}
                 p={p}
                 tenders={tenders}
+                busy={busy}
                 onLink={(tenderId) => act(`/api/pipeline/${p.id}/link`, { tenderId }, "PIPELINE ENTRY LINKED")}
               />
             ))}
@@ -1560,7 +2238,7 @@ export function CycleView({
 
   const OpeningTab = (
     <div className="grid gap-4 lg:grid-cols-2">
-      <Card title="Closing date on record" sub="THE OFFICER'S ENTRY WINS; THE NOTICE'S DATE IS THE FALLBACK">
+      <Card title="Closing date on record" sub="THE OFFICER'S ENTRY WINS; THE NOTICE'S DATE IS THE FALLBACK" workflow busy={busy} actionLabel="Set closing date">
         <div className="flex items-end gap-2">
           <Field label="CLOSING DATE">
             <input className={inputCls} type="date" value={d.closing ?? ""} onChange={(e) => set("closing", e.target.value)} />
@@ -1574,7 +2252,7 @@ export function CycleView({
         </p>
       </Card>
 
-      <Card title="Record the public bid opening" sub="LATE BIDS ARE REJECTED UNOPENED — THE REGISTER GOES TO THE PROCUREMENT UNIT'S GATE">
+      <Card title="Record the public bid opening" sub="LATE BIDS ARE REJECTED UNOPENED — THE REGISTER GOES TO THE PROCUREMENT UNIT'S GATE" workflow busy={busy} actionLabel="Record bid opening">
         {cycle?.opening?.certifiedAt ? (
           <div className="space-y-2">
             <Chip tone="ok">REGISTER CERTIFIED {cycle.opening.certifiedBy ? `BY ${cycle.opening.certifiedBy.toUpperCase()}` : ""}</Chip>
@@ -1731,7 +2409,7 @@ export function CycleView({
 
   const EvaluationTab = cycle ? (
     <div className="grid gap-4">
-      <Card title="Conflict-of-interest declarations" sub="EVERY PRESENT MEMBER DECLARES BEFORE THE MATRIX IS CERTIFIED — THE GATE ENFORCES IT">
+      <Card title="Conflict-of-interest declarations" sub="EVERY PRESENT MEMBER DECLARES BEFORE THE MATRIX IS CERTIFIED — THE GATE ENFORCES IT" workflow busy={busy} actionLabel="Manage declarations">
         <ul className="grid gap-2 sm:grid-cols-2">
           {members.map((m) => {
             const decl = cycle.coi.find((x) => x.member.toLowerCase() === m.name.toLowerCase());
@@ -1771,7 +2449,7 @@ export function CycleView({
       </Card>
 
       {cycle.matrix ? (
-        <Card title={`Evaluation matrix ${cycle.matrix.id}`} sub={`${cycle.matrix.status} · TECHNICAL ${cycle.matrix.technicalWeightPct}/FINANCIAL ${100 - cycle.matrix.technicalWeightPct}${cycle.matrix.certifiedBy ? ` · CERTIFIED BY ${cycle.matrix.certifiedBy.toUpperCase()}` : ""}`}>
+        <Card title={`Evaluation matrix ${cycle.matrix.id}`} sub={`${cycle.matrix.status} · TECHNICAL ${cycle.matrix.technicalWeightPct}/FINANCIAL ${100 - cycle.matrix.technicalWeightPct}${cycle.matrix.certifiedBy ? ` · CERTIFIED BY ${cycle.matrix.certifiedBy.toUpperCase()}` : ""}`} workflow busy={busy} actionLabel="Open evaluation matrix">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-[12px]">
               <thead>
@@ -1859,7 +2537,7 @@ export function CycleView({
           ) : null}
         </Card>
       ) : (
-        <Card title="Build the evaluation matrix" sub="CRITERIA WEIGHTS MUST SUM TO 100 — THE VALIDATOR REFUSES ANYTHING ELSE">
+        <Card title="Build the evaluation matrix" sub="CRITERIA WEIGHTS MUST SUM TO 100 — THE VALIDATOR REFUSES ANYTHING ELSE" workflow busy={busy} actionLabel="Set evaluation criteria">
           <div className="grid gap-3">
             {[1, 2, 3].map((n) => (
               <div key={n} className="grid grid-cols-[2fr_1fr] gap-2">
@@ -1908,7 +2586,7 @@ export function CycleView({
 
   const AwardTab = cycle ? (
     <div className="grid gap-4 lg:grid-cols-2">
-      <Card title="Award recommendation report" sub="THE STATUTORY REPORT — FINDINGS, MATRIX, RECOMMENDATION, SIGNATURES">
+      <Card title="Award recommendation report" sub="THE STATUTORY REPORT — FINDINGS, MATRIX, RECOMMENDATION, SIGNATURES" workflow busy={busy} actionLabel="Manage award report">
         {cycle.awardReport ? (
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
@@ -1927,7 +2605,7 @@ export function CycleView({
         </p>
       </Card>
 
-      <Card title="Notice of award + standstill" sub={`PUBLICATION (SIMULATED PORTAL) STARTS THE ${10}-WORKING-DAY STANDSTILL`}>
+      <Card title="Notice of award + standstill" sub={`PUBLICATION (SIMULATED PORTAL) STARTS THE ${10}-WORKING-DAY STANDSTILL`} workflow busy={busy} actionLabel="Manage notice">
         {cycle.standstill ? (
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
@@ -1955,7 +2633,7 @@ export function CycleView({
         {!cycle.awardReport?.signedAt ? <p className="mt-3 text-[11.5px] text-ink-400">The publication gate opens when the award report is signed.</p> : null}
       </Card>
 
-      <Card title="Debrief letters" sub="QUALITATIVE DEBRIEFS FOR EVERY UNSUCCESSFUL BIDDER — DRAFTED FROM THEIR OWN RECORD">
+      <Card title="Debrief letters" sub="QUALITATIVE DEBRIEFS FOR EVERY UNSUCCESSFUL BIDDER — DRAFTED FROM THEIR OWN RECORD" workflow busy={busy} actionLabel="Manage debriefs">
         {cycle.debriefs.length === 0 ? (
           <div className="space-y-2">
             <p className="text-[11.5px] text-ink-400">Draft from the matrix's unsuccessful bidders:</p>
@@ -1981,7 +2659,7 @@ export function CycleView({
         )}
       </Card>
 
-      <Card title="Clarifications & addenda" sub="EVERY ANSWER GOES TO EVERY BIDDER — AN ADDENDUM INSIDE 7 DAYS MUST MOVE THE CLOSING">
+      <Card title="Clarifications & addenda" sub="EVERY ANSWER GOES TO EVERY BIDDER — AN ADDENDUM INSIDE 7 DAYS MUST MOVE THE CLOSING" workflow busy={busy} actionLabel="Manage clarifications">
         <ul className="space-y-1.5">
           {cycle.clarifications.slice(0, 4).map((c) => (
             <li key={c.id} className="rounded-lg bg-paper px-2.5 py-2 text-[12px]">
@@ -2037,7 +2715,7 @@ export function CycleView({
   const ContractTab = cycle ? (
     cycle.contract ? (
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card title={`Contract — ${cycle.contract.supplier}`} sub={`${cycle.contract.currency ?? ""} ${fmtMoney(cycle.contract.value)}${cycle.contract.completedAt ? " · COMPLETED" : " · ACTIVE"}`}>
+        <Card title={`Contract — ${cycle.contract.supplier}`} sub={`${cycle.contract.currency ?? ""} ${fmtMoney(cycle.contract.value)}${cycle.contract.completedAt ? " · COMPLETED" : " · ACTIVE"}`} workflow busy={busy} actionLabel="Manage contract">
           <ul className="space-y-1.5 text-[12.5px] text-ink-600">
             <li>Variation authority: below {10}% of contract value; at or above it, the accounting officer's gate.</li>
             <li>Payments certify at a named gate before they leave the desk.</li>
@@ -2051,7 +2729,7 @@ export function CycleView({
           ) : null}
         </Card>
 
-        <Card title="Milestones" sub={`${cycle.contract.milestones.length} ON THE SCHEDULE`}>
+        <Card title="Milestones" sub={`${cycle.contract.milestones.length} ON THE SCHEDULE`} workflow busy={busy} actionLabel="Manage milestones">
           <ul className="space-y-1.5">
             {cycle.contract.milestones.map((m) => (
               <li key={m.id} className="flex items-center justify-between gap-2 rounded-lg bg-paper px-2.5 py-2 text-[12.5px]">
@@ -2079,7 +2757,7 @@ export function CycleView({
           </div>
         </Card>
 
-        <Card title="Variations" sub={`THE GATE BITES AT ${10}%+ OF CONTRACT VALUE`}>
+        <Card title="Variations" sub={`THE GATE BITES AT ${10}%+ OF CONTRACT VALUE`} workflow busy={busy} actionLabel="Manage variations">
           <ul className="space-y-1.5">
             {cycle.contract.variations.map((v) => (
               <li key={v.id} className="flex items-center justify-between gap-2 rounded-lg bg-paper px-2.5 py-2 text-[12.5px]">
@@ -2100,7 +2778,7 @@ export function CycleView({
           </div>
         </Card>
 
-        <Card title="Payments" sub="CERTIFY BEFORE IT LEAVES THE DESK">
+        <Card title="Payments" sub="CERTIFY BEFORE IT LEAVES THE DESK" workflow busy={busy} actionLabel="Manage payments">
           <ul className="space-y-1.5">
             {cycle.contract.payments.map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-2 rounded-lg bg-paper px-2.5 py-2 text-[12.5px]">
@@ -2122,7 +2800,7 @@ export function CycleView({
         </Card>
       </div>
     ) : (
-      <Card title="Prepare the contract pack" sub="OPENS AFTER THE AWARD REPORT IS SIGNED AND THE STANDSTILL HAS LAPSED">
+      <Card title="Prepare the contract pack" sub="OPENS AFTER THE AWARD REPORT IS SIGNED AND THE STANDSTILL HAS LAPSED" workflow busy={busy} actionLabel="Prepare contract pack">
         <Btn onClick={preparePack} disabled={busy || !ref || !cycle.awardReport?.signedAt}>
           <FileSignature className="h-3.5 w-3.5" aria-hidden="true" /> Prepare the contract pack
         </Btn>
@@ -2135,7 +2813,7 @@ export function CycleView({
 
   const ComplaintsTab = cycle ? (
     <div className="grid gap-4 lg:grid-cols-2">
-      <Card title="Log a complaint" sub="STANDSTILL-WINDOW COMPLAINTS ARE MARKED AS SUCH">
+      <Card title="Log a complaint" sub="STANDSTILL-WINDOW COMPLAINTS ARE MARKED AS SUCH" workflow busy={busy} actionLabel="Log a complaint">
         <div className="grid gap-2">
           <div className="grid gap-2 sm:grid-cols-2">
             <input className={inputCls} placeholder="Complainant" value={d.cmpWho ?? ""} onChange={(e) => set("cmpWho", e.target.value)} />
@@ -2155,7 +2833,7 @@ export function CycleView({
         </div>
       </Card>
 
-      <Card title="Complaints on this tender" sub="RESPONSES ARE DRAFTED, SIGNED AT A GATE, THEN ISSUE">
+      <Card title="Complaints on this tender" sub="RESPONSES ARE DRAFTED, SIGNED AT A GATE, THEN ISSUE" workflow busy={busy} actionLabel="Manage complaint responses">
         {cycle.complaints.length === 0 ? (
           <div className="rounded-xl border border-dashed border-ink-200 px-4 py-8 text-center">
             <Scale className="mx-auto h-5 w-5 text-ink-400" aria-hidden="true" />
@@ -2405,11 +3083,19 @@ export function CycleView({
           </div>
         )}
       </Card>
-      <StoredDocsBrowser
-        tenderRef={ref}
-        canDelete={canDeleteDocuments}
-        title="STORED TENDER DOCUMENTS"
-      />
+      <Card
+        title="Stored tender documents"
+        sub={ref ? `${ref} · STORAGE, STAGING AND AUDIT STATUS` : "SELECT A TENDER TO BROWSE ITS DOCUMENTS"}
+        workflow
+        busy={busy}
+        actionLabel="Manage stored documents"
+      >
+        <StoredDocsBrowser
+          tenderRef={ref}
+          canDelete={canDeleteDocuments}
+          title="STORED TENDER DOCUMENTS"
+        />
+      </Card>
       <Card title="Consolidated procurement file" sub="ONE BUNDLE FOR THE AUDITORS — EVERY ARTIFACT, HASH AND SIGNATURE, WITH THE LOG-CHAIN VERDICT">
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink-100 bg-paper px-4 py-3.5">
           <div className="min-w-0">
@@ -2464,7 +3150,7 @@ export function CycleView({
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: EASE }}
-        className="panel relative flex h-full flex-col overflow-hidden rounded-[16px]"
+        className="panel relative flex h-full flex-col overflow-hidden rounded-[12px]"
       >
         {/* One wash of signal colour at the top edge — the desk's own light. */}
         <div
@@ -2483,7 +3169,7 @@ export function CycleView({
                 id="mc-cycle-h"
                 className="mt-2.5 font-display text-[27px] font-black leading-none tracking-[-0.032em] text-ink-950"
               >
-                Tender cycle<span className="text-brand-600 dark:text-brand-400">.</span>
+                Tender Cycle<span className="text-brand-600 dark:text-brand-400">.</span>
               </h2>
               <p className="mt-2 max-w-[62ch] text-[12.5px] leading-relaxed text-ink-500">
                 One desk, the whole cycle — every irreversible step stops at a named human gate.
@@ -2494,21 +3180,18 @@ export function CycleView({
             </div>
           </div>
 
-          <div className="mt-4 flex items-center gap-4">
-            <div className="min-w-0 flex-1 xl:max-w-[760px]">
+          <div className="mt-4 flex flex-col gap-2.5 sm:flex-row sm:items-stretch">
+            <div className="min-w-0 flex-1">
               <TenderPicker tenders={tenders} value={ref} cycles={cycles} onSelect={setRef} onToast={onToast} />
             </div>
-            <div className="ml-auto hidden shrink-0 items-center gap-2.5 xl:flex" aria-live="polite">
-              <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
-                <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-emerald-500" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              </span>
-              <span className="font-code text-[8px] font-bold tracking-[0.16em] text-ink-400">
-                {syncedAt
-                  ? `SYNCED ${syncedAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })} · 5s POLL`
-                  : "CONNECTING TO THE DESK"}
-              </span>
-            </div>
+            <TenderCompare
+              tenders={tenders}
+              cycles={cycles}
+              pipeline={pipeline}
+              applications={portalApps}
+              current={ref}
+              onSelect={setRef}
+            />
           </div>
         </header>
 
@@ -2646,6 +3329,682 @@ export function CycleView({
   );
 }
 
+/* ── Plan a tender — one question at a time ──────────────────────────────────
+   The same intake shape as the supplier register: a section, a progress meter,
+   one question, one control. The notice is an optional first step; every
+   answer after it can be skipped and revisited from the review. */
+
+type PlanStepKey = "notice" | "title" | "office" | "publication" | "budget" | "review";
+
+const PLAN_STEPS: {
+  key: PlanStepKey;
+  section: string;
+  prompt: string;
+  hint: string;
+  required?: boolean;
+}[] = [
+  {
+    key: "notice",
+    section: "HEAD START",
+    prompt: "Start from the tender notice?",
+    hint: "Optional. Choose the notice and Quorum reads it, then fills the answers for you to check. Nothing is filed yet.",
+  },
+  {
+    key: "title",
+    section: "THE PACK",
+    prompt: "What is this tender called?",
+    hint: "The title the market will see. This is the only required answer.",
+    required: true,
+  },
+  {
+    key: "office",
+    section: "ACCOUNTABILITY",
+    prompt: "Which office owns this pack?",
+    hint: "The desk accountable for the record — skip if it is not settled yet.",
+  },
+  {
+    key: "publication",
+    section: "TIMING",
+    prompt: "When do you expect to publish?",
+    hint: "Optional. The date you expect the pack to reach the market — it shows on the pipeline entry.",
+  },
+  {
+    key: "budget",
+    section: "BUDGET",
+    prompt: "What is the budget estimate?",
+    hint: "Optional. Leave it blank until the figure is settled.",
+  },
+  {
+    key: "review",
+    section: "REVIEW",
+    prompt: "Ready to stage this tender?",
+    hint: "Check the answers. The reference is issued only when you create the record.",
+  },
+];
+
+type NoticeField = {
+  key: string;
+  label: string;
+  value: string | null;
+  applyValue?: string | null;
+  confidence: number;
+  evidence: string | null;
+};
+
+type PlanTenderIntakeProps = {
+  d: Record<string, string>;
+  set: (key: string, value: string) => void;
+  autoRef: string;
+  refLoading: boolean;
+  busy: boolean;
+  noticeFile: File | null;
+  onPickNotice: (file: File) => void;
+  noticeAnalysis: NoticeAnalysisState;
+  noticeUploadMessage: string;
+  metaConsent: boolean;
+  onMetaConsent: (value: boolean) => void;
+  pendingUploadRef: string;
+  onApplyExtracted: (key: string, value: string) => void;
+  onCreate: () => Promise<boolean>;
+  onCreated: () => void;
+};
+
+function PlanTenderIntake({
+  d,
+  set,
+  autoRef,
+  refLoading,
+  busy,
+  noticeFile,
+  onPickNotice,
+  noticeAnalysis,
+  noticeUploadMessage,
+  metaConsent,
+  onMetaConsent,
+  pendingUploadRef,
+  onApplyExtracted,
+  onCreate,
+  onCreated,
+}: PlanTenderIntakeProps) {
+  /* A failed notice upload lands directly on the retry — the record already
+     exists, so the review is the only useful next screen. */
+  const [step, setStep] = useState(() => (pendingUploadRef ? PLAN_STEPS.length - 1 : 0));
+  const [error, setError] = useState("");
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const current = PLAN_STEPS[step];
+  const last = PLAN_STEPS.length - 1;
+  const title = (d.pipeTitle ?? "").trim();
+  const analyzing = noticeAnalysis.status === "analyzing";
+  const extracted = noticeAnalysis.fields;
+
+  const extractedFields: NoticeField[] = extracted
+    ? [
+        { key: "pipeTitle", label: "Tender title", value: extracted.title.value, confidence: extracted.title.confidence, evidence: extracted.title.evidence },
+        { key: "pipeOffice", label: "Responsible office", value: extracted.responsibleOffice.value ? OFFICE_LABELS[extracted.responsibleOffice.value] : null, applyValue: extracted.responsibleOffice.value, confidence: extracted.responsibleOffice.confidence, evidence: extracted.responsibleOffice.evidence },
+        { key: "pipePub", label: "Publication date", value: extracted.publicationDate.value, confidence: extracted.publicationDate.confidence, evidence: extracted.publicationDate.evidence },
+        { key: "pipeEst", label: "Budget estimate", value: extracted.budgetEstimate.value === null ? null : fmtMoney(extracted.budgetEstimate.value), applyValue: extracted.budgetEstimate.value === null ? null : String(extracted.budgetEstimate.value), confidence: extracted.budgetEstimate.confidence, evidence: extracted.budgetEstimate.evidence },
+        { key: "pipeCur", label: "Currency", value: extracted.currency.value, confidence: extracted.currency.confidence, evidence: extracted.currency.evidence },
+      ]
+    : [];
+
+  const notes = extracted ? extracted.warnings.length + (noticeAnalysis.extractionNote ? 1 : 0) : 0;
+  const titleFromNotice = !!extracted?.title.value && extracted.title.value === d.pipeTitle;
+  const budget = d.pipeEst && Number.isFinite(Number(d.pipeEst)) ? Number(d.pipeEst) : null;
+
+  /* Each answer is the screen's whole focus: move the eye to the top of the
+     question, then put the caret in the one control that answers it. */
+  useEffect(() => {
+    /* Wait out the 180ms step transition — the next question owns focus. */
+    const timer = window.setTimeout(() => {
+      const body = rootRef.current?.closest<HTMLElement>("[data-cycle-workflow-body]");
+      body?.scrollTo?.({ top: 0, behavior: "smooth" });
+      rootRef.current?.querySelector<HTMLElement>("[data-plan-focus]")?.focus({ preventScroll: true });
+    }, 220);
+    return () => window.clearTimeout(timer);
+  }, [step]);
+
+  const go = (next: number) => {
+    setError("");
+    setStep(Math.max(0, Math.min(next, last)));
+  };
+
+  const advance = () => {
+    if (current.key === "title" && !title) {
+      setError("Give the tender a title to continue.");
+      return;
+    }
+    setError("");
+    setStep((s) => Math.min(s + 1, last));
+  };
+
+  const submit = async () => {
+    if (!title) {
+      setError("Give the tender a title before staging it.");
+      setStep(1);
+      return;
+    }
+    setError("");
+    const created = await onCreate();
+    if (created) onCreated();
+  };
+
+  const onFieldKeyDown = (event: React.KeyboardEvent<HTMLInputElement | HTMLSelectElement>) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    advance();
+  };
+
+  const rows: { label: string; value: string; step: number | null }[] = [
+    { label: "Title", value: title || "—", step: 1 },
+    { label: "Office", value: d.pipeOffice ? OFFICE_LABELS[d.pipeOffice] ?? d.pipeOffice : "Not set", step: 2 },
+    { label: "Publication", value: d.pipePub ? fmtDate(d.pipePub) : "Not set", step: 3 },
+    { label: "Budget", value: budget !== null ? `${d.pipeCur || "No currency"} ${fmtMoney(budget)}` : "Not set", step: 4 },
+    { label: "Notice", value: noticeFile ? noticeFile.name : "None attached", step: 0 },
+    { label: "Reference", value: refLoading ? "Issuing…" : autoRef || "Issued on save", step: null },
+  ];
+
+  const renderStep = () => {
+    if (current.key === "notice") {
+      return (
+        <div className="space-y-3">
+          <div className="rounded-[10px] border border-ink-100 bg-paper/60 p-4 dark:border-white/[0.07] dark:bg-white/[0.02]">
+            <label className="flex cursor-pointer items-start gap-2.5 text-[11.5px] leading-relaxed text-ink-600 dark:text-ink-300">
+              <input
+                type="checkbox"
+                checked={metaConsent}
+                onChange={(event) => onMetaConsent(event.target.checked)}
+                data-plan-focus=""
+                className="mt-0.5 h-4 w-4 shrink-0 accent-[#d92616]"
+              />
+              <span>
+                I authorize the notice&apos;s extracted text to be sent to Meta AI for analysis. The original file is not
+                sent by this step.
+              </span>
+            </label>
+
+            <label
+              className={cn(
+                "mt-3 inline-flex min-h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-ink-200 bg-white px-3 text-[12px] font-semibold text-ink-700 transition-colors hover:border-brand-400 hover:text-brand-700 dark:border-white/15 dark:bg-white/[0.04] dark:text-ink-200 dark:hover:border-brand-400",
+                analyzing && "pointer-events-none opacity-60",
+              )}
+            >
+              {analyzing ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Upload className="h-4 w-4" aria-hidden="true" />
+              )}
+              {analyzing ? "Reading the notice…" : noticeFile ? "Choose a different notice" : "Choose notice document"}
+              <input
+                type="file"
+                accept=".pdf,.docx,.xlsx,.txt,.md,.csv,.eml"
+                className="sr-only"
+                disabled={analyzing}
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0];
+                  event.currentTarget.value = "";
+                  if (file) onPickNotice(file);
+                }}
+              />
+            </label>
+
+            {noticeFile && !noticeUploadMessage ? (
+              <p
+                role="status"
+                className="mt-2 rounded-lg border border-ink-200/70 bg-white/70 px-3 py-2 text-[10.5px] leading-relaxed text-ink-600 dark:border-white/10 dark:bg-black/10 dark:text-ink-300"
+              >
+                <span className="font-semibold">{noticeFile.name}</span> attaches when you create the record.
+              </p>
+            ) : null}
+            {noticeUploadMessage ? (
+              <p
+                role="alert"
+                className="mt-2 flex items-start gap-2 rounded-lg border border-brand-300/70 bg-brand-50 px-3 py-2 text-[11px] leading-relaxed text-brand-800 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-brand-200"
+              >
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span>{noticeUploadMessage}</span>
+              </p>
+            ) : null}
+            {noticeAnalysis.error ? (
+              <div
+                role="alert"
+                className="mt-2 flex items-start gap-2 rounded-lg border border-brand-300/70 bg-brand-50 px-3 py-2 text-[11px] leading-relaxed text-brand-800 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-brand-200"
+              >
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span className="min-w-0 flex-1">
+                  {noticeAnalysis.error}
+                  {noticeAnalysis.extractionNote ? ` ${noticeAnalysis.extractionNote}` : ""}
+                </span>
+                {noticeFile && metaConsent ? (
+                  <button
+                    type="button"
+                    onClick={() => onPickNotice(noticeFile)}
+                    className="shrink-0 rounded-md border border-brand-300/70 bg-white/70 px-2 py-1 font-code text-[7.5px] font-bold tracking-[0.1em] transition-colors hover:bg-white dark:border-brand-500/30 dark:bg-transparent dark:hover:bg-brand-500/10"
+                  >
+                    RETRY READ
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+
+          {noticeAnalysis.status === "ready" && extracted ? (
+            <div
+              aria-live="polite"
+              className="rounded-[10px] border border-ink-100 bg-white p-3.5 dark:border-white/[0.07] dark:bg-white/[0.025]"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-code text-[8px] font-bold tracking-[0.16em] text-emerald-700 dark:text-emerald-300">
+                    READ FROM THE NOTICE · {noticeAnalysis.model ?? "META MODEL"}
+                  </p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-ink-500 dark:text-ink-400">
+                    Added to empty answers. Check each one as you go — every value is still yours to change.
+                  </p>
+                </div>
+                {noticeAnalysis.conflicts.length ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-1 font-code text-[7.5px] font-bold tracking-[0.1em] text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">
+                    <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+                    {noticeAnalysis.conflicts.length} TO CHECK
+                  </span>
+                ) : null}
+              </div>
+
+              <ul className="mt-3 divide-y divide-ink-100 dark:divide-white/[0.06]">
+                {extractedFields.map((field) => {
+                  const conflict = noticeAnalysis.conflicts.includes(field.key);
+                  const lowConfidence = field.value !== null && field.confidence < 0.75;
+                  return (
+                    <li key={field.key} className="flex flex-wrap items-start gap-2 py-2 first:pt-0 last:pb-0">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-[10px] font-semibold text-ink-800 dark:text-ink-100">{field.label}</span>
+                          <span
+                            className={cn(
+                              "font-code text-[7px] font-bold tracking-[0.1em]",
+                              conflict || lowConfidence || field.value === null
+                                ? "text-brand-700 dark:text-brand-300"
+                                : "text-emerald-700 dark:text-emerald-300",
+                            )}
+                          >
+                            {field.value === null
+                              ? "NOT FOUND"
+                              : conflict
+                                ? "NEEDS YOUR CALL"
+                                : lowConfidence
+                                  ? "CHECK"
+                                  : "ADDED"}
+                          </span>
+                        </div>
+                        <p className="mt-0.5 break-words text-[11px] text-ink-600 dark:text-ink-300">
+                          {field.value ?? "No unambiguous value in the document."}
+                          {conflict && d[field.key] ? (
+                            <span className="text-brand-700 dark:text-brand-300"> · currently “{d[field.key]}”</span>
+                          ) : null}
+                        </p>
+                        {(conflict || lowConfidence) && field.evidence ? (
+                          <p className="mt-0.5 line-clamp-2 text-[9.5px] italic leading-relaxed text-ink-400">
+                            “{field.evidence}”
+                          </p>
+                        ) : null}
+                      </div>
+                      {conflict && field.value ? (
+                        <button
+                          type="button"
+                          onClick={() => onApplyExtracted(field.key, field.applyValue ?? field.value ?? "")}
+                          className="shrink-0 rounded-md border border-brand-200 px-2 py-1 font-code text-[7.5px] font-bold tracking-[0.08em] text-brand-700 hover:bg-brand-50 dark:border-brand-500/20 dark:text-brand-300 dark:hover:bg-brand-500/10"
+                        >
+                          USE NOTICE
+                        </button>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+
+              {notes ? (
+                <details className="mt-3 rounded-lg border border-brand-200/70 bg-brand-50/60 dark:border-brand-500/15 dark:bg-brand-500/[0.06]">
+                  <summary className="cursor-pointer list-none px-3 py-2 font-code text-[8px] font-bold tracking-[0.14em] text-brand-700 dark:text-brand-300">
+                    REVIEW NOTES · {notes}
+                  </summary>
+                  <ul className="space-y-1 border-t border-brand-200/60 px-3 py-2 text-[10px] leading-relaxed text-ink-600 dark:border-brand-500/15 dark:text-ink-300">
+                    {noticeAnalysis.extractionNote ? <li>{noticeAnalysis.extractionNote}</li> : null}
+                    {extracted.warnings.map((warning, index) => (
+                      <li key={`${index}-${warning}`}>{warning}</li>
+                    ))}
+                  </ul>
+                </details>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      );
+    }
+
+    if (current.key === "title") {
+      return (
+        <div className="max-w-2xl">
+          <input
+            id="plan-title"
+            data-plan-focus=""
+            className={`${planInput} py-3.5 text-[15px] sm:py-4 sm:text-base`}
+            value={d.pipeTitle ?? ""}
+            onChange={(event) => set("pipeTitle", event.target.value)}
+            onKeyDown={onFieldKeyDown}
+            placeholder="e.g. Supply & delivery of MRI scanners (1.5T)"
+            autoComplete="off"
+            aria-required="true"
+            aria-label="Tender title"
+          />
+          <p className="mt-2 flex items-start gap-1.5 font-code text-[8px] leading-[1.9] tracking-[0.14em] text-ink-400">
+            <span className="mt-[5px] h-1 w-1 shrink-0 rounded-full bg-brand-500" aria-hidden="true" />
+            {titleFromNotice
+              ? "FILLED FROM THE NOTICE — EDIT IT IF THE NOTICE SAYS OTHERWISE."
+              : "THIS IS THE TITLE THE MARKET WILL SEE."}
+          </p>
+        </div>
+      );
+    }
+
+    if (current.key === "office") {
+      return (
+        <div className="max-w-2xl">
+          <div role="radiogroup" aria-label={current.prompt} className="grid gap-2 sm:grid-cols-2">
+            {OFFICES.map((office, index) => {
+              const on = d.pipeOffice === office;
+              return (
+                <button
+                  key={office}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  data-plan-focus={on || (!d.pipeOffice && index === 0) ? "" : undefined}
+                  onClick={() => {
+                    set("pipeOffice", on ? "" : office);
+                    setError("");
+                  }}
+                  className={cn(
+                    "rounded-xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45",
+                    on
+                      ? "border-ink-950 bg-ink-950 text-white dark:border-brand-400 dark:bg-brand-500/[0.14] dark:text-brand-200"
+                      : "border-ink-200 bg-white text-ink-900 hover:border-ink-400 dark:border-white/[0.1] dark:bg-white/[0.025] dark:text-ink-100 dark:hover:border-white/25",
+                  )}
+                >
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="text-[12.5px] font-semibold">{OFFICE_LABELS[office]}</span>
+                    {on ? <Check className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> : null}
+                  </span>
+                  <span
+                    className={cn(
+                      "mt-1 block text-[10.5px] leading-relaxed",
+                      on ? "text-white/70 dark:text-brand-200/70" : "text-ink-400",
+                    )}
+                  >
+                    {OFFICE_BLURBS[office]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-2 font-code text-[8px] leading-[1.9] tracking-[0.14em] text-ink-400">
+            CLICK THE CHOSEN OFFICE AGAIN TO CLEAR IT.
+          </p>
+        </div>
+      );
+    }
+
+    if (current.key === "publication") {
+      return (
+        <div className="max-w-md">
+          <input
+            id="plan-publication"
+            data-plan-focus=""
+            type="date"
+            className={planInput}
+            value={d.pipePub ?? ""}
+            onChange={(event) => set("pipePub", event.target.value)}
+            onKeyDown={onFieldKeyDown}
+            aria-label="Expected publication date"
+          />
+          <p className="mt-2 font-code text-[8px] leading-[1.9] tracking-[0.14em] text-ink-400">
+            {d.pipePub
+              ? `${fmtDate(d.pipePub).toUpperCase()} · ${relDays(d.pipePub).toUpperCase()}`
+              : "OPTIONAL — THE PACK CAN BE STAGED WITHOUT A DATE."}
+          </p>
+        </div>
+      );
+    }
+
+    if (current.key === "budget") {
+      return (
+        <div className="max-w-md">
+          <div className="flex h-11 items-stretch overflow-hidden rounded-xl border border-ink-200/90 bg-[#fffdfb] shadow-[inset_0_1px_1px_rgba(11,12,15,0.03)] transition-[border-color,box-shadow] duration-150 focus-within:border-ink-950 focus-within:ring-[3px] focus-within:ring-ink-950/[0.08] hover:border-ink-300 dark:border-white/[0.13] dark:bg-[#0b0d12] dark:focus-within:border-white/40 dark:focus-within:ring-white/[0.07] dark:hover:border-white/25">
+            <div className="relative shrink-0">
+              <select
+                aria-label="Currency"
+                data-plan-focus={d.pipeCur ? undefined : ""}
+                value={d.pipeCur ?? ""}
+                onChange={(event) => set("pipeCur", event.target.value)}
+                className="h-full cursor-pointer appearance-none bg-ink-50/70 pl-3 pr-6 font-code text-[10px] font-bold tracking-[0.1em] text-ink-600 outline-none dark:bg-white/[0.05] dark:text-ink-300 dark:[color-scheme:dark]"
+              >
+                <option value="">—</option>
+                {CURRENCIES.map((currency) => (
+                  <option key={currency} value={currency}>
+                    {currency}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-ink-400"
+                aria-hidden="true"
+              />
+            </div>
+            <span className="w-px shrink-0 bg-ink-200/80 dark:bg-white/10" aria-hidden="true" />
+            <input
+              className="h-full min-w-0 flex-1 bg-transparent px-3 font-code text-[13px] tabular text-ink-900 outline-none placeholder:text-ink-400 dark:text-ink-900"
+              type="number"
+              min={0}
+              inputMode="decimal"
+              data-plan-focus={d.pipeCur ? "" : undefined}
+              value={d.pipeEst ?? ""}
+              onChange={(event) => set("pipeEst", event.target.value)}
+              onKeyDown={onFieldKeyDown}
+              placeholder="25 000 000"
+              aria-label="Budget estimate"
+            />
+          </div>
+          <p className="mt-2 font-code text-[8px] leading-[1.9] tracking-[0.14em] text-ink-400">
+            {budget !== null ? `RECORDED AS ${d.pipeCur || "NO CURRENCY"} ${fmtMoney(budget)}` : "OPTIONAL — THE FIGURE CAN BE ADDED LATER."}
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-3">
+        {pendingUploadRef ? (
+          <p
+            role="alert"
+            className="flex items-start gap-2 rounded-xl border border-brand-300/70 bg-brand-50 px-3.5 py-2.5 text-[11.5px] leading-relaxed text-brand-800 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-brand-200"
+          >
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>
+              Tender {pendingUploadRef} is already in the pipeline. The notice did not attach — retry below to add it
+              without creating a duplicate.
+            </span>
+          </p>
+        ) : null}
+
+        <dl className="divide-y divide-ink-100 overflow-hidden rounded-[10px] border border-ink-100 dark:divide-white/[0.06] dark:border-white/[0.07]">
+          {rows.map((row) => (
+            <div key={row.label} className="flex items-start gap-3 px-3.5 py-2.5">
+              <dt className="w-[104px] shrink-0 font-code text-[8px] font-bold tracking-[0.14em] text-ink-400">
+                {row.label.toUpperCase()}
+              </dt>
+              <dd className="min-w-0 flex-1 break-words text-[12px] font-medium leading-relaxed text-ink-900 dark:text-ink-100">
+                {row.value}
+              </dd>
+              {row.step !== null ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => go(row.step as number)}
+                  className="shrink-0 rounded-md px-1.5 py-0.5 font-code text-[8px] font-bold tracking-[0.12em] text-brand-700 transition-colors hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-brand-300 dark:hover:bg-brand-500/10"
+                >
+                  EDIT
+                </button>
+              ) : null}
+            </div>
+          ))}
+        </dl>
+
+        <p className="flex items-start gap-2 text-[11px] leading-relaxed text-ink-400">
+          <span className="mt-[6px] h-1 w-1 shrink-0 rounded-full bg-brand-500" aria-hidden="true" />
+          Planning is free. The entry links to a live tender when its pack lands — the cycle rail then takes over the
+          record.
+        </p>
+      </div>
+    );
+  };
+
+  return (
+    <div ref={rootRef}>
+      <div aria-label="Tender intake progress">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <span className="font-code text-[8px] font-bold tracking-[0.18em] text-brand-700 dark:text-brand-300">
+            {current.section}
+          </span>
+          <span className="font-code text-[8px] tracking-[0.14em] text-ink-400">
+            {String(step + 1).padStart(2, "0")} / {String(PLAN_STEPS.length).padStart(2, "0")}
+          </span>
+        </div>
+        <div
+          className="flex gap-1"
+          role="progressbar"
+          aria-label="Tender intake progress"
+          aria-valuemin={1}
+          aria-valuemax={PLAN_STEPS.length}
+          aria-valuenow={step + 1}
+        >
+          {PLAN_STEPS.map((planStep, index) => (
+            <span
+              key={planStep.key}
+              className={cn(
+                "h-1 flex-1 rounded-full transition-colors",
+                index <= step ? "bg-brand-600 dark:bg-brand-400" : "bg-ink-100 dark:bg-white/10",
+              )}
+            />
+          ))}
+        </div>
+      </div>
+
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.section
+          key={current.key}
+          initial={{ opacity: 0, x: 18 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -18 }}
+          transition={{ duration: 0.18, ease: EASE }}
+          aria-live="polite"
+          className="mt-6 min-h-[210px]"
+        >
+          <p className="font-code text-[8px] font-semibold tracking-[0.2em] text-ink-400">
+            {current.section} · QUESTION {String(step + 1).padStart(2, "0")}
+          </p>
+          <h4
+            tabIndex={-1}
+            data-plan-focus={current.key === "review" ? "" : undefined}
+            className="mt-2 font-display text-[21px] font-black tracking-[-0.02em] text-ink-950 outline-none dark:text-white sm:text-[25px]"
+          >
+            {current.prompt}
+            {current.required ? (
+              <span className="ml-1 text-brand-600 dark:text-brand-400" aria-label="required">
+                *
+              </span>
+            ) : null}
+          </h4>
+          <p className="mt-1.5 text-[12px] leading-relaxed text-ink-500 dark:text-ink-400">{current.hint}</p>
+          <div className="mt-5">{renderStep()}</div>
+        </motion.section>
+      </AnimatePresence>
+
+      {error ? (
+        <p
+          role="alert"
+          className="mt-3 rounded-xl border border-brand-200 bg-brand-50 px-3.5 py-2.5 text-[12px] leading-relaxed text-brand-800 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-brand-200"
+        >
+          {error}
+        </p>
+      ) : null}
+
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-ink-100 pt-5 dark:border-white/[0.06]">
+        <p className="max-w-[230px] font-code text-[7.5px] leading-[2] tracking-[0.16em] text-ink-400 sm:max-w-none">
+          {refLoading ? "ISSUING THE REFERENCE…" : autoRef ? `NEXT REFERENCE ${autoRef}` : "THE REFERENCE IS ISSUED ON SAVE"}
+        </p>
+        <div className="ml-auto flex items-center gap-2">
+          {step > 0 ? (
+            <button
+              type="button"
+              onClick={() => go(step - 1)}
+              disabled={busy}
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 font-code text-[9px] font-bold tracking-[0.14em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/[0.12] dark:bg-white/[0.04] dark:text-ink-300 dark:hover:border-white/30 dark:hover:text-white"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
+              BACK
+            </button>
+          ) : null}
+
+          {step < last && !current.required ? (
+            <button
+              type="button"
+              onClick={advance}
+              disabled={busy}
+              className="inline-flex h-10 items-center rounded-xl px-3 font-code text-[8px] font-bold tracking-[0.12em] text-ink-500 transition-colors hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-60 dark:text-ink-400 dark:hover:text-white"
+            >
+              SKIP
+            </button>
+          ) : null}
+
+          {step < last ? (
+            <button
+              type="button"
+              onClick={advance}
+              disabled={busy}
+              className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-5 font-code text-[9px] font-bold tracking-[0.14em] text-white shadow-[0_10px_26px_rgba(217,38,22,0.28)] transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              CONTINUE
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void submit()}
+              disabled={busy || analyzing}
+              className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-5 font-code text-[9px] font-bold tracking-[0.14em] text-white shadow-[0_10px_26px_rgba(217,38,22,0.28)] transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {busy ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+              ) : pendingUploadRef ? (
+                <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+              ) : (
+                <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+              )}
+              {busy
+                ? "SAVING TENDER…"
+                : analyzing
+                  ? "READING THE NOTICE…"
+                  : pendingUploadRef
+                    ? `RETRY NOTICE UPLOAD · ${pendingUploadRef}`
+                    : noticeFile
+                      ? "CREATE TENDER + ATTACH NOTICE"
+                      : "CREATE TENDER"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── small shared pieces defined once, used by the tabs ────────────────────── */
 
 function Badge({ children, tone }: { children: ReactNode; tone?: "alert" }) {
@@ -2686,21 +4045,59 @@ function PipelineRow({
   p,
   tenders,
   onLink,
+  busy,
 }: {
   p: PipelineDto;
   tenders: { ref: string; title: string }[];
   onLink: (tenderId: string) => Promise<boolean>;
+  busy: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const boxRef = useRef<HTMLLIElement>(null);
-  useOutside(boxRef, () => setOpen(false), open);
+  const dialogId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const linked = p.status === "LINKED";
   const pubRel = relDays(p.expectedPublication);
   const pubSoon = (daysUntil(p.expectedPublication) ?? 999) <= 30;
+  const close = useCallback(() => {
+    setOpen(false);
+    window.requestAnimationFrame(() => triggerRef.current?.focus());
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const focusTimer = window.setTimeout(() => dialogRef.current?.focus(), 0);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !busy) close();
+      if (event.key !== "Tab") return;
+      const nodes = Array.from(
+        dialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      );
+      if (!nodes.length) return;
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !dialogRef.current?.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.clearTimeout(focusTimer);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [busy, close, open]);
 
   return (
     <li
-      ref={boxRef}
       className="group panel-inset relative overflow-hidden rounded-xl px-3.5 py-3 transition-colors duration-150 hover:border-ink-300/80 dark:hover:border-white/[0.14]"
     >
       <span
@@ -2744,59 +4141,105 @@ function PipelineRow({
         </div>
         {!linked ? (
           <button
+            ref={triggerRef}
             type="button"
-            onClick={() => setOpen((o) => !o)}
-            aria-haspopup="listbox"
+            onClick={() => setOpen(true)}
+            aria-haspopup="dialog"
             aria-expanded={open}
-            aria-controls={`link-menu-${p.id}`}
+            aria-controls={`link-dialog-${dialogId}`}
+            disabled={busy}
             aria-label={`Link ${p.ref} to a live tender`}
             className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-ink-200/90 bg-[#fffdfb] px-2.5 font-code text-[9px] font-bold tracking-[0.1em] text-ink-600 shadow-[0_1px_2px_rgba(11,12,15,0.03)] transition-colors hover:border-ink-950 hover:text-ink-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45 dark:border-white/[0.12] dark:bg-white/[0.04] dark:text-ink-300 dark:hover:border-white/30 dark:hover:text-white"
           >
-            LINK <ChevronDown className={cn("h-3 w-3 transition-transform", open && "rotate-180")} aria-hidden="true" />
+            LINK <ArrowRight className="h-3 w-3" aria-hidden="true" />
           </button>
         ) : null}
       </div>
 
-      {/* The picker expands in place — never a floating layer that the card
-          could clip, and never a click that lands outside its own row. */}
-      <AnimatePresence initial={false}>
-        {open && !linked ? (
-          <motion.div
-            id={`link-menu-${p.id}`}
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: EASE }}
-            className="overflow-hidden"
-          >
-            <div className="mt-3 border-t border-ink-100/90 pt-2.5 dark:border-white/[0.07]">
-              <p className="px-1 pb-1.5 eyebrow text-[7.5px] tracking-[0.2em]">Link to a live tender</p>
-              <ul role="listbox" aria-label={`Link ${p.ref} to a live tender`} className="max-h-44 space-y-px overflow-y-auto pr-0.5">
-                {tenders.map((t) => (
-                  <li key={t.ref}>
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={false}
-                      onClick={() => {
-                        setOpen(false);
-                        void onLink(t.ref);
-                      }}
-                      className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-ink-950/[0.04] dark:hover:bg-white/[0.06]"
-                    >
-                      <span className="font-code text-[9.5px] font-bold tracking-[0.04em] text-ink-900">{t.ref}</span>
-                      <span className="min-w-0 flex-1 truncate text-[10.5px] text-ink-500">{t.title}</span>
-                    </button>
-                  </li>
-                ))}
-                {tenders.length === 0 ? (
-                  <li className="px-2 py-3 text-center text-[11px] text-ink-400">No tenders to link yet.</li>
-                ) : null}
-              </ul>
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      {typeof document !== "undefined"
+        ? createPortal(
+            <AnimatePresence initial={false}>
+              {open && !linked ? (
+                <motion.div
+                  key={`cycle-link-${dialogId}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-[90] grid place-items-center bg-night/70 p-3 backdrop-blur-sm sm:p-5"
+                  onMouseDown={(event) => {
+                    if (event.target === event.currentTarget && !busy) close();
+                  }}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby={`link-dialog-${dialogId}`}
+                >
+                  <motion.div
+                    ref={dialogRef}
+                    tabIndex={-1}
+                    initial={{ opacity: 0, y: 18, scale: 0.985 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 12, scale: 0.99 }}
+                    transition={{ duration: 0.28, ease: EASE }}
+                    className="panel panel-lift flex max-h-[92dvh] w-full max-w-2xl flex-col overflow-hidden rounded-[12px] outline-none"
+                  >
+                    <header className="flex shrink-0 items-start justify-between gap-4 border-b border-ink-100 px-5 py-4 dark:border-white/[0.06] sm:px-7 sm:py-5">
+                      <div className="min-w-0">
+                        <p className="font-code text-[8.5px] font-bold tracking-[0.2em] text-brand-700 dark:text-brand-300">TENDER CYCLE · PIPELINE</p>
+                        <h3 id={`link-dialog-${dialogId}`} className="mt-1 font-display text-[20px] font-black tracking-[-0.02em] text-ink-950 dark:text-white sm:text-[22px]">Link {p.ref} to a live tender</h3>
+                        <p className="mt-1.5 text-[11.5px] leading-relaxed text-ink-500 dark:text-ink-400">{p.title}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={close}
+                        disabled={busy}
+                        aria-label={`Close link workflow for ${p.ref}`}
+                        className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-900 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-white/[0.06] dark:hover:text-white"
+                      >
+                        <X className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    </header>
+                    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-7 sm:py-5">
+                      <p className="mb-3 eyebrow text-[8px] tracking-[0.2em]">Choose the live tender record</p>
+                      {tenders.length ? (
+                        <ul role="listbox" aria-label={`Link ${p.ref} to a live tender`} className="space-y-2">
+                          {tenders.map((t) => (
+                            <li key={t.ref}>
+                              <button
+                                type="button"
+                                role="option"
+                                aria-selected={false}
+                                disabled={busy}
+                                onClick={() => {
+                                  void onLink(t.ref).then((ok) => {
+                                    if (ok) close();
+                                  });
+                                }}
+                                className="flex w-full items-center gap-3 rounded-xl border border-ink-200/80 bg-white px-3.5 py-3 text-left transition-colors hover:border-brand-400 hover:bg-brand-50/40 disabled:cursor-wait disabled:opacity-60 dark:border-white/[0.1] dark:bg-white/[0.025] dark:hover:border-brand-400 dark:hover:bg-brand-500/[0.06]"
+                              >
+                                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-ink-100/70 text-ink-500 dark:bg-white/[0.06]">
+                                  <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                                </span>
+                                <span className="min-w-0 flex-1">
+                                  <span className="block font-code text-[9px] font-bold tracking-[0.08em] text-ink-900 dark:text-white">{t.ref}</span>
+                                  <span className="mt-0.5 block truncate text-[11px] text-ink-500 dark:text-ink-400">{t.title}</span>
+                                </span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="rounded-xl border border-dashed border-ink-200 px-4 py-8 text-center text-[12px] text-ink-500 dark:border-white/[0.12] dark:text-ink-400">
+                          No live tenders are available to link yet.
+                        </p>
+                      )}
+                    </div>
+                  </motion.div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>,
+            document.body,
+          )
+        : null}
     </li>
   );
 }
