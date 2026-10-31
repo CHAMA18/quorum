@@ -35,6 +35,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import Image from "next/image";
 import { Ban, BrainCircuit, Check, CircleHelp, Mic, MessageSquare, Send, ShieldAlert, Sparkles, Square, Volume2, VolumeX, X } from "lucide-react";
 import { requestStepUp, StepUpHost } from "@/components/quorum/step-up";
 import type { Proposal } from "@/lib/muse-actions";
@@ -811,21 +812,15 @@ export function MuseAssistant({ name }: { name?: string }) {
         whileHover={reduce ? undefined : { y: -2 }}
         whileTap={reduce ? undefined : { scale: 0.97 }}
       >
-        <span className="relative grid h-6 w-6 place-items-center">
-          {open ? (
-            <X className="h-4.5 w-4.5" aria-hidden="true" />
-          ) : (
-            <>
-              <Sparkles className="h-4.5 w-4.5 transition-transform group-hover:rotate-12" aria-hidden="true" />
-              {!busy && !hearing && (
-                <span
-                  aria-hidden="true"
-                  className="absolute -inset-1.5 animate-ping-slow rounded-full bg-brand-400/40"
-                />
-              )}
-            </>
-          )}
-        </span>
+        <Image
+          src="/logo.svg"
+          width={38}
+          height={38}
+          alt=""
+          aria-hidden="true"
+          unoptimized
+          className="h-[38px] w-[38px] rounded-[9px] transition-transform group-hover:scale-105"
+        />
       </motion.button>
 
       <AnimatePresence>
