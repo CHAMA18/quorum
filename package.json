@@ -1,6 +1,6 @@
 {
   "name": "nextjs_tailwind_shadcn_ts",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "private": true,
   "license": "MIT",
   "llamaLicense": "Llama 3.2 Community License — see NOTICE",
@@ -148,7 +148,6 @@
     "@types/react-dom": "^19",
     "bun-types": "^1.3.4",
     "docx": "^9.15.0",
-    "electron": "^45.2.1",
     "electron-builder": "^26.18.0",
     "eslint": "^9",
     "eslint-config-next": "^16.1.1",

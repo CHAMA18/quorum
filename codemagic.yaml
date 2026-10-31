@@ -16,6 +16,8 @@ workflows:
     scripts:
       - name: Install dependencies
         script: npm install --no-audit --no-fund
+      - name: Install isolated desktop dependencies
+        script: npm install --prefix desktop --no-audit --no-fund
       - name: Generate application icons
         script: npm run desktop:icons
       - name: Package macOS app
@@ -45,6 +47,8 @@ workflows:
     scripts:
       - name: Install dependencies
         script: npm install --no-audit --no-fund
+      - name: Install isolated desktop dependencies
+        script: npm install --prefix desktop --no-audit --no-fund
       - name: Install Wine for the Windows installer
         script: brew install --cask wine-stable
       - name: Generate application icons
