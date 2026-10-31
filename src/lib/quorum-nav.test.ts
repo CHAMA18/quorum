@@ -38,7 +38,6 @@ describe("Quorum sidebar", () => {
   test("the labels renamed for title case are the ones on screen", () => {
     for (const label of [
       "Tender Cycle",
-      "Live Activity",
       "Data Sources",
       "Award History",
       "Audit Trail",

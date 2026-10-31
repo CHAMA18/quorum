@@ -482,7 +482,6 @@ type SectionId =
   | "mc-runs"
   | "mc-gates"
   | "mc-cycle"
-  | "mc-activity"
   | "mc-findings"
   | "mc-reports"
   | "mc-sources"
@@ -524,7 +523,6 @@ const NAV_GROUPS: {
       { id: "mc-runs", label: "Evaluations", icon: Terminal, badge: "runs" },
       { id: "mc-gates", label: "Approvals", icon: Stamp, badge: "gates" },
       { id: "mc-cycle", label: "Tender Cycle", icon: Workflow, subpages: CYCLE_STAGE_PAGES },
-      { id: "mc-activity", label: "Live Activity", icon: Radio },
     ],
   },
   {
@@ -583,7 +581,6 @@ const SECTION_CAPABILITY: Partial<Record<SectionId, Capability>> = {
   "mc-runs": "run_reviews",
   "mc-gates": "sign_gates",
   "mc-cycle": "run_reviews",
-  "mc-activity": "run_reviews",
   "mc-findings": "run_reviews",
   "mc-reports": "run_reviews",
   "mc-sources": "manage_sources",
@@ -7414,28 +7411,6 @@ const WALKTHROUGH: WalkthroughChapter[] = [
     ],
   },
   {
-    section: "mc-activity",
-    title: "Watch live activity",
-    summary: "A running feed of what the agent is doing, in order, as it does it.",
-    steps: [
-      "Each event shows the step, the tool it called and the time.",
-      "Use the feed to trace how a finding was reached before you rely on it.",
-    ],
-    tip: "Leave this open while an evaluation is in progress to see it move in real time.",
-    tour: [
-      {
-        target: "agent-feed",
-        title: "The work, streaming",
-        body: "What the agent read, which tool it called and what it flagged, in the order it happened — without leaving this screen.",
-      },
-      {
-        target: "agent-feed-stream",
-        title: "Every line is a durable entry",
-        body: "The feed reads the same activity log the agent writes to disk. Leave it open during an evaluation and watch the file build.",
-      },
-    ],
-  },
-  {
     section: "mc-findings",
     title: "Review findings",
     summary: "Every issue raised across all evaluations, grouped by class and tied to its source.",
@@ -9407,11 +9382,11 @@ const checklistLabelOf = (c: GuardSettings["checklist"]) => (c === "STRICT" ? ("
 function RulesView({
   firstName,
   onToast,
-  onOpenActivity,
+  onOpenAudit,
 }: {
   firstName: string;
   onToast: (m: string) => void;
-  onOpenActivity: () => void;
+  onOpenAudit: () => void;
 }) {
   const [guards, setGuards] = useState<GuardSettings | null>(null);
   const [thresholdDraft, setThresholdDraft] = useState("");
@@ -9755,7 +9730,7 @@ function RulesView({
             </p>
             <button
               type="button"
-              onClick={onOpenActivity}
+              onClick={onOpenAudit}
               className="mt-2 inline-flex items-center gap-1.5 font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-500 transition-colors hover:text-ink-950"
             >
               READ THE TRAIL
@@ -9967,38 +9942,6 @@ function GatesView({
               </span>
             </div>
           </button>
-        </div>
-      </div>
-    </ViewShell>
-  );
-}
-
-function FeedView() {
-  return (
-    <ViewShell
-      fig="07"
-      title="Live Activity"
-      sub="The work, streaming. Ingest, checklist, registry, flags, citations — watch a run the way the committee will read it: line by line, every claim sourced."
-    >
-      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
-        <div className="min-w-0 lg:col-span-2">
-          <AgentFeed />
-        </div>
-        <div className="grid content-start gap-4 sm:gap-6">
-          <PortalSync />
-          <div className="relative overflow-hidden rounded-[12px] border border-ink-950 bg-night p-5 text-white shadow-[0_22px_55px_rgba(11,12,15,0.3)]">
-            <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
-            <div className="relative">
-              <h3 className="font-display text-[15px] font-black tracking-[-0.01em]">Citation policy</h3>
-              <p className="mt-3 font-code text-[9px] leading-[2] tracking-[0.16em] text-ink-300">
-                IF THE AGENT CANNOT CITE IT,
-                <br />
-                IT CANNOT SAY IT.
-                <br />
-                <span className="text-brand-400">PAGE, CLAUSE OR REGISTRY ID — EVERY TIME.</span>
-              </p>
-            </div>
-          </div>
         </div>
       </div>
     </ViewShell>
@@ -10397,8 +10340,6 @@ export function Dashboard({
             onGoCommittee={() => switchTo("mc-committee")}
           />
         );
-      case "mc-activity":
-        return <FeedView />;
       case "mc-cycle":
         return (
           <CycleView
@@ -10430,7 +10371,7 @@ export function Dashboard({
       case "mc-calendar":
         return <CalendarView onToast={onToast} onGoCommittee={() => switchTo("mc-committee")} />;
       case "mc-rules":
-        return <RulesView firstName={firstName} onToast={onToast} onOpenActivity={() => switchTo("mc-activity")} />;
+        return <RulesView firstName={firstName} onToast={onToast} onOpenAudit={() => switchTo("mc-audit")} />;
       case "mc-stack":
         return <StackConsole onToast={onToast} />;
       case "mc-oversight":
@@ -10812,7 +10753,7 @@ export function Dashboard({
 
           {/* Feed + portals */}
           <div className="mt-6 grid grid-cols-1 gap-4 sm:gap-6">
-            <div id="mc-activity" className="min-w-0 scroll-mt-24">
+            <div className="min-w-0">
               <AgentFeed />
             </div>
             <div className="grid grid-cols-1 content-start gap-4 sm:gap-6 md:grid-cols-2">
