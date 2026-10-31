@@ -130,13 +130,6 @@ export function canMutateSidecar(
 
   if (/^\/api\/agent-mode$/.test(path)) return can(role, "manage_rules");
   if (/^\/api\/gates\/[^/]+\/decision$/.test(path)) return can(role, "sign_gates");
-  if (
-    path.startsWith("/api/guards") ||
-    path.startsWith("/api/portal-state") ||
-    path.startsWith("/api/settings") ||
-    path.startsWith("/api/jurisdiction") ||
-    path.startsWith("/api/governance")
-  ) {
   /* Exceptions are requested by the desk; approval itself is a gate decision
      for the accounting officer (the sidecar enforces the office). */
   if (path.startsWith("/api/exceptions")) return can(role, "run_reviews");
