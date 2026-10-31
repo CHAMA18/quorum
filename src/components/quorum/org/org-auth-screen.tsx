@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { AuthFilm } from "@/components/quorum/auth-film";
+import { QuorumLogo } from "@/components/quorum/logo";
 import { MasterSwitcher } from "@/components/quorum/master-switcher";
 import { RegisterShowcase } from "@/components/quorum/org/register-showcase";
 import { SearchSelect, type SelectOption } from "@/components/quorum/org/search-select";
@@ -42,6 +43,19 @@ import { cn } from "@/lib/utils";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const EASE = [0.22, 1, 0.36, 1] as const;
+
+function ThemedQuorumLogo() {
+  return (
+    <>
+      <span className="dark:hidden">
+        <QuorumLogo />
+      </span>
+      <span className="hidden dark:inline-flex">
+        <QuorumLogo variant="light" />
+      </span>
+    </>
+  );
+}
 
 type OrgProfile = {
   id: string;
@@ -1413,8 +1427,11 @@ export function OrgAuthScreen() {
               </div>
             ) : (
               <div className="rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-6 shadow-[0_16px_48px_rgba(11,12,15,0.08)] sm:p-8 dark:border-white/10 dark:bg-night-2">
-                <div className="mb-6">
+                <div className="mb-5">
                   <MasterSwitcher active="supplier" className="w-full [&>button]:flex-1" />
+                </div>
+                <div className="mb-6">
+                  <ThemedQuorumLogo />
                 </div>
                 <div className="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-ink-50 p-1 ring-1 ring-inset ring-ink-200 dark:bg-white/[0.04] dark:ring-white/10">
                   {(["register", "signin"] as const).map((m) => (

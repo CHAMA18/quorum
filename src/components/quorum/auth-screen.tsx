@@ -134,93 +134,9 @@ function ThemedLogo() {
   );
 }
 
-/* ── The live audit spine, from the officer's seat ───────────────────────── */
-
-type LineKind = "cmd" | "step" | "ok" | "gate";
-type LiveLogEntry = { tool?: string; status?: string };
-
-/* Live activity from the quorum-mcp audit log — nothing scripted. */
-function GateTerminal({ grantedFirstName }: { grantedFirstName: string | null }) {
-  const [feed, setFeed] = useState<{ text: string; kind: LineKind }[]>([]);
-
-  useEffect(() => {
-    let alive = true;
-    const pull = async () => {
-      try {
-        const res = await fetch("/api/public/summary");
-        const j = (await res.json()) as { activity?: LiveLogEntry[] };
-        if (!alive) return;
-        setFeed(
-          (j.activity ?? []).slice(0, 8).reverse().map((e) => {
-            const status = e.status ?? "";
-            const kind: LineKind = status === "PENDING_GATE" ? "gate" : status === "OK" ? "ok" : "step";
-            const prefix = kind === "gate" ? "⏸" : kind === "ok" ? "✓" : "▸";
-            return { text: `${prefix} ${e.tool ?? "event"} · ${status || "logged"}`, kind };
-          })
-        );
-      } catch {
-        /* sidecar briefly down — keep the last snapshot */
-      }
-    };
-    void pull();
-    const id = setInterval(() => void pull(), 3500);
-    return () => {
-      alive = false;
-      clearInterval(id);
-    };
-  }, []);
-
-  return (
-    <div className="w-full max-w-md overflow-hidden rounded-[10px] border border-white/10 bg-night-2/90 shadow-[0_36px_90px_rgba(0,0,0,0.5)]">
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-        <p className="font-code text-[9px] font-semibold tracking-[0.22em] text-ink-400">
-          OFFICER GATE · LIVE AUDIT
-        </p>
-        <span className="flex items-center gap-1.5 font-code text-[9px] tracking-[0.18em] text-brand-400">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-brand-500" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-600" />
-          </span>
-          APPEND-ONLY
-        </span>
-      </div>
-      <div
-        className="min-h-[178px] px-4 py-4 font-code text-[10.5px] leading-[1.95] sm:text-[11.5px]"
-        role="img"
-        aria-label="Live terminal: a Quorum agent run ingesting a tender, checking documents, citing findings and stopping at the human gate"
-      >
-        {feed.map((line, i) => (
-          <p
-            key={`${i}-${line.text}`}
-            className={cn(
-              "transition-colors",
-              line.kind === "cmd" && "text-ink-200",
-              line.kind === "step" && "text-ink-400",
-              line.kind === "ok" && "font-semibold text-white",
-              line.kind === "gate" && "text-brand-300"
-            )}
-          >
-            {line.kind === "cmd" && <span className="mr-2 text-brand-400">$</span>}
-            {line.text}
-          </p>
-        ))}
-        {feed.length === 0 && (
-          <p className="text-ink-500">▸ waiting for the quorum-mcp audit log…</p>
-        )}
-        <span className="mt-1 inline-block h-3.5 w-[7px] animate-pulse bg-brand-500" aria-hidden="true" />
-        {grantedFirstName && (
-          <p className="mt-1 font-semibold text-brand-300">
-            ✓ session issued — welcome, {grantedFirstName}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
 /* ── Story panel (left, dark) — the organization door's composition ─────── */
 
-function StoryPanel({ grantedFirstName }: { grantedFirstName: string | null }) {
+function StoryPanel() {
   return (
     <aside className="relative hidden overflow-hidden bg-night lg:flex lg:flex-col lg:justify-between lg:p-12">
       <AuthFilm />
@@ -239,7 +155,7 @@ function StoryPanel({ grantedFirstName }: { grantedFirstName: string | null }) {
         <QuorumLogo variant="light" />
       </div>
 
-      <div className="relative max-w-xl space-y-6">
+      <div className="relative my-auto max-w-xl space-y-6">
         <h1 className="type-display text-[42px] text-white">
           The agent reads the file.
           <br />
@@ -268,9 +184,6 @@ function StoryPanel({ grantedFirstName }: { grantedFirstName: string | null }) {
         </ul>
       </div>
 
-      <div className="relative">
-        <GateTerminal grantedFirstName={grantedFirstName} />
-      </div>
     </aside>
   );
 }
@@ -548,7 +461,6 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
 
   const pwScore = PW_CHECKS.filter((c) => c.test(values.password)).length;
   const pwMeta = PW_META[pwScore];
-  const firstName = granted?.name.trim().split(/\s+/)[0] ?? null;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -852,7 +764,7 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
 
   return (
     <div className="grid min-h-screen bg-paper font-body text-ink-900 antialiased lg:grid-cols-[1.05fr_1fr] dark:bg-night dark:text-white">
-      <StoryPanel grantedFirstName={firstName} />
+      <StoryPanel />
 
       {/* Auth panel */}
       <div className="flex flex-col bg-paper dark:bg-night">
