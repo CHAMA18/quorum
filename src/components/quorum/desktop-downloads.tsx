@@ -1,4 +1,5 @@
-import { Apple, ArrowDownToLine, ArrowUpRight, MonitorDown } from "lucide-react";
+import Image from "next/image";
+import { ArrowDownToLine, ArrowUpRight } from "lucide-react";
 
 const RELEASE_URL = "https://github.com/CHAMA18/quorum/releases/latest/download";
 
@@ -7,14 +8,16 @@ const PLATFORMS = [
     name: "Windows",
     detail: "64-bit · unzip and launch Quorum.exe",
     file: `${RELEASE_URL}/Quorum-Windows-Portable.zip`,
-    icon: MonitorDown,
+    icon: "/images/platform-windows.png",
+    iconAlt: "Windows logo",
     badge: "PORTABLE APP · ZIP",
   },
   {
     name: "macOS",
     detail: "Apple silicon and Intel Macs",
     file: `${RELEASE_URL}/Quorum-macOS.dmg`,
-    icon: Apple,
+    icon: "/images/platform-mac.png",
+    iconAlt: "Apple logo for macOS",
     badge: "DISK IMAGE · DMG",
   },
 ];
@@ -39,15 +42,15 @@ export function DesktopDownloads() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            {PLATFORMS.map(({ name, detail, file, icon: Icon, badge }) => (
+            {PLATFORMS.map(({ name, detail, file, icon, iconAlt, badge }) => (
               <a
                 key={name}
                 href={file}
                 className="group focus-brand relative flex min-h-[174px] flex-col justify-between overflow-hidden rounded-xl border border-ink-200/80 bg-paper/90 p-5 shadow-[0_12px_35px_-28px_rgba(20,22,28,0.45)] transition-all duration-300 hover:-translate-y-1 hover:border-brand-500/45 hover:bg-white hover:shadow-[0_22px_48px_-28px_rgba(20,22,28,0.55)] dark:border-white/12 dark:bg-white/[0.035] dark:hover:bg-white/[0.07]"
               >
                 <div className="flex items-start justify-between">
-                  <span className="grid h-11 w-11 place-items-center rounded-xl border border-ink-200/70 bg-white text-ink-900 dark:border-white/10 dark:bg-white/[0.06] dark:text-ink-100">
-                    <Icon className="h-5 w-5" aria-hidden="true" />
+                  <span className="grid h-11 w-11 place-items-center rounded-xl border border-ink-200/70 bg-white dark:border-white/10 dark:bg-white">
+                    <Image src={icon} alt={iconAlt} width={32} height={32} className="h-7 w-7 object-contain" />
                   </span>
                   <span className="type-micro rounded-full border border-ink-200/70 px-2.5 py-1 text-ink-400 dark:border-white/10">
                     {badge}
