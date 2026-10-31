@@ -97,9 +97,8 @@ export async function GET(req: NextRequest) {
     canManage: canManagePeople,
     actorRole: actor.role,
     emailDeliveryConfigured: Boolean(
-      process.env.RESEND_API_KEY?.trim() &&
-      process.env.RESEND_DOMAIN_ID?.trim() &&
-      process.env.RESEND_FROM?.trim()
+      process.env.QUORUM_EDGE_URL?.trim() &&
+      process.env.QUORUM_EDGE_SECRET?.trim()
     ),
   });
 }

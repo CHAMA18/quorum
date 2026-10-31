@@ -26,13 +26,12 @@ export async function sendWorkspaceInviteEmail(input: {
   inviteId: string;
   idempotencyKey?: string;
 }): Promise<InviteEmailResult> {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  const domainId = process.env.RESEND_DOMAIN_ID?.trim();
-  const from = process.env.RESEND_FROM?.trim();
-  if (!apiKey || !domainId || !from) {
+  const edgeUrl = process.env.QUORUM_EDGE_URL?.trim().replace(/\/+$/, "");
+  const edgeSecret = process.env.QUORUM_EDGE_SECRET?.trim();
+  if (!edgeUrl || !edgeSecret) {
     return {
       status: "SKIPPED",
-      detail: "Resend email settings are incomplete; share the invite code directly.",
+      detail: "Quorum's authenticated email relay is not configured; share the invite code directly.",
     };
   }
 
@@ -62,33 +61,56 @@ export async function sendWorkspaceInviteEmail(input: {
   </main></body></html>`;
 
   try {
-    const response = await fetch("https://api.resend.com/emails", {
+    const response = await fetch(`${edgeUrl}/__edge/email`, {
       method: "POST",
       headers: {
-        authorization: `Bearer ${apiKey}`,
+        "x-quorum-edge-key": edgeSecret,
         "content-type": "application/json",
         "idempotency-key": input.idempotencyKey ?? `team-invite/${input.inviteId}`,
       },
-      body: JSON.stringify({ from, to: [input.to], subject, html, text }),
+      body: JSON.stringify({ to: input.to, subject, html, text }),
       cache: "no-store",
       signal: AbortSignal.timeout(10_000),
     });
-    const payload = (await response.json().catch(() => ({}))) as { id?: string; message?: string };
-    if (!response.ok) {
-      const providerMessage = payload.message?.replace(/[\r\n\t]+/g, " ").trim().slice(0, 240);
-      const detail = response.status === 401
-        ? "Resend rejected its API key; check the deployment secret."
-        : response.status === 403 || response.status === 422
-          ? `Resend rejected the sender or recipient${providerMessage ? `: ${providerMessage}` : "; confirm RESEND_FROM uses the verified domain and the recipient is valid."}`
-          : `Resend did not accept the invitation (HTTP ${response.status})${providerMessage ? `: ${providerMessage}` : "."}`;
-      return { status: "FAILED", detail };
+    const payload = (await response.json().catch(() => ({}))) as {
+      ok?: boolean;
+      id?: string | null;
+      error?: string;
+      detail?: string;
+      status?: number;
+    };
+    if (!response.ok || payload.ok !== true) {
+      const detail = payload.detail?.replace(/[\r\n\t]+/g, " ").trim().slice(0, 240);
+      if (response.status === 401) {
+        return { status: "FAILED", detail: "Quorum's email relay rejected its service credential; check the Render and Worker edge secrets." };
+      }
+      if (response.status === 503) {
+        return { status: "FAILED", detail: "Resend is not configured on Quorum's email relay." };
+      }
+      const providerStatus = payload.status;
+      const status = providerStatus ?? response.status;
+      const providerFailure = status === 401
+        ? "Resend rejected its API key; check the Worker secret."
+        : status === 403 || status === 422
+          ? `Resend rejected the sender or recipient${detail ? `: ${detail}` : "; check the verified sender domain and recipient address."}`
+          : `Resend did not accept the invitation (HTTP ${status})${detail ? `: ${detail}` : "."}`;
+      return { status: "FAILED", detail: providerFailure };
     }
     return {
       status: "SENT",
-      detail: "Resend accepted the invitation email.",
+      detail: "Resend accepted the invitation email through Quorum's Cloudflare relay.",
       ...(payload.id ? { messageId: payload.id } : {}),
     };
-  } catch {
-    return { status: "FAILED", detail: "Quorum could not reach Resend; the invite code is still available to share." };
+  } catch (error) {
+    const cause = error instanceof Error ? (error as Error & { cause?: { code?: string } }).cause : undefined;
+    const code = cause?.code?.replace(/[^A-Z0-9_]/gi, "").slice(0, 32);
+    console.error("[team-invite] email relay request failed", {
+      name: error instanceof Error ? error.name : "UnknownError",
+      code: code || undefined,
+    });
+    return {
+      status: "FAILED",
+      detail: `Quorum could not reach its Cloudflare email relay${code ? ` (${code})` : ""}; the invite code is still available to share.`,
+    };
   }
 }

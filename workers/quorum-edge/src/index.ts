@@ -32,6 +32,9 @@ interface Env {
   ORIGIN_URL: string;
   EDGE_SHARED_SECRET?: string;
   MCP_REMOTE_TOKEN?: string;
+  RESEND_API_KEY?: string;
+  RESEND_FROM?: string;
+  RESEND_DOMAIN_ID?: string;
   AI?: {
     run(model: string, input: Record<string, unknown>): Promise<unknown>;
   };
@@ -278,6 +281,110 @@ async function audioResult(result: unknown, contentType: string): Promise<Respon
     if (typeof audio === "string") return base64Audio(audio, contentType);
   }
   return null;
+}
+
+/* ── Transactional email ───────────────────────────────────────────────────
+   The origin asks this route to send; the Resend key never leaves the Worker.
+   Only the server-to-server edge key may call it, and only plain text or HTML
+   to one recipient per request. */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+async function sendEmail(request: Request, env: Env): Promise<Response> {
+  if (!isAuthorised(request, env)) return json({ error: "unauthorised" }, 401);
+  if (!env.RESEND_API_KEY) return json({ error: "email is not configured on this worker" }, 503);
+  if (request.method !== "POST") return json({ error: "use POST" }, 405, { allow: "POST" });
+
+  let body: { to?: unknown; subject?: unknown; text?: unknown; html?: unknown };
+  try {
+    body = (await request.json()) as typeof body;
+  } catch {
+    return json({ error: "expected JSON { to, subject, text|html }" }, 400);
+  }
+  const to = typeof body.to === "string" ? body.to.trim() : "";
+  const subject = typeof body.subject === "string" ? body.subject.trim().slice(0, 200) : "";
+  const text = typeof body.text === "string" ? body.text : undefined;
+  const html = typeof body.html === "string" ? body.html : undefined;
+  if (!EMAIL_RE.test(to)) return json({ error: "a valid recipient is required" }, 422);
+  if (!subject) return json({ error: "subject is required" }, 422);
+  if (!text && !html) return json({ error: "text or html is required" }, 422);
+
+  const idempotencyKey = request.headers.get("idempotency-key")?.trim().slice(0, 256);
+  const init: RequestInit = {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${env.RESEND_API_KEY}`,
+      "content-type": "application/json",
+      ...(idempotencyKey ? { "idempotency-key": idempotencyKey } : {}),
+    },
+    body: JSON.stringify({
+      from: env.RESEND_FROM || "Quorum <onboarding@resend.dev>",
+      to: [to],
+      subject,
+      ...(text ? { text } : {}),
+      ...(html ? { html } : {}),
+    }),
+    signal: AbortSignal.timeout(10_000),
+  };
+  let upstream: Response | null = null;
+  const retryableStatuses = new Set([408, 425, 429, 500, 502, 503, 504]);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    upstream = null;
+    try {
+      upstream = await fetch("https://api.resend.com/emails", init);
+    } catch {
+      if (attempt === 2) {
+        return json({ error: "resend_unreachable", detail: "The email relay could not connect to Resend after three attempts." }, 502);
+      }
+    }
+    if (upstream && (!retryableStatuses.has(upstream.status) || attempt === 2)) break;
+    await upstream?.body?.cancel();
+    await new Promise((resolve) => setTimeout(resolve, 250 * (2 ** attempt)));
+  }
+  if (!upstream) {
+    return json({ error: "resend_unreachable", detail: "The email relay could not connect to Resend." }, 502);
+  }
+  const data = (await upstream.json().catch(() => ({}))) as { id?: string; message?: string; name?: string };
+  if (!upstream.ok) {
+    return json({ error: "resend rejected the message", status: upstream.status, detail: data.message ?? data.name ?? "unknown" }, 502);
+  }
+  return json({ ok: true, id: data.id ?? null });
+}
+
+async function resendHealth(request: Request, env: Env): Promise<Response> {
+  if (!isAuthorised(request, env)) return json({ error: "unauthorised" }, 401);
+  if (!env.RESEND_API_KEY || !env.RESEND_FROM || !env.RESEND_DOMAIN_ID) {
+    return json({ ok: false, providerReachable: false, error: "email_configuration_incomplete" }, 503);
+  }
+  try {
+    const response = await fetch(`https://api.resend.com/domains/${encodeURIComponent(env.RESEND_DOMAIN_ID)}`, {
+      headers: { authorization: `Bearer ${env.RESEND_API_KEY}` },
+      signal: AbortSignal.timeout(8_000),
+    });
+    const domain = (await response.json().catch(() => ({}))) as {
+      name?: string;
+      status?: string;
+      records?: Array<{ record?: string; status?: string }>;
+    };
+    if (!response.ok) {
+      return json({ ok: false, providerReachable: true, apiStatus: response.status, error: "resend_domain_check_failed" }, 502);
+    }
+    const senderDomain = env.RESEND_FROM.match(/@([^>\s]+)/)?.[1]?.toLowerCase();
+    const domainName = domain.name?.toLowerCase();
+    const dkimVerified = domain.records?.some((record) => record.record === "DKIM" && record.status === "verified") ?? false;
+    const spfVerified = domain.records?.some((record) => record.record === "SPF" && record.status === "verified") ?? false;
+    const senderDomainMatches = Boolean(senderDomain && domainName && senderDomain === domainName);
+    const ready = dkimVerified && spfVerified && senderDomainMatches;
+    return json({
+      ok: ready,
+      providerReachable: true,
+      domainStatus: domain.status ?? "unknown",
+      senderDomainMatches,
+      dkimVerified,
+      spfVerified,
+    }, ready ? 200 : 503);
+  } catch {
+    return json({ ok: false, providerReachable: false, error: "resend_connection_failed" }, 502);
+  }
 }
 
 async function speak(request: Request, env: Env): Promise<Response> {
@@ -531,6 +638,8 @@ const worker = {
     if (url.pathname === "/__edge/list") return list(request, env, url);
     if (url.pathname === "/__edge/delete") return remove(request, env, url);
     if (url.pathname === "/__edge/tts") return speak(request, env);
+    if (url.pathname === "/__edge/email/health") return resendHealth(request, env);
+    if (url.pathname === "/__edge/email") return sendEmail(request, env);
     if (url.pathname === "/__edge/asr") return transcribe(request, env);
 
     if (url.pathname === "/mcp") {
