@@ -28,7 +28,6 @@ import {
   X,
 } from "lucide-react";
 import { QuorumLogo } from "@/components/quorum/logo";
-import { DeploymentBanner } from "@/components/quorum/deployment-banner";
 import { SearchSelect, type SelectOption } from "@/components/quorum/org/search-select";
 import { COUNTRIES, SUGGESTED_COUNTRIES, findCountry, type Country } from "@/lib/countries";
 import { LEGAL_FORMS, LEGAL_FORM_GROUPS, LEGAL_FORM_OTHER } from "@/lib/legal-forms";
@@ -1179,7 +1178,6 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
         </aside>
 
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-          <DeploymentBanner />
           <AnimatePresence>
             {flash ? (
               <motion.div

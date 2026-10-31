@@ -68,7 +68,6 @@ import { ReadinessView } from "@/components/quorum/readiness-view";
 import { SpecBar } from "@/components/quorum/reveal";
 import { QuorumLogo } from "@/components/quorum/logo";
 import { NotificationBell } from "@/components/quorum/notification-bell";
-import { DeploymentBanner } from "@/components/quorum/deployment-banner";
 import { DeploymentSettings } from "@/components/quorum/deployment-settings";
 import { StackConsole } from "@/components/quorum/stack-console";
 import { StepUpHost, requestStepUp } from "@/components/quorum/step-up";
@@ -3796,7 +3795,6 @@ function ViewShell({
 }) {
   return (
     <div>
-      <DeploymentBanner />
       <SpecBar index={fig} label="Workspace" meta={title} />
       <div className="mt-6 flex flex-wrap items-end justify-between gap-5">
         <div className="min-w-0">
