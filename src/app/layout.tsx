@@ -1,43 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
-import { Archivo, Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseAnalytics } from "@/components/quorum/firebase-analytics";
 import { ThemeProvider } from "@/components/quorum/theme-toggle";
 import { MuseAssistantGate } from "@/components/quorum/muse-assistant-gate";
 import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
-
-// Self-hosted via next/font — zero runtime requests to Google, so the page
-// can never hang on external font CDNs.
-const archivo = Archivo({
-  subsets: ["latin"],
-  variable: "--font-archivo",
-  display: "swap",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
-const jetbrains = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-jetbrains",
-  display: "swap",
-});
-
-// The editorial accent voice — italic serif used for single highlighted
-// phrases inside display headlines ("one review run", the greeting's name).
-// Italic-only weight 400; anything bolder would read as decoration, not voice.
-const instrument = Instrument_Serif({
-  subsets: ["latin"],
-  weight: "400",
-  style: ["italic"],
-  variable: "--font-instrument",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "Quorum — Agentic tender review for public health procurement",
@@ -93,9 +61,17 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://api.fontshare.com" />
+        <link rel="preconnect" href="https://cdn.fontshare.com" crossOrigin="anonymous" />
+        <link
+          rel="stylesheet"
+          href="https://api.fontshare.com/v2/css?f[]=satoshi@1,2&display=swap"
+        />
+      </head>
       <body
         suppressHydrationWarning
-        className={`${archivo.variable} ${inter.variable} ${jetbrains.variable} ${instrument.variable} font-body antialiased bg-background text-foreground`}
+        className="font-body antialiased bg-background text-foreground"
       >
         <ThemeProvider>
           {children}

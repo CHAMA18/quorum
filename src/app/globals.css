@@ -6,8 +6,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-inter);
-  --font-mono: var(--font-jetbrains);
+  --font-sans: "Satoshi", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Satoshi", ui-sans-serif, system-ui, sans-serif;
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -72,9 +72,9 @@
   --color-night-3: #1c1f27;
 
   /* Typography */
-  --font-display: var(--font-archivo), "Arial Black", ui-sans-serif, sans-serif;
-  --font-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-code: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-display: "Satoshi", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Satoshi", ui-sans-serif, system-ui, sans-serif;
+  --font-code: "Satoshi", ui-sans-serif, system-ui, sans-serif;
 
   /* Marquee + route flow */
   --animate-marquee: marquee 42s linear infinite;
@@ -612,12 +612,10 @@
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
-  /* Editorial accent voice — the italic serif for single highlighted phrases.
-     Must reference the next/font variable directly: a @theme font token
-     indirection to a body-scoped variable collapses when resolved at :root,
-    before body scope exists. */
+  /* Satoshi's italic face carries short editorial accents without introducing
+     a second family into the application-wide type system. */
   .font-editorial {
-    font-family: var(--font-instrument), ui-serif, Georgia, serif;
+    font-family: "Satoshi", ui-sans-serif, system-ui, sans-serif;
     font-style: italic;
     font-weight: 400;
   }
