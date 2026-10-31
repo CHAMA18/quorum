@@ -984,6 +984,37 @@ Bun.serve({
       return json({ logged: true });
     }
 
+    /* Direct Meta requests made by the web routes join this same verified
+       audit chain. Only bounded call metadata is kept; document text, prompts,
+       responses and credentials never enter the log. */
+    if (path === "/api/audit/model-call" && req.method === "POST") {
+      const seal = attestVerify(req.method, path, req.headers);
+      if (!seal.ok) return json({ error: seal.reason }, 401);
+      const body = await readBody(req);
+      const outcome = body.outcome === "OK" ? "OK" : "ERROR";
+      const model = typeof body.model === "string" ? body.model.slice(0, 120) : "unknown";
+      const purpose = typeof body.purpose === "string" ? body.purpose.slice(0, 80) : "model_call";
+      const endpoint = typeof body.endpoint === "string" ? body.endpoint.slice(0, 180) : "api.meta.ai";
+      const durationMs = Math.max(0, Math.min(300_000, Number(body.durationMs) || 0));
+      const responseStatus = Number(body.responseStatus);
+      return withWorkspace(workspaceId, () => {
+        appendLog({
+          actor: attestedActor || seal.actor,
+          server: "meta-api",
+          tool: "model_call",
+          kind: "READ",
+          inputs: { provider: "Meta AI", model, purpose, endpoint },
+          outputs: {
+            outcome,
+            ...(Number.isFinite(responseStatus) && responseStatus > 0 ? { responseStatus: Math.round(responseStatus) } : {}),
+          },
+          status: outcome,
+          durationMs,
+        });
+        return json({ logged: true });
+      });
+    }
+
     /* Receipt verification is deliberately offline-friendly: the signature
        carries its public key, so a downloaded receipt can be checked without
        this service. This endpoint is the same check for the UI. */

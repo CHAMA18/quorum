@@ -4,6 +4,7 @@ import { getUserFromToken, rateLimit, SESSION_COOKIE } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { extractTenderText } from "@/lib/tender-extract";
 import { museChat, museConfigFromEnv } from "@/lib/muse";
+import { attestSignature } from "@/lib/sidecar-attest";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,6 +46,39 @@ function parseModelJson(text: string): unknown {
   const end = cleaned.lastIndexOf("}");
   if (start < 0 || end < start) throw new Error("Meta AI returned no structured extraction.");
   return JSON.parse(cleaned.slice(start, end + 1)) as unknown;
+}
+
+async function recordMetaRun(
+  user: { name: string; workspaceId: string },
+  entry: { model: string; durationMs: number; outcome: "OK" | "ERROR"; responseStatus?: number },
+) {
+  const timestamp = Date.now();
+  const path = "/api/audit/model-call";
+  try {
+    await fetch(`http://127.0.0.1:${process.env.MCP_PORT?.trim() || "3031"}${path}`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-quorum-actor": user.name,
+        "x-quorum-workspace": user.workspaceId,
+        "x-quorum-ts": String(timestamp),
+        "x-quorum-attest": attestSignature("POST", path, user.name, timestamp, user.workspaceId),
+      },
+      body: JSON.stringify({
+        model: entry.model,
+        purpose: "tender_notice_extraction",
+        endpoint: "api.meta.ai",
+        durationMs: entry.durationMs,
+        outcome: entry.outcome,
+        ...(entry.responseStatus ? { responseStatus: entry.responseStatus } : {}),
+      }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(1_500),
+    });
+  } catch {
+    /* The extraction response remains usable during an audit-sidecar outage;
+       the Developer screen independently reports whether that service is up. */
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -105,9 +139,16 @@ Use null and confidence 0 when a fact is absent or ambiguous. For office, only s
     { role: "user" as const, content: `Filename: ${file.name.slice(0, 180)}\nDocument text:\n${extracted.text}` },
   ];
 
+  const startedAt = performance.now();
   try {
     const reply = await museChat(config, messages, []);
     const parsed = ExtractionSchema.safeParse(parseModelJson(reply.text));
+    await recordMetaRun(user, {
+      model: reply.model,
+      durationMs: Math.round(performance.now() - startedAt),
+      outcome: parsed.success ? "OK" : "ERROR",
+      responseStatus: 200,
+    });
     if (!parsed.success) {
       return NextResponse.json({ error: "Meta AI returned an incomplete extraction. No fields were applied; you can enter the tender details manually." }, { status: 502 });
     }
@@ -119,6 +160,14 @@ Use null and confidence 0 when a fact is absent or ambiguous. For office, only s
       fields: parsed.data,
     }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
+    await recordMetaRun(user, {
+      model: config.model,
+      durationMs: Math.round(performance.now() - startedAt),
+      outcome: "ERROR",
+      ...(error instanceof Error && /HTTP \d{3}/.test(error.message)
+        ? { responseStatus: Number(error.message.match(/HTTP (\d{3})/)?.[1]) }
+        : {}),
+    });
     return NextResponse.json({
       error: error instanceof Error
         ? `Meta AI could not analyze this document: ${error.message.slice(0, 240)}`

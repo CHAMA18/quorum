@@ -557,8 +557,9 @@ const NAV_GROUPS: {
     ],
   },
   {
-    group: "INTEGRATIONS",
+    group: "DEVELOPER",
     items: [
+      { id: "mc-stack", label: "Developer", icon: Terminal },
       { id: "mc-integrations", label: "Integrations", icon: Cable },
     ],
   },
@@ -10666,7 +10667,10 @@ export function Dashboard({
 
         <main
           id="mc-main"
-          className="mx-auto w-full max-w-[1500px] px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pt-7"
+          className={cn(
+            "mx-auto w-full px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pt-7",
+            active === "mc-stack" ? "max-w-none" : "max-w-[1500px]"
+          )}
         >
           <AnimatePresence mode="wait" initial={false}>
             {active === "mc-overview" ? (

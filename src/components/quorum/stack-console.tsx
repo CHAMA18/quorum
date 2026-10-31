@@ -209,6 +209,23 @@ function Clock(iso?: string | null) {
   return typeof iso === "string" ? iso.slice(11, 19) : "—";
 }
 
+function recordValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function textValue(value: unknown): string {
+  return typeof value === "string" || typeof value === "number" ? String(value) : "";
+}
+
+function isMetaModelCall(entry: LogEntry): boolean {
+  const inputs = recordValue(entry.inputs);
+  const provider = textValue(inputs.provider).toLowerCase();
+  const model = textValue(inputs.model).toLowerCase();
+  return entry.server === "meta-api" || provider.includes("meta") || model.startsWith("muse-");
+}
+
 function initialsOf(name: string): string {
   const parts = name.trim().split(/\s+/).slice(0, 2);
   return parts.map((p) => p[0]?.toUpperCase() ?? "").join("") || "Q";
@@ -495,6 +512,8 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
   const [approverDraft, setApproverDraft] = useState<Record<string, { name: string; note: string }>>({});
   const [committee, setCommittee] = useState<CommitteeLite | null>(null);
   const logAnchor = useRef<HTMLDivElement | null>(null);
+  const terminalBody = useRef<HTMLDivElement | null>(null);
+  const [lastPolledAt, setLastPolledAt] = useState<Date | null>(null);
 
   const pull = useCallback(async () => {
     try {
@@ -523,6 +542,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
       }
       const l = await fetch(`${SVC}/log?limit=60&XTransformPort=3031`).then((x) => x.json());
       setLog(l.entries ?? []);
+      setLastPolledAt(new Date());
     } catch {
       /* service briefly down — keep last snapshot */
     }
@@ -533,6 +553,11 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
     const id = setInterval(() => void pull(), 3500);
     return () => clearInterval(id);
   }, [pull]);
+
+  useEffect(() => {
+    const panel = terminalBody.current;
+    if (panel) panel.scrollTop = panel.scrollHeight;
+  }, [log]);
 
   const launchRun = async () => {
     /* Re-run the most recent real tender — nothing is launched without one. */
@@ -652,19 +677,21 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
     : model.configured
       ? `${model.providerLabel ?? "Model"} at ${model.endpoint ?? "configured endpoint"} · residency ${model.residency ?? "IN_REGION"}${fallbackDetail}${lastCallDetail}`
       : "No drafting endpoint on this host — redlines are deterministic template output";
+  const visibleLog = log.slice(0, 32).reverse();
+  const metaCalls = log.filter(isMetaModelCall);
+  const successfulMetaCalls = metaCalls.filter((entry) => entry.status === "OK").length;
 
   return (
     <div className="space-y-8">
       {/* header */}
       <section aria-labelledby="mc-stack-h">
-        <SpecBar index="Stack" label="The stack, live" meta="Read from the services themselves" />
+        <SpecBar index="Developer" label="Live runtime" meta="Meta API · quorum-mcp · LangGraph" />
         <h1 id="mc-stack-h" className="type-display mt-6 text-[32px] text-ink-950 sm:text-[40px]">
-          Every claim, wired to a real service.
+          See every model call. Follow every run.
         </h1>
         <p className="type-lede mt-4 text-ink-600">
-          This console talks to <span className="font-code text-[13px] text-ink-900">quorum-mcp</span> — our own MCP
-          server — as it runs. Five tools, three of which change state. Documents are read by the official filesystem
-          MCP server. The graph is LangGraph.js, and it halts at the gate. Every call lands in the audit log below.
+          A live view of Meta model requests, MCP tool calls, and the review graph. Each line comes from the
+          hash-chained service log; prompts and document contents stay out of this stream.
         </p>
         <div className="mt-5 flex flex-wrap items-center gap-2.5">
           <span
@@ -706,6 +733,124 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
             <Fingerprint className="h-3 w-3" aria-hidden="true" />
             {health?.counts?.toolCalls ?? 0} TOOL CALLS LOGGED
           </span>
+        </div>
+      </section>
+
+      {/* Full-width live runtime: the stream and its run outline share one terminal surface. */}
+      <section aria-label="Live model API and MCP activity" className="overflow-hidden rounded-[16px] border border-ink-800 bg-[#090d11] text-white shadow-[0_28px_90px_rgba(9,13,17,0.22)]">
+        <div className="flex flex-wrap items-center gap-3 border-b border-white/[0.09] px-4 py-3.5 sm:px-6">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2 w-2">
+              {health?.ok && <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-emerald-400/70" aria-hidden="true" />}
+              <span className={cn("relative inline-flex h-2 w-2 rounded-full", health?.ok ? "bg-emerald-400" : "bg-rose-400")} aria-hidden="true" />
+            </span>
+            <span className="font-code text-[9px] font-bold tracking-[0.2em] text-ink-100">AGENT ACTIVITY</span>
+            <span className={cn("rounded-full border px-2 py-0.5 font-code text-[8px] font-bold tracking-[0.15em]", health?.ok ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-300" : "border-rose-400/20 bg-rose-400/10 text-rose-300")}>
+              {health?.ok ? "LIVE" : "OFFLINE"}
+            </span>
+          </div>
+          <span className="hidden h-4 w-px bg-white/10 sm:block" aria-hidden="true" />
+          <span className="font-code text-[8px] tracking-[0.15em] text-ink-400">META API · MCP · LANGGRAPH</span>
+          <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-1 font-code text-[8px] tracking-[0.12em] text-ink-400">
+            <span>{metaCalls.length} MODEL CALLS</span>
+            <span>{successfulMetaCalls} OK</span>
+            <span>{health?.counts?.toolCalls ?? log.length} TOTAL EVENTS</span>
+            <span>SYNC {lastPolledAt ? lastPolledAt.toLocaleTimeString([], { hour12: false }) : "WAITING"}</span>
+          </div>
+        </div>
+
+        <div className="grid min-w-0 lg:grid-cols-[minmax(0,1.7fr)_minmax(18rem,0.7fr)]">
+          <div className="min-w-0 border-b border-white/[0.08] lg:border-b-0 lg:border-r">
+            <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] px-4 py-2.5 sm:px-6">
+              <MonoLabel className="text-ink-400">LIVE API RUN LOG · NEWEST EVENTS TAILING</MonoLabel>
+              <span className="font-code text-[8px] tracking-[0.13em] text-ink-500">POLL 3.5S</span>
+            </div>
+            <div ref={terminalBody} className="h-[390px] overflow-auto px-4 py-4 font-code text-[10px] leading-[1.9] [scrollbar-color:#303941_transparent] sm:px-6" aria-live="polite" aria-relevant="additions text">
+              {visibleLog.length ? visibleLog.map((entry) => {
+                const inputs = recordValue(entry.inputs);
+                const outputs = recordValue(entry.outputs);
+                const modelCall = entry.server === "meta-api" || entry.server === "model-gateway";
+                const metaCall = isMetaModelCall(entry);
+                const purpose = textValue(inputs.purpose);
+                const modelName = textValue(inputs.model);
+                const eventName = modelCall
+                  ? `${metaCall ? "meta" : textValue(inputs.provider) || "model"}.${textValue(entry.tool) || "call"}`
+                  : `${textValue(entry.server) || "service"}.${textValue(entry.tool) || "event"}`;
+                const note = modelCall
+                  ? [modelName, purpose, typeof outputs.latencyMs === "number" ? `${outputs.latencyMs}ms` : `${entry.durationMs ?? 0}ms`].filter(Boolean).join(" · ")
+                  : [entry.runId ? `run ${entry.runId}` : "", `${entry.durationMs ?? 0}ms`].filter(Boolean).join(" · ");
+                const isError = entry.status === "ERROR";
+                return (
+                  <div key={entry.id} className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-x-3 border-b border-white/[0.035] py-1.5 last:border-0 sm:grid-cols-[6.5rem_minmax(0,1fr)_auto] sm:gap-x-4">
+                    <span className="text-ink-500">{Clock(entry.ts)}.{String(entry.seq).padStart(3, "0")}</span>
+                    <span className="min-w-0">
+                      <span className={cn("font-semibold", isError ? "text-rose-300" : metaCall ? "text-sky-300" : "text-emerald-300")}>{eventName}</span>
+                      <span className="ml-2 break-all text-ink-400">{note}</span>
+                    </span>
+                    <span className={cn("col-start-2 mt-0.5 text-[8px] font-bold tracking-[0.12em] sm:col-start-auto sm:mt-0", isError ? "text-rose-300" : "text-ink-500")}>
+                      {textValue(outputs.outcome) || entry.status || "UNRECORDED"}
+                    </span>
+                  </div>
+                );
+              }) : (
+                <div className="flex h-full min-h-48 flex-col items-center justify-center text-center">
+                  <Radio className="h-4 w-4 text-ink-500" aria-hidden="true" />
+                  <p className="mt-3 text-[10px] text-ink-300">Waiting for the first recorded API or tool call.</p>
+                  <p className="mt-1 text-[9px] text-ink-500">No sample events are generated in this view.</p>
+                </div>
+              )}
+              <div className="mt-4 flex items-center gap-2 border-t border-white/[0.08] pt-3 text-emerald-300/90">
+                <span className="text-ink-500">quorum@developer</span><span className="text-sky-300">~</span><span className="text-ink-300">$</span>
+                <span className="h-3 w-[7px] animate-pulse bg-emerald-300" aria-hidden="true" />
+                <span className="sr-only">Live log tail active</span>
+              </div>
+            </div>
+          </div>
+
+          <aside className="min-w-0 px-4 py-4 sm:px-6 lg:px-5" aria-label="Latest run outline">
+            <div className="flex items-center justify-between gap-3">
+              <MonoLabel className="text-ink-300">RUN OUTLINE</MonoLabel>
+              <span className="rounded-full border border-white/10 px-2 py-1 font-code text-[7.5px] tracking-[0.12em] text-ink-400">{lastRun ? (lastRun.status ?? "RUN").replaceAll("_", " ") : "ARCHITECTURE"}</span>
+            </div>
+            {lastRun ? (
+              <>
+                <p className="mt-3 truncate font-code text-[9px] text-sky-300">{lastRun.id} <span className="text-ink-500">/</span> {lastRun.tenderId}</p>
+                <ol className="mt-4 max-h-[300px] space-y-3 overflow-y-auto pr-1 [scrollbar-width:thin]">
+                  {(lastRun.progress ?? []).map((step, index) => {
+                    const current = lastRun.status === "RUNNING" && index === (lastRun.progress?.length ?? 1) - 1;
+                    return (
+                      <li key={`${lastRun.id}-outline-${index}`} className="flex gap-2.5">
+                        <span className={cn("mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full", current ? "animate-pulse bg-amber-300" : "bg-emerald-400")} aria-hidden="true" />
+                        <span className={cn("text-[10px] leading-relaxed", current ? "text-amber-100" : "text-ink-300")}>{step}</span>
+                      </li>
+                    );
+                  })}
+                </ol>
+                <div className="mt-4 grid grid-cols-3 gap-2 border-t border-white/[0.08] pt-3">
+                  {[["REQUIREMENTS", lastRun.requirements?.length ?? 0], ["FINDINGS", lastRun.findings?.length ?? 0], ["DRAFTS", lastRun.drafts?.length ?? 0]].map(([label, value]) => (
+                    <div key={label}>
+                      <p className="font-code text-[7px] tracking-[0.12em] text-ink-500">{label}</p>
+                      <p className="mt-1 font-code text-[13px] text-white">{value}</p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <ol className="mt-4 space-y-3">
+                {stack.map((layer, index) => (
+                  <li key={layer.layer} className="flex items-start gap-3">
+                    <span className="pt-px font-code text-[8px] text-ink-500">{String(index + 1).padStart(2, "0")}</span>
+                    <span className="min-w-0">
+                      <span className="block font-code text-[9px] font-semibold text-ink-200">{layer.layer}</span>
+                      <span className="mt-0.5 block text-[9px] leading-relaxed text-ink-500">{layer.name}</span>
+                    </span>
+                  </li>
+                ))}
+                {!stack.length && <li className="text-[10px] text-ink-500">Runtime outline is loading from quorum-mcp.</li>}
+              </ol>
+            )}
+            <p className="mt-5 border-t border-white/[0.08] pt-3 font-code text-[7.5px] tracking-[0.12em] text-ink-500">QUORUM-MCP · TAIL / EVERY TOOL CALL LOGGED</p>
+          </aside>
         </div>
       </section>
 
