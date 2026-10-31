@@ -52,9 +52,13 @@ try {
 }
 
 const artifacts = await readdir("release");
-const platform = process.platform === "win32" ? "windows" : "macos";
+const platform = /windows/i.test(process.env.CM_WORKFLOW_NAME ?? "") || process.platform === "win32"
+  ? "windows"
+  : "macos";
 const files = artifacts.filter((name) =>
-  platform === "windows" ? name.endsWith(".exe") : name.endsWith(".dmg") || name.endsWith(".zip"),
+  platform === "windows"
+    ? name === "Quorum-Windows-Portable.zip"
+    : name.endsWith(".dmg") || name === "Quorum-macOS.zip",
 );
 if (!files.length) throw new Error(`No ${platform} release assets found in ./release`);
 

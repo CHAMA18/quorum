@@ -1,6 +1,6 @@
 {
   "name": "nextjs_tailwind_shadcn_ts",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "private": true,
   "license": "MIT",
   "llamaLicense": "Llama 3.2 Community License — see NOTICE",
@@ -125,20 +125,15 @@
     "win": {
       "target": [
         {
-          "target": "nsis",
+          "target": "zip",
           "arch": [
             "x64"
           ]
         }
       ],
       "icon": "build/desktop/icon.ico",
-      "artifactName": "Quorum-Windows-Setup.${ext}"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "signAndEditExecutable": false,
+      "artifactName": "Quorum-Windows-Portable.${ext}"
     },
     "artifactName": "Quorum-${version}-${os}-${arch}.${ext}"
   },

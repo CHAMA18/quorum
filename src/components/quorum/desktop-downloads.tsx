@@ -5,10 +5,10 @@ const RELEASE_URL = "https://github.com/CHAMA18/quorum/releases/latest/download"
 const PLATFORMS = [
   {
     name: "Windows",
-    detail: "Windows 10 or later · 64-bit",
-    file: `${RELEASE_URL}/Quorum-Windows-Setup.exe`,
+    detail: "64-bit · unzip and launch Quorum.exe",
+    file: `${RELEASE_URL}/Quorum-Windows-Portable.zip`,
     icon: MonitorDown,
-    badge: "INSTALLER · EXE",
+    badge: "PORTABLE APP · ZIP",
   },
   {
     name: "macOS",

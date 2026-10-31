@@ -49,14 +49,12 @@ workflows:
         script: npm install --no-audit --no-fund
       - name: Install isolated desktop dependencies
         script: npm install --prefix desktop --include=dev --no-audit --no-fund
-      - name: Install Wine for the Windows installer
-        script: brew install --cask wine-stable
       - name: Generate application icons
         script: npm run desktop:icons
-      - name: Package Windows app
-        script: npx electron-builder --win nsis --publish never
+      - name: Package Windows portable app
+        script: npx electron-builder --win zip --x64 --publish never
     artifacts:
-      - release/*.exe
+      - release/*.zip
     publishing:
       scripts:
         - name: Publish tagged build to GitHub Releases
