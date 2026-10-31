@@ -14,7 +14,7 @@
 
 const DEV_SECRET = "quorum-dev-attest-secret";
 
-export type SecretPurpose = "attest" | "stepup" | "download" | "notify" | "audit" | "muse";
+export type SecretPurpose = "attest" | "stepup" | "download" | "notify" | "audit" | "muse" | "bidvault";
 
 /** The variables each purpose reads, most specific first. */
 const SOURCES: Record<SecretPurpose, string[]> = {
@@ -24,6 +24,7 @@ const SOURCES: Record<SecretPurpose, string[]> = {
   notify: ["NOTIFY_SECRET", "GATE_SECRET"],
   audit: ["AUDIT_SECRET", "GATE_SECRET"],
   muse: ["MUSE_ACTION_SECRET", "GATE_SECRET"],
+  bidvault: ["BID_VAULT_SECRET", "GATE_SECRET"],
 };
 
 export function secretFor(purpose: SecretPurpose): string {

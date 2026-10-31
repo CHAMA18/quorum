@@ -63,6 +63,8 @@ import { CycleView } from "@/components/quorum/cycle-view";
 import { SpecBar } from "@/components/quorum/reveal";
 import { QuorumLogo } from "@/components/quorum/logo";
 import { NotificationBell } from "@/components/quorum/notification-bell";
+import { DeploymentBanner } from "@/components/quorum/deployment-banner";
+import { DeploymentSettings } from "@/components/quorum/deployment-settings";
 import { StackConsole } from "@/components/quorum/stack-console";
 import { StepUpHost, requestStepUp } from "@/components/quorum/step-up";
 import {
@@ -163,6 +165,10 @@ type GateItem = {
   ago: string;
   tool: string;
   requiredOffice?: string;
+  /* Dual approval: the gate is open but needs a different second officer. */
+  status: "PENDING" | "AWAITING_SECOND";
+  firstApprover?: string;
+  firstApprovalAt?: string;
 };
 
 type LedgerRow = {
@@ -197,7 +203,7 @@ type BackendRun = {
 type BackendGate = {
   id: string;
   tenderId: string;
-  status: "PENDING" | "APPROVED" | "REJECTED" | "EXECUTED";
+  status: "PENDING" | "AWAITING_SECOND" | "APPROVED" | "REJECTED" | "EXECUTED";
   tool?: string;
   requiredOffice?: string;
   inputs: GateInputs;
@@ -208,6 +214,8 @@ type BackendGate = {
      on every decision that cleared the award dialog. */
   handSignature?: { image: string; signedAt: string; strokes: number; by: string };
   receipt?: { submissionId?: string; hash?: string; portal?: string };
+  firstApproval?: { by: string; at: string; note?: string };
+  secondApprover?: { by: string; at: string };
 };
 
 /* What each gate kind is called at the desk — the queue renders it on the card. */
@@ -395,7 +403,7 @@ function useMissionData() {
   const queue = useMemo<GateItem[]>(
     () =>
       rawGates
-        .filter((g) => g.status === "PENDING")
+        .filter((g) => g.status === "PENDING" || g.status === "AWAITING_SECOND")
         /* Oldest first: the longest-waiting decision is at the top. */
         .sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? ""))
         .map((g) => {
@@ -412,7 +420,10 @@ function useMissionData() {
             flags: g.inputs.findings?.length ?? 0,
             ago: clockOf(g.createdAt),
             tool,
+            status: g.status === "AWAITING_SECOND" ? "AWAITING_SECOND" : "PENDING",
             ...(g.requiredOffice ? { requiredOffice: g.requiredOffice } : {}),
+            ...(g.firstApproval?.by ? { firstApprover: g.firstApproval.by } : {}),
+            ...(g.firstApproval?.at ? { firstApprovalAt: clockOf(g.firstApproval.at) } : {}),
           };
         }),
     [rawGates, registry]
@@ -2748,7 +2759,7 @@ export function GateQueue({
   const needle = q.trim().toLowerCase();
   const visible = needle
     ? queue.filter((g) =>
-        `${g.tender} ${g.title} ${g.supplier} ${GATE_TOOL_LABEL[g.tool] ?? g.tool}`
+        `${g.tender} ${g.title} ${g.supplier} ${GATE_TOOL_LABEL[g.tool] ?? g.tool} ${g.firstApprover ?? ""} ${g.status}`
           .toLowerCase()
           .includes(needle),
       )
@@ -2855,6 +2866,12 @@ export function GateQueue({
                 transition={{ duration: 0.4, ease: EASE }}
                 className="rounded-[10px] border border-ink-200/70 bg-paper p-4 transition-colors duration-300 hover:bg-white dark:border-white/10 dark:hover:bg-white/[0.03]"
               >
+                {g.status === "AWAITING_SECOND" ? (
+                  <p className="mb-3 rounded-md border border-amber-400/40 bg-amber-400/[0.1] px-2.5 py-1.5 font-code text-[8px] font-bold leading-relaxed tracking-[0.12em] text-amber-800 dark:text-amber-200">
+                    SECOND SIGNATURE REQUIRED — OPENED BY {String(g.firstApprover ?? "AN OFFICER").toUpperCase()}
+                    {g.firstApprovalAt ? ` ${g.firstApprovalAt.toUpperCase()}` : ""}. A DIFFERENT OFFICER MUST COMPLETE IT.
+                  </p>
+                ) : null}
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-code text-[9.5px] font-bold tracking-[0.1em] text-ink-950">{g.tender}</p>
@@ -2905,21 +2922,23 @@ export function GateQueue({
                     className="focus-brand inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full bg-brand-600 text-[12.5px] font-bold tracking-[0.02em] text-white shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_12px_26px_-14px_rgba(217,38,22,0.9)] transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Stamp className="h-3.5 w-3.5" aria-hidden="true" />
-                    Award
+                    {g.status === "AWAITING_SECOND" ? "Second signature" : "Award"}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => act(g, "RETURNED")}
-                    disabled={blocked}
-                    title={
-                      blocked
-                        ? `Quorum not present — ${presentCount} of ${quorum?.required ?? 0}. Mark members PRESENT in Committee before deciding.`
-                        : undefined
-                    }
-                    className="focus-brand inline-flex h-10 flex-1 items-center justify-center rounded-full border border-ink-200/80 text-[12.5px] font-semibold text-ink-700 transition-colors hover:border-ink-400 hover:bg-white hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/12 dark:hover:bg-white/[0.04]"
-                  >
-                    Return for review
-                  </button>
+                  {g.status !== "AWAITING_SECOND" ? (
+                    <button
+                      type="button"
+                      onClick={() => act(g, "RETURNED")}
+                      disabled={blocked}
+                      title={
+                        blocked
+                          ? `Quorum not present — ${presentCount} of ${quorum?.required ?? 0}. Mark members PRESENT in Committee before deciding.`
+                          : undefined
+                      }
+                      className="focus-brand inline-flex h-10 flex-1 items-center justify-center rounded-full border border-ink-200/80 text-[12.5px] font-semibold text-ink-700 transition-colors hover:border-ink-400 hover:bg-white hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/12 dark:hover:bg-white/[0.04]"
+                    >
+                      Return for review
+                    </button>
+                  ) : null}
                 </div>
                 ) : (
                   <p className="mt-4 rounded-md border border-ink-200 bg-paper px-2.5 py-2 font-code text-[8px] font-bold leading-relaxed tracking-[0.12em] text-ink-500">
@@ -3690,6 +3709,7 @@ function ViewShell({
 }) {
   return (
     <div>
+      <DeploymentBanner />
       <SpecBar index={fig} label="Workspace" meta={title} />
       <div className="mt-6 flex flex-wrap items-end justify-between gap-5">
         <div className="min-w-0">
@@ -9254,6 +9274,9 @@ type GuardSettings = {
   priceVariancePct: 15 | 25 | 40;
   checklist: "STANDARD" | "STRICT";
   registryCrossCheck: boolean;
+  dualApprovalThreshold: number;
+  scoreDivergencePoints: number;
+  fxStalenessDays: number;
   updatedAt: string | null;
   updatedBy: string | null;
 };
@@ -9262,6 +9285,9 @@ const GUARD_DEFAULTS: GuardSettings = {
   priceVariancePct: 25,
   checklist: "STANDARD",
   registryCrossCheck: true,
+  dualApprovalThreshold: 0,
+  scoreDivergencePoints: 25,
+  fxStalenessDays: 30,
   updatedAt: null,
   updatedBy: null,
 };
@@ -9279,6 +9305,9 @@ function RulesView({
   onOpenActivity: () => void;
 }) {
   const [guards, setGuards] = useState<GuardSettings | null>(null);
+  const [thresholdDraft, setThresholdDraft] = useState("");
+  const [divergenceDraft, setDivergenceDraft] = useState("");
+  const [stalenessDraft, setStalenessDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const [register, setRegister] = useState<{ total: number; flagged: number } | null>(null);
@@ -9344,7 +9373,12 @@ function RulesView({
 
   /* Optimistic: the pill moves at once; a refusal puts it back and says so. */
   const setGuard = async (
-    patch: Partial<Pick<GuardSettings, "priceVariancePct" | "checklist" | "registryCrossCheck">>,
+    patch: Partial<
+      Pick<
+        GuardSettings,
+        "priceVariancePct" | "checklist" | "registryCrossCheck" | "dualApprovalThreshold" | "scoreDivergencePoints" | "fxStalenessDays"
+      >
+    >,
     label: string
   ) => {
     if (!guards || saving) return;
@@ -9400,6 +9434,42 @@ function RulesView({
     },
     {
       no: "03",
+      title: "Dual approval",
+      desc: "Two different officers must sign a gate at or above this value. 0 disables the rule —",
+      control: (
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="number"
+            min="0"
+            step="1000"
+            inputMode="numeric"
+            value={thresholdDraft || (shown.dualApprovalThreshold ? String(shown.dualApprovalThreshold) : "")}
+            onChange={(e) => setThresholdDraft(e.target.value)}
+            placeholder="0 = off"
+            aria-label="Dual approval threshold"
+            className="h-9 w-40 rounded-lg border border-ink-200 bg-white px-3 font-code text-[11px] tabular text-ink-900 outline-none transition-colors focus:border-brand-600 dark:border-white/15 dark:bg-white/[0.04] dark:text-ink-100"
+          />
+          <button
+            type="button"
+            disabled={locked || !thresholdDraft}
+            onClick={() => {
+              const next = Number(thresholdDraft);
+              if (!Number.isFinite(next) || next < 0) return;
+              void setGuard({ dualApprovalThreshold: next }, `DUAL APPROVAL AT ${next.toLocaleString()}`);
+              setThresholdDraft("");
+            }}
+            className="h-9 rounded-lg bg-ink-950 px-3.5 font-code text-[8px] font-bold tracking-[0.16em] text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            SET
+          </button>
+          <span className="font-code text-[8px] tracking-[0.12em] text-ink-400">
+            ACTIVE — {shown.dualApprovalThreshold ? shown.dualApprovalThreshold.toLocaleString() : "OFF"}
+          </span>
+        </div>
+      ),
+    },
+    {
+      no: "04",
       title: "Registry cross-check",
       desc: "Match every bidder against the open registry before a finding is raised —",
       control: (
@@ -9417,6 +9487,80 @@ function RulesView({
               : "REGISTER — NOT REACHED YET"}
           </p>
         </>
+      ),
+    },
+    {
+      no: "05",
+      title: "Evaluator divergence",
+      desc: "A spread this wide between evaluator sheets must be reconciled in the consensus minute before certification —",
+      control: (
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="number"
+            min="1"
+            max="100"
+            step="1"
+            inputMode="numeric"
+            value={divergenceDraft || String(shown.scoreDivergencePoints)}
+            onChange={(e) => setDivergenceDraft(e.target.value)}
+            aria-label="Evaluator divergence threshold in score points"
+            className="h-9 w-24 rounded-lg border border-ink-200 bg-white px-3 font-code text-[11px] tabular text-ink-900 outline-none transition-colors focus:border-brand-600 dark:border-white/15 dark:bg-white/[0.04] dark:text-ink-100"
+          />
+          <span className="font-code text-[8px] tracking-[0.12em] text-ink-400">POINTS</span>
+          <button
+            type="button"
+            disabled={locked || !divergenceDraft}
+            onClick={() => {
+              const next = Number(divergenceDraft);
+              if (!Number.isFinite(next) || next <= 0 || next > 100) return;
+              void setGuard({ scoreDivergencePoints: next }, `EVALUATOR DIVERGENCE AT ${next} POINTS`);
+              setDivergenceDraft("");
+            }}
+            className="h-9 rounded-lg bg-ink-950 px-3.5 font-code text-[8px] font-bold tracking-[0.16em] text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            SET
+          </button>
+          <span className="font-code text-[8px] tracking-[0.12em] text-ink-400">
+            ACTIVE — {shown.scoreDivergencePoints} POINTS
+          </span>
+        </div>
+      ),
+    },
+    {
+      no: "06",
+      title: "FX quote staleness",
+      desc: "A quote older than this window cannot carry the evaluated-price basis —",
+      control: (
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="number"
+            min="1"
+            max="365"
+            step="1"
+            inputMode="numeric"
+            value={stalenessDraft || String(shown.fxStalenessDays)}
+            onChange={(e) => setStalenessDraft(e.target.value)}
+            aria-label="FX quote staleness window in days"
+            className="h-9 w-24 rounded-lg border border-ink-200 bg-white px-3 font-code text-[11px] tabular text-ink-900 outline-none transition-colors focus:border-brand-600 dark:border-white/15 dark:bg-white/[0.04] dark:text-ink-100"
+          />
+          <span className="font-code text-[8px] tracking-[0.12em] text-ink-400">DAYS</span>
+          <button
+            type="button"
+            disabled={locked || !stalenessDraft}
+            onClick={() => {
+              const next = Number(stalenessDraft);
+              if (!Number.isFinite(next) || next < 1 || next > 365) return;
+              void setGuard({ fxStalenessDays: next }, `FX QUOTES STALE AFTER ${next} DAYS`);
+              setStalenessDraft("");
+            }}
+            className="h-9 rounded-lg bg-ink-950 px-3.5 font-code text-[8px] font-bold tracking-[0.16em] text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            SET
+          </button>
+          <span className="font-code text-[8px] tracking-[0.12em] text-ink-400">
+            ACTIVE — {shown.fxStalenessDays} DAYS
+          </span>
+        </div>
       ),
     },
   ];
@@ -9473,7 +9617,7 @@ function RulesView({
         >
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400">GUARD 04</p>
+              <p className="font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400">GUARD 05</p>
               <h3 className="mt-1.5 font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">Citation policy</h3>
               <p className="mt-1 max-w-md text-[12.5px] text-ink-500">
                 Page-level citations on every claim. Zero unsourced tolerated — not a setting, a design constraint.
@@ -9511,6 +9655,8 @@ function RulesView({
           </div>
         </div>
       </div>
+
+      <DeploymentSettings onToast={onToast} />
     </ViewShell>
   );
 }

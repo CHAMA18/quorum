@@ -1,0 +1,348 @@
+{
+  "ocid": "ocds-5whusi-KEMSA/ONT08/2024-2026",
+  "id": "KE-KEMSA-2024-ONT08",
+  "date": "2024-10-03T16:06:02+03:00",
+  "buyer": {
+    "id": "5098",
+    "name": "Kenya Medical Supplies Authority"
+  },
+  "tender": {
+    "id": "20241003160602-206188-KEMSA/ONT08/2024-2026",
+    "title": "SUPPLY OF HEALTH TECHNOLOGIES (COTTON GAUZE, COTTON WOOL &  TUBES)",
+    "description": "Published framework award register for cotton gauze, cotton wool and tubes. The release carries no tender documents, line items or quantities.",
+    "documents": []
+  },
+  "bids": {
+    "details": [
+      {
+        "tenderers": [
+          {
+            "name": "FAMI INVESTMENT LTD"
+          }
+        ],
+        "value": {
+          "amount": 2387988,
+          "currency": "KES"
+        },
+        "documents": []
+      },
+      {
+        "tenderers": [
+          {
+            "name": "TENDAJI TRADING LIMITED"
+          }
+        ],
+        "value": {
+          "amount": 972400,
+          "currency": "KES"
+        },
+        "documents": []
+      },
+      {
+        "tenderers": [
+          {
+            "name": "TOPTOUCH MARKETING LIMITED"
+          }
+        ],
+        "value": {
+          "amount": 965000,
+          "currency": "KES"
+        },
+        "documents": []
+      },
+      {
+        "tenderers": [
+          {
+            "name": "FROTOM LOGISTICS LIMITED"
+          }
+        ],
+        "value": {
+          "amount": 194436000,
+          "currency": "KES"
+        },
+        "documents": []
+      },
+      {
+        "tenderers": [
+          {
+            "name": "NIFLA ENTERPRISE LIMITED"
+          }
+        ],
+        "value": {
+          "amount": 52486248,
+          "currency": "KES"
+        },
+        "documents": []
+      },
+      {
+        "tenderers": [
+          {
+            "name": "POWERLITE BREW AFRICA LIMITED"
+          }
+        ],
+        "value": {
+          "amount": 1453700,
+          "currency": "KES"
+        },
+        "documents": []
+      },
+      {
+        "tenderers": [
+          {
+            "name": "TINGLINKS ENTERPRISES LIMITED"
+          }
+        ],
+        "value": {
+          "amount": 5170000,
+          "currency": "KES"
+        },
+        "documents": []
+      },
+      {
+        "tenderers": [
+          {
+            "name": "ZAN GLOBAL LIMITED"
+          }
+        ],
+        "value": {
+          "amount": 540960,
+          "currency": "KES"
+        },
+        "documents": []
+      },
+      {
+        "tenderers": [
+          {
+            "name": "VOMORONO LTD"
+          }
+        ],
+        "value": {
+          "amount": 10093200,
+          "currency": "KES"
+        },
+        "documents": []
+      },
+      {
+        "tenderers": [
+          {
+            "name": "MILLENIUM SOLUTIONS EAST AFRICA LIMITED"
+          }
+        ],
+        "value": {
+          "amount": 69892200,
+          "currency": "KES"
+        },
+        "documents": []
+      },
+      {
+        "tenderers": [
+          {
+            "name": "REMMY SUPPLIERS & SERVICES LTD"
+          }
+        ],
+        "value": {
+          "amount": 4337800,
+          "currency": "KES"
+        },
+        "documents": []
+      }
+    ]
+  },
+  "awards": [
+    {
+      "id": "20250612154130-127708",
+      "suppliers": [
+        {
+          "id": "471127",
+          "name": "FAMI INVESTMENT LTD"
+        }
+      ],
+      "value": {
+        "amount": 2387988,
+        "currency": "KES"
+      },
+      "contractPeriod": {
+        "endDate": "2027-03-18T00:00:00+03:00",
+        "startDate": "2025-03-19T00:00:00+03:00"
+      }
+    },
+    {
+      "id": "20250620121623-128897",
+      "suppliers": [
+        {
+          "id": "471139",
+          "name": "TENDAJI TRADING LIMITED"
+        }
+      ],
+      "value": {
+        "amount": 972400,
+        "currency": "KES"
+      },
+      "contractPeriod": {
+        "endDate": "2027-03-25T00:00:00+03:00",
+        "startDate": "2025-03-26T00:00:00+03:00"
+      }
+    },
+    {
+      "id": "20250620122912-128904",
+      "suppliers": [
+        {
+          "id": "471145",
+          "name": "TOPTOUCH MARKETING LIMITED"
+        }
+      ],
+      "value": {
+        "amount": 965000,
+        "currency": "KES"
+      },
+      "contractPeriod": {
+        "endDate": "2027-03-12T00:00:00+03:00",
+        "startDate": "2025-03-13T00:00:00+03:00"
+      }
+    },
+    {
+      "id": "20250620125723-128917",
+      "suppliers": [
+        {
+          "id": "471153",
+          "name": "FROTOM LOGISTICS LIMITED"
+        }
+      ],
+      "value": {
+        "amount": 194436000,
+        "currency": "KES"
+      },
+      "contractPeriod": {
+        "endDate": "2027-05-19T00:00:00+03:00",
+        "startDate": "2025-05-20T00:00:00+03:00"
+      }
+    },
+    {
+      "id": "20250620131632-128919",
+      "suppliers": [
+        {
+          "id": "471154",
+          "name": "NIFLA ENTERPRISE LIMITED"
+        }
+      ],
+      "value": {
+        "amount": 52486248,
+        "currency": "KES"
+      },
+      "contractPeriod": {
+        "endDate": "2027-03-19T00:00:00+03:00",
+        "startDate": "2025-03-20T00:00:00+03:00"
+      }
+    },
+    {
+      "id": "20250620133417-128924",
+      "suppliers": [
+        {
+          "id": "471165",
+          "name": "POWERLITE BREW AFRICA LIMITED"
+        }
+      ],
+      "value": {
+        "amount": 1453700,
+        "currency": "KES"
+      },
+      "contractPeriod": {
+        "endDate": "2027-03-17T00:00:00+03:00",
+        "startDate": "2025-03-18T00:00:00+03:00"
+      }
+    },
+    {
+      "id": "20250620134635-128926",
+      "suppliers": [
+        {
+          "id": "471171",
+          "name": "TINGLINKS ENTERPRISES LIMITED"
+        }
+      ],
+      "value": {
+        "amount": 5170000,
+        "currency": "KES"
+      },
+      "contractPeriod": {
+        "endDate": "2027-03-10T00:00:00+03:00",
+        "startDate": "2025-03-11T00:00:00+03:00"
+      }
+    },
+    {
+      "id": "20250620144402-128937",
+      "suppliers": [
+        {
+          "id": "471188",
+          "name": "ZAN GLOBAL LIMITED"
+        }
+      ],
+      "value": {
+        "amount": 540960,
+        "currency": "KES"
+      },
+      "contractPeriod": {
+        "endDate": "2027-03-16T00:00:00+03:00",
+        "startDate": "2025-03-17T00:00:00+03:00"
+      }
+    },
+    {
+      "id": "20250620145554-128942",
+      "suppliers": [
+        {
+          "id": "471189",
+          "name": "VOMORONO LTD"
+        }
+      ],
+      "value": {
+        "amount": 10093200,
+        "currency": "KES"
+      },
+      "contractPeriod": {
+        "endDate": "2027-03-10T00:00:00+03:00",
+        "startDate": "2025-03-11T00:00:00+03:00"
+      }
+    },
+    {
+      "id": "20250620150458-128945",
+      "suppliers": [
+        {
+          "id": "471209",
+          "name": "MILLENIUM SOLUTIONS EAST AFRICA LIMITED"
+        }
+      ],
+      "value": {
+        "amount": 69892200,
+        "currency": "KES"
+      },
+      "contractPeriod": {
+        "endDate": "2027-03-19T00:00:00+03:00",
+        "startDate": "2025-03-20T00:00:00+03:00"
+      }
+    },
+    {
+      "id": "20250620151425-128949",
+      "suppliers": [
+        {
+          "id": "471213",
+          "name": "REMMY SUPPLIERS & SERVICES LTD"
+        }
+      ],
+      "value": {
+        "amount": 4337800,
+        "currency": "KES"
+      },
+      "contractPeriod": {
+        "endDate": "2027-03-09T00:00:00+03:00",
+        "startDate": "2025-03-10T00:00:00+03:00"
+      }
+    }
+  ],
+  "source": {
+    "registry": "OCP Data Registry — Open Contracting Partnership",
+    "dataset": "Kenya PPRA (publication 147)",
+    "url": "https://data.open-contracting.org/en/publication/147",
+    "ocid": "ocds-5whusi-KEMSA/ONT08/2024-2026",
+    "retrieved": "2026-10-31",
+    "note": "Award values are published figures. The release has no line items; value comparisons are a review question, not a finding of impropriety."
+  }
+}

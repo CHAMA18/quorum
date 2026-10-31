@@ -124,6 +124,18 @@ export const SAMPLE_TENDERS: SampleTender[] = [
     format: "OCDS",
     challenges: "The OCDS release names no buyer; the awarded bid sits far above the peer median and above the tender value; a RURA type-approval letter missing on the winner.",
   },
+  {
+    ref: "KE-KEMSA-2024-ONT08",
+    title: "Supply of health technologies (cotton gauze, cotton wool & tubes) — framework awards",
+    buyer: "Kenya Medical Supplies Authority",
+    sector: "HEALTH",
+    currency: "KES",
+    budget: "11 published awards · KES 540,960 – 194,436,000",
+    bids: 11,
+    format: "OCDS · REAL PUBLIC RECORD",
+    challenges:
+      "A real PPRA award register: award values span 44.8× the median and the release publishes no line items, quantities or evaluation record. The desk flags the spread and the missing record as committee questions, never as a finding of impropriety.",
+  },
 ];
 
 /** Live statement of what the sidecar can actually run — only covered refs listed. */

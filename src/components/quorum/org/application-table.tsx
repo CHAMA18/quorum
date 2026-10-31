@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowUpRight, Download, Inbox } from "lucide-react";
+import { ArrowUpRight, CircleAlert, Download, Inbox, Loader2, Pencil, Undo2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   fmtStamp,
@@ -34,20 +34,23 @@ const dotCls: Record<StatusTone, string> = {
 const TH =
   "whitespace-nowrap py-2.5 font-code text-[9.5px] font-semibold uppercase tracking-[0.16em] text-ink-500";
 
-function receipt(a: Application, tender: Tender | undefined) {
-  const payload = {
-    application: a,
-    tender: tender ?? null,
-    attestedAs: `org:${a.orgName}`,
-    exportedAt: new Date().toISOString(),
-  };
+function saveJson(filename: string, payload: unknown) {
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${a.id}-receipt.json`;
+  link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+function exportRecord(a: Application, tender: Tender | undefined) {
+  saveJson(`${a.id}-record.json`, {
+    application: a,
+    tender: tender ?? null,
+    attestedAs: `org:${a.orgName}`,
+    exportedAt: new Date().toISOString(),
+  });
 }
 
 export function ApplicationTable({
@@ -58,6 +61,7 @@ export function ApplicationTable({
   limit,
   filterable = false,
   orgName,
+  onChanged,
 }: {
   applications: Application[];
   tenders: Tender[];
@@ -67,8 +71,15 @@ export function ApplicationTable({
   limit?: number;
   filterable?: boolean;
   orgName: string;
+  /** Refresh the record after a withdrawal or amendment. */
+  onChanged?: () => void;
 }) {
   const [filter, setFilter] = useState("ALL");
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [amendTarget, setAmendTarget] = useState<{ application: Application; tender?: Tender } | null>(null);
+  const [amendAmount, setAmendAmount] = useState("");
+  const [amendCurrency, setAmendCurrency] = useState("");
 
   const counts = useMemo(() => {
     const map = new Map<string, number>();
@@ -83,6 +94,7 @@ export function ApplicationTable({
     const base = [{ id: "ALL", label: "All", n: applications.length }];
     for (const [id, label] of [
       ["RECEIVED", "Received"],
+      ["AMENDED", "Amended"],
       ["WITHDRAWN", "Withdrawn"],
     ] as const) {
       if ((counts.get(id) ?? 0) > 0) base.push({ id, label, n: counts.get(id) ?? 0 });
@@ -96,6 +108,79 @@ export function ApplicationTable({
   }, [applications, filter, limit]);
 
   const tenderOf = (ref: string) => tenders.find((t) => t.ref === ref);
+
+  const downloadReceipt = async (a: Application, t: Tender | undefined) => {
+    setBusyId(`receipt:${a.id}`);
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/org/applications/${encodeURIComponent(a.id)}/receipt`, { cache: "no-store" });
+      const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "Receipt unavailable.");
+      saveJson(`${a.id}-vault-receipt.json`, {
+        ...data,
+        application: a,
+        tender: t ?? null,
+        exportedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      exportRecord(a, t);
+      setActionError(
+        `The signed receipt could not be fetched (${err instanceof Error ? err.message : "unknown error"}); the application record was exported instead.`,
+      );
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const withdraw = async (a: Application) => {
+    if (!window.confirm(`Withdraw ${a.id}? The bid leaves the opening register and cannot be reopened.`)) return;
+    setBusyId(`withdraw:${a.id}`);
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/org/applications/${encodeURIComponent(a.id)}/withdraw`, { method: "POST" });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Withdrawal refused.");
+      onChanged?.();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "The bid could not be withdrawn.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const openAmend = (a: Application, t: Tender | undefined) => {
+    setAmendTarget({ application: a, tender: t });
+    setAmendAmount(typeof a.amount === "number" ? String(a.amount) : "");
+    setAmendCurrency(a.currency ?? t?.currency ?? "");
+    setActionError(null);
+  };
+
+  const submitAmend = async () => {
+    if (!amendTarget) return;
+    const amount = Number(amendAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setActionError("Enter the amended bid amount — a positive number.");
+      return;
+    }
+    setBusyId(`amend:${amendTarget.application.id}`);
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/org/applications/${encodeURIComponent(amendTarget.application.id)}/amend`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ amount, currency: amendCurrency.trim() || undefined }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Amendment refused.");
+      setAmendTarget(null);
+      setAmendAmount("");
+      onChanged?.();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "The bid could not be amended.");
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   if (rows.length === 0) {
     return (
@@ -150,8 +235,18 @@ export function ApplicationTable({
         </div>
       ) : null}
 
+      {actionError ? (
+        <div className="mx-5 mb-3 flex items-start gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-[12px] text-brand-800 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-brand-200">
+          <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span className="min-w-0 flex-1">{actionError}</span>
+          <button type="button" onClick={() => setActionError(null)} aria-label="Dismiss error" className="shrink-0 text-brand-700">
+            <X className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+        </div>
+      ) : null}
+
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[880px] border-collapse text-left">
+        <table className="w-full min-w-[980px] border-collapse text-left">
           <thead>
             <tr className="border-y border-ink-100 dark:border-white/[0.06]">
               <th scope="col" className={cn(TH, "pl-5 pr-3")}>
@@ -182,6 +277,10 @@ export function ApplicationTable({
               const meta = statusMeta(a.status);
               const stamp = fmtStamp(a.receivedAt);
               const t = tenderOf(a.tenderId);
+              const canChange =
+                a.status.toUpperCase() === "RECEIVED" &&
+                t?.status !== "CLOSED" &&
+                (!t?.closingDate || new Date(t.closingDate).getTime() > Date.now());
               return (
                 <tr key={a.id} className="group transition-colors hover:bg-ink-50/60 dark:hover:bg-white/[0.025]">
                   <td className="whitespace-nowrap py-3.5 pl-5 pr-3">
@@ -203,7 +302,11 @@ export function ApplicationTable({
                   </td>
                   <td className="whitespace-nowrap px-3 py-3.5 text-right">
                     <span className="font-code text-[12px] font-semibold tabular text-ink-900 dark:text-ink-800">
-                      {money(a.amount, a.currency ?? t?.currency)}
+                      {a.sealed ? (
+                        <span className="font-code text-[10px] tracking-[0.12em] text-brand-700 dark:text-brand-300">SEALED</span>
+                      ) : (
+                        money(a.amount ?? 0, a.currency ?? t?.currency)
+                      )}
                     </span>
                   </td>
                   <td className="px-3 py-3.5">
@@ -236,14 +339,46 @@ export function ApplicationTable({
                       >
                         View tender
                       </button>
+                      {canChange ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => openAmend(a, t)}
+                            title="Amend this bid before closing"
+                            aria-label={`Amend application ${a.id}`}
+                            className="grid h-8 w-8 place-items-center rounded-md text-ink-400 transition-colors hover:bg-ink-50 hover:text-brand-700 dark:hover:bg-white/[0.06] dark:hover:text-brand-300"
+                          >
+                            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void withdraw(a)}
+                            disabled={busyId === `withdraw:${a.id}`}
+                            title="Withdraw this bid before closing"
+                            aria-label={`Withdraw application ${a.id}`}
+                            className="grid h-8 w-8 place-items-center rounded-md text-ink-400 transition-colors hover:bg-brand-50 hover:text-brand-700 disabled:cursor-wait dark:hover:bg-brand-950/40 dark:hover:text-brand-300"
+                          >
+                            {busyId === `withdraw:${a.id}` ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                            ) : (
+                              <Undo2 className="h-3.5 w-3.5" aria-hidden="true" />
+                            )}
+                          </button>
+                        </>
+                      ) : null}
                       <button
                         type="button"
-                        onClick={() => receipt(a, t)}
-                        title="Download this application's receipt"
+                        onClick={() => void downloadReceipt(a, t)}
+                        disabled={busyId === `receipt:${a.id}`}
+                        title="Download the signed sealed-bid receipt"
                         aria-label={`Download the receipt for application ${a.id}`}
-                        className="grid h-8 w-8 place-items-center rounded-md text-ink-400 transition-colors hover:bg-ink-50 hover:text-brand-700 dark:hover:bg-white/[0.06] dark:hover:text-brand-300"
+                        className="grid h-8 w-8 place-items-center rounded-md text-ink-400 transition-colors hover:bg-ink-50 hover:text-brand-700 disabled:cursor-wait dark:hover:bg-white/[0.06] dark:hover:text-brand-300"
                       >
-                        <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                        {busyId === `receipt:${a.id}` ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                        )}
                       </button>
                     </div>
                   </td>
@@ -253,6 +388,95 @@ export function ApplicationTable({
           </tbody>
         </table>
       </div>
+
+      {amendTarget ? (
+        <div
+          className="fixed inset-0 z-[80] grid place-items-center bg-ink-950/60 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Amend application ${amendTarget.application.id}`}
+        >
+          <div className="w-full max-w-[460px] rounded-xl border border-ink-200/70 bg-white p-6 shadow-[0_36px_90px_rgba(0,0,0,0.4)] dark:border-white/10 dark:bg-night-2">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="font-code text-[9px] font-semibold tracking-[0.18em] text-brand-700 dark:text-brand-400">
+                  AMEND BEFORE CLOSING
+                </p>
+                <h3 className="mt-1 text-[16px] font-bold text-ink-950 dark:text-white">
+                  {amendTarget.application.tenderId}
+                </h3>
+                <p className="mt-1 font-code text-[9.5px] tracking-[0.1em] text-ink-400">{amendTarget.application.id}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAmendTarget(null)}
+                aria-label="Close amendment dialog"
+                className="grid h-8 w-8 place-items-center rounded-md text-ink-400 hover:bg-ink-50 hover:text-ink-900 dark:hover:bg-white/[0.06]"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+            <form
+              className="mt-5 space-y-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void submitAmend();
+              }}
+            >
+              <label className="block">
+                <span className="font-code text-[9px] font-semibold tracking-[0.16em] text-ink-500">NEW BID AMOUNT</span>
+                <input
+                  autoFocus
+                  type="number"
+                  min="1"
+                  step="any"
+                  value={amendAmount}
+                  onChange={(e) => setAmendAmount(e.target.value)}
+                  className="mt-1.5 h-10 w-full rounded-lg border border-ink-200 bg-white px-3 text-[13px] text-ink-900 outline-none focus:border-brand-500 dark:border-white/15 dark:bg-white/[0.04] dark:text-white"
+                />
+              </label>
+              <label className="block">
+                <span className="font-code text-[9px] font-semibold tracking-[0.16em] text-ink-500">CURRENCY</span>
+                <input
+                  type="text"
+                  maxLength={8}
+                  value={amendCurrency}
+                  onChange={(e) => setAmendCurrency(e.target.value.toUpperCase())}
+                  placeholder="ZMW"
+                  className="mt-1.5 h-10 w-full rounded-lg border border-ink-200 bg-white px-3 font-code text-[12px] uppercase text-ink-900 outline-none focus:border-brand-500 dark:border-white/15 dark:bg-white/[0.04] dark:text-white"
+                />
+              </label>
+              <p className="text-[12px] leading-relaxed text-ink-500">
+                The new amount is sealed in a fresh envelope. The prior version is marked amended and cannot be reopened or withdrawn.
+              </p>
+              {actionError ? (
+                <p className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-[12px] text-brand-800 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-brand-200">
+                  {actionError}
+                </p>
+              ) : null}
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setAmendTarget(null)}
+                  className="inline-flex h-10 items-center justify-center rounded-lg border border-ink-200 px-4 text-[12.5px] font-semibold text-ink-700 transition-colors hover:bg-ink-50 dark:border-white/15 dark:text-ink-300 dark:hover:bg-white/[0.05]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={busyId === `amend:${amendTarget.application.id}`}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-700 disabled:cursor-wait disabled:opacity-70"
+                >
+                  {busyId === `amend:${amendTarget.application.id}` ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  ) : null}
+                  Seal amendment
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

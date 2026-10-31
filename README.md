@@ -6,10 +6,16 @@
 
 Quorum reviews public-health tender packs with a tool-wielding agent: it reads every
 document over MCP, extracts the requirements, flags findings with citations and drafts
-committee-ready redlines with **Llama 3.2 — Meta open weights — served in-region** (a
-deterministic template is the offline fallback) — and then stops. Filing an award is
-irreversible, so the agent cannot do it: a **named human signs the gate** first, and only
-then is the bundle sealed, filed and receipted.
+committee-ready redlines with **Muse Spark 1.3 on Meta Model API** (with **Llama 3.2
+in-region** as the fallback, and a deterministic template if neither answers) — and then
+stops. Filing an award is irreversible, so the agent cannot do it: a **named human signs
+the gate** first, and only then is the bundle sealed, filed and receipted.
+
+The demo runs on a **real public record**: KEMSA's `KE-KEMSA-2024-ONT08` award register
+(11 awards, OCDS `ocds-5whusi-KEMSA/ONT08/2024-2026`, retrieved 2026-10-31). Because the
+release publishes no line items or quantities, the desk reports the value spread as a
+committee question — never as a finding of impropriety. A scanned page can be handed to
+**SAM 3.1**, which locates the table region for a human; it does not read the table.
 
 | | |
 |---|---|
@@ -31,22 +37,27 @@ refusal as proof the agent cannot file.
   brings Meta's models into that desk and makes a fully cited first-pass file possible.
 - **Track — Indie developer.** One builder, one deployed product.
 - **Meta models in the loop.**
-  - **Llama 3.2 (Meta open weights)** drafts every committee redline — served in-region
-    through an OpenAI-compatible endpoint. The Ollama setup is measured in-repo
-    (`ollama pull llama3.2:3b`; numbers in `SUBMISSION/10-cost-and-audit.md`), so
-    procurement data never leaves the jurisdiction.
-  - **Meta Model API** is the first-class hosted option for the same drafting path —
-    point `LLM_BASE_URL` at the endpoint issued in your Meta developer console
-    (see [`.env.example`](.env.example)).
+  - **Muse Spark 1.3 on Meta Model API** plans the review and drafts every committee
+    redline. Hosted calls carry **redacted** evidence — supplier names and currency
+    amounts are replaced by the model gateway before the request leaves the desk. Live
+    call verified 2026-10-31; on the real KEMSA pack it produced a model-led plan and
+    2 model drafts in 22.8 s, with 4 redactions.
+  - **Llama 3.2 (Meta open weights)** is the **in-region fallback**: the chain tries it
+    when the hosted call fails, and its drafts keep the full pack on the desk. The
+    Ollama setup is measured in-repo (`ollama pull llama3.2:3b`; numbers in
+    `SUBMISSION/10-cost-and-audit.md`).
+  - **SAM 3.1** is opt-in for scanned pages: it locates the table region and returns a
+    box for a human. It does not read text or authenticate a signature, and every scan
+    is marked `humanReviewRequired`. Verified on a real Nyamira County price schedule.
   - **Attribution is recorded, not inferred.** Every draft stores the exact model
     string the endpoint returned and whether it came from the model or the template.
-    `/api/health` names the configured endpoint and newest attributed answer, `/api/runs`
-    carries per-run attribution (plan model, drafts, tokens), the downloadable report
-    prints a **Model attribution** table, and the UI shows `MODEL · llama3.2:3b` in
-    the live terminal and **Tools & models**.
+    `/api/health` names the configured endpoint, residency, fallback and newest
+    attributed answer; `/api/runs` carries per-run attribution (plan model, drafts,
+    tokens, redactions); the downloadable report prints a **Model attribution** table.
   - **Muse Image** regenerates the five-chapter demo film — prompt pack, frame
     generator and ffmpeg assembler live in
-    [`SUBMISSION/muse-film-kit/`](SUBMISSION/muse-film-kit/README.md).
+    [`SUBMISSION/muse-film-kit/`](SUBMISSION/muse-film-kit/README.md). It is a bonus
+    asset; the main demo is the live product.
   - **Barry, the desk assistant,** uses Muse Spark for the read-only tool loop and Muse
     Voice Transcribe for the mic. Spoken replies use a real neural voice —
     Deepgram Aura-2 through Cloudflare Workers AI, with MeloTTS then the
@@ -157,9 +168,11 @@ The public portals split the tender cycle in two, and this README states the spl
 - **What the portals publish:** what was tendered and what was awarded — notices, awards, prices, supplier names. That half (price analysis, award history, supplier work) can run on **real OCDS data today** — Kenya, Rwanda and Tanzania update daily; Nigeria (federal + Anambra, Ebonyi, Osun, Plateau), South Africa and Liberia are current; Ghana, Zambia and Uganda publish monthly.
 - **What the portals never publish:** the bids themselves. Bid evaluation — the desk this product serves — needs documents **nobody publishes**.
 
-**Quorum is built on the bid-evaluation half.** The packs the agent reviews are the tender notice plus the bidders' response documents — the artifacts that only exist inside a procuring entity's office. Since no portal carries them, the repository ships six **authored sample packs** — five Kenyan (four distinct buyers) and one Rwanda Biomedical Centre pack — that model the publishers' documented mess on purpose: extreme value outliers, a supplier identifier that breaks its own national scheme, a missing buyer name, missing required documents, declared spec deviations. They are fiction — invented references, no real notice is mirrored, and no real personal data appears anywhere in the repository.
+**Quorum is built on the bid-evaluation half.** The packs the agent reviews are the tender notice plus the bidders' response documents — the artifacts that only exist inside a procuring entity's office. Since no portal carries them, the repository ships **authored sample packs** that model the publishers' documented mess on purpose: extreme value outliers, a supplier identifier that breaks its own national scheme, a missing buyer name, missing required documents, declared spec deviations. They are fiction — invented references, no real notice is mirrored, and no real personal data appears anywhere in the repository.
 
-**What is real today:** the review pipeline, the MCP tool boundary, the audit log, the receipts, the eval harness and its held-out tenders — all run on the shipped packs. **What is not:** no live OCDS feed is ingested yet (the notice in each pack carries an OCDS release reference the engine can parse; a live connector is listed under [Future improvements](#future-improvements)). A pilot drops the same real pack a committee is reading into the dossier and the identical code path reviews it — that is the intended first contact with live data, and the pilot intake is open ([SUBMISSION/09-fit.md](SUBMISSION/09-fit.md)).
+**One pack is real.** `KE-KEMSA-2024-ONT08` is a published KEMSA award register from Kenya's PPRA dataset (OCDS `ocds-5whusi-KEMSA/ONT08/2024-2026`, retrieved 2026-10-31): 11 real suppliers and award values, no line items or quantities. It is used as a regression pack, and the review states its own limit — the value spread is a committee question, not a finding of impropriety.
+
+**What is real today:** the review pipeline, the MCP tool boundary, the audit log, the receipts, the eval harness and its held-out tenders — all run on the shipped packs, including the real KEMSA register. **What is not:** no live OCDS feed is ingested yet (the notice in each pack carries an OCDS release reference the engine can parse; a live connector is listed under [Future improvements](#future-improvements)). A pilot drops the same real pack a committee is reading into the dossier and the identical code path reviews it — that is the intended first contact with live data, and the pilot intake is open ([SUBMISSION/09-fit.md](SUBMISSION/09-fit.md)).
 
 **Country scope:** built against Kenya (the eight-rule engine validates Kenyan supplier identifiers against the KRA PIN scheme), with one Rwanda pack proving the portability claim — the same engine reviews it unchanged.
 
@@ -172,7 +185,7 @@ The public portals split the tender cycle in two, and this README states the spl
 - **Read everything.** The agent ingests the tender pack (notices, bids, OCDS records) through a sandboxed filesystem MCP server — path-jailed to the tender directory — so no document is skimmed or skipped.
 - **Pin the requirements.** SHALL/must clauses, budget ceilings and deadlines are extracted into structured, page-referenced requirements.
 - **Flag findings with citations.** Deterministic rules — price outliers (peer-median ×2), missing required documents, spec deviations, over-ceiling bids, and the publishers' documented mess (supplier identifiers that break their own national scheme, notices that never name the buyer, price tables whose cells state a different currency from their header — read as stated, and named in the evidence) — raise findings, each carrying its source file path and evidence excerpt. No citation, no finding: that rule is enforced by the test suite.
-- **Draft redlines.** For flagged clauses, an LLM drafts a `{proposed, rationale}` committee redline through any OpenAI-compatible endpoint set in `LLM_BASE_URL`/`LLM_MODEL`. The live demo points it at **Llama 3.2** (`llama3.2:3b`) on Ollama; **Meta Model API** is the hosted option for the same path. A deterministic template fallback keeps runs alive if inference is unreachable, and every draft records its source and the exact model string returned (or the template label when no model answered).
+- **Draft redlines.** For flagged clauses, an LLM drafts a `{proposed, rationale}` committee redline through any OpenAI-compatible endpoint. The hackathon build leads with **Muse Spark 1.3** (`https://api.meta.ai/v1`) on **redacted** evidence, then falls back to **Llama 3.2** (`llama3.2:3b`) through Ollama in-region with the full pack, then to a deterministic template. Every draft records its source, the exact model string returned, the redaction count and tokens; the report prints the chain that actually answered.
 - **Stop at the gate.** The review graph ends at `propose_gate`. The edge from the gate to filing does not exist in the graph — no prompt, tool misuse or model turn can file an award. Only a *named* human on the committee roster can release the sealed filing, and only while the roll carries the configured quorum.
 - **Prove everything.** One append-only line per tool call lands in `tool-log.jsonl`, and each approved filing writes a sha-256-sealed receipt into `data/submissions/`.
 
@@ -312,7 +325,7 @@ Full workflow detail (incl. supporting capabilities): [`SUBMISSION/03-solution.m
 | Runtime | **Bun** for both the web server and the MCP sidecar | One install, one TS toolchain, fast test loop |
 | Orchestration | **LangGraph.js** (`@langchain/langgraph`, `@langchain/core`) | The halt-at-the-gate guarantee lives in the graph topology itself |
 | Agent protocol | **MCP** — own JSON-RPC 2.0/HTTP server + the official `@modelcontextprotocol/server-filesystem` over stdio | Protocol-native tool registry; battle-tested, path-jailed document reads |
-| LLM | **Llama 3.2 (Meta open weights)** via any OpenAI-compatible endpoint (`LLM_BASE_URL`/`LLM_MODEL`); **Meta Model API** as the hosted option; deterministic template fallback | Data sovereignty holds only if the endpoint is open-weights and in-region. Llama 3.2 keeps drafting on Meta open weights (the Ollama setup is measured in-repo); the Meta Model API keeps it on Meta's hosted stack. |
+| LLM | **Muse Spark 1.3** on Meta Model API (`LLM_BASE_URL`/`LLM_MODEL`) as the hosted primary; **Llama 3.2** through Ollama as the in-region fallback; deterministic template last | Hosted calls carry redacted evidence only; the in-region fallback keeps the full pack on the desk. The chain and the redaction count are recorded per draft, not asserted. |
 | Databases | One dependency-free JSON file for the web app (users, sessions, committee roster, settings, workspace invites, pilot requests), written atomically; file-backed state + append-only audit JSONL on the agent side | Small, inspectable, zero native dependencies; append-only where auditable |
 | Identity & documents | Firebase Auth (email/passphrase + Google Sign-In); tender bytes in Cloudflare R2 through the quorum-edge gate, with PDF/DOCX/XLSX text extracted into the sidecar's tender directory | Real authentication without a homegrown password system; uploads stay behind a server-side secret and the review graph reads text, not binaries |
 | Infra | nginx, systemd, EC2 `t4g.small` in `af-south-1`, Route 53 zone, Elastic IP | Small, boring, reproducible from the repo |
@@ -346,7 +359,7 @@ Copy `.env.example` — every variable is optional; the product runs fully witho
 
 | Variable | Used by | Purpose |
 | --- | --- | --- |
-| `LLM_BASE_URL` | quorum-mcp | Any OpenAI-compatible chat-completions endpoint for redline drafting. Intended setup: an **open-weights model served in-region** — e.g. Ollama on the same box: `http://localhost:11434/v1` (vLLM and TGI also work) — so procurement data stays in the jurisdiction. The live-audit numbers in `10-cost-and-audit.md` were measured exactly that way. |
+| `LLM_BASE_URL` | quorum-mcp | Primary chat-completions endpoint for planning and redline drafting. The hackathon build points it at `https://api.meta.ai/v1` with `LLM_MODEL=muse-spark-1.3`; set `MODEL_RESIDENCY=HYBRID` so the hosted primary and the in-region fallback can both run. Hosted calls are redacted. |
 | `LLM_MODEL` | quorum-mcp | Model name the endpoint serves. |
 | `LLM_API_KEY` | quorum-mcp | Bearer token, only if the endpoint requires one. |
 | `QUORUM_WEB_URL` | quorum-mcp | Where the sidecar reads the committee roster (default `http://127.0.0.1:3000`). |
@@ -425,8 +438,8 @@ curl -s localhost:3031/mcp -X POST -H 'content-type: application/json' \
 - **The audit spine surfaces its own durability.** `GET /api/health` reports an `auditSpine` block (log-write failures, state-save failures, corrupt-state quarantine) — "nothing happens silently" includes the spine itself. A state file that exists but cannot be parsed is quarantined (renamed, never deleted) and flagged, instead of being silently treated as first boot.
 **Current state of the deployment:**
 
-- The live demo is wired to **Llama 3.2** (`llama3.2:3b`) through Ollama, so redline drafting runs against a real model while tender text stays on the desk. **Meta Model API** is the hosted alternative (one env change). If the endpoint is unreachable, drafting falls back to the deterministic template and the draft/report say `source: "template"` — capabilities are unaffected; prose quality is.
-- Run-to-run variance and cost are measured for **both** paths (`SUBMISSION/10-cost-and-audit.md`): the deterministic rule path (findings identical across repeats for every staged pack; 0 tokens → 0 USD) and the live-model path on an in-region open-weights endpoint (Ollama, `llama3.2:1b` on a 4 GB CPU-only box) — re-measured 2026-10-27 across 6 runs (3 packs + 3 same-pack repeats): findings stable on the same pack (same 11 findings, same 5-rule signature), draft texts distinct run-to-run, 291–348 tokens/run, 6,975 ms median per model call, 0 USD marginal cost. `bun live-audit.ts` regenerates the artifact at any time from the append-only log; a hosted endpoint's cost is the published formula (tokens × price), never a guessed number.
+- The live demo leads with **Muse Spark 1.3** on Meta Model API and falls back to **Llama 3.2** (`llama3.2:3b`) through Ollama in-region. Hosted calls carry redacted evidence; the fallback keeps the full pack on the desk. If both endpoints are unreachable, drafting falls back to the deterministic template and the draft/report say `source: "template"` — capabilities are unaffected; prose quality is.
+- Run-to-run variance and cost are measured for **both** paths (`SUBMISSION/10-cost-and-audit.md`): the deterministic rule path (findings identical across repeats for every staged pack; 0 tokens → 0 USD), the hosted Muse Spark path on the real KEMSA pack (22.8 s, 2 model drafts, 4 redactions, 439 prompt + 2,701 completion tokens), and the in-region Llama fallback (Ollama, `llama3.2:1b` on a 4 GB CPU-only box; 2026-10-27: 6 runs, 291–348 tokens/run, 6,975 ms median per model call, 0 USD marginal cost). `bun live-audit.ts` regenerates the fallback artifact from the append-only log; a hosted endpoint's cost is the published formula (tokens × price), never a guessed number.
 - **The gold labels are single-labeller** — one human, one pass, written before the engine ran; not independently double-labelled (stated verbatim in `data/eval/report.json`). The mitigations are structural, not cosmetic: labels were pre-registered, every post-hoc addition is flagged `postHoc` and reported separately, and mutation testing checks sensitivity independently of the labels. A second labeller on a 20% overlap sample with disagreement review is the first hire of the evaluation layer (`Future improvements`).
 - With a small planner, the model-led plan could disable deep-value parsing on packs whose bid values demand it — one such run was logged as evidence, and the engine now applies a planner **safety floor** (parsing may be added, never removed while bid values are present), pinned by a dedicated test. That trade-off is documented rather than hidden.
 - The e-GP portal receipt is labeled `egp-portal (simulated)` — sealing and receipts are real (sha-256, persisted), the transmission is a demo stub until wired to a live portal integration.
@@ -453,12 +466,13 @@ curl -s localhost:3031/mcp -X POST -H 'content-type: application/json' \
 ## License
 
 Code: **MIT** — see [LICENSE](./LICENSE).
-Model: drafting runs on [Llama 3.2](https://github.com/meta-llama/llama-models) (Meta
-open weights), governed by the [Llama 3.2 Community License](https://github.com/meta-llama/llama-models/blob/main/models/llama3_2/LICENSE) —
+Models: the hosted primary is **Muse Spark 1.3** on Meta Model API; the in-region
+fallback is [Llama 3.2](https://github.com/meta-llama/llama-models) (Meta open weights),
+governed by the [Llama 3.2 Community License](https://github.com/meta-llama/llama-models/blob/main/models/llama3_2/LICENSE) —
 see [NOTICE](./NOTICE).
 
-**Built with Llama.** Self-hosted by design: tender documents never leave the
-deployment's jurisdiction.
+**Built with Meta models.** Hosted calls carry redacted evidence; the in-region
+fallback keeps the full pack on the desk.
 
 ---
 

@@ -8,6 +8,7 @@ import {
   tenderDownloadFilename,
 } from "@/lib/tender-access";
 import { extractTenderText } from "@/lib/tender-extract";
+import { samEnabled, segmentTenderScan, type SamResult } from "@/lib/sam";
 import {
   deleteLocalObject,
   hasLocalObject,
@@ -38,6 +39,12 @@ import {
  * caller can cite them. If extraction finds no text (a scanned PDF, for
  * example), the file is still stored and the response says `staged: false`
  * with a reason — OCR is not claimed.
+ *
+ * Scanned pages and image uploads are additionally handed to SAM 3.1 when
+ * `SAM_ENABLED=true`: the model locates the table region and returns boxes for
+ * a human to inspect. It does not read the table, and the upload is marked
+ * `humanReviewRequired` whether SAM matched or not. With SAM off or
+ * unreachable, nothing about the upload fails; the flag simply stays true.
  *
  * GET /api/tenders/:ref/docs — list every stored object under this tender's
  * prefix, from the edge and from this deployment's own store. Requires
@@ -70,7 +77,14 @@ const TYPES: Record<string, string> = {
   ".eml": "message/rfc822",
   ".txt": "text/plain",
   ".md": "text/markdown",
+  /* Scanned pages: stored as images, never silently "extracted". */
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
 };
+
+const IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".webp"]);
 
 function parseName(raw: string): { stem: string; ext: string } | null {
   const base = raw.split(/[\\/]/).pop() ?? "";
@@ -282,7 +296,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ref
   const contentType = parsed ? TYPES[parsed.ext] : undefined;
   if (!parsed || !contentType) {
     return NextResponse.json(
-      { error: "Unsupported document type. Allowed: PDF, JSON, ZIP, XLSX, CSV, DOCX, EML, TXT, MD." },
+      { error: "Unsupported document type. Allowed: PDF, JSON, ZIP, XLSX, CSV, DOCX, EML, TXT, MD, PNG, JPG, WEBP." },
       { status: 415 },
     );
   }
@@ -301,6 +315,43 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ref
      a consumed body may leave the ArrayBuffer detached (byteLength 0). */
   const size = bytes.byteLength;
   const extracted = await extractTenderText(bytes, file.name || "document").catch(() => null);
+
+  /* A page with no embedded text (or an image upload) cannot be read by the
+     graph. SAM 3.1 can still point a human at the table region. The call is
+     opt-in, bounded, and never turns a scan into a claim of readable text. */
+  const isVisionDoc =
+    IMAGE_EXTS.has(parsed.ext) ||
+    (parsed.ext === ".pdf" && (!extracted?.text.trim() || /OCR|scan/i.test(extracted?.note ?? "")));
+  const vision: SamResult | null =
+    isVisionDoc && samEnabled()
+      ? await segmentTenderScan(new Uint8Array(bytes), file.name || "document", {
+          prompts: [process.env.SAM_PROMPT?.trim() || "table"],
+        }).catch((err): SamResult => ({
+          ok: false,
+          model: process.env.SAM_MODEL?.trim() || "sam-3.1",
+          regions: [],
+          matches: 0,
+          latencyMs: 0,
+          error: (err as Error).message.slice(0, 300),
+        }))
+      : null;
+  const visionSummary = vision
+    ? {
+        model: vision.model,
+        ok: vision.ok,
+        matches: vision.matches,
+        page: vision.page,
+        prompt: vision.regions[0]?.prompt ?? process.env.SAM_PROMPT?.trim() ?? "table",
+        boxes: vision.regions.flatMap((region) => region.boxes).slice(0, 20),
+        latencyMs: vision.latencyMs,
+        note: vision.ok
+          ? vision.matches > 0
+            ? `SAM located ${vision.matches} matching region(s) on page ${vision.page ?? 1}. A human must inspect the table; SAM does not read it.`
+            : "SAM found no matching table region. Review the scan manually."
+          : vision.error,
+      }
+    : null;
+  const humanReviewRequired = isVisionDoc || /OCR|scan/i.test(extracted?.note ?? "");
 
   const key = `tenders/${ref}/${Date.now()}-${parsed.stem}${parsed.ext}`;
   const storage: "local" | "r2" = configured ? "r2" : "local";
@@ -404,6 +455,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ref
         note: extracted?.note,
         reason: stageReason,
         files,
+        humanReviewRequired,
+        vision: visionSummary
+          ? {
+              model: visionSummary.model,
+              ok: visionSummary.ok,
+              matches: visionSummary.matches,
+              page: visionSummary.page,
+              prompt: visionSummary.prompt,
+              latencyMs: visionSummary.latencyMs,
+              note: visionSummary.note,
+            }
+          : undefined,
         durationMs: Date.now() - startedAt,
       },
     },
@@ -443,6 +506,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ref
       note: extracted?.note,
       reason: stageReason,
       files,
+      humanReviewRequired,
+      vision: visionSummary ?? undefined,
       audited,
       audit: audited && auditSeq !== undefined && auditId && auditSelf
         ? { seq: auditSeq, id: auditId, self: auditSelf }

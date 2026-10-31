@@ -13,7 +13,8 @@
  *   - one application per organization per tender.
  */
 
-import type { Supplier, SupplierApplication, TenderCycle } from "./store";
+import type { Supplier, SupplierApplication, SupplierVerification, TenderCycle } from "./store";
+import { verificationFailures } from "./supplier-assurance";
 
 /* ── The read model: what a supplier sees on the opportunities board ───── */
 
@@ -128,15 +129,29 @@ export function validateApplicationAdmission(args: {
   existing: SupplierApplication[];
   registrationNo: string;
   supplierStatus?: Supplier["status"];
+  /* A check already on the register is re-read at filing: a failed or lapsed
+     check blocks new applications until the desk re-verifies. An absent
+     check does not block filing — it blocks the award. */
+  verification?: SupplierVerification;
   now: Date;
 }): AdmissionCheck {
-  const { actor, tenderRef, amount, closingDate, existing, registrationNo, supplierStatus, now } = args;
+  const { actor, tenderRef, amount, closingDate, existing, registrationNo, supplierStatus, verification, now } = args;
   if (supplierStatus === "SUSPENDED" || supplierStatus === "BLACKLISTED") {
     return {
       ok: false,
       code: 403,
       error: `This organization is ${supplierStatus} on the supplier register — suspended and blacklisted suppliers cannot file applications.`,
     };
+  }
+  if (verification) {
+    const failures = verificationFailures(verification, now);
+    if (failures.length) {
+      return {
+        ok: false,
+        code: 403,
+        error: `This organization's assurance check is not current on the supplier register (${failures.join("; ")}) — a failed or lapsed check blocks new applications until the desk re-verifies.`,
+      };
+    }
   }
   if (closingDate) {
     const closing = new Date(closingDate);

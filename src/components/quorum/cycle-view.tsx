@@ -72,8 +72,10 @@ type PortalAppRow = {
   id: string;
   tenderId: string;
   orgName: string;
-  amount: number;
+  amount?: number;
   currency?: string;
+  sealed?: boolean;
+  receiptId?: string;
   receivedAt: string;
   status: string;
 };
@@ -81,12 +83,51 @@ type OpeningDto = {
   id: string;
   closingDate?: string;
   rows: OpeningRow[];
+  reconciliation?: {
+    sealed: number;
+    manual: number;
+    derived: number;
+    withdrawn: number;
+    amended: number;
+    missingFromRegister: string[];
+    extraInRegister: string[];
+    matches: boolean;
+    note: string;
+  };
   minutesMd: string;
   certifiedAt?: string;
   certifiedBy?: string;
   sha?: string;
   gateId?: string;
 };
+type EvalSheetDto = {
+  id: string;
+  evaluator: string;
+  version: number;
+  submittedAt: string;
+  submittedBy: string;
+  note?: string;
+  signature: string;
+  scores: { bidder: string; criterionId: string; score: number; note?: string }[];
+};
+type EvalDivergenceDto = {
+  bidder: string;
+  criterionId: string;
+  min: number;
+  max: number;
+  spread: number;
+  values: { evaluator: string; score: number }[];
+};
+type EvalConsensusDto = {
+  matrixId: string;
+  attendees: string[];
+  notes: string;
+  divergences: EvalDivergenceDto[];
+  recordedBy: string;
+  recordedAt: string;
+  signature: string;
+};
+type FxRateDto = { base: string; quote: string; rate: number; source: string; asOf: string };
 type MatrixDto = {
   id: string;
   status: "DRAFT" | "CERTIFIED";
@@ -99,18 +140,59 @@ type MatrixDto = {
     reasons: string[];
     technicalScores: { criterionId: string; score: number; note?: string }[];
     technicalTotal: number;
-    financial?: { amount: number; currency?: string; formulaScore?: number };
+    financial?: {
+      amount: number;
+      currency?: string;
+      formulaScore?: number;
+      evaluatedAmount?: number;
+      evaluatedCurrency?: string;
+      fxRate?: number;
+      fxSource?: string;
+      fxAsOf?: string;
+      fxError?: string;
+    };
     total?: number;
     verdict: string;
   }[];
+  evaluationCurrency?: string;
+  fxRates?: FxRateDto[];
+  sheets?: EvalSheetDto[];
+  consensus?: EvalConsensusDto;
   med?: { recordedAt: string; attendees: string[]; notes?: string };
   certifiedBy?: string;
 };
+type FindingDto = {
+  id: string;
+  rule: string;
+  severity: string;
+  item: string;
+  evidence: string;
+  citation: string;
+  disposition?: { status: string; by: string; note: string; at: string; secondedBy?: string };
+};
 type CycleDto = {
   tenderId: string;
+  findings?: FindingDto[];
+  blockers?: string[];
+  methodId?: string;
+  methodJustification?: string;
+  methodApprovalRef?: string;
+  methodApprovedBy?: string;
+  methodApprovedAt?: string;
+  methodGateId?: string;
+  method?: MethodStandingDto;
+  assurance?: AssuranceDto | null;
   closingDate?: string;
   opening?: OpeningDto;
-  coi: { id: string; member: string; declaration: string; conflicts?: string; declaredAt: string }[];
+  coi: {
+    id: string;
+    member: string;
+    declaration: string;
+    conflicts?: string;
+    entities?: { name: string; relationship?: string; kind?: "ENTITY" | "PERSON" }[];
+    recused?: boolean;
+    declaredAt: string;
+  }[];
   matrix?: MatrixDto;
   alb: { id: string; bidder: string; responseDueAt: string; resolution?: { outcome: string; note: string } }[];
   awardReport?: { sha: string; recommendation?: string; signedAt?: string; signedBy?: string };
@@ -121,10 +203,31 @@ type CycleDto = {
     supplier: string;
     value: number;
     currency?: string;
+    status?: "DRAFT" | "EXECUTED" | "COMPLETED";
+    executedAt?: string;
+    supplierAcceptedAt?: string;
+    supplierSignatory?: string;
+    performanceSecurity?: { amount: number; issuer: string; validUntil: string };
+    insurance?: { policyNo: string; issuer: string; validUntil: string };
+    retentionPct?: number;
+    warrantyDays?: number;
     completedAt?: string;
+    completion?: { certificateId: string; defectsLiabilityEndsAt: string; performanceRating: number };
     milestones: { id: string; title: string; dueDate?: string; status: string }[];
-    variations: { id: string; description: string; pctOfContract: number; status: string; valueDelta: number }[];
-    payments: { id: string; description: string; amount: number; certifiedAt?: string }[];
+    variations: { id: string; description: string; pctOfContract: number; cumulativePct?: number; status: string; valueDelta: number }[];
+    payments: {
+      id: string;
+      description: string;
+      amount: number;
+      gross?: number;
+      retention?: number;
+      net?: number;
+      status?: string;
+      invoiceId?: string;
+      milestoneId?: string;
+      goodsReceiptId?: string;
+      certifiedAt?: string;
+    }[];
   };
   complaints: { id: string; complainant: string; subject: string; status: string; duringStandstill: boolean; receivedAt: string }[];
   clarifications: { id: string; question: string; askedBy: string; answer?: string }[];
@@ -142,7 +245,62 @@ type PipelineDto = {
   linkedTenderId?: string;
 };
 type DeadlineDto = { tenderId: string; kind: string; dueAt: string; ref?: string; overdue?: boolean };
+type BudgetLineDto = {
+  id: string;
+  fiscalYear: number;
+  code: string;
+  currency: string;
+  approved: number;
+  committed: number;
+  spent: number;
+};
 type MemberDto = { name: string; office?: string; status: string };
+type MethodDto = {
+  id: string;
+  name: string;
+  legalBasis: string;
+  when: string;
+  valueBand?: string;
+  awardAuthorisation: string;
+  advertising: string;
+};
+type MethodStandingDto = {
+  methodId: string | null;
+  name: string | null;
+  legalBasis: string | null;
+  when: string | null;
+  valueBand: string | null;
+  justification: string | null;
+  approvalRef: string | null;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  ok: boolean;
+  block: string | null;
+};
+type VerificationDto = {
+  status: "VERIFIED" | "FAILED";
+  registryStatus: string;
+  taxStatus: string;
+  beneficialOwners: { name: string; role?: string; ownershipPct?: number; nationality?: string; idNo?: string }[];
+  sanctions: string;
+  pep: string;
+  sanctionsMatches?: string[];
+  pepMatches?: string[];
+  documents: { id: string; kind: string; reference?: string; expiresAt?: string }[];
+  checkedAt: string;
+  expiresAt: string;
+  source: string;
+  checkedBy: string;
+  notes?: string;
+};
+type AssuranceDto = {
+  supplier: string | null;
+  supplierId: string | null;
+  expectedSupplier: string;
+  status: "VERIFIED" | "FAILED" | "UNVERIFIED";
+  failures: string[];
+  verification: VerificationDto | null;
+};
 type TenderExtractionField<T> = { value: T | null; confidence: number; evidence: string | null };
 type TenderExtraction = {
   title: TenderExtractionField<string>;
@@ -186,6 +344,17 @@ function normalizeCycle(raw: CycleDto): CycleDto {
               },
             }
           : {}),
+        sheets: Array.isArray(raw.matrix.sheets) ? raw.matrix.sheets : [],
+        fxRates: Array.isArray(raw.matrix.fxRates) ? raw.matrix.fxRates : [],
+        ...(raw.matrix.consensus
+          ? {
+              consensus: {
+                ...raw.matrix.consensus,
+                attendees: Array.isArray(raw.matrix.consensus.attendees) ? raw.matrix.consensus.attendees : [],
+                divergences: Array.isArray(raw.matrix.consensus.divergences) ? raw.matrix.consensus.divergences : [],
+              },
+            }
+          : {}),
       }
     : undefined;
   const contract = raw.contract
@@ -196,6 +365,7 @@ function normalizeCycle(raw: CycleDto): CycleDto {
         payments: Array.isArray(raw.contract.payments) ? raw.contract.payments : [],
       }
     : undefined;
+  const findings = Array.isArray(raw.findings) ? raw.findings : [];
 
   return {
     ...raw,
@@ -208,7 +378,34 @@ function normalizeCycle(raw: CycleDto): CycleDto {
     ...(opening ? { opening } : {}),
     ...(matrix ? { matrix } : {}),
     ...(contract ? { contract } : {}),
+    findings,
   };
+}
+
+/** The spreads across evaluator sheets, widest first — the committee's agenda. */
+function sheetDivergences(sheets: EvalSheetDto[]): EvalDivergenceDto[] {
+  const cells = new Map<string, EvalDivergenceDto>();
+  for (const sheet of sheets) {
+    for (const score of sheet.scores) {
+      const key = `${score.bidder.toLowerCase()}\u0000${score.criterionId}`;
+      const cell = cells.get(key) ?? {
+        bidder: score.bidder,
+        criterionId: score.criterionId,
+        min: score.score,
+        max: score.score,
+        spread: 0,
+        values: [] as { evaluator: string; score: number }[],
+      };
+      cell.min = Math.min(cell.min, score.score);
+      cell.max = Math.max(cell.max, score.score);
+      cell.spread = Math.round((cell.max - cell.min) * 10) / 10;
+      cell.values.push({ evaluator: sheet.evaluator, score: score.score });
+      cells.set(key, cell);
+    }
+  }
+  return [...cells.values()]
+    .filter((cell) => cell.values.length > 1 && cell.spread > 0)
+    .sort((a, b) => b.spread - a.spread || a.bidder.localeCompare(b.bidder));
 }
 
 type CycleTab = "pipeline" | "deadlines" | "opening" | "evaluation" | "award" | "contract" | "complaints" | "analytics";
@@ -412,6 +609,255 @@ function Btn({
     >
       {children}
     </button>
+  );
+}
+
+type AssuranceOwnerDraft = {
+  key: number;
+  name: string;
+  role: string;
+  ownershipPct: string;
+  nationality: string;
+  idNo: string;
+};
+type AssuranceDocDraft = { key: number; kind: string; reference: string; expiresAt: string };
+
+/**
+ * WS6 assurance check, written in one sitting: several beneficial owners and
+ * several documents are one check, not one owner and one document repeated.
+ * Blank rows are not disclosures — the form refuses them before the server
+ * does, and the server records the whole set under one check, one source and
+ * one expiry.
+ */
+function AssuranceCheckForm({
+  onSubmit,
+  busy,
+  onToast,
+}: {
+  onSubmit: (payload: Record<string, unknown>) => void;
+  busy: boolean;
+  onToast: (message: string) => void;
+}) {
+  const [source, setSource] = useState("REGISTRY_LOOKUP");
+  const [registryStatus, setRegistryStatus] = useState("REGISTERED");
+  const [taxStatus, setTaxStatus] = useState("VALID");
+  const [sanctions, setSanctions] = useState("CLEAR");
+  const [pep, setPep] = useState("CLEAR");
+  const [expiresAt, setExpiresAt] = useState("");
+  const [notes, setNotes] = useState("");
+  const nextKey = useRef(2);
+  const [owners, setOwners] = useState<AssuranceOwnerDraft[]>([
+    { key: 1, name: "", role: "", ownershipPct: "", nationality: "", idNo: "" },
+  ]);
+  const [documents, setDocuments] = useState<AssuranceDocDraft[]>([{ key: 1, kind: "", reference: "", expiresAt: "" }]);
+
+  const patchOwner = (key: number, patch: Partial<AssuranceOwnerDraft>) =>
+    setOwners((current) => current.map((owner) => (owner.key === key ? { ...owner, ...patch } : owner)));
+  const patchDocument = (key: number, patch: Partial<AssuranceDocDraft>) =>
+    setDocuments((current) => current.map((doc) => (doc.key === key ? { ...doc, ...patch } : doc)));
+
+  const submit = () => {
+    const filledOwners = owners.filter((owner) =>
+      [owner.name, owner.role, owner.ownershipPct, owner.nationality, owner.idNo].some((value) => value.trim()),
+    );
+    if (!filledOwners.length) {
+      onToast("AT LEAST ONE BENEFICIAL OWNER IS REQUIRED — A CHECK WITH NO OWNER IS NOT A DISCLOSURE");
+      return;
+    }
+    if (filledOwners.some((owner) => !owner.name.trim())) {
+      onToast("EVERY BENEFICIAL OWNER NEEDS A NAME");
+      return;
+    }
+    const filledDocuments = documents.filter((doc) => [doc.kind, doc.reference, doc.expiresAt].some((value) => value.trim()));
+    if (!filledDocuments.length) {
+      onToast("AT LEAST ONE VERIFICATION DOCUMENT IS REQUIRED");
+      return;
+    }
+    if (filledDocuments.some((doc) => !doc.kind.trim())) {
+      onToast("EVERY DOCUMENT NEEDS A KIND — E.G. TAX CLEARANCE, REGISTRY EXTRACT");
+      return;
+    }
+    onSubmit({
+      source,
+      registryStatus,
+      taxStatus,
+      sanctions,
+      pep,
+      ...(expiresAt ? { expiresAt } : {}),
+      ...(notes.trim() ? { notes: notes.trim() } : {}),
+      beneficialOwners: filledOwners.map((owner) => ({
+        name: owner.name.trim(),
+        ...(owner.role.trim() ? { role: owner.role.trim() } : {}),
+        ...(owner.ownershipPct.trim() ? { ownershipPct: Number(owner.ownershipPct) } : {}),
+        ...(owner.nationality.trim() ? { nationality: owner.nationality.trim() } : {}),
+        ...(owner.idNo.trim() ? { idNo: owner.idNo.trim() } : {}),
+      })),
+      documents: filledDocuments.map((doc) => ({
+        kind: doc.kind.trim(),
+        ...(doc.reference.trim() ? { reference: doc.reference.trim() } : {}),
+        ...(doc.expiresAt ? { expiresAt: doc.expiresAt } : {}),
+      })),
+    });
+  };
+
+  return (
+    <div className="grid gap-2">
+      <div className="grid gap-1.5 sm:grid-cols-2">
+        <select className={inputCls} value={source} onChange={(e) => setSource(e.target.value)}>
+          <option value="REGISTRY_LOOKUP">Registry lookup</option>
+          <option value="MANUAL_ATTESTATION">Manual attestation</option>
+        </select>
+        <select className={inputCls} value={registryStatus} onChange={(e) => setRegistryStatus(e.target.value)}>
+          <option value="REGISTERED">Registry: registered</option>
+          <option value="NOT_FOUND">Registry: not found</option>
+          <option value="STRUCK_OFF">Registry: struck off</option>
+        </select>
+        <select className={inputCls} value={taxStatus} onChange={(e) => setTaxStatus(e.target.value)}>
+          <option value="VALID">Tax: valid clearance</option>
+          <option value="EXPIRED">Tax: expired</option>
+          <option value="NOT_FOUND">Tax: not found</option>
+        </select>
+        <select className={inputCls} value={sanctions} onChange={(e) => setSanctions(e.target.value)}>
+          <option value="CLEAR">Sanctions: clear</option>
+          <option value="HIT">Sanctions: hit</option>
+        </select>
+        <select className={inputCls} value={pep} onChange={(e) => setPep(e.target.value)}>
+          <option value="CLEAR">PEP: clear</option>
+          <option value="HIT">PEP: hit</option>
+        </select>
+        <input className={inputCls} type="date" aria-label="Check expires on" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+      </div>
+
+      <div className="rounded-xl border border-ink-100 bg-paper p-2.5">
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <p className="font-code text-[8px] tracking-[0.16em] text-ink-400">BENEFICIAL OWNERS — {owners.length}</p>
+          <Btn
+            variant="ghost"
+            onClick={() => {
+              if (owners.length >= 20) {
+                onToast("AT MOST 20 BENEFICIAL OWNERS CAN BE RECORDED IN ONE CHECK");
+                return;
+              }
+              setOwners((current) => [
+                ...current,
+                { key: nextKey.current++, name: "", role: "", ownershipPct: "", nationality: "", idNo: "" },
+              ]);
+            }}
+            disabled={busy}
+          >
+            <Plus className="h-3 w-3" aria-hidden="true" /> Add owner
+          </Btn>
+        </div>
+        <ul className="space-y-1.5">
+          {owners.map((owner, index) => (
+            <li key={owner.key} className="grid gap-1.5 sm:grid-cols-[1.6fr_1fr_70px_1fr_1fr_auto]">
+              <input
+                className={cn(inputCls, "h-8 text-[11.5px]")}
+                placeholder={index === 0 ? "Owner name" : "Owner name"}
+                value={owner.name}
+                onChange={(e) => patchOwner(owner.key, { name: e.target.value })}
+              />
+              <input
+                className={cn(inputCls, "h-8 text-[11.5px]")}
+                placeholder="Role"
+                value={owner.role}
+                onChange={(e) => patchOwner(owner.key, { role: e.target.value })}
+              />
+              <input
+                className={cn(inputCls, "h-8 px-1.5 text-[11.5px]")}
+                type="number"
+                min={0}
+                max={100}
+                placeholder="%"
+                value={owner.ownershipPct}
+                onChange={(e) => patchOwner(owner.key, { ownershipPct: e.target.value })}
+              />
+              <input
+                className={cn(inputCls, "h-8 text-[11.5px]")}
+                placeholder="Nationality"
+                value={owner.nationality}
+                onChange={(e) => patchOwner(owner.key, { nationality: e.target.value })}
+              />
+              <input
+                className={cn(inputCls, "h-8 text-[11.5px]")}
+                placeholder="ID / passport"
+                value={owner.idNo}
+                onChange={(e) => patchOwner(owner.key, { idNo: e.target.value })}
+              />
+              <button
+                type="button"
+                aria-label="Remove owner"
+                onClick={() => setOwners((current) => (current.length === 1 ? current : current.filter((row) => row.key !== owner.key)))}
+                disabled={busy || owners.length === 1}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink-400 transition-colors hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="rounded-xl border border-ink-100 bg-paper p-2.5">
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <p className="font-code text-[8px] tracking-[0.16em] text-ink-400">DOCUMENTS — {documents.length}</p>
+          <Btn
+            variant="ghost"
+            onClick={() => {
+              if (documents.length >= 20) {
+                onToast("AT MOST 20 DOCUMENTS CAN BE ATTACHED TO ONE CHECK");
+                return;
+              }
+              setDocuments((current) => [...current, { key: nextKey.current++, kind: "", reference: "", expiresAt: "" }]);
+            }}
+            disabled={busy}
+          >
+            <Plus className="h-3 w-3" aria-hidden="true" /> Add document
+          </Btn>
+        </div>
+        <ul className="space-y-1.5">
+          {documents.map((doc) => (
+            <li key={doc.key} className="grid gap-1.5 sm:grid-cols-[1.3fr_1.3fr_150px_auto]">
+              <input
+                className={cn(inputCls, "h-8 text-[11.5px]")}
+                placeholder="Kind (e.g. TAX CLEARANCE)"
+                value={doc.kind}
+                onChange={(e) => patchDocument(doc.key, { kind: e.target.value })}
+              />
+              <input
+                className={cn(inputCls, "h-8 text-[11.5px]")}
+                placeholder="Reference"
+                value={doc.reference}
+                onChange={(e) => patchDocument(doc.key, { reference: e.target.value })}
+              />
+              <input
+                className={cn(inputCls, "h-8 text-[11.5px]")}
+                type="date"
+                aria-label="Document expires on"
+                value={doc.expiresAt}
+                onChange={(e) => patchDocument(doc.key, { expiresAt: e.target.value })}
+              />
+              <button
+                type="button"
+                aria-label="Remove document"
+                onClick={() =>
+                  setDocuments((current) => (current.length === 1 ? current : current.filter((row) => row.key !== doc.key)))
+                }
+                disabled={busy || documents.length === 1}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink-400 transition-colors hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <input className={inputCls} placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
+      <Btn variant="ghost" onClick={submit} disabled={busy}>
+        <Check className="h-3.5 w-3.5" aria-hidden="true" /> Record the check
+      </Btn>
+    </div>
   );
 }
 
@@ -1764,6 +2210,8 @@ export function CycleView({
   const [deadlines, setDeadlines] = useState<DeadlineDto[]>([]);
   const [analytics, setAnalytics] = useState<Record<string, number | string> | null>(null);
   const [members, setMembers] = useState<MemberDto[]>([]);
+  const [budgetLines, setBudgetLines] = useState<BudgetLineDto[]>([]);
+  const [methods, setMethods] = useState<MethodDto[]>([]);
   const [busy, setBusy] = useState(false);
   /* Draft inputs, one record shared across the tab forms. */
   const [d, setD] = useState<Record<string, string>>({});
@@ -1870,7 +2318,7 @@ export function CycleView({
 
   const pull = useCallback(async () => {
     try {
-      const [t, c, dl, an, cm, rn, ap] = await Promise.all([
+      const [t, c, dl, an, cm, rn, ap, bl] = await Promise.all([
         fetch(`/api/sample-tenders${SVC}`).then((x) => x.json()),
         fetch(`/api/cycle${SVC}`).then((x) => x.json()),
         fetch(`/api/cycle/deadlines${SVC}`).then((x) => x.json()),
@@ -1878,6 +2326,7 @@ export function CycleView({
         fetch("/api/committee").then((x) => x.json()),
         fetch(`/api/runs${SVC}`).then((x) => x.json()),
         fetch(`/api/applications${SVC}`).then((x) => x.json()),
+        fetch(`/api/budget-lines${SVC}`).then((x) => x.json()),
       ]);
       const samples = (t.samples ?? []) as { ref: string; title?: string }[];
       const cycleRows = ((c.cycles ?? []) as CycleDto[]).map(normalizeCycle);
@@ -1904,6 +2353,7 @@ export function CycleView({
       setAnalytics(an ?? null);
       setMembers(((cm.members ?? []) as MemberDto[]).filter((m) => m.status === "PRESENT"));
       setPortalApps(((ap.applications ?? []) as PortalAppRow[]).filter((a) => a.status === "RECEIVED"));
+      setBudgetLines((bl.lines ?? []) as BudgetLineDto[]);
       setRef((cur) => cur || list[0]?.ref || "");
     } catch {
       /* the desk renders what it last had; the poll retries */
@@ -1915,6 +2365,23 @@ export function CycleView({
     const id = setInterval(() => void pull(), 5000);
     return () => clearInterval(id);
   }, [pull]);
+
+  /* The method register is the law's own list — loaded live so the selector
+     cannot drift from what the sidecar validates against. */
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/methods${SVC}`)
+      .then((res) => res.json())
+      .then((data: { ZM?: MethodDto[] }) => {
+        if (alive && Array.isArray(data.ZM)) setMethods(data.ZM);
+      })
+      .catch(() => {
+        /* the selector stays empty and says so; nothing is invented */
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const refreshNextRef = useCallback(async () => {
     setRefLoading(true);
@@ -2271,6 +2738,22 @@ export function CycleView({
                 </tbody>
               </table>
             </div>
+            {cycle.opening.reconciliation ? (
+              <div
+                className={cn(
+                  "rounded-lg border px-3 py-2 font-code text-[9px] leading-relaxed tracking-[0.06em]",
+                  cycle.opening.reconciliation.matches
+                    ? "border-emerald-500/25 bg-emerald-500/[0.06] text-emerald-800 dark:text-emerald-300"
+                    : "border-amber-500/30 bg-amber-500/[0.08] text-amber-900 dark:text-amber-200",
+                )}
+              >
+                {cycle.opening.reconciliation.matches ? "RECONCILED" : "RECONCILIATION FAILED"} — {cycle.opening.reconciliation.note}
+                <span className="mt-1 block text-[8px] text-ink-500">
+                  {cycle.opening.reconciliation.sealed} SEALED · {cycle.opening.reconciliation.manual} MANUAL ·{" "}
+                  {cycle.opening.reconciliation.withdrawn} WITHDRAWN · {cycle.opening.reconciliation.amended} AMENDED
+                </span>
+              </div>
+            ) : null}
             {cycle.opening.sha ? <p className="font-code text-[8px] tracking-[0.14em] text-ink-400">SHA-256 {cycle.opening.sha}</p> : null}
           </div>
         ) : (
@@ -2337,8 +2820,14 @@ export function CycleView({
                       <tr key={a.id} className="border-b border-ink-100 last:border-0">
                         <td className="px-2.5 py-1.5 font-semibold text-ink-900">{a.orgName}</td>
                         <td className="px-2.5 py-1.5 text-ink-500">
-                          {a.currency ? `${a.currency} ` : ""}
-                          {a.amount.toLocaleString()}
+                          {a.sealed ? (
+                            <span className="font-code text-[9px] tracking-[0.1em] text-brand-700 dark:text-brand-300">SEALED</span>
+                          ) : (
+                            <>
+                              {a.currency ? `${a.currency} ` : ""}
+                              {(a.amount ?? 0).toLocaleString()}
+                            </>
+                          )}
                         </td>
                         <td className="px-2.5 py-1.5 text-ink-500">{fmtDateTime(a.receivedAt)}</td>
                         <td className="px-2.5 py-1.5 text-right font-code text-[9px] tracking-[0.1em] text-ink-400">{a.id}</td>
@@ -2359,8 +2848,110 @@ export function CycleView({
 
   /* ── Tab: evaluation (G1/G2/G4 + G9) ─────────────────────────────────────── */
 
-  const declareCoi = (member: string, declaration: "NO_CONFLICT" | "CONFLICT_DECLARED") =>
-    act(`/api/tenders/${ref}/coi`, { member, declaration, conflicts: declaration === "CONFLICT_DECLARED" ? d[`coi-${member}`] : undefined }, "CONFLICT DECLARATION RECORDED").then((ok) => ok && refreshCycle());
+  const declareCoi = (
+    member: string,
+    declaration: "NO_CONFLICT" | "CONFLICT_DECLARED",
+    extra?: { entities?: { name: string; relationship?: string }[]; recused?: boolean; conflicts?: string },
+  ) =>
+    act(
+      `/api/tenders/${ref}/coi`,
+      {
+        member,
+        declaration,
+        conflicts: declaration === "CONFLICT_DECLARED" ? (extra?.conflicts ?? d[`coi-${member}`]) : undefined,
+        ...(extra?.entities?.length ? { entities: extra.entities } : {}),
+        ...(extra?.recused ? { recused: true } : {}),
+      },
+      "CONFLICT DECLARATION RECORDED",
+    ).then((ok) => ok && refreshCycle());
+
+  /* Structured connections: one per line, "name | relationship". The server
+     screens these names against every bidder and beneficial owner. */
+  const saveCoiConnections = (member: string, decl: NonNullable<CycleDto["coi"]>[number]) => {
+    const entities = (d[`coi-ent-${member}`] ?? "")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [name, relationship] = line.split("|").map((part) => part.trim());
+        return { name, ...(relationship ? { relationship } : {}) };
+      })
+      .filter((entity) => entity.name);
+    if (!entities.length) {
+      onToast("NAME AT LEAST ONE CONNECTION — ONE PER LINE, NAME | RELATIONSHIP");
+      return;
+    }
+    void declareCoi(member, decl.declaration === "CONFLICT_DECLARED" ? "CONFLICT_DECLARED" : "NO_CONFLICT", {
+      entities,
+      conflicts: decl.conflicts,
+      recused: decl.recused,
+    });
+  };
+
+  const assignedEvaluators = members.filter((m) => m.office === "EVALUATION_COMMITTEE");
+  const sheetEvaluator = d.sheetEvaluator || assignedEvaluators[0]?.name || "";
+
+  const submitSheet = () => {
+    if (!cycle?.matrix) return;
+    if (!sheetEvaluator) {
+      onToast("NO EVALUATOR HOLDS THE EVALUATION-COMMITTEE OFFICE — SET THE OFFICE ON THE COMMITTEE REGISTER FIRST");
+      return;
+    }
+    const cells: { bidder: string; criterionId: string; score: number }[] = [];
+    for (const bid of cycle.matrix.bids) {
+      for (const criterion of cycle.matrix.criteria) {
+        const raw = d[`sh-${sheetEvaluator}-${bid.bidder}-${criterion.id}`];
+        if (raw === undefined || raw === "") {
+          onToast(`ENTER A SCORE FOR ${bid.bidder.toUpperCase()} / ${criterion.id} — A BLANK IS NOT A ZERO`);
+          return;
+        }
+        cells.push({ bidder: bid.bidder, criterionId: criterion.id, score: Number(raw) });
+      }
+    }
+    void act(
+      `/api/tenders/${ref}/matrix/sheets`,
+      { evaluator: sheetEvaluator, scores: cells },
+      `SHEET SUBMITTED — ${sheetEvaluator.toUpperCase()}`,
+    ).then((ok) => ok && refreshCycle());
+  };
+
+  const recordConsensus = () => {
+    const attendees = (
+      d.consensusAttendees ?? assignedEvaluators.map((m) => m.name).join(", ")
+    )
+      .split(",")
+      .map((name) => name.trim())
+      .filter(Boolean);
+    void act(
+      `/api/tenders/${ref}/matrix/consensus`,
+      { attendees, notes: d.consensusNotes ?? "" },
+      "CONSENSUS RECORDED — THE MATRIX TECHNICAL COLUMN NOW FOLLOWS IT",
+    ).then((ok) => ok && refreshCycle());
+  };
+
+  const saveFx = () => {
+    const rates: { base: string; rate: number; source: string; asOf: string }[] = [];
+    const text =
+      d.fxRates ??
+      (cycle?.matrix?.fxRates ?? [])
+        .map((rate) => `${rate.base} = ${rate.rate} | ${rate.source} | ${rate.asOf.slice(0, 10)}`)
+        .join("\n");
+    for (const line of text.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      const match = trimmed.match(/^([A-Za-z]{3})\s*=\s*([\d.]+)\s*\|\s*(.+?)\s*\|\s*(\d{4}-\d{2}-\d{2})$/);
+      if (!match) {
+        onToast("FX LINES READ: BASE = RATE | SOURCE | YYYY-MM-DD — ONE PER FOREIGN CURRENCY");
+        return;
+      }
+      rates.push({ base: match[1].toUpperCase(), rate: Number(match[2]), source: match[3].trim(), asOf: match[4] });
+    }
+    void act(
+      `/api/tenders/${ref}/matrix/fx`,
+      { evaluationCurrency: (d.evalCurrency ?? cycle?.matrix?.evaluationCurrency ?? "ZMW").toUpperCase(), rates },
+      "EVALUATED-PRICE BASIS SAVED",
+    ).then((ok) => ok && refreshCycle());
+  };
 
   const buildMatrix = () =>
     act(
@@ -2406,6 +2997,8 @@ export function CycleView({
   const outstandingCoi = cycle
     ? members.filter((m) => !cycle.coi.some((x) => x.member.toLowerCase() === m.name.toLowerCase()))
     : [];
+  const sheets = cycle?.matrix?.sheets ?? [];
+  const divergences = cycle?.matrix ? sheetDivergences(cycle.matrix.sheets ?? []) : [];
 
   const EvaluationTab = cycle ? (
     <div className="grid gap-4">
@@ -2433,14 +3026,35 @@ export function CycleView({
                     </div>
                   )}
                 </div>
-                {decl && decl.declaration === "CONFLICT_DECLARED" && !decl.conflicts ? (
-                  <input
-                    className={cn(inputCls, "mt-2")}
-                    placeholder="State the conflict"
-                    value={d[`coi-${m.name}`] ?? ""}
-                    onChange={(e) => set(`coi-${m.name}`, e.target.value)}
-                    onBlur={() => declareCoi(m.name, "CONFLICT_DECLARED")}
-                  />
+                {decl ? (
+                  <div className="mt-2 space-y-1.5">
+                    {decl.declaration === "CONFLICT_DECLARED" && !decl.conflicts ? (
+                      <input
+                        className={cn(inputCls, "h-9")}
+                        placeholder="State the conflict"
+                        value={d[`coi-${m.name}`] ?? ""}
+                        onChange={(e) => set(`coi-${m.name}`, e.target.value)}
+                        onBlur={() => declareCoi(m.name, "CONFLICT_DECLARED")}
+                      />
+                    ) : null}
+                    <p className="text-[11px] text-ink-500">
+                      <span className="font-code text-[8px] tracking-[0.12em] text-ink-400">CONNECTIONS </span>
+                      {decl.entities?.length
+                        ? decl.entities.map((entity) => `${entity.name}${entity.relationship ? ` (${entity.relationship})` : ""}`).join(" · ")
+                        : "none named — screening can only check names on the record"}
+                    </p>
+                    <div className="flex items-start gap-1.5">
+                      <textarea
+                        className={cn(inputCls, "h-14 py-2 text-[11.5px]")}
+                        placeholder="Connected firms or people, one per line: Acme Holdings | former employer"
+                        value={d[`coi-ent-${m.name}`] ?? ""}
+                        onChange={(e) => set(`coi-ent-${m.name}`, e.target.value)}
+                      />
+                      <Btn variant="ghost" onClick={() => saveCoiConnections(m.name, decl)} disabled={busy}>
+                        Save
+                      </Btn>
+                    </div>
+                  </div>
                 ) : null}
               </li>
             );
@@ -2491,7 +3105,20 @@ export function CycleView({
                       );
                     })}
                     <td className="py-2 pr-2 font-bold text-ink-900">{b.technicalTotal}</td>
-                    <td className="py-2 pr-2">{b.financial?.formulaScore ?? "—"}</td>
+                    <td className="py-2 pr-2">
+                      <span>{b.financial?.formulaScore ?? "—"}</span>
+                      {b.financial?.evaluatedAmount !== undefined ? (
+                        <p className="mt-0.5 max-w-[180px] font-code text-[8px] leading-snug tracking-[0.06em] text-ink-400">
+                          {b.financial.currency ?? "?"} {fmtMoney(b.financial.amount)} → {b.financial.evaluatedCurrency}{" "}
+                          {fmtMoney(b.financial.evaluatedAmount)} @ {b.financial.fxRate}
+                        </p>
+                      ) : null}
+                      {b.financial?.fxError ? (
+                        <p className="mt-0.5 max-w-[180px] text-[9.5px] leading-snug text-brand-700 dark:text-brand-300">
+                          NO FX — {b.financial.fxError}
+                        </p>
+                      ) : null}
+                    </td>
                     <td className="py-2 pr-2 font-bold text-ink-950">{b.total ?? "—"}</td>
                     <td className="py-2 pr-2 font-code text-[8px] tracking-[0.1em]">
                       {b.responsiveness === "RESPONSIVE" ? <span className="text-emerald-700 dark:text-emerald-300">YES</span> : <span className="text-brand-700 dark:text-brand-300">{b.responsiveness.replace(/_/g, " ")}</span>}
@@ -2559,6 +3186,219 @@ export function CycleView({
         </Card>
       )}
 
+      {cycle.matrix ? (
+        <Card
+          title="Evaluation integrity"
+          sub="EACH EVALUATOR SCORES THEIR OWN SHEET · THE COMMITTEE RECORDS THE CONSENSUS · THE MATRIX FOLLOWS IT · FOREIGN PRICES ARE SCORED ON A SOURCED FX BASIS"
+          workflow
+          busy={busy}
+          actionLabel="Manage evaluation integrity"
+        >
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <Chip tone={sheets.length >= assignedEvaluators.length && assignedEvaluators.length >= 2 ? "ok" : "warn"}>
+              SHEETS {sheets.length}/{assignedEvaluators.length || "—"}
+            </Chip>
+            <Chip tone={cycle.matrix.consensus ? "ok" : "warn"}>
+              {cycle.matrix.consensus ? "CONSENSUS RECORDED" : "NO CONSENSUS"}
+            </Chip>
+            <Chip tone={cycle.matrix.evaluationCurrency ? "brand" : "muted"}>
+              BASIS {cycle.matrix.evaluationCurrency ?? "LEGACY STATED AMOUNTS"}
+            </Chip>
+            {cycle.matrix.consensus ? (
+              <span className="font-code text-[8px] tracking-[0.1em] text-ink-400">
+                SIG {cycle.matrix.consensus.signature.slice(0, 12).toUpperCase()}
+              </span>
+            ) : null}
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="space-y-2">
+              <p className="font-code text-[8px] tracking-[0.16em] text-ink-400">PER-EVALUATOR SHEETS</p>
+              {assignedEvaluators.length === 0 ? (
+                <p className="text-[11.5px] text-amber-700 dark:text-amber-300">
+                  No PRESENT member holds the evaluation-committee office — the certification gate refuses a panel that is not constituted.
+                </p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {assignedEvaluators.map((member) => {
+                    const sheet = sheets.find((entry) => entry.evaluator.toLowerCase() === member.name.toLowerCase());
+                    const total = sheet
+                      ? cycle.matrix!.criteria.reduce((sum, criterion) => {
+                          const cell = sheet.scores.find((score) => score.criterionId === criterion.id);
+                          return sum + (cell ? cell.score * criterion.weight : 0);
+                        }, 0) / 100
+                      : undefined;
+                    return (
+                      <li key={member.name} className="flex items-center justify-between gap-2 rounded-lg border border-ink-100 bg-paper px-2.5 py-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-[12px] font-semibold text-ink-900">{member.name}</p>
+                          <p className="font-code text-[8px] tracking-[0.1em] text-ink-400">
+                            {sheet ? `V${sheet.version} · ${fmtDateTime(sheet.submittedAt)} · ${sheet.submittedBy.toUpperCase()}` : "NO SHEET ON FILE"}
+                          </p>
+                        </div>
+                        {sheet ? <Chip tone="ok">TECH {Math.round(total! * 10) / 10}</Chip> : <Chip tone="warn">OUTSTANDING</Chip>}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+
+              {cycle.matrix.status === "DRAFT" ? (
+                <div className="space-y-2 rounded-xl border border-ink-100 bg-paper p-2.5">
+                  <Field label="SCORE AS">
+                    <select className={inputCls} value={sheetEvaluator} onChange={(e) => set("sheetEvaluator", e.target.value)}>
+                      {assignedEvaluators.length === 0 ? <option value="">No evaluator office set</option> : null}
+                      {assignedEvaluators.map((member) => (
+                        <option key={member.name} value={member.name}>
+                          {member.name}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  {sheetEvaluator ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[420px] text-[11px]">
+                        <thead>
+                          <tr className="border-b border-ink-100 text-left font-code text-[7.5px] tracking-[0.1em] text-ink-400">
+                            <th className="py-1.5 pr-1.5">BIDDER</th>
+                            {cycle.matrix.criteria.map((criterion) => (
+                              <th key={criterion.id} className="py-1.5 pr-1.5">
+                                {criterion.id} · {criterion.weight}%
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {cycle.matrix.bids.map((bid) => (
+                            <tr key={bid.bidder} className="border-b border-ink-100 last:border-0">
+                              <td className="py-1.5 pr-1.5 font-semibold text-ink-800">{bid.bidder}</td>
+                              {cycle.matrix!.criteria.map((criterion) => (
+                                <td key={criterion.id} className="py-1.5 pr-1.5">
+                                  <input
+                                    className="h-7 w-14 rounded-md border border-ink-200 px-1.5 text-[11.5px]"
+                                    type="number"
+                                    min={0}
+                                    max={100}
+                                    value={d[`sh-${sheetEvaluator}-${bid.bidder}-${criterion.id}`] ?? ""}
+                                    onChange={(e) => set(`sh-${sheetEvaluator}-${bid.bidder}-${criterion.id}`, e.target.value)}
+                                  />
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : null}
+                  <Btn variant="ghost" onClick={submitSheet} disabled={busy || !sheetEvaluator}>
+                    <FileSignature className="h-3.5 w-3.5" aria-hidden="true" /> Submit sheet for {sheetEvaluator || "—"}
+                  </Btn>
+                  <p className="text-[10.5px] leading-snug text-ink-400">
+                    A resubmission supersedes your earlier sheet and clears the consensus, because the agreement no longer describes the evidence.
+                  </p>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="space-y-2">
+              <p className="font-code text-[8px] tracking-[0.16em] text-ink-400">DIVERGENCES ACROSS SHEETS</p>
+              {divergences.length === 0 ? (
+                <p className="text-[11.5px] text-ink-500">No cell has more than one scored sheet yet.</p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {divergences.slice(0, 8).map((cell) => (
+                    <li key={`${cell.bidder}-${cell.criterionId}`} className="rounded-lg border border-ink-100 bg-paper px-2.5 py-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[11.5px] font-semibold text-ink-800">
+                          {cell.bidder} · {cell.criterionId}
+                        </p>
+                        <Chip tone={cell.spread > 25 ? "warn" : "muted"}>SPREAD {cell.spread}</Chip>
+                      </div>
+                      <p className="font-code text-[8px] tracking-[0.08em] text-ink-400">
+                        {cell.values.map((value) => `${value.evaluator.toUpperCase()} ${value.score}`).join(" · ")}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {cycle.matrix.status === "DRAFT" ? (
+                <div className="space-y-2 rounded-xl border border-ink-100 bg-paper p-2.5">
+                  <Field label="CONSENSUS ATTENDEES (COMMA-SEPARATED)">
+                    <input
+                      className={inputCls}
+                      value={d.consensusAttendees ?? assignedEvaluators.map((member) => member.name).join(", ")}
+                      onChange={(e) => set("consensusAttendees", e.target.value)}
+                    />
+                  </Field>
+                  <Field label="MINUTE — WHAT WAS RECONCILED AND WHY">
+                    <textarea
+                      className={cn(inputCls, "h-16 py-2")}
+                      placeholder="The panel reconciled the widest spreads on ..."
+                      value={d.consensusNotes ?? ""}
+                      onChange={(e) => set("consensusNotes", e.target.value)}
+                    />
+                  </Field>
+                  <Btn onClick={recordConsensus} disabled={busy || sheets.length < 2}>
+                    <Stamp className="h-3.5 w-3.5" aria-hidden="true" /> Record consensus
+                  </Btn>
+                  {sheets.length < 2 ? (
+                    <p className="text-[10.5px] text-ink-400">Two sheets are required before a consensus can be recorded.</p>
+                  ) : null}
+                </div>
+              ) : cycle.matrix.consensus ? (
+                <div className="rounded-xl border border-ink-100 bg-paper p-2.5 text-[11.5px] text-ink-600">
+                  <p className="font-semibold text-ink-900">Consensus minute</p>
+                  <p className="mt-1 leading-snug">{cycle.matrix.consensus.notes}</p>
+                  <p className="mt-1 font-code text-[8px] tracking-[0.1em] text-ink-400">
+                    {cycle.matrix.consensus.recordedBy.toUpperCase()} · {fmtDateTime(cycle.matrix.consensus.recordedAt)} · ATTENDEES{" "}
+                    {cycle.matrix.consensus.attendees.join(", ")}
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-2 border-t border-ink-100 pt-3">
+            <p className="font-code text-[8px] tracking-[0.16em] text-ink-400">EVALUATED-PRICE BASIS</p>
+            <div className="grid gap-1.5 sm:grid-cols-[140px_1fr]">
+              <input
+                className={inputCls}
+                placeholder="ZMW"
+                value={d.evalCurrency ?? cycle.matrix.evaluationCurrency ?? ""}
+                onChange={(e) => set("evalCurrency", e.target.value.toUpperCase())}
+                disabled={cycle.matrix.status === "CERTIFIED"}
+              />
+              <textarea
+                className={cn(inputCls, "h-16 py-2")}
+                placeholder="USD = 25.80 | Bank of Zambia | 2026-10-29"
+                value={
+                  d.fxRates ??
+                  (cycle.matrix.fxRates ?? []).map((rate) => `${rate.base} = ${rate.rate} | ${rate.source} | ${rate.asOf.slice(0, 10)}`).join("\n")
+                }
+                onChange={(e) => set("fxRates", e.target.value)}
+                disabled={cycle.matrix.status === "CERTIFIED"}
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {cycle.matrix.status === "DRAFT" ? (
+                <Btn variant="ghost" onClick={saveFx} disabled={busy}>
+                  <Check className="h-3.5 w-3.5" aria-hidden="true" /> Save the FX basis
+                </Btn>
+              ) : null}
+              {(cycle.matrix.fxRates ?? []).map((rate) => (
+                <span key={rate.base} className="font-code text-[8px] tracking-[0.08em] text-ink-400">
+                  {rate.base}→{rate.quote} {rate.rate} · {rate.source.toUpperCase()} · {rate.asOf.slice(0, 10)}
+                </span>
+              ))}
+            </div>
+            <p className="text-[10.5px] leading-snug text-ink-400">
+              One line per foreign currency: BASE = RATE | SOURCE | YYYY-MM-DD. The financial formula scores the converted amount; the gate refuses a missing, unsourced or stale quote.
+            </p>
+          </div>
+        </Card>
+      ) : null}
+
       {cycle.alb.length ? (
         <Card title="Abnormally low bids" sub={`JUSTIFICATION CLOCK — ${5} WORKING DAYS PER DOSSIER`}>
           <ul className="space-y-2">
@@ -2580,12 +3420,289 @@ export function CycleView({
   /* ── Tab: award (G6/G7) ──────────────────────────────────────────────────── */
 
   const draftAwardReport = () => act(`/api/tenders/${ref}/award-report`, {}, "AWARD REPORT DRAFTED — ACCOUNTING OFFICER GATE RAISED").then((ok) => ok && refreshCycle());
+  const recordMethod = () =>
+    act(
+      `/api/tenders/${ref}/method`,
+      {
+        methodId: d.methodPick ?? cycle?.methodId ?? "open-bidding",
+        justification: d.methodJust,
+        approvalRef: d.methodRef || undefined,
+        estimatedValue: d.methodValue ? Number(d.methodValue) : undefined,
+      },
+      "METHOD RECORDED — THE LAWFUL ROUTE IS ON THE FILE",
+    ).then((ok) => ok && refreshCycle());
+  const recordAssurance = (payload: Record<string, unknown>) => {
+    const supplierId = cycle?.assurance?.supplierId;
+    if (!supplierId) {
+      onToast("THE WINNER IS NOT ON THE SUPPLIER REGISTER — ADD AND VERIFY THE SUPPLIER FIRST");
+      return;
+    }
+    void act(
+      `/api/suppliers/${encodeURIComponent(supplierId)}/verification`,
+      payload,
+      "ASSURANCE CHECK RECORDED — THE WHOLE OWNERSHIP AND DOCUMENT SET IS ON THE FILE",
+    ).then((ok) => ok && refreshCycle());
+  };
+  const awardWinner = cycle?.awardReport?.recommendation ?? cycle?.matrix?.bids.find((b) => b.verdict === "RECOMMENDED")?.bidder;
+  const awardFindings = (cycle?.findings ?? []).filter(
+    (f) => !!awardWinner && [f.item, f.evidence, f.citation].some((v) => v.toLowerCase().includes(awardWinner.toLowerCase())),
+  );
+  const blockerFindings = awardFindings.filter((f) => f.severity === "HIGH" && (!f.disposition || f.disposition.status === "RE_CHECK"));
+  const disposeFinding = (id: string) =>
+    act(
+      `/api/tenders/${ref}/findings/${id}/dispose`,
+      {
+        status: d[`fdisp-${id}`] || "CLEARED",
+        note: d[`fnote-${id}`],
+        secondedBy: d[`fsecond-${id}`] || undefined,
+      },
+      "FINDING DISPOSITION RECORDED",
+    ).then((ok) => ok && refreshCycle());
   const publishNotice = () => act(`/api/tenders/${ref}/award-notice/publish`, {}, "NOTICE PUBLICATION GATE RAISED — STANDSTILL FOLLOWS").then((ok) => ok && refreshCycle());
   const draftDebrief = (bidder: string) => act(`/api/tenders/${ref}/debrief`, { bidder }, "DEBRIEF DRAFTED").then((ok) => ok && refreshCycle());
   const issueDebrief = (id: string) => act(`/api/tenders/${ref}/debrief/${id}/issue`, {}, "ISSUING GATE RAISED").then((ok) => ok && refreshCycle());
 
   const AwardTab = cycle ? (
     <div className="grid gap-4 lg:grid-cols-2">
+      <Card
+        title="Award blockers"
+        sub="A HIGH FINDING AGAINST THE RECOMMENDED BID IS OPEN UNTIL A NAMED DISPOSITION CLOSES IT"
+        workflow
+        busy={busy}
+        actionLabel="Dispose of award findings"
+      >
+        {(cycle.blockers ?? []).length > 0 ? (
+          <div className="mb-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-[11.5px] text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+            <p className="font-code text-[8.5px] tracking-[0.14em]">
+              THE GATE WILL REFUSE — {(cycle.blockers ?? []).length} BLOCKER{(cycle.blockers ?? []).length === 1 ? "" : "S"}
+            </p>
+            <ul className="mt-1 list-disc space-y-1 pl-4">
+              {(cycle.blockers ?? []).map((blocker, i) => (
+                <li key={i}>{blocker}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {awardFindings.length === 0 ? (
+          <p className="text-[12px] text-ink-500">No findings stand against the recommended bid.</p>
+        ) : (
+          <ul className="space-y-2">
+            {awardFindings.map((f) => {
+              const open = f.severity === "HIGH" && (!f.disposition || f.disposition.status === "RE_CHECK");
+              return (
+                <li key={f.id} className="rounded-xl border border-ink-100 bg-paper px-3 py-2.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Chip tone={open ? "warn" : "ok"}>{open ? "OPEN" : f.disposition?.status ?? "—"}</Chip>
+                    <span className="font-code text-[9px] tracking-[0.12em] text-ink-500">{f.id} · {f.rule} · {f.severity}</span>
+                  </div>
+                  <p className="mt-1 text-[12px] text-ink-700">{f.item}</p>
+                  {f.disposition ? (
+                    <p className="mt-1 text-[11px] text-ink-500">
+                      {f.disposition.by}{f.disposition.secondedBy ? ` · seconded ${f.disposition.secondedBy}` : ""} — {f.disposition.note}
+                    </p>
+                  ) : null}
+                  {open ? (
+                    <div className="mt-2 grid gap-1.5 sm:grid-cols-[8rem_1fr_8rem_auto]">
+                      <select
+                        className={inputCls}
+                        value={d[`fdisp-${f.id}`] ?? "CLEARED"}
+                        onChange={(e) => set(`fdisp-${f.id}`, e.target.value)}
+                      >
+                        <option value="CLEARED">Cleared</option>
+                        <option value="WAIVED">Waived</option>
+                        <option value="RE_CHECK">Re-check</option>
+                      </select>
+                      <input
+                        className={inputCls}
+                        placeholder="Reason (required)"
+                        value={d[`fnote-${f.id}`] ?? ""}
+                        onChange={(e) => set(`fnote-${f.id}`, e.target.value)}
+                      />
+                      <input
+                        className={inputCls}
+                        placeholder={d[`fdisp-${f.id}`] === "WAIVED" ? "Seconded by" : "Seconder (waiver)"}
+                        value={d[`fsecond-${f.id}`] ?? ""}
+                        onChange={(e) => set(`fsecond-${f.id}`, e.target.value)}
+                      />
+                      <Btn
+                        variant="ghost"
+                        onClick={() => disposeFinding(f.id)}
+                        disabled={busy || !d[`fnote-${f.id}`]}
+                      >
+                        Record
+                      </Btn>
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {blockerFindings.length > 0 ? (
+          <p className="mt-3 text-[11px] text-amber-700 dark:text-amber-300">
+            The award signature is refused while {blockerFindings.length} HIGH finding{blockerFindings.length === 1 ? " is" : "s are"} undispositioned.
+          </p>
+        ) : null}
+      </Card>
+
+      <Card
+        title="Procurement method"
+        sub="THE LEGAL ROUTE — A NON-OPEN CHOICE NEEDS A JUSTIFICATION AND THE ACCOUNTING OFFICER'S METHOD GATE"
+        workflow
+        busy={busy}
+        actionLabel="Record the procurement method"
+      >
+        {cycle.method?.methodId ? (
+          <div className="mb-3 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Chip tone={cycle.method.ok ? "ok" : "warn"}>{cycle.method.name ?? cycle.method.methodId}</Chip>
+              {cycle.methodApprovedAt ? (
+                <Chip tone="ok">
+                  APPROVED {fmtDate(cycle.methodApprovedAt)} · {cycle.methodApprovedBy?.toUpperCase() ?? "—"}
+                </Chip>
+              ) : cycle.methodId && cycle.methodId !== "open-bidding" ? (
+                <Chip tone="brand">METHOD GATE PENDING</Chip>
+              ) : null}
+              {cycle.method.approvalRef ? <Chip tone="muted">{cycle.method.approvalRef}</Chip> : null}
+            </div>
+            {cycle.method.legalBasis ? <p className="text-[11px] text-ink-500">{cycle.method.legalBasis}</p> : null}
+            {cycle.method.when ? <p className="text-[11.5px] text-ink-600">{cycle.method.when}</p> : null}
+            {cycle.method.valueBand ? (
+              <p className="font-code text-[8.5px] tracking-[0.12em] text-ink-400">VALUE BAND {cycle.method.valueBand.toUpperCase()}</p>
+            ) : null}
+            {cycle.method.justification ? (
+              <p className="text-[11.5px] text-ink-600">Justification: {cycle.method.justification}</p>
+            ) : null}
+            {cycle.method.block ? (
+              <p className="text-[11px] text-amber-700 dark:text-amber-300">{cycle.method.block}</p>
+            ) : null}
+          </div>
+        ) : (
+          <p className="mb-3 text-[12px] text-ink-500">
+            No method is recorded — an award cannot rest on an unstated route.
+          </p>
+        )}
+        <div className="grid gap-1.5">
+          <select
+            className={inputCls}
+            value={d.methodPick ?? cycle.methodId ?? "open-bidding"}
+            onChange={(e) => set("methodPick", e.target.value)}
+          >
+            {methods.length === 0 ? <option value="open-bidding">Open bidding / selection</option> : null}
+            {methods.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+          {(d.methodPick ?? cycle.methodId ?? "open-bidding") !== "open-bidding" ? (
+            <>
+              <textarea
+                className={cn(inputCls, "h-16 py-2")}
+                placeholder="Why competition was restricted — at least 20 characters, naming the statutory ground"
+                value={d.methodJust ?? ""}
+                onChange={(e) => set("methodJust", e.target.value)}
+              />
+              <input
+                className={inputCls}
+                placeholder="Authority approval reference (ZPPA) — required above K1m for direct/limited"
+                value={d.methodRef ?? ""}
+                onChange={(e) => set("methodRef", e.target.value)}
+              />
+            </>
+          ) : null}
+          <div className="grid grid-cols-[1fr_auto] gap-1.5">
+            <input
+              className={inputCls}
+              type="number"
+              placeholder="Estimated value (optional — the award re-checks the winning bid)"
+              value={d.methodValue ?? ""}
+              onChange={(e) => set("methodValue", e.target.value)}
+            />
+            <Btn variant="ghost" onClick={recordMethod} disabled={busy || !ref}>
+              <Scale className="h-3.5 w-3.5" aria-hidden="true" /> Record
+            </Btn>
+          </div>
+        </div>
+      </Card>
+
+      <Card
+        title="Supplier assurance"
+        sub="REGISTRY · TAX · BENEFICIAL OWNERSHIP · SANCTIONS/PEP — A CHECK WITH A SOURCE AND AN EXPIRY"
+        workflow
+        busy={busy}
+        actionLabel="Record the supplier assurance check"
+      >
+        {cycle.assurance ? (
+          <div className="mb-3 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Chip tone={cycle.assurance.status === "VERIFIED" ? "ok" : "warn"}>{cycle.assurance.status}</Chip>
+              <span className="font-code text-[9px] tracking-[0.12em] text-ink-500">
+                {cycle.assurance.expectedSupplier.toUpperCase()}
+              </span>
+              {cycle.assurance.verification ? (
+                <Chip tone="muted">{cycle.assurance.verification.source.replace(/_/g, " ")}</Chip>
+              ) : null}
+            </div>
+            {cycle.assurance.verification ? (
+              <>
+                <p className="font-code text-[8.5px] tracking-[0.12em] text-ink-400">
+                  CHECKED {fmtDate(cycle.assurance.verification.checkedAt)} BY{" "}
+                  {cycle.assurance.verification.checkedBy.toUpperCase()} · EXPIRES {fmtDate(cycle.assurance.verification.expiresAt)}
+                </p>
+                <ul className="space-y-1 text-[12px] text-ink-600">
+                  <li>
+                    Registry: {cycle.assurance.verification.registryStatus.replace(/_/g, " ")} · tax:{" "}
+                    {cycle.assurance.verification.taxStatus} · sanctions: {cycle.assurance.verification.sanctions}
+                    {cycle.assurance.verification.sanctionsMatches?.length
+                      ? ` (${cycle.assurance.verification.sanctionsMatches.join("; ")})`
+                      : ""}{" "}
+                    · PEP: {cycle.assurance.verification.pep}
+                    {cycle.assurance.verification.pepMatches?.length
+                      ? ` (${cycle.assurance.verification.pepMatches.join("; ")})`
+                      : ""}
+                  </li>
+                  <li>
+                    Beneficial owners:{" "}
+                    {cycle.assurance.verification.beneficialOwners.length
+                      ? cycle.assurance.verification.beneficialOwners
+                          .map((o) => `${o.name}${o.ownershipPct !== undefined ? ` (${o.ownershipPct}%)` : ""}`)
+                          .join(", ")
+                      : "none collected"}
+                  </li>
+                  <li>
+                    Documents:{" "}
+                    {cycle.assurance.verification.documents.length
+                      ? cycle.assurance.verification.documents
+                          .map((doc) => `${doc.kind}${doc.reference ? ` ${doc.reference}` : ""}`)
+                          .join(" · ")
+                      : "none attached"}
+                  </li>
+                </ul>
+                {cycle.assurance.failures.length ? (
+                  <ul className="list-disc space-y-1 pl-4 text-[11.5px] text-amber-700 dark:text-amber-300">
+                    {cycle.assurance.failures.map((failure, i) => (
+                      <li key={i}>{failure}</li>
+                    ))}
+                  </ul>
+                ) : null}
+              </>
+            ) : (
+              <p className="text-[12px] text-ink-500">No assurance check is on record for this bidder.</p>
+            )}
+          </div>
+        ) : (
+          <p className="mb-3 text-[12px] text-ink-500">No winner is recommended yet.</p>
+        )}
+        {cycle.assurance?.supplierId ? (
+          <AssuranceCheckForm onSubmit={recordAssurance} busy={busy} onToast={onToast} />
+        ) : cycle.assurance ? (
+          <p className="text-[11.5px] text-amber-700 dark:text-amber-300">
+            The recommended bidder is not on the supplier register — add and verify the supplier before the award can proceed.
+          </p>
+        ) : null}
+      </Card>
+
       <Card title="Award recommendation report" sub="THE STATUTORY REPORT — FINDINGS, MATRIX, RECOMMENDATION, SIGNATURES" workflow busy={busy} actionLabel="Manage award report">
         {cycle.awardReport ? (
           <div className="space-y-2">
@@ -2594,6 +3711,11 @@ export function CycleView({
               {cycle.awardReport.recommendation ? <Chip tone="muted">{cycle.awardReport.recommendation.toUpperCase()}</Chip> : null}
             </div>
             <p className="font-code text-[8px] tracking-[0.14em] text-ink-400">SHA-256 {cycle.awardReport.sha}</p>
+            {!cycle.awardReport.signedAt ? (
+              <Btn variant="ghost" onClick={draftAwardReport} disabled={busy || !ref}>
+                <FileSignature className="h-3.5 w-3.5" aria-hidden="true" /> Re-draft with current dispositions
+              </Btn>
+            ) : null}
           </div>
         ) : (
           <Btn onClick={draftAwardReport} disabled={busy || !ref}>
@@ -2698,7 +3820,44 @@ export function CycleView({
 
   /* ── Tab: contract (G12/G13) ─────────────────────────────────────────────── */
 
-  const preparePack = () => act(`/api/tenders/${ref}/contract/pack`, {}, "CONTRACT PACK PREPARED — ACCOUNTING OFFICER GATE RAISED").then((ok) => ok && refreshCycle());
+  const preparePack = () =>
+    act(
+      `/api/tenders/${ref}/contract/pack`,
+      {
+        budgetLineId: d.budgetLine || budgetLines[0]?.id,
+        retentionPct: d.retentionPct ? Number(d.retentionPct) : undefined,
+      },
+      "CONTRACT PACK PREPARED — ACCOUNTING OFFICER GATE RAISED",
+    ).then((ok) => ok && refreshCycle());
+  const createBudgetLine = () =>
+    act(
+      "/api/budget-lines",
+      {
+        fiscalYear: Number(d.budYear) || new Date().getFullYear(),
+        code: d.budCode,
+        currency: d.budCurrency || "ZMW",
+        approved: Number(d.budApproved),
+      },
+      "BUDGET LINE ON THE REGISTER",
+    ).then((ok) => ok && refreshCycle());
+  const executeContract = () =>
+    act(
+      `/api/tenders/${ref}/contract/execute`,
+      {
+        retentionPct: d.retentionPct ? Number(d.retentionPct) : undefined,
+        performanceSecurity: {
+          amount: Number(d.secAmount),
+          issuer: d.secIssuer,
+          validUntil: d.secValid,
+        },
+        insurance: {
+          policyNo: d.insPolicy,
+          issuer: d.insIssuer,
+          validUntil: d.insValid,
+        },
+      },
+      "CONTRACT EXECUTION GATE RAISED",
+    ).then((ok) => ok && refreshCycle());
   const addMilestone = () =>
     act(`/api/tenders/${ref}/contract/milestones`, { title: d.milTitle, dueDate: d.milDue || undefined }, "MILESTONE ADDED").then(
       (ok) => ok && (setD((p) => ({ ...p, milTitle: "", milDue: "" })), refreshCycle()),
@@ -2708,25 +3867,94 @@ export function CycleView({
       (ok) => ok && (setD((p) => ({ ...p, varDesc: "", varDelta: "" })), refreshCycle()),
     );
   const addPayment = () =>
-    act(`/api/tenders/${ref}/contract/payments`, { description: d.payDesc, amount: Number(d.payAmount) }, "PAYMENT CERTIFICATION GATE RAISED").then(
-      (ok) => ok && (setD((p) => ({ ...p, payDesc: "", payAmount: "" })), refreshCycle()),
-    );
+    act(
+      `/api/tenders/${ref}/contract/payments`,
+      {
+        description: d.payDesc,
+        amount: Number(d.payAmount),
+        invoiceId: d.payInvoice,
+        milestoneId: d.payMilestone,
+        goodsReceiptId: d.payGrn,
+        withholding: d.payWithholding ? Number(d.payWithholding) : undefined,
+      },
+      "PAYMENT CERTIFICATION GATE RAISED",
+    ).then((ok) => ok && (setD((p) => ({ ...p, payDesc: "", payAmount: "" })), refreshCycle()));
 
   const ContractTab = cycle ? (
     cycle.contract ? (
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card title={`Contract — ${cycle.contract.supplier}`} sub={`${cycle.contract.currency ?? ""} ${fmtMoney(cycle.contract.value)}${cycle.contract.completedAt ? " · COMPLETED" : " · ACTIVE"}`} workflow busy={busy} actionLabel="Manage contract">
+        <Card
+          title={`Contract — ${cycle.contract.supplier}`}
+          sub={`${cycle.contract.currency ?? ""} ${fmtMoney(cycle.contract.value)} · ${cycle.contract.completedAt ? "COMPLETED" : cycle.contract.status ?? "LEGACY_UNEXECUTED"}`}
+          workflow
+          busy={busy}
+          actionLabel="Manage contract"
+        >
+          {(() => {
+            const liveComplaints = cycle.complaints.filter((c) => c.status === "OPEN" || c.status === "ESCALATED");
+            return liveComplaints.length ? (
+              <div className="mb-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-[11.5px] text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+                <span className="font-semibold uppercase tracking-[0.12em]">Contract and payment suspended</span> — {liveComplaints.length}{" "}
+                live complaint{liveComplaints.length === 1 ? "" : "s"}: {liveComplaints.map((c) => c.id).join(", ")}. Answer, independently review or close each one.
+              </div>
+            ) : null;
+          })()}
           <ul className="space-y-1.5 text-[12.5px] text-ink-600">
-            <li>Variation authority: below {10}% of contract value; at or above it, the accounting officer's gate.</li>
-            <li>Payments certify at a named gate before they leave the desk.</li>
+            <li>Status: <span className="font-semibold text-ink-900">{cycle.contract.status ?? "LEGACY_UNEXECUTED — cannot pay"}</span>{cycle.contract.executedAt ? ` · executed ${fmtDate(cycle.contract.executedAt)}` : ""}</li>
+            <li>Supplier acceptance: {cycle.contract.supplierAcceptedAt ? `${fmtDate(cycle.contract.supplierAcceptedAt)} · ${cycle.contract.supplierSignatory ?? "—"}` : <span className="font-semibold text-amber-700 dark:text-amber-300">not recorded</span>}</li>
+            <li>Performance security: {cycle.contract.performanceSecurity ? `${fmtMoney(cycle.contract.performanceSecurity.amount)} · valid to ${fmtDate(cycle.contract.performanceSecurity.validUntil)}` : <span className="font-semibold text-amber-700 dark:text-amber-300">none</span>}</li>
+            <li>Insurance: {cycle.contract.insurance ? `${cycle.contract.insurance.policyNo} · valid to ${fmtDate(cycle.contract.insurance.validUntil)}` : <span className="font-semibold text-amber-700 dark:text-amber-300">none</span>}</li>
+            <li>Retention: {cycle.contract.retentionPct ?? 0}% · warranty {cycle.contract.warrantyDays ?? 0} days · variation cap 25% cumulative.</li>
+            <li>Payments certify at a named gate, inside the contract value and the three-way match.</li>
           </ul>
-          {!cycle.contract.completedAt ? (
-            <div className="mt-3">
-              <Btn variant="ghost" onClick={() => act(`/api/tenders/${ref}/contract/complete`, { note: d.completeNote }, "COMPLETION GATE RAISED").then((ok) => ok && refreshCycle())} disabled={busy}>
-                <Check className="h-3.5 w-3.5" aria-hidden="true" /> Record final acceptance (gate)
+          {cycle.contract.status !== "EXECUTED" && cycle.contract.status !== "COMPLETED" && !cycle.contract.completedAt ? (
+            <div className="mt-3 space-y-2 rounded-xl border border-dashed border-ink-200 p-3">
+              <p className="font-code text-[8.5px] tracking-[0.14em] text-ink-400">EXECUTION — SUPPLIER ACCEPTANCE, BOND AND INSURANCE</p>
+              <div className="grid gap-1.5 sm:grid-cols-3">
+                <input className={inputCls} type="number" placeholder="Security amount" value={d.secAmount ?? ""} onChange={(e) => set("secAmount", e.target.value)} />
+                <input className={inputCls} placeholder="Security issuer" value={d.secIssuer ?? ""} onChange={(e) => set("secIssuer", e.target.value)} />
+                <input className={inputCls} type="date" value={d.secValid ?? ""} onChange={(e) => set("secValid", e.target.value)} />
+                <input className={inputCls} placeholder="Insurance policy no." value={d.insPolicy ?? ""} onChange={(e) => set("insPolicy", e.target.value)} />
+                <input className={inputCls} placeholder="Insurer" value={d.insIssuer ?? ""} onChange={(e) => set("insIssuer", e.target.value)} />
+                <input className={inputCls} type="date" value={d.insValid ?? ""} onChange={(e) => set("insValid", e.target.value)} />
+              </div>
+              <Btn variant="ghost" onClick={executeContract} disabled={busy || !d.secAmount || !d.secIssuer || !d.secValid || !d.insPolicy || !d.insIssuer || !d.insValid}>
+                <Stamp className="h-3.5 w-3.5" aria-hidden="true" /> Execute the contract (gate)
               </Btn>
             </div>
           ) : null}
+          {!cycle.contract.completedAt ? (
+            <div className="mt-3 space-y-1.5 rounded-xl border border-dashed border-ink-200 p-3">
+              <p className="font-code text-[8.5px] tracking-[0.14em] text-ink-400">COMPLETION — CERTIFICATE, DEFECTS PERIOD, RATING</p>
+              <div className="grid gap-1.5 sm:grid-cols-3">
+                <input className={inputCls} placeholder="Certificate no." value={d.completeCert ?? ""} onChange={(e) => set("completeCert", e.target.value)} />
+                <input className={inputCls} type="date" value={d.completeDefects ?? ""} onChange={(e) => set("completeDefects", e.target.value)} />
+                <input className={inputCls} type="number" min={1} max={5} placeholder="Rating 1–5" value={d.completeRating ?? ""} onChange={(e) => set("completeRating", e.target.value)} />
+              </div>
+              <Btn
+                variant="ghost"
+                onClick={() =>
+                  act(
+                    `/api/tenders/${ref}/contract/complete`,
+                    {
+                      certificateId: d.completeCert,
+                      defectsLiabilityEndsAt: d.completeDefects,
+                      performanceRating: Number(d.completeRating),
+                      note: d.completeNote,
+                    },
+                    "COMPLETION GATE RAISED",
+                  ).then((ok) => ok && refreshCycle())
+                }
+                disabled={busy || !d.completeCert || !d.completeDefects || !d.completeRating}
+              >
+                <Check className="h-3.5 w-3.5" aria-hidden="true" /> Record final acceptance (gate)
+              </Btn>
+            </div>
+          ) : (
+            <p className="mt-3 text-[11.5px] text-ink-500">
+              Completed {fmtDate(cycle.contract.completedAt)} · certificate {cycle.contract.completion?.certificateId ?? "—"} · rating {cycle.contract.completion?.performanceRating ?? "—"}/5
+            </p>
+          )}
         </Card>
 
         <Card title="Milestones" sub={`${cycle.contract.milestones.length} ON THE SCHEDULE`} workflow busy={busy} actionLabel="Manage milestones">
@@ -2762,7 +3990,12 @@ export function CycleView({
             {cycle.contract.variations.map((v) => (
               <li key={v.id} className="flex items-center justify-between gap-2 rounded-lg bg-paper px-2.5 py-2 text-[12.5px]">
                 <span className="min-w-0 truncate text-ink-800">
-                  {v.description} <span className="text-ink-400">· {v.pctOfContract}% · {v.valueDelta > 0 ? "+" : ""}{fmtMoney(v.valueDelta)}</span>
+                  {v.description}{" "}
+                  <span className="text-ink-400">
+                    · {v.pctOfContract}% · {v.valueDelta > 0 ? "+" : ""}
+                    {fmtMoney(v.valueDelta)}
+                    {v.cumulativePct !== undefined ? ` · cumulative ${v.cumulativePct}% / 25%` : ""}
+                  </span>
                 </span>
                 {v.status === "APPROVED" ? <Chip tone="ok">APPROVED</Chip> : v.status === "REJECTED" ? <Chip tone="muted">REJECTED</Chip> : <Chip tone="warn">AT GATE</Chip>}
               </li>
@@ -2778,34 +4011,119 @@ export function CycleView({
           </div>
         </Card>
 
-        <Card title="Payments" sub="CERTIFY BEFORE IT LEAVES THE DESK" workflow busy={busy} actionLabel="Manage payments">
+        <Card
+          title="Payments"
+          sub="THREE-WAY MATCH · RETENTION · CAP — CERTIFY BEFORE IT LEAVES THE DESK"
+          workflow
+          busy={busy}
+          actionLabel="Manage payments"
+        >
           <ul className="space-y-1.5">
             {cycle.contract.payments.map((p) => (
-              <li key={p.id} className="flex items-center justify-between gap-2 rounded-lg bg-paper px-2.5 py-2 text-[12.5px]">
-                <span className="min-w-0 truncate text-ink-800">
-                  {p.description} <span className="text-ink-400">· {fmtMoney(p.amount)}</span>
-                </span>
-                {p.certifiedAt ? <Chip tone="ok">CERTIFIED</Chip> : <Chip tone="warn">AT GATE</Chip>}
+              <li key={p.id} className="rounded-lg bg-paper px-2.5 py-2 text-[12.5px]">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="min-w-0 truncate text-ink-800">
+                    {p.description}{" "}
+                    <span className="text-ink-400">
+                      · gross {fmtMoney(p.gross ?? p.amount)}
+                      {p.retention ? ` · retention ${fmtMoney(p.retention)}` : ""}
+                      {p.net !== undefined ? ` · net ${fmtMoney(p.net)}` : ""}
+                    </span>
+                  </span>
+                  {p.status === "CERTIFIED" || p.certifiedAt ? <Chip tone="ok">CERTIFIED</Chip> : <Chip tone="warn">AT GATE</Chip>}
+                </div>
+                <p className="font-code text-[8px] tracking-[0.12em] text-ink-400">
+                  {p.invoiceId ? `INVOICE ${p.invoiceId} · ` : ""}
+                  {p.milestoneId ? `MILESTONE ${p.milestoneId} · ` : ""}
+                  {p.goodsReceiptId ? `GRN ${p.goodsReceiptId}` : ""}
+                </p>
               </li>
             ))}
             {cycle.contract.payments.length === 0 ? <li className="py-3 text-center text-[12px] text-ink-400">No payments raised.</li> : null}
           </ul>
-          <div className="mt-3 grid grid-cols-[2fr_1fr_auto] gap-1.5">
+          {cycle.contract.payments.length > 0 ? (
+            <p className="mt-2 font-code text-[8.5px] tracking-[0.12em] text-ink-400">
+              CUMULATIVE GROSS {fmtMoney(cycle.contract.payments.reduce((s, p) => s + (p.gross ?? p.amount), 0))} · NET{" "}
+              {fmtMoney(cycle.contract.payments.reduce((s, p) => s + (p.net ?? p.amount), 0))} · RETENTION{" "}
+              {fmtMoney(cycle.contract.payments.reduce((s, p) => s + (p.retention ?? 0), 0))} · CONTRACT {fmtMoney(cycle.contract.value)}
+            </p>
+          ) : null}
+          <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
             <input className={inputCls} placeholder="Payment description" value={d.payDesc ?? ""} onChange={(e) => set("payDesc", e.target.value)} />
-            <input className={inputCls} type="number" placeholder="Amount" value={d.payAmount ?? ""} onChange={(e) => set("payAmount", e.target.value)} />
-            <Btn variant="ghost" onClick={addPayment} disabled={busy || !d.payDesc || !d.payAmount}>
-              <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+            <input className={inputCls} type="number" placeholder="Gross amount" value={d.payAmount ?? ""} onChange={(e) => set("payAmount", e.target.value)} />
+            <input className={inputCls} placeholder="Invoice no." value={d.payInvoice ?? ""} onChange={(e) => set("payInvoice", e.target.value)} />
+            <select className={inputCls} value={d.payMilestone ?? ""} onChange={(e) => set("payMilestone", e.target.value)}>
+              <option value="">Accepted milestone…</option>
+              {cycle.contract.milestones.map((m) => (
+                <option key={m.id} value={m.id} disabled={m.status !== "DONE"}>
+                  {m.title}{m.status === "DONE" ? "" : " (not accepted)"}
+                </option>
+              ))}
+            </select>
+            <input className={inputCls} placeholder="Goods receipt (GRN)" value={d.payGrn ?? ""} onChange={(e) => set("payGrn", e.target.value)} />
+            <input className={inputCls} type="number" placeholder="Withholding" value={d.payWithholding ?? ""} onChange={(e) => set("payWithholding", e.target.value)} />
+            <Btn
+              variant="ghost"
+              onClick={addPayment}
+              disabled={busy || !d.payDesc || !d.payAmount || !d.payInvoice || !d.payMilestone || !d.payGrn}
+            >
+              <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Raise payment
             </Btn>
           </div>
         </Card>
       </div>
     ) : (
-      <Card title="Prepare the contract pack" sub="OPENS AFTER THE AWARD REPORT IS SIGNED AND THE STANDSTILL HAS LAPSED" workflow busy={busy} actionLabel="Prepare contract pack">
-        <Btn onClick={preparePack} disabled={busy || !ref || !cycle.awardReport?.signedAt}>
-          <FileSignature className="h-3.5 w-3.5" aria-hidden="true" /> Prepare the contract pack
-        </Btn>
-        {!cycle.awardReport?.signedAt ? <p className="mt-3 text-[11.5px] text-ink-400">The award report must be signed first.</p> : null}
-      </Card>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card title="Budget line" sub="AN AWARD COMMITS MONEY AGAINST A LINE — NO COMMITMENT, NO CONTRACT" workflow busy={busy} actionLabel="Manage budget">
+          <ul className="space-y-1.5">
+            {budgetLines.map((line) => (
+              <li
+                key={line.id}
+                className={cn(
+                  "rounded-lg border px-2.5 py-2 text-[12.5px]",
+                  d.budgetLine === line.id ? "border-brand-400 bg-brand-50/50 dark:bg-brand-950/30" : "border-ink-100 bg-paper",
+                )}
+              >
+                <button type="button" className="w-full text-left" onClick={() => set("budgetLine", line.id)}>
+                  <span className="font-semibold text-ink-900">{line.code}</span>{" "}
+                  <span className="text-ink-400">
+                    {line.fiscalYear} · {line.currency} {fmtMoney(line.approved)} approved · {fmtMoney(line.committed)} committed
+                  </span>
+                </button>
+              </li>
+            ))}
+            {budgetLines.length === 0 ? <li className="py-3 text-center text-[12px] text-ink-400">No budget line yet.</li> : null}
+          </ul>
+          <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
+            <input className={inputCls} placeholder="Code (e.g. CAP-2026)" value={d.budCode ?? ""} onChange={(e) => set("budCode", e.target.value)} />
+            <input className={inputCls} type="number" placeholder="Approved amount" value={d.budApproved ?? ""} onChange={(e) => set("budApproved", e.target.value)} />
+            <input className={inputCls} type="number" placeholder="Fiscal year" value={d.budYear ?? ""} onChange={(e) => set("budYear", e.target.value)} />
+            <input className={inputCls} placeholder="Currency" value={d.budCurrency ?? ""} onChange={(e) => set("budCurrency", e.target.value)} />
+            <Btn variant="ghost" onClick={createBudgetLine} disabled={busy || !d.budCode || !d.budApproved}>
+              <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Add budget line
+            </Btn>
+          </div>
+        </Card>
+
+        <Card title="Prepare the contract pack" sub="OPENS AFTER THE AWARD REPORT IS SIGNED AND THE STANDSTILL HAS LAPSED" workflow busy={busy} actionLabel="Prepare contract pack">
+          <div className="mb-3 grid gap-1.5 sm:grid-cols-2">
+            <select className={inputCls} value={d.budgetLine ?? budgetLines[0]?.id ?? ""} onChange={(e) => set("budgetLine", e.target.value)}>
+              <option value="">Select a budget line…</option>
+              {budgetLines.map((line) => (
+                <option key={line.id} value={line.id}>
+                  {line.code} — {line.currency} {fmtMoney(line.approved - line.committed)} free
+                </option>
+              ))}
+            </select>
+            <input className={inputCls} type="number" placeholder="Retention %" value={d.retentionPct ?? ""} onChange={(e) => set("retentionPct", e.target.value)} />
+          </div>
+          <Btn onClick={preparePack} disabled={busy || !ref || !cycle.awardReport?.signedAt || !budgetLines.length || !(d.budgetLine || budgetLines[0]?.id)}>
+            <FileSignature className="h-3.5 w-3.5" aria-hidden="true" /> Prepare the contract pack
+          </Btn>
+          {!cycle.awardReport?.signedAt ? <p className="mt-3 text-[11.5px] text-ink-400">The award report must be signed first.</p> : null}
+          {!budgetLines.length ? <p className="mt-3 text-[11.5px] text-amber-700 dark:text-amber-300">Create a budget line first — the award must commit money.</p> : null}
+        </Card>
+      </div>
     )
   ) : null;
 
@@ -2851,20 +4169,67 @@ export function CycleView({
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
                     {c.duringStandstill ? <Chip tone="brand">STANDSTILL</Chip> : null}
-                    {c.status === "ANSWERED" ? <Chip tone="ok">ANSWERED</Chip> : <Chip tone="warn">OPEN · 14 WD</Chip>}
+                    {c.status === "ANSWERED" ? (
+                      <Chip tone="ok">ANSWERED</Chip>
+                    ) : c.status === "CLOSED" ? (
+                      <Chip tone="muted">CLOSED</Chip>
+                    ) : c.status === "ESCALATED" ? (
+                      <Chip tone="warn">ESCALATED</Chip>
+                    ) : c.status === "WITHDRAWN" ? (
+                      <Chip tone="muted">WITHDRAWN</Chip>
+                    ) : (
+                      <Chip tone="warn">OPEN · 14 WD</Chip>
+                    )}
                   </div>
                 </div>
                 {c.status === "OPEN" ? (
-                  <div className="mt-2 flex gap-1.5">
-                    <input className={inputCls} placeholder="Response draft" value={d[`cresp-${c.id}`] ?? ""} onChange={(e) => set(`cresp-${c.id}`, e.target.value)} />
+                  <div className="mt-2 space-y-1.5">
+                    <div className="flex gap-1.5">
+                      <input className={inputCls} placeholder="Response draft" value={d[`cresp-${c.id}`] ?? ""} onChange={(e) => set(`cresp-${c.id}`, e.target.value)} />
+                      <Btn
+                        variant="ghost"
+                        onClick={() =>
+                          act(`/api/tenders/${ref}/complaints/${c.id}/respond`, { response: d[`cresp-${c.id}`] }, "RESPONSE GATE RAISED").then((ok) => ok && refreshCycle())
+                        }
+                        disabled={busy || !d[`cresp-${c.id}`]}
+                      >
+                        Respond (gate)
+                      </Btn>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <input className={inputCls} placeholder="Escalation reason (independent review)" value={d[`cesc-${c.id}`] ?? ""} onChange={(e) => set(`cesc-${c.id}`, e.target.value)} />
+                      <Btn
+                        variant="ghost"
+                        onClick={() =>
+                          act(`/api/tenders/${ref}/complaints/${c.id}/escalate`, { reason: d[`cesc-${c.id}`] }, "COMPLAINT ESCALATED — CONTRACT STAYS SUSPENDED").then((ok) => ok && refreshCycle())
+                        }
+                        disabled={busy || !d[`cesc-${c.id}`]}
+                      >
+                        Escalate
+                      </Btn>
+                    </div>
+                  </div>
+                ) : null}
+                {c.status === "ANSWERED" || c.status === "ESCALATED" ? (
+                  <div className="mt-2 space-y-1.5 rounded-lg border border-dashed border-ink-200 p-2">
+                    <p className="font-code text-[8px] tracking-[0.12em] text-ink-400">CLOSE AFTER REVIEW — THE CONTRACT STAYS SUSPENDED UNTIL CLOSED</p>
+                    <div className="grid gap-1.5 sm:grid-cols-3">
+                      <input className={inputCls} placeholder="Outcome" value={d[`cout-${c.id}`] ?? ""} onChange={(e) => set(`cout-${c.id}`, e.target.value)} />
+                      <input className={inputCls} placeholder="Review reason" value={d[`cnote-${c.id}`] ?? ""} onChange={(e) => set(`cnote-${c.id}`, e.target.value)} />
+                      <input className={inputCls} placeholder="Reviewing officer" value={d[`crev-${c.id}`] ?? ""} onChange={(e) => set(`crev-${c.id}`, e.target.value)} />
+                    </div>
                     <Btn
                       variant="ghost"
                       onClick={() =>
-                        act(`/api/tenders/${ref}/complaints/${c.id}/respond`, { response: d[`cresp-${c.id}`] }, "RESPONSE GATE RAISED").then((ok) => ok && refreshCycle())
+                        act(
+                          `/api/tenders/${ref}/complaints/${c.id}/close`,
+                          { outcome: d[`cout-${c.id}`], note: d[`cnote-${c.id}`], reviewer: d[`crev-${c.id}`] },
+                          "COMPLAINT CLOSED — INDEPENDENT REVIEW RECORDED",
+                        ).then((ok) => ok && refreshCycle())
                       }
-                      disabled={busy || !d[`cresp-${c.id}`]}
+                      disabled={busy || !d[`cout-${c.id}`] || !d[`cnote-${c.id}`] || !d[`crev-${c.id}`]}
                     >
-                      Respond (gate)
+                      Close complaint
                     </Btn>
                   </div>
                 ) : null}

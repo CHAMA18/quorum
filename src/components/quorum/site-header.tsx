@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUpRight, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
+import { ArrowUpRight, ChevronDown, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
 import { QuorumLogo } from "@/components/quorum/logo";
 import { MasterSwitcher } from "@/components/quorum/master-switcher";
 import type { AuthUser } from "@/lib/auth-types";
@@ -81,6 +81,25 @@ export function SiteHeader({
   const [hovered, setHovered] = useState<string | null>(null);
   const activeSection = useSectionSpy(NAV.map((n) => n.href));
   const lit = hovered ?? activeSection;
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
+
+  // Account menu closes on outside click or Escape, the usual dropdown behaviour.
+  useEffect(() => {
+    if (!accountOpen) return;
+    const onPointer = (e: MouseEvent) => {
+      if (!accountRef.current?.contains(e.target as Node)) setAccountOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setAccountOpen(false);
+    };
+    document.addEventListener("mousedown", onPointer);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [accountOpen]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -175,43 +194,65 @@ export function SiteHeader({
             <div className="h-10 w-[196px] animate-pulse rounded-full bg-ink-100/70" aria-hidden="true" />
           ) : user ? (
             <>
-              <span className="flex h-10 items-center gap-2.5 rounded-full border border-ink-200/80 bg-white py-1 pl-1 pr-3.5 dark:border-white/10 dark:bg-white/[0.04]">
-                <span
-                  className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ink-950 font-code text-[10px] font-bold text-white ring-2 ring-brand-500/25"
-                  aria-hidden="true"
+              <div ref={accountRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setAccountOpen((v) => !v)}
+                  aria-haspopup="menu"
+                  aria-expanded={accountOpen}
+                  aria-label={`Account menu for ${user.name}`}
+                  className="focus-brand flex h-10 items-center gap-2 rounded-full border border-ink-200/80 bg-white py-1 pl-1 pr-2.5 transition-colors hover:border-ink-300 dark:border-white/10 dark:bg-white/[0.04]"
                 >
-                  {initialsOf(user.name)}
-                </span>
-                <span className="min-w-0 leading-none">
-                  <span className="block max-w-[150px] truncate text-[13px] font-semibold text-ink-900">
-                    {user.name}
+                  <span
+                    className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ink-950 font-code text-[10px] font-bold text-white ring-2 ring-brand-500/25"
+                    aria-hidden="true"
+                  >
+                    {initialsOf(user.name)}
                   </span>
-                  <span className="mt-1 block max-w-[150px] truncate type-micro text-ink-400">
-                    {user.organization ?? "Officer desk"}
-                  </span>
-                </span>
-              </span>
-              <button
-                type="button"
-                onClick={onDashboard}
-                className="focus-brand group inline-flex h-10 items-center gap-2 rounded-full bg-ink-950 pl-4 pr-3 text-[13px] font-semibold text-white shadow-[0_10px_28px_-14px_rgba(11,12,15,0.8)] transition-colors hover:bg-brand-600"
-              >
-                <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
-                Workspace
-                <ArrowUpRight
-                  className="h-3.5 w-3.5 opacity-70 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-                  aria-hidden="true"
-                />
-              </button>
-              <button
-                type="button"
-                onClick={onSignOut}
-                aria-label={`Sign out ${user.name}`}
-                title="Sign out"
-                className="focus-brand inline-flex h-10 w-10 items-center justify-center rounded-full border border-ink-200/80 bg-white text-ink-600 transition-colors hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-brand-500/10"
-              >
-                <LogOut className="h-4 w-4" aria-hidden="true" />
-              </button>
+                  <ChevronDown
+                    className={cn("h-3.5 w-3.5 text-ink-500 transition-transform duration-200", accountOpen && "rotate-180")}
+                    aria-hidden="true"
+                  />
+                </button>
+                {accountOpen && (
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-[calc(100%+8px)] w-64 overflow-hidden rounded-xl border border-ink-200/80 bg-white p-1.5 shadow-[0_20px_50px_-20px_rgba(11,12,15,0.45)] dark:border-white/10 dark:bg-night"
+                  >
+                    <div className="px-3 pb-2.5 pt-2">
+                      <span className="block truncate text-[13.5px] font-semibold text-ink-900">{user.name}</span>
+                      <span className="mt-0.5 block truncate type-micro text-ink-400">
+                        {user.organization ?? "Officer desk"}
+                      </span>
+                    </div>
+                    <div className="my-1 h-px bg-ink-100 dark:bg-white/10" aria-hidden="true" />
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setAccountOpen(false);
+                        onDashboard();
+                      }}
+                      className="focus-brand flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[13.5px] font-medium text-ink-800 transition-colors hover:bg-ink-50 dark:text-ink-200 dark:hover:bg-white/[0.06]"
+                    >
+                      <LayoutDashboard className="h-4 w-4 text-ink-500" aria-hidden="true" />
+                      Workspace
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setAccountOpen(false);
+                        onSignOut();
+                      }}
+                      className="focus-brand flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[13.5px] font-medium text-ink-800 transition-colors hover:bg-ink-50 dark:text-ink-200 dark:hover:bg-white/[0.06]"
+                    >
+                      <LogOut className="h-4 w-4 text-ink-500" aria-hidden="true" />
+                      Sign out
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           ) : (
             <>

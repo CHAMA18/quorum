@@ -25,11 +25,40 @@ export type Application = {
   id: string;
   tenderId: string;
   orgName: string;
-  amount: number;
+  /* A sealed filing carries no price until the certified opening reveals it. */
+  amount?: number;
   currency?: string;
   coverNote?: string;
+  sealed?: boolean;
+  receiptId?: string;
+  version?: number;
   receivedAt: string;
   status: string;
+};
+
+/** The contract as the portal reads it: the signed instrument plus its acceptance. */
+export type OrgContract = {
+  tenderRef: string;
+  contract: {
+    tenderId: string;
+    supplier: string;
+    value: number;
+    currency?: string;
+    status?: "DRAFT" | "EXECUTED" | "COMPLETED";
+    openedAt: string;
+    executedAt?: string;
+    supplierAcceptedAt?: string;
+    supplierSignatory?: string;
+    acceptanceHash?: string;
+    retentionPct?: number;
+    warrantyDays?: number;
+    conditions?: { id: string; text: string }[];
+    performanceSecurity?: { amount: number; issuer: string; validUntil: string; documentId?: string };
+    insurance?: { policyNo: string; issuer: string; validUntil: string; cover?: string };
+    milestones?: { id: string; title: string; dueDate?: string; status: string }[];
+    completedAt?: string;
+  };
+  acceptance: { acceptedAt: string | null; signatory: string | null; acceptanceHash: string | null } | null;
 };
 
 export function money(amount: number, currency?: string): string {
@@ -91,6 +120,8 @@ export function statusMeta(status: string): { label: string; tone: StatusTone; n
       return { label: "Received", tone: "progress", note: "Sitting with the desk" };
     case "WITHDRAWN":
       return { label: "Withdrawn", tone: "muted", note: "Pulled from the record" };
+    case "AMENDED":
+      return { label: "Amended", tone: "muted", note: "Replaced by a later version" };
     default:
       return { label: status, tone: "muted", note: "" };
   }

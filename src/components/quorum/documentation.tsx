@@ -34,6 +34,13 @@ type DocChapter = {
   blocks: DocBlock[];
 };
 
+type RuleCatalogueRow = {
+  id: string;
+  severity: string;
+  catches: string;
+  action: string;
+};
+
 const DOC_CHAPTERS: DocChapter[] = [
   {
     id: "start",
@@ -222,7 +229,7 @@ const DOC_CHAPTERS: DocChapter[] = [
           ["R-SUPPLIER-ID", "HIGH", "A supplier identifier that breaks its own national scheme — or a line that states none at all.", "Verify the identifier against the registry before relying on the bid."],
           ["R-BUYER-MISSING", "MEDIUM", "A tender notice that never names the buyer.", "Trace the buyer to the record; a notice nobody owns is a governance gap."],
           ["R-AWARD-OVER-BUDGET", "HIGH", "An OCDS award value above the published tender value.", "Review the justification before any award moves."],
-          ["R-PRICE-OUTLIER", "HIGH", "A unit price two times or more against the peer median on the same line item.", "Check the arithmetic and the specification; outliers concentrate abuse."],
+          ["R-PRICE-OUTLIER", "HIGH", "A unit price above the live variance guard against the peer median (25% by default; the live table reads the current guard).", "Check the arithmetic and the specification; outliers concentrate abuse."],
           ["R-SPEC-DEVIATION", "HIGH", "Bid lines offering alternatives, requesting deviations or stating non-compliance.", "Weigh the deviation against the specification before scoring."],
           ["R-VALUE-OUTLIER", "HIGH", "A bid value more than twice the median of its peers.", "Confirm the scope is comparable before treating the bid as competitive."],
           ["R-OVER-BUDGET", "HIGH", "A bid value above the budget ceiling parsed from the notice — including currency mismatches.", "A bid above the ceiling cannot be awarded without a lawful revision of the budget."],
@@ -632,6 +639,24 @@ const DOC_CHAPTERS: DocChapter[] = [
   },
 ];
 
+/* The rule register is rendered from the sidecar's live catalogue; the static
+   rows are only the offline fallback. */
+function chaptersWithLiveRules(rules: RuleCatalogueRow[] | null): DocChapter[] {
+  if (!rules?.length) return DOC_CHAPTERS;
+  return DOC_CHAPTERS.map((chapter) => ({
+    ...chapter,
+    blocks: chapter.blocks.map((block) =>
+      block.kind === "table" && block.title === "The rule register"
+        ? {
+            ...block,
+            title: "The rule register — live thresholds",
+            rows: rules.map((rule) => [rule.id, rule.severity, rule.catches, rule.action]),
+          }
+        : block,
+    ),
+  }));
+}
+
 const DOC_CHAPTER_IDS = DOC_CHAPTERS.map((c) => c.id);
 
 function docChapterText(ch: DocChapter): string {
@@ -960,6 +985,22 @@ export function DocumentationView() {
   /* The enlarged shot — set by a figure, cleared by Escape or a click away. */
   const [shot, setShot] = useState<DocFigure | null>(null);
   const shotCloseRef = useRef<HTMLButtonElement | null>(null);
+  /* The rule register is server truth. If the sidecar is unreachable the
+     static rows remain, clearly labelled as defaults. */
+  const [liveRules, setLiveRules] = useState<RuleCatalogueRow[] | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/rule-catalogue?XTransformPort=3031")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { rules?: RuleCatalogueRow[] } | null) => {
+        if (alive && Array.isArray(data?.rules) && data.rules.length) setLiveRules(data.rules);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   /* Focus moves into the lightbox; Escape hands the desk back — and the
      reader's focus returns to the figure that opened it. */
@@ -992,10 +1033,11 @@ export function DocumentationView() {
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
   };
 
+  const chapters = useMemo(() => chaptersWithLiveRules(liveRules), [liveRules]);
   const q = query.trim().toLowerCase();
   const visible = useMemo(
-    () => (q ? DOC_CHAPTERS.filter((ch) => docChapterText(ch).includes(q)) : DOC_CHAPTERS),
-    [q],
+    () => (q ? chapters.filter((ch) => docChapterText(ch).includes(q)) : chapters),
+    [q, chapters],
   );
 
   /* Scroll-spy: keep the chapter rail honest while the officer reads. */
@@ -1039,7 +1081,7 @@ export function DocumentationView() {
         <div className="min-w-0">
           <p className="flex items-center gap-2.5 font-code text-[10px] font-semibold uppercase tracking-[0.3em] text-ink-500">
             <span className="inline-block h-[2px] w-6 bg-brand-600" aria-hidden="true" />
-            {DOC_CHAPTERS.length} CHAPTERS · THE COMPLETE HANDBOOK
+            {chapters.length} CHAPTERS · THE COMPLETE HANDBOOK
           </p>
           <h1 className="type-display mt-5 text-[30px] text-ink-950 sm:text-[38px]">
             Documentation<span className="text-brand-600">.</span>
@@ -1070,12 +1112,12 @@ export function DocumentationView() {
             </label>
             {q && (
               <p className="mt-2 px-1 font-code text-[8px] tracking-[0.18em] text-ink-400">
-                {visible.length} OF {DOC_CHAPTERS.length} CHAPTERS MATCH
+                {visible.length} OF {chapters.length} CHAPTERS MATCH
               </p>
             )}
             <ul className="mt-3 max-h-[62vh] space-y-0.5 overflow-y-auto pr-1 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-ink-200 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1">
-              {(q ? visible : DOC_CHAPTERS).map((ch) => {
-                const idx = DOC_CHAPTERS.indexOf(ch);
+              {(q ? visible : chapters).map((ch) => {
+                const idx = chapters.indexOf(ch);
                 const isActive = !q && activeId === ch.id;
                 return (
                   <li key={ch.id}>
@@ -1110,14 +1152,14 @@ export function DocumentationView() {
           </div>
 
           <p className="mt-3 px-2 font-code text-[7.5px] leading-[2] tracking-[0.16em] text-ink-400">
-            {DOC_CHAPTERS.length} CHAPTERS · WRITTEN AGAINST THE ENGINE IT DOCUMENTS
+            {chapters.length} CHAPTERS · WRITTEN AGAINST THE ENGINE IT DOCUMENTS
           </p>
         </nav>
 
         {/* The chapters */}
         <div data-tour="docs-chapters" className="min-w-0 space-y-5">
-          {(q ? visible : DOC_CHAPTERS).map((ch) => {
-            const no = String(DOC_CHAPTERS.indexOf(ch) + 1).padStart(2, "0");
+          {(q ? visible : chapters).map((ch) => {
+            const no = String(chapters.indexOf(ch) + 1).padStart(2, "0");
             return (
               <article
                 key={ch.id}

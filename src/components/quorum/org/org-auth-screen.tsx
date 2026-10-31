@@ -723,6 +723,16 @@ function SignIn({ onDone }: { onDone: () => void }) {
   const [capsOn, setCapsOn] = useState(false); // Caps Lock warning on the passphrase
   const [busy, setBusy] = useState(false);
 
+  /* A suspended account cannot sign in, so the appeal is filed from this
+     screen — public, rate-limited, matched by email AND registration. */
+  const [suspended, setSuspended] = useState(false);
+  const [appealOpen, setAppealOpen] = useState(false);
+  const [appealReg, setAppealReg] = useState("");
+  const [appealReason, setAppealReason] = useState("");
+  const [appealBusy, setAppealBusy] = useState(false);
+  const [appealError, setAppealError] = useState<string | null>(null);
+  const [appealRef, setAppealRef] = useState<string | null>(null);
+
   /* ── the reset flow's own state ── */
   const [flow, setFlow] = useState<ResetFlow>("signin");
   const [resetEmail, setResetEmail] = useState("");
@@ -799,13 +809,43 @@ function SignIn({ onDone }: { onDone: () => void }) {
       if (!res.ok) {
         setError(j.error ?? "Sign-in failed — try again.");
         setWrongPass(res.status === 401);
+        setSuspended(res.status === 403);
         return;
       }
+      setSuspended(false);
       onDone();
     } catch {
       setError("The portal is unreachable — try again shortly.");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const fileAppeal = async () => {
+    if (appealBusy || appealReason.trim().length < 20) return;
+    setAppealBusy(true);
+    setAppealError(null);
+    try {
+      const res = await fetch("/api/org/appeal", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, registrationNo: appealReg, reason: appealReason }),
+      });
+      const j = (await res.json().catch(() => ({}))) as {
+        appeal?: { reference?: string };
+        error?: string;
+        errors?: Record<string, string>;
+      };
+      if (!res.ok || !j.appeal?.reference) {
+        setAppealError(j.error ?? "The appeal could not be filed — check the details and try again.");
+        return;
+      }
+      setAppealRef(j.appeal.reference);
+      setAppealOpen(false);
+    } catch {
+      setAppealError("The portal is unreachable — try again shortly.");
+    } finally {
+      setAppealBusy(false);
     }
   };
 
@@ -945,6 +985,74 @@ function SignIn({ onDone }: { onDone: () => void }) {
                 </>
               ) : null}
             </ErrorNote>
+          ) : null}
+
+          {suspended ? (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-3 text-[12.5px] leading-relaxed text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-200">
+              {appealRef ? (
+                <p>
+                  Appeal <strong className="font-code tracking-[0.12em]">{appealRef}</strong> is on the governance log. The
+                  procurement desk will review it and reinstate the account if the suspension is lifted.
+                </p>
+              ) : !appealOpen ? (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p>A suspension blocks the portal. You can ask the desk to review it.</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAppealOpen(true);
+                      setAppealError(null);
+                    }}
+                    className="shrink-0 rounded-lg border border-amber-300 bg-white px-3 py-1.5 font-code text-[8px] font-bold tracking-[0.14em] text-amber-900 transition-colors hover:bg-amber-100 dark:border-amber-700 dark:bg-transparent dark:text-amber-200"
+                  >
+                    APPEAL THIS SUSPENSION
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  <p className="font-code text-[8px] font-bold tracking-[0.16em]">SUSPENSION APPEAL — PUBLIC FORM</p>
+                  <Field label="Registration number">
+                    <input
+                      className={cn(inputCls, "h-9 text-[13px]")}
+                      autoComplete="off"
+                      placeholder="The legal registration number on the account"
+                      value={appealReg}
+                      onChange={(e) => setAppealReg(e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Grounds for the appeal (at least 20 characters)">
+                    <textarea
+                      rows={3}
+                      maxLength={1200}
+                      className={cn(inputCls, "h-auto resize-y py-2 text-[13px]")}
+                      placeholder="e.g. the tax clearance was renewed on 12 October; the certificate is attached to the profile."
+                      value={appealReason}
+                      onChange={(e) => setAppealReason(e.target.value)}
+                    />
+                  </Field>
+                  {appealError ? <p className="text-[12px] font-medium">{appealError}</p> : null}
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void fileAppeal()}
+                      disabled={appealBusy || appealReg.trim().length < 3 || appealReason.trim().length < 20}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-amber-900 px-3 font-code text-[8px] font-bold tracking-[0.14em] text-white transition-colors hover:bg-amber-950 disabled:opacity-50"
+                    >
+                      {appealBusy ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <CircleAlert className="h-3 w-3" aria-hidden="true" />}
+                      FILE THE APPEAL
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAppealOpen(false)}
+                      disabled={appealBusy}
+                      className="h-8 rounded-lg border border-amber-300 px-3 font-code text-[8px] font-bold tracking-[0.14em] text-amber-900 transition-colors hover:bg-amber-100 disabled:opacity-50 dark:border-amber-700 dark:text-amber-200"
+                    >
+                      CANCEL
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           ) : null}
           <button
             type="submit"

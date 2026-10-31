@@ -4,10 +4,16 @@ import type { Run } from "./store";
  * Model attribution — one vocabulary for the demo, the API and the report.
  *
  * The drafting path is deliberately provider-agnostic: any OpenAI-compatible
- * endpoint works. In the live demo it is Llama 3.2 through Ollama on
- * localhost; the same code can point at Meta's Model API. Attribution is not
- * inferred from the env value alone — every draft records the `model` string
- * the endpoint actually returned, and the report prints it.
+ * endpoint works. The hackathon build leads with **Muse Spark 1.3** through
+ * Meta Model API, and keeps **Llama 3.2** through Ollama as the in-region
+ * fallback. Attribution is not inferred from the env value alone — every draft
+ * records the `model` string the endpoint actually returned, and the report
+ * prints it.
+ *
+ * The two paths are not equivalent on data handling: the hosted path sends
+ * redacted evidence (supplier names and amounts replaced) through the model
+ * gateway, while the in-region path can see the full pack. The report says
+ * which path answered and how many spans were redacted.
  */
 
 export type ModelProvider = "ollama" | "meta-model-api" | "openai-compatible";
@@ -30,6 +36,14 @@ export interface ModelStatus {
   providerLabel: string;
   endpoint: string | null;
   configuredBy: LlmConfig["configuredBy"] | null;
+  /* The in-region fallback, when one is configured. The UI shows it beside
+     the primary so a judge can see the whole chain, not just the winner. */
+  fallback: {
+    model: string;
+    provider: ModelProvider;
+    providerLabel: string;
+    endpoint: string;
+  } | null;
 }
 
 export interface ModelCall {
@@ -50,11 +64,14 @@ export interface RunModelAttribution {
   models: string[];
   promptTokens: number;
   completionTokens: number;
+  /* Supplier names and currency amounts replaced before a hosted call. Zero
+     is meaningful: the in-region path sent the evidence unchanged. */
+  redactions: number;
 }
 
 export function providerLabel(provider: ModelProviderOrTemplate): string {
   if (provider === "ollama") return "Ollama · local";
-  if (provider === "meta-model-api") return "Meta Model API";
+  if (provider === "meta-model-api") return "Meta Model API · hosted";
   if (provider === "openai-compatible") return "OpenAI-compatible endpoint";
   return "Template fallback";
 }
@@ -135,8 +152,53 @@ export function llmConfigFromEnv(env: Record<string, string | undefined> = proce
   };
 }
 
+/**
+ * The in-region fallback, when configured. Kept separate from the primary so
+ * a hosted primary can fail over to Llama on the desk instead of dropping to
+ * the template. A half-configured fallback is ignored rather than guessed.
+ */
+export function fallbackConfigFromEnv(env: Record<string, string | undefined> = process.env): LlmConfig | null {
+  const baseUrl = env.LLM_FALLBACK_BASE_URL?.trim();
+  const model = env.LLM_FALLBACK_MODEL?.trim();
+  if (!baseUrl || !model) return null;
+  const apiKey = env.LLM_FALLBACK_API_KEY?.trim() || undefined;
+  return {
+    baseUrl,
+    model,
+    apiKey,
+    provider: modelProvider(baseUrl, model),
+    configuredBy: "llm-env",
+  };
+}
+
+/**
+ * The drafting chain, in order: the configured primary (Muse Spark by
+ * default in the hackathon build) and then the in-region Llama fallback.
+ * Duplicate endpoints are collapsed so a single-endpoint deployment does not
+ * pay for the same call twice.
+ */
+export function llmConfigChainFromEnv(env: Record<string, string | undefined> = process.env): LlmConfig[] {
+  const chain: LlmConfig[] = [];
+  const primary = llmConfigFromEnv(env);
+  if (primary) chain.push(primary);
+  const fallback = fallbackConfigFromEnv(env);
+  if (fallback && !chain.some((c) => c.baseUrl === fallback.baseUrl && c.model === fallback.model)) {
+    chain.push(fallback);
+  }
+  return chain;
+}
+
 export function modelStatus(env: Record<string, string | undefined> = process.env): ModelStatus {
   const cfg = llmConfigFromEnv(env);
+  const fallback = fallbackConfigFromEnv(env);
+  const fallbackStatus = fallback
+    ? {
+        model: fallback.model,
+        provider: fallback.provider,
+        providerLabel: providerLabel(fallback.provider),
+        endpoint: modelEndpoint(fallback.baseUrl),
+      }
+    : null;
   if (!cfg) {
     return {
       configured: false,
@@ -146,6 +208,7 @@ export function modelStatus(env: Record<string, string | undefined> = process.en
       providerLabel: providerLabel("template"),
       endpoint: null,
       configuredBy: null,
+      fallback: fallbackStatus,
     };
   }
   return {
@@ -156,6 +219,7 @@ export function modelStatus(env: Record<string, string | undefined> = process.en
     providerLabel: providerLabel(cfg.provider),
     endpoint: modelEndpoint(cfg.baseUrl),
     configuredBy: cfg.configuredBy,
+    fallback: fallbackStatus,
   };
 }
 
@@ -183,6 +247,7 @@ export function modelAttributionForRun(
 
   let draftLlm = 0;
   let draftTemplate = 0;
+  let redactions = 0;
   for (const draft of drafts) {
     const isLlm = draft.source === "llm" || /\(llm\)/i.test(draft.model ?? "");
     const model = actualModel(draft.model);
@@ -192,6 +257,7 @@ export function modelAttributionForRun(
     } else {
       draftTemplate += 1;
     }
+    if (typeof draft.redactions === "number" && draft.redactions > 0) redactions += draft.redactions;
   }
 
   const promptTokens = run.usage?.promptTokens ?? 0;
@@ -213,5 +279,6 @@ export function modelAttributionForRun(
     models: [...models],
     promptTokens,
     completionTokens,
+    redactions,
   };
 }

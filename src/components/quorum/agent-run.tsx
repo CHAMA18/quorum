@@ -40,7 +40,15 @@ interface ModelStatus {
   model?: string | null;
   providerLabel?: string;
   endpoint?: string | null;
-  lastCall?: { tool?: string; model?: string; source?: string | null; at?: string } | null;
+  residency?: string;
+  fallback?: { model?: string; providerLabel?: string; endpoint?: string } | null;
+  lastCall?: {
+    tool?: string;
+    model?: string;
+    source?: string | null;
+    at?: string;
+    redactions?: number;
+  } | null;
 }
 
 type RowKind = "read" | "write" | "gate";
@@ -202,13 +210,15 @@ export function AgentRun() {
       : lastCall?.source === "llm" && lastCall.model
         ? lastCall.model
         : null;
+  const fallback = modelStatus?.fallback;
   const modelLabel = answeredModel ?? modelStatus?.model ?? (modelStatus ? "template fallback" : "…");
+  const redactions = lastCall?.redactions ?? 0;
   const modelDetail = answeredModel
-    ? `Answered by ${modelStatus?.providerLabel ?? "the configured endpoint"}${modelCall?.tool ? ` · ${modelCall.tool}` : lastCall?.tool ? ` · ${lastCall.tool}` : ""}`
+    ? `Answered by ${modelStatus?.providerLabel ?? "the configured endpoint"}${modelCall?.tool ? ` · ${modelCall.tool}` : lastCall?.tool ? ` · ${lastCall.tool}` : ""}${redactions > 0 ? ` · ${redactions} span(s) redacted` : ""}`
     : !modelStatus
       ? "Reading the configured drafting endpoint…"
       : modelStatus.configured
-        ? `${modelStatus.providerLabel ?? "model"} is configured; no model-attributed call in the last 14 log rows`
+        ? `${modelStatus.providerLabel ?? "model"} is configured${fallback?.model ? ` with ${fallback.model} in-region fallback` : ""} · residency ${modelStatus.residency ?? "IN_REGION"}; no model-attributed call in the last 14 log rows`
         : "No model configured — deterministic template drafting";
   const runId = rows.find((e) => e.runId)?.runId;
   const runTag = runId ? `RUN ${runId.replace(/^[^_]*_/, "").toUpperCase()}` : "RUN LIVE";

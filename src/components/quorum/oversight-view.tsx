@@ -101,6 +101,31 @@ type OrgPayload = {
   actorRole: WorkspaceRole;
 };
 
+type AppealRow = {
+  id: string;
+  reference: string;
+  orgId: string;
+  reason: string;
+  status: "OPEN" | "UPHELD" | "REINSTATED";
+  reviewer: string | null;
+  reviewNote: string | null;
+  createdAt: string;
+  decidedAt: string | null;
+  organization: {
+    id: string;
+    name: string;
+    email: string;
+    registrationNo: string;
+    status: "ACTIVE" | "SUSPENDED";
+  } | null;
+};
+
+type AppealPayload = {
+  appeals: AppealRow[];
+  canDecide: boolean;
+  actorRole: WorkspaceRole;
+};
+
 const ROLE_TONE: Record<WorkspaceRole, string> = {
   OWNER: "border-brand-300 bg-brand-50 text-brand-800 dark:border-brand-500/40 dark:bg-brand-500/10 dark:text-brand-300",
   ADMIN: "border-ink-300 bg-ink-50 text-ink-800 dark:border-white/15 dark:bg-white/[0.06] dark:text-ink-200",
@@ -116,6 +141,9 @@ const ACTION_LABEL: Record<string, string> = {
   SESSIONS_REVOKED: "Sessions revoked",
   ORG_SUSPENDED: "Organization suspended",
   ORG_REACTIVATED: "Organization reinstated",
+  ORG_APPEAL_FILED: "Suspension appeal filed",
+  ORG_APPEAL_UPHELD: "Suspension upheld on appeal",
+  ORG_REINSTATED_ON_APPEAL: "Reinstated on appeal",
   INVITE_REVOKED: "Invite revoked",
 };
 
@@ -166,6 +194,8 @@ export function OversightView({
 }) {
   const [team, setTeam] = useState<TeamPayload | null>(null);
   const [orgs, setOrgs] = useState<OrgPayload | null>(null);
+  const [appeals, setAppeals] = useState<AppealRow[]>([]);
+  const [appealDrafts, setAppealDrafts] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -179,19 +209,27 @@ export function OversightView({
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [teamRes, orgRes] = await Promise.all([
+      const [teamRes, orgRes, appealRes] = await Promise.all([
         fetch("/api/team", { cache: "no-store" }),
         fetch("/api/oversight", { cache: "no-store" }),
+        fetch("/api/oversight/appeals", { cache: "no-store" }).catch(() => null),
       ]);
       if (teamRes.status === 403 || orgRes.status === 403) {
         setLoadError("Your workspace role does not open the oversight console.");
         setTeam(null);
         setOrgs(null);
+        setAppeals([]);
         return;
       }
       if (!teamRes.ok || !orgRes.ok) throw new Error("failed");
       setTeam((await teamRes.json()) as TeamPayload);
       setOrgs((await orgRes.json()) as OrgPayload);
+      if (appealRes?.ok) {
+        const payload = (await appealRes.json()) as AppealPayload;
+        setAppeals(payload.appeals ?? []);
+      } else {
+        setAppeals([]);
+      }
       setLoadError(null);
     } catch {
       setLoadError("The governance console is unreachable right now. Try again.");
@@ -393,6 +431,40 @@ export function OversightView({
       );
       setSuspendTarget(null);
       setSuspendReason("");
+      await load();
+    } catch (err) {
+      onToast((err as Error).message.toUpperCase());
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const decideAppeal = async (appeal: AppealRow, decision: "UPHELD" | "REINSTATED") => {
+    if (!canManageOrgs || busy) return;
+    const note = (appealDrafts[appeal.id] ?? "").trim();
+    if (note.length < 4) {
+      onToast("RECORD THE REASON FOR THE DECISION — IT GOES ON THE GOVERNANCE LOG");
+      return;
+    }
+    setBusy(`appeal:${appeal.id}`);
+    try {
+      const res = await fetch(`/api/oversight/appeals/${encodeURIComponent(appeal.id)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision, note }),
+      });
+      const data = (await res.json()) as { error?: string; revokedSessions?: number };
+      if (!res.ok) throw new Error(data.error ?? "Appeal decision failed.");
+      onToast(
+        decision === "REINSTATED"
+          ? `${appeal.organization?.name.toUpperCase() ?? "ORGANIZATION"} REINSTATED ON APPEAL`
+          : `${appeal.reference} UPHELD — THE SUSPENSION STANDS`,
+      );
+      setAppealDrafts((prev) => {
+        const next = { ...prev };
+        delete next[appeal.id];
+        return next;
+      });
       await load();
     } catch (err) {
       onToast((err as Error).message.toUpperCase());
@@ -776,6 +848,95 @@ export function OversightView({
                         )}
                       </li>
                     ))}
+                  </ul>
+                )}
+              </section>
+
+              <section className={card} aria-labelledby="oversight-appeals">
+                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-ink-100 px-5 py-4">
+                  <div>
+                    <p className={label}>SUPPLIER SIDE</p>
+                    <h2 id="oversight-appeals" className="mt-1 font-display text-[16px] font-black tracking-[-0.01em] text-ink-950">
+                      Suspension appeals
+                    </h2>
+                    <p className="mt-1 text-[11.5px] leading-relaxed text-ink-500">
+                      A suspended organization files an appeal while its door is closed. Reinstating restores access and
+                      revokes live sessions; upholding leaves the suspension standing. Both decisions are logged.
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-paper px-2.5 py-1 font-code text-[8px] font-bold tracking-[0.14em] text-ink-500">
+                    <ShieldCheck className="h-3 w-3" aria-hidden="true" />
+                    {appeals.filter((appeal) => appeal.status === "OPEN").length} OPEN
+                  </span>
+                </div>
+                {appeals.length === 0 ? (
+                  <p className="px-5 py-8 text-[12px] text-ink-500">No suspension appeal has been filed.</p>
+                ) : (
+                  <ul className="divide-y divide-ink-100">
+                    {appeals.map((appeal) => {
+                      const open = appeal.status === "OPEN";
+                      return (
+                        <li key={appeal.id} className="px-5 py-4">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="truncate text-[13px] font-semibold text-ink-950">
+                              {appeal.organization?.name ?? "Organization removed"}
+                            </p>
+                            <span
+                              className={cn(
+                                "rounded-full border px-2 py-0.5 font-code text-[7.5px] font-bold tracking-[0.14em]",
+                                appeal.status === "OPEN"
+                                  ? "border-amber-300 bg-amber-50 text-amber-900"
+                                  : appeal.status === "REINSTATED"
+                                    ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                                    : "border-ink-300 bg-ink-50 text-ink-700",
+                              )}
+                            >
+                              {appeal.status}
+                            </span>
+                            <span className="font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-400">{appeal.reference}</span>
+                          </div>
+                          <p className="mt-0.5 truncate font-code text-[8px] tracking-[0.12em] text-ink-500">
+                            {appeal.organization?.registrationNo.toUpperCase() ?? "—"} · FILED {stamp(appeal.createdAt).toUpperCase()}
+                          </p>
+                          <p className="mt-1.5 text-[12px] leading-relaxed text-ink-600">{appeal.reason}</p>
+                          {!open && appeal.reviewer ? (
+                            <p className="mt-1 text-[10.5px] leading-relaxed text-ink-500">
+                              Decided by {appeal.reviewer}: {appeal.reviewNote ?? "—"}
+                            </p>
+                          ) : null}
+                          {open && canManageOrgs ? (
+                            <div className="mt-2.5 grid gap-1.5 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+                              <input
+                                value={appealDrafts[appeal.id] ?? ""}
+                                onChange={(e) => setAppealDrafts((prev) => ({ ...prev, [appeal.id]: e.target.value }))}
+                                maxLength={600}
+                                placeholder="Reason for the decision (required)"
+                                aria-label={`Decision reason for ${appeal.reference}`}
+                                className="h-8 rounded-lg border border-ink-200 bg-white px-2.5 text-[11.5px] text-ink-950 outline-none placeholder:text-ink-400 focus:border-ink-400"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => void decideAppeal(appeal, "REINSTATED")}
+                                disabled={busy !== null || (appealDrafts[appeal.id] ?? "").trim().length < 4}
+                                className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 font-code text-[7.5px] font-bold tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-40"
+                              >
+                                {busy === `appeal:${appeal.id}` ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="h-3 w-3" aria-hidden="true" />}
+                                REINSTATE
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void decideAppeal(appeal, "UPHELD")}
+                                disabled={busy !== null || (appealDrafts[appeal.id] ?? "").trim().length < 4}
+                                className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2.5 font-code text-[7.5px] font-bold tracking-[0.12em] text-ink-600 transition-colors hover:border-ink-400 disabled:opacity-40"
+                              >
+                                <ShieldOff className="h-3 w-3" aria-hidden="true" />
+                                UPHOLD
+                              </button>
+                            </div>
+                          ) : null}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </section>

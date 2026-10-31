@@ -14,29 +14,38 @@ Public-procurement evaluation committees wade through tender packs of hundreds o
 by hand. Backlogs delay hospital supplies; thin award documentation is exactly what lets
 fraud go unchallenged. Quorum is a working review desk where a tool-wielding agent does
 the reading: it reads every document over MCP, extracts the requirements, raises findings
-with file-path citations, and drafts committee-ready redlines with **Llama 3.2 — Meta
-open weights — served in-region**. Then it stops. Filing an award is irreversible, so the
-agent cannot do it: the review graph contains no edge to filing. A **named human signs
-the gate** first, and only then is the bundle sealed (sha-256), filed and receipted.
+with file-path citations, and drafts committee-ready redlines with **Muse Spark 1.3 on
+Meta Model API**. Then it stops. Filing an award is irreversible, so the agent cannot do
+it: the review graph contains no edge to filing. A **named human signs the gate** first,
+and only then is the bundle sealed (sha-256), filed and receipted.
+
+The demo runs on a **real public record**, not a synthetic pack: KEMSA's
+`KE-KEMSA-2024-ONT08` award register, 11 published awards from Kenya's PPRA dataset
+(OCDS `ocds-5whusi-KEMSA/ONT08/2024-2026`, retrieved 2026-10-31). The release publishes
+no line items or quantities, so the desk flags the value spread as a committee question
+and says plainly that it cannot test unit-price reasonableness from the record. That
+limit is part of the submission, not hidden from it.
 
 ## Why this fits "Build for Your World"
 
 Procurement review is a problem known firsthand — the desk, the backlog and the audit are
 real, and the users (evaluation officers, oversight bodies) are named. Meta's models are
-brought into that world in a way that respects its hard constraint: procurement data must
-never leave the jurisdiction. That rules out hosted-only drafting and is precisely why the
-**open-weights path is the primary story**: Llama 3.2 runs in-region on commodity
-hardware, and the repo measures it rather than claiming it.
+brought into that world in a way that respects its hard constraint: raw procurement
+evidence must not leave the jurisdiction. The chain therefore leads with **Muse Spark 1.3
+on Meta Model API** on **redacted** evidence (supplier names and amounts replaced by the
+model gateway), and keeps **Llama 3.2 in-region** as the fallback that can see the full
+pack. The report prints which path answered and how many spans were redacted. If neither
+model answers, the deterministic template drafts and says so.
 
 ## How Meta's models are used
 
 | Model | Role | Status in this repo |
 | --- | --- | --- |
-| **Llama 3.2** (Meta open weights) | Drafts every committee redline through the `draft_redline` MCP tool | Primary drafting path. Ollama setup (`llama3.2:3b`) documented and measured in-repo — see `.env.example` and `SUBMISSION/10-cost-and-audit.md` |
-| **Meta Model API** | Hosted OpenAI-compatible endpoint for the same drafting path | First-class configuration option in `.env.example` — set `LLM_BASE_URL`/`LLM_MODEL`/`LLM_API_KEY` from your Meta developer console |
-| **Muse Spark 1.3** | The read-only desk assistant: live desk tools plus Quorum's operating manual | Live in the assistant; answers show the returned model provenance |
-| **Muse Voice Transcribe 1.0** | The assistant's microphone: WAV clip in, sentence out | Live; procurement vocabulary is biased into the recognizer |
-| **Muse Image** | Regenerates the five-chapter demo film | Complete kit: prompt pack, frame generator, ffmpeg assembler — `SUBMISSION/muse-film-kit/` |
+| **Muse Spark 1.3** (Meta Model API, hosted) | Plans the review depth and drafts every committee redline through the `plan_review` / `draft_redline` MCP tools | **Primary path.** Live call verified 2026-10-31. On the real KEMSA pack: model-led plan, 2 model drafts, 4 redactions, 22.8 s wall-clock. |
+| **Llama 3.2** (Meta open weights, in-region) | Fallback planning and drafting when the hosted call fails; full evidence stays on the desk | **Measured fallback.** Ollama setup (`llama3.2:3b`) documented and measured in-repo — see `.env.example` and `SUBMISSION/10-cost-and-audit.md`. |
+| **SAM 3.1** (Meta Model API, segmentation) | On a scanned page or image upload, locates the table region and returns boxes for a human to inspect | **Live, opt-in.** Verified 2026-10-31 on a real Nyamira County price schedule (1 table box). It does not read text or authenticate a signature; every scan is marked `humanReviewRequired`. |
+| **Muse Voice Transcribe 1.0** | The assistant's microphone: WAV clip in, sentence out | Live; procurement vocabulary is biased into the recognizer. |
+| **Muse Image** | Regenerates the five-chapter demo film | Kit shipped: prompt pack, frame generator, ffmpeg assembler — `SUBMISSION/muse-film-kit/`. A bonus asset, not the main demo. |
 
 Spoken replies use a real neural voice: **Deepgram Aura-2 through Cloudflare Workers AI**, with MeloTTS and then the browser's installed voice as fallbacks. The assistant is read-only by construction and cannot sign, award, return, file or summon.
 
@@ -68,7 +77,7 @@ prints a **Model attribution** table.
   whose cells state a different currency from their header). No citation, no finding —
   enforced by the test suite.
 - **Append-only audit log** for every tool call; tamper-evident by construction.
-- **Tests:** 49 green in `engine.test.ts` (Bun runner).
+- **Tests:** 486 across the repo, 0 failing (450 pass, 36 environment-gated skips; Bun runner).
 - **Evaluation harness** with held-out tender packs and a pre-registered baseline
   protocol (`SUBMISSION/09-fit.md`).
 
@@ -81,13 +90,26 @@ prints a **Model attribution** table.
 | `SUBMISSION/muse-film-kit/` | Muse Image film regeneration kit (prompts, generator, assembler) |
 | `SUBMISSION/submission.html` | Standalone pitch page for judges |
 | `META_HACKATHON.md` | This brief |
-| `.env.example` | Model wiring: Ollama/Llama 3.2 (open weights) and Meta Model API (hosted) |
+| `.env.example` | Model chain: Muse Spark 1.3 (hosted primary), Llama 3.2 (in-region fallback), residency/redaction policy, SAM 3.1 opt-in |
 
 ## Submission checklist (due Nov 4, 9:00 PM ET)
 
 1. Deploy or refresh the live demo (`quorum.chungu-chama.com`) with the Meta edition framing.
-2. Run `SUBMISSION/muse-film-kit/` with Meta Model API credits to regenerate the film; drop the
-   five `chapter-N.mp4` files into `public/film/` (the cinema player picks them up unchanged).
-3. Record the 3-minute demo per `SUBMISSION/DEMO.md` — the gate refusal is the centerpiece.
+2. Record the 3-minute demo per `SUBMISSION/DEMO.md` — the gate refusal is the centerpiece;
+   the real KEMSA pack and the SAM scan are the two new beats.
+3. Optional bonus: run `SUBMISSION/muse-film-kit/` with Muse Image credits and drop the
+   five `chapter-N.mp4` files into `public/film/`. The main demo does not depend on it.
 4. Final check of `SUBMISSION/submission.html` links and numbers.
-5. Submit through the hackathon portal.
+5. Submit through the hackathon portal before **Nov 4, 9:00 PM ET** (Nov 5, 4:00 AM EAT).
+
+## Verified before submission
+
+| Check | Result |
+| --- | --- |
+| `GET https://api.meta.ai/v1/models` | HTTP 200; `muse-spark-1.3`, `sam-3.1`, `muse-image-1.0`, `muse-voice-transcribe-1.0` visible |
+| Muse Spark chat completion | HTTP 200; `muse-spark-1.3`; reasoning tokens visible; `max_tokens: 4096` required |
+| Real KEMSA pack, model-led | `AWAITING_GATE`, 5 cited value-outlier findings, 2 Muse Spark drafts, 4 redactions, 22.8 s |
+| SAM 3.1 on a real scanned page | HTTP 200; 1 table box on Nyamira price schedule p58; 0 boxes for `signature` on the CA certificate (reported as no match) |
+| `bun test` | 450 pass, 36 skip, 0 fail |
+| `bun run build` | Compiled successfully; 44 pages generated |
+| `bun run lint` | Changed files clean; repo-wide lint still reports pre-existing generated-file errors |

@@ -100,6 +100,9 @@ async function proxy(req: NextRequest) {
     if (session) {
       forward["x-quorum-workspace"] = workspaceId;
       forward["x-quorum-actor"] = actor;
+      /* The user id is what office authority is bound to. The sidecar accepts
+         it only on a request that also carries this HMAC seal. */
+      if (session.id) forward["x-quorum-actor-id"] = session.id;
       const ts = Date.now();
       forward["x-quorum-ts"] = String(ts);
       forward["x-quorum-attest"] = attestSignature(req.method, url.pathname, actor, ts, workspaceId);

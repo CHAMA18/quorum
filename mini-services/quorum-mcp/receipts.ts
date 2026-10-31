@@ -29,22 +29,71 @@ const KEY_FILE = `${DATA}gate-signing-key.pem`;
 type KeyPair = { privateKey: ReturnType<typeof createPrivateKey>; publicKeyPem: string; keyId: string };
 let cached: KeyPair | null = null;
 
+/* ── Key custody — a receipt is only as trustworthy as the key that signs it ─
+   The gate key used to be auto-generated, unmanaged, on first boot in every
+   environment: lose the data directory and every past gate receipt becomes
+   unverifiable, with nobody holding a copy. The decision is now explicit
+   and testable:
+     · GATE_SIGNING_KEY wins (KMS or injected secret) — the operator's key.
+     · A key file at data/gate-signing-key.pem continues the previous key —
+       rotations install a file, they never silently regenerate.
+     · A missing key in production is a REFUSAL: provisioned custody or no
+       signing. An unmanaged key is how a receipt loses its evidentiality.
+     · Development generates and keeps a key file — the sandbox stays usable;
+       the file is marked so operations know it is not production custody. */
+export type KeyCustodyAction =
+  | { action: "ENV_KEY" }
+  | { action: "FILE_KEY" }
+  | { action: "GENERATE_DEV" }
+  | { action: "REFUSE"; reason: string };
+
+export function keyCustodyDecision(env: { NODE_ENV?: string; GATE_SIGNING_KEY?: string }, keyFileExists: boolean): KeyCustodyAction {
+  if (env.GATE_SIGNING_KEY?.trim()) return { action: "ENV_KEY" };
+  if (keyFileExists) return { action: "FILE_KEY" };
+  if (env.NODE_ENV === "production") {
+    return {
+      action: "REFUSE",
+      reason:
+        "Key custody: refusing to generate an UNMANAGED signing key in production. Provision GATE_SIGNING_KEY (from KMS or secret injection), or install the existing key file at data/gate-signing-key.pem — a key nobody but the process holds cannot survive the machine, and gate receipts signed by it become unverifiable after loss.",
+    };
+  }
+  return { action: "GENERATE_DEV" };
+}
+
+/** Which custody the live process resolved — surfaced on /api/health. */
+export function signingKeyStatus(): { source: "env" | "file" | "managed-dev" | "unmanaged-dev"; keyId: string } {
+  const key = keyPair();
+  const source = process.env.GATE_SIGNING_KEY?.trim()
+    ? "env"
+    : existsSync(KEY_FILE)
+      ? "file"
+      : process.env.NODE_ENV === "production"
+        ? "env"
+        : "managed-dev";
+  return { source, keyId: key.keyId };
+}
+
 function keyPair(): KeyPair {
   if (cached) return cached;
-  let privatePem = process.env.GATE_SIGNING_KEY?.trim() ?? "";
-  if (!privatePem) {
-    if (existsSync(KEY_FILE)) {
-      privatePem = readFileSync(KEY_FILE, "utf8");
-    } else {
-      const pair = generateKeyPairSync("ed25519");
-      privatePem = pair.privateKey.export({ type: "pkcs8", format: "pem" }).toString();
-      writeFileSync(KEY_FILE, privatePem, { mode: 0o600 });
-      try {
-        chmodSync(KEY_FILE, 0o600);
-      } catch {
-        /* best effort on filesystems without POSIX modes */
-      }
+  const decision = keyCustodyDecision(
+    { NODE_ENV: process.env.NODE_ENV, GATE_SIGNING_KEY: process.env.GATE_SIGNING_KEY },
+    existsSync(KEY_FILE),
+  );
+  let privatePem: string;
+  if (decision.action === "ENV_KEY") privatePem = process.env.GATE_SIGNING_KEY!.trim();
+  else if (decision.action === "FILE_KEY") privatePem = readFileSync(KEY_FILE, "utf8");
+  else if (decision.action === "GENERATE_DEV") {
+    const pair = generateKeyPairSync("ed25519");
+    privatePem = pair.privateKey.export({ type: "pkcs8", format: "pem" }).toString();
+    writeFileSync(KEY_FILE, privatePem, { mode: 0o600 });
+    try {
+      chmodSync(KEY_FILE, 0o600);
+    } catch {
+      /* best effort on filesystems without POSIX modes */
     }
+    console.warn("[key-custody] generated a development gate key at", KEY_FILE, "— it is not production custody. Provision GATE_SIGNING_KEY and per the runbook in docs/KEY_CONTROL_RUNBOOK.md.");
+  } else {
+    throw new Error(decision.reason);
   }
   const privateKey = createPrivateKey(privatePem);
   const publicKeyPem = createPublicKey(privateKey).export({ type: "spki", format: "pem" }).toString();

@@ -4,7 +4,6 @@ import { museChat, museConfigFromEnv, type MuseMessage } from "@/lib/muse";
 import { DESK_TOOLS, runDeskTool } from "@/lib/muse-desk-tools";
 import { ACTION_TOOLS, buildProposal, isActionTool, proposalStagedNote, type Proposal } from "@/lib/muse-actions";
 import { localAgent } from "@/lib/muse-local-brain";
-import { zaiAgent } from "@/lib/muse-zai";
 import { SYSTEM_MAP } from "@/lib/quorum-knowledge";
 
 /**
@@ -22,12 +21,10 @@ import { SYSTEM_MAP } from "@/lib/quorum-knowledge";
  *     through /api/muse/execute, under their own verified session, with a
  *     fresh step-up signature for a gate decision. The gavel stays human;
  *     the agent just carries it to the desk and waits.
- *   · With no MUSE_API_KEY set, the same loop runs on the platform's own
- *     served model (muse-zai) — a full LLM brain over a strict JSON tool
- *     dialect, same reads, same proposals, same consent cards — and the
- *     deterministic local brain (muse-local-brain) is the last resort if
- *     even that is unreachable. There is no setup notice: the product never
- *     depends on a secret to be useful.
+ *   · With no Meta key set, the deterministic local brain
+ *     (muse-local-brain) answers with the same reads and consent-staged
+ *     proposals. There is no setup notice: the product never depends on a
+ *     secret to be useful.
  */
 
 const MAX_ROUNDS = 5;
@@ -54,7 +51,7 @@ const ChatSchema = z.object({
     .default([]),
   /* The officer's first name, when signed in — the agent greets by it. */
   who: z.string().trim().max(80).optional(),
-  modelPreference: z.enum(["automatic", "meta", "platform"]).default("automatic"),
+  modelPreference: z.enum(["automatic", "meta"]).default("automatic"),
 });
 
 const ALL_TOOLS = [...DESK_TOOLS, ...ACTION_TOOLS];
@@ -106,17 +103,11 @@ export async function POST(request: NextRequest) {
       { status: 503 },
     );
   }
-  if (cfg && modelPreference !== "platform") {
+  if (cfg) {
     return NextResponse.json(await modelLoop(cfg, message, history, who));
   }
-  /* No Meta key: the platform model carries the same agency, with the
-     deterministic brain as the last resort. Every answer labels its model. */
-  try {
-    const result = await zaiAgent(message, history, who, ALL_TOOLS, SYSTEM_PROMPT, MAX_HISTORY);
-    return NextResponse.json({ reply: result.reply, model: result.model, toolsRead: result.tools, ...(result.proposal ? { proposal: result.proposal } : {}) });
-  } catch {
-    return NextResponse.json(await localLoop(message, who));
-  }
+  /* No Meta key: the deterministic local brain answers. */
+  return NextResponse.json(await localLoop(message, who));
 }
 
 /* ── The model loop — Muse Spark with reads + consent-staged actions ─────── */

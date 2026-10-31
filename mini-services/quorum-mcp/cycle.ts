@@ -11,6 +11,8 @@
  * opinion, so no finding a committee relies on is improvised.
  */
 
+import { addWorkingDaysIn, type JurisdictionPack } from "./jurisdiction";
+import { evaluatedPrice } from "./evaluation";
 import type {
   Addendum,
   AlbDossier,
@@ -103,21 +105,36 @@ const MONTHS: Record<string, number> = {
   july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
 };
 
-function parseDateish(raw: string): string | undefined {
+function parseDateish(raw: string, utcOffsetHours = 0): string | undefined {
   const cleaned = raw.trim().replace(/\s*\(.*\)\s*$/, "").trim();
+  /* Date-only values close at the end of the local day. The offset comes from
+     the jurisdiction pack, so a Lusaka notice is not read as UTC midnight. */
+  const endOfDay = (y: string, m: string, d: string) =>
+    new Date(Date.UTC(Number(y), Number(m) - 1, Number(d), 23, 59, 59) - utcOffsetHours * 3_600_000).toISOString();
   /* ISO or ISO-like dates first: 2026-10-30, 2026-10-30T14:00, 30/10/2026 */
   const iso = cleaned.match(/(\d{4})-(\d{2})-(\d{2})(?:[T\s]+(\d{2}):(\d{2}))?/);
   if (iso) {
     const [, y, m, d, hh, mm] = iso;
-    const time = hh && mm ? `T${hh}:${mm}:00Z` : "T23:59:59Z";
-    const dt = new Date(`${y}-${m}-${d}${time}`);
+    if (!hh || !mm) return endOfDay(y, m, d);
+    /* An explicit UTC designator or numeric offset wins over the jurisdiction
+       default. A notice that says 14:00Z closes at 14:00Z, not 14:00 local. */
+    const zone = cleaned.match(/(Z|[+-]\d{2}:?\d{2})\s*$/i)?.[1];
+    let offset = utcOffsetHours;
+    if (zone) {
+      if (zone.toUpperCase() === "Z") offset = 0;
+      else {
+        const sign = zone.startsWith("+") ? 1 : -1;
+        const digits = zone.slice(1).replace(":", "");
+        offset = sign * (Number(digits.slice(0, 2)) + Number(digits.slice(2, 4)) / 60);
+      }
+    }
+    const dt = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d), Number(hh), Number(mm)) - offset * 3_600_000);
     return Number.isNaN(dt.getTime()) ? undefined : dt.toISOString();
   }
   const slash = cleaned.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
   if (slash) {
     const [, d, m, y] = slash;
-    const dt = new Date(`${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}T23:59:59Z`);
-    return Number.isNaN(dt.getTime()) ? undefined : dt.toISOString();
+    return endOfDay(y, m.padStart(2, "0"), d.padStart(2, "0"));
   }
   /* Prose with a named month — "17 October 2026, 10:00 EAT". Date.parse
      cannot read African timezone abbreviations, so the offset is applied
@@ -129,8 +146,9 @@ function parseDateish(raw: string): string | undefined {
     const [, d, mon, y, hh, mm, tz] = prose;
     const month = MONTHS[mon.toLowerCase()];
     if (month !== undefined) {
-      const offsetH = tz ? (NAMED_TZ_OFFSETS[tz.toUpperCase()] ?? 0) : 0;
-      const utcMs = Date.UTC(Number(y), month, Number(d), Number(hh ?? 23), Number(mm ?? 59)) - offsetH * 3_600_000;
+      const offsetH = tz ? (NAMED_TZ_OFFSETS[tz.toUpperCase()] ?? 0) : utcOffsetHours;
+      const seconds = hh && mm ? 0 : 59;
+      const utcMs = Date.UTC(Number(y), month, Number(d), Number(hh ?? 23), Number(mm ?? 59), seconds) - offsetH * 3_600_000;
       const dt = new Date(utcMs);
       return Number.isNaN(dt.getTime()) ? undefined : dt.toISOString();
     }
@@ -140,11 +158,11 @@ function parseDateish(raw: string): string | undefined {
 }
 
 /** A notice's closing date — "**Closing date:**", "**Deadline:**", or plain ISO prose. Pure. */
-export function parseClosingDate(notice: string): string | undefined {
+export function parseClosingDate(notice: string, utcOffsetHours = 0): string | undefined {
   for (const re of CLOSING_PATTERNS) {
     const m = notice.match(re);
     if (m) {
-      const parsed = parseDateish(m[1]);
+      const parsed = parseDateish(m[1], utcOffsetHours);
       if (parsed) return parsed;
     }
   }
@@ -416,16 +434,42 @@ export function financialFormulaScores(values: (number | undefined)[]): number[]
   return values.map((v) => (Number.isFinite(v) && (v ?? 0) > 0 ? Math.round(((lowest as number) / (v as number)) * 1000) / 10 : 0));
 }
 
-/** Re-draw every verdict from the evidence on the matrix. Pure — the one place totals are computed. */
+/** Re-draw every verdict from the evidence on the matrix. Pure — the one place totals are computed.
+ *
+ * When the matrix names an evaluation currency, every foreign bid is scored on
+ * its converted evaluated price, and the bid carries the quote that put it
+ * there. A price with no quote scores 0 on a draft and is refused at the gate —
+ * never silently compared as if the currencies were the same. Legacy matrices
+ * (no evaluation currency) keep their stated-amount arithmetic. */
 export function scoreMatrix(matrix: EvalMatrix): EvalMatrix {
-  const financials = matrix.bids.map((b) => b.financial?.amount);
+  const evaluated = matrix.bids.map((bid) => evaluatedPrice(matrix, bid.financial));
+  const financials = evaluated.map((price) =>
+    price.state === "LEGACY" || price.state === "SAME" || price.state === "CONVERTED" ? price.amount : undefined,
+  );
   const scored = financialFormulaScores(financials);
   const bids = matrix.bids.map((b, i) => {
     const tech = technicalTotal(matrix.criteria, b.technicalScores);
-    const financial =
-      b.financial?.amount !== undefined
-        ? { ...b.financial, formulaScore: scored[i] }
-        : undefined;
+    const price = evaluated[i];
+    let financial: EvalBidResult["financial"];
+    if (b.financial?.amount !== undefined) {
+      financial = {
+        amount: b.financial.amount,
+        ...(b.financial.currency ? { currency: b.financial.currency } : {}),
+        formulaScore: scored[i],
+      };
+      if (price.state === "CONVERTED") {
+        financial = {
+          ...financial,
+          evaluatedAmount: price.amount,
+          evaluatedCurrency: price.currency,
+          fxRate: price.rate,
+          fxSource: price.source,
+          fxAsOf: price.asOf,
+        };
+      } else if (price.state === "UNCONVERTIBLE") {
+        financial = { ...financial, fxError: price.reason };
+      }
+    }
     const total =
       financial?.formulaScore !== undefined
         ? Math.round((tech * (matrix.technicalWeightPct / 100) + (financial.formulaScore ?? 0) * (1 - matrix.technicalWeightPct / 100)) * 10) / 10
@@ -531,7 +575,14 @@ export function composeAwardReport(input: {
   title?: string;
   buyer?: string;
   matrix?: EvalMatrix;
-  findings: { rule: string; item: string; severity: string }[];
+  findings: {
+    id?: string;
+    rule: string;
+    item: string;
+    severity: string;
+    disposition?: { status: string; by: string; at: string; note: string; secondedBy?: string };
+  }[];
+  complaints?: { complainant: string; subject: string; status: string }[];
   supplier?: string;
   value?: string;
   method?: string;
@@ -554,8 +605,35 @@ export function composeAwardReport(input: {
     "## 2. Findings carried into the decision",
     "",
     ...(input.findings.length
-      ? input.findings.map((f) => `- **${f.rule}** ${f.item} (${f.severity})`)
+      ? input.findings.map((f) =>
+          `- **${f.rule}** ${f.item} (${f.severity}) — ${
+            f.disposition ? `${f.disposition.status} by ${f.disposition.by}` : "OPEN — no disposition"
+          }`,
+        )
       : ["- No findings stand against the admitted bids."]),
+    "",
+    "### Disposition table",
+    "",
+    "| Finding | Rule | Severity | Disposition | By | Reason |",
+    "| --- | --- | --- | --- | --- | --- |",
+    ...(input.findings.length
+      ? input.findings.map((f) => {
+          const d = f.disposition;
+          const reason = (d?.note ?? "—").replace(/\|/g, "\\|");
+          const by = d ? `${d.by}${d.secondedBy ? ` (seconded ${d.secondedBy})` : ""}` : "—";
+          return `| ${f.id ?? "—"} | ${f.rule} | ${f.severity} | ${d?.status ?? "OPEN"} | ${by} | ${reason} |`;
+        })
+      : ["| — | — | — | — | — | No findings on record |"]),
+    "",
+    "### Complaints",
+    "",
+    ...(input.complaints?.length
+      ? [
+          "| Complainant | Subject | Status |",
+          "| --- | --- | --- |",
+          ...input.complaints.map((c) => `| ${c.complainant.replace(/\|/g, "\\|")} | ${c.subject.replace(/\|/g, "\\|")} | ${c.status} |`),
+        ]
+      : ["- No complaints on record."]),
     "",
     "## 3. Evaluation outcome",
     "",
@@ -570,6 +648,18 @@ export function composeAwardReport(input: {
             (b) =>
               `| ${b.bidder} | ${b.responsiveness} | ${b.technicalTotal} | ${b.financial?.formulaScore ?? "—"} | ${b.total ?? "—"} | ${b.verdict} |`,
           ),
+          ...(input.matrix.evaluationCurrency
+            ? [
+                "",
+                `Evaluated-price basis: **${input.matrix.evaluationCurrency}**.`,
+                ...input.matrix.bids
+                  .filter((b) => b.financial?.evaluatedAmount !== undefined)
+                  .map(
+                    (b) =>
+                      `- ${b.bidder}: ${b.financial?.currency ?? input.matrix!.evaluationCurrency} ${b.financial?.amount.toLocaleString()} × ${b.financial?.fxRate} = ${b.financial?.evaluatedCurrency} ${b.financial?.evaluatedAmount?.toLocaleString()} (${b.financial?.fxSource ?? "source not recorded"}, observed ${b.financial?.fxAsOf?.slice(0, 10) ?? "—"})`,
+                  ),
+              ]
+            : []),
         ]
       : ["_No certified matrix is attached to this report — the award rests on the findings and the pack._"]),
     "",
@@ -593,8 +683,11 @@ export function composeAwardNotice(input: {
   supplier?: string;
   value?: string;
   portal: string;
+  publicationMode?: "SIMULATED" | "CONNECTED";
+  receiptId?: string;
   standstillEndsAt?: string;
 }): string {
+  const connected = input.publicationMode === "CONNECTED";
   return [
     `# NOTICE OF AWARD`,
     "",
@@ -602,12 +695,20 @@ export function composeAwardNotice(input: {
     `**Buyer:** ${input.buyer ?? "—"}`,
     `**Awarded to:** ${input.supplier ?? "—"}`,
     ...(input.value ? [`**Contract price:** ${input.value}`] : []),
-    `**Published to:** ${input.portal}`,
+    `**Publication status:** ${
+      connected
+        ? `transmitted to ${input.portal}${input.receiptId ? ` · receipt ${input.receiptId}` : ""}`
+        : "SIMULATED — no transmission. This is not a publication receipt."
+    }`,
     ...(input.standstillEndsAt
       ? [`**Standstill:** unsuccessful bidders may lodge a complaint until ${input.standstillEndsAt.slice(0, 10)} (working days 10).`]
       : []),
     "",
-    "_This notice is published through a simulated portal stub, labelled as such everywhere it appears. The standstill period gives unsuccessful bidders the chance to complain before the contract is signed._",
+    ...(connected
+      ? ["_This notice records a verified transmission to the external portal. The standstill period runs from publication._"]
+      : [
+          "_This notice is a recorded rehearsal. It has not been transmitted to an external portal. Its standstill clock is a rehearsal clock; no contract may be signed from it._",
+        ]),
   ].join("\n");
 }
 
@@ -698,7 +799,11 @@ export function composeContractPack(input: {
 
 /* ── Deadlines (G16) — derived, never stored twice ─────────────────────────── */
 
-export function collectDeadlines(input: DeadlinesInput[], nowIso = new Date().toISOString()): DeadlineItem[] {
+export function collectDeadlines(
+  input: DeadlinesInput[],
+  nowIso = new Date().toISOString(),
+  clock?: JurisdictionPack,
+): DeadlineItem[] {
   const items: DeadlineItem[] = [];
   for (const c of input) {
     if (c.closingDate && !c.opening?.certifiedAt) {
@@ -714,8 +819,10 @@ export function collectDeadlines(input: DeadlinesInput[], nowIso = new Date().to
       if (m.status === "PENDING" && m.dueDate) items.push({ tenderId: c.tenderId, kind: "MILESTONE_DUE", dueAt: m.dueDate, ref: m.title });
     }
     for (const comp of c.complaints ?? []) {
-      if (comp.status === "OPEN") {
-        const due = addWorkingDays(comp.receivedAt, COMPLAINT_RESPONSE_DAYS);
+      if (comp.status === "OPEN" || comp.status === "ESCALATED") {
+        const due = clock
+          ? addWorkingDaysIn(comp.receivedAt, clock.complaintResponseDays, clock)
+          : addWorkingDays(comp.receivedAt, COMPLAINT_RESPONSE_DAYS);
         items.push({ tenderId: c.tenderId, kind: "COMPLAINT_DUE", dueAt: due, ref: comp.complainant });
       }
     }
@@ -733,6 +840,22 @@ export function composeProcurementFile(input: {
   buyer?: string;
   cycle?: {
     closingDate?: string;
+    method?: { id?: string; name?: string; justification?: string; approvalRef?: string; approvedBy?: string; approvedAt?: string };
+    assurance?: {
+      supplier: string;
+      status: string;
+      source?: string;
+      checkedBy?: string;
+      checkedAt?: string;
+      expiresAt?: string;
+      registryStatus?: string;
+      taxStatus?: string;
+      sanctions?: string;
+      pep?: string;
+      beneficialOwners?: number;
+      documents?: number;
+      failures?: string[];
+    };
     opening?: BidOpeningRegister;
     matrix?: EvalMatrix;
     alb: AlbDossier[];
@@ -746,10 +869,24 @@ export function composeProcurementFile(input: {
     coi: { member: string; declaration: string; declaredAt: string }[];
     debriefs: { bidder: string; status: string }[];
   };
-  runs: { id: string; status: string; findings: { id: string; rule: string; item: string; severity: string; citation: string }[]; drafts: { id: string }[]; startedAt: string }[];
+  runs: {
+    id: string;
+    status: string;
+    findings: {
+      id: string;
+      rule: string;
+      item: string;
+      severity: string;
+      citation: string;
+      disposition?: { status: string; by: string; note: string; secondedBy?: string };
+    }[];
+    drafts: { id: string }[];
+    startedAt: string;
+  }[];
   gates: { id: string; tool: string; status: string; approver?: string; decidedAt?: string; receipt?: Record<string, unknown> }[];
   logVerified?: { ok: boolean; checked: number };
   generatedAt: string;
+  deployment?: { mode: string; label?: string; receiptId?: string };
 }): string {
   const c = input.cycle;
   const lines: string[] = [
@@ -758,11 +895,19 @@ export function composeProcurementFile(input: {
     `**Tender:** ${input.tenderId}${input.title ? ` — ${input.title}` : ""}`,
     `**Buyer:** ${input.buyer ?? "—"}`,
     `**Generated:** ${input.generatedAt}`,
+    ...(input.deployment && input.deployment.mode !== "CONNECTED"
+      ? [
+          "> **RECORD-ONLY — NOT A PUBLICATION RECEIPT.** This file was prepared without a connected external publication. No contract or payment may rest on it.",
+          "",
+        ]
+      : []),
     ...(input.logVerified ? [`**Audit log chain:** ${input.logVerified.ok ? "verified" : "BROKEN"} (${input.logVerified.checked} entries)`] : []),
     "",
     "## 1. Solicitation",
     "",
     `- Closing date on record: ${c?.closingDate ?? "—"}`,
+    `- Method: ${c?.method?.name ?? c?.method?.id ?? "— not recorded"}${c?.method?.approvedAt ? ` · approved ${c.method.approvedAt.slice(0, 10)} by ${c.method.approvedBy ?? "—"}` : ""}${c?.method?.approvalRef ? ` · authority ref ${c.method.approvalRef}` : ""}`,
+    ...(c?.method?.justification ? [`- Method justification: ${c.method.justification}`] : []),
     `- Clarifications logged: ${c?.clarifications.length ?? 0} · Addenda: ${c?.addenda.length ?? 0}`,
     ...(c?.addenda ?? []).map((a) => `  - Addendum ${a.number}: ${a.summary}${a.extendsClosingTo ? ` — closing extended to ${a.extendsClosingTo.slice(0, 10)}` : ""}`),
     "",
@@ -786,7 +931,13 @@ export function composeProcurementFile(input: {
     ...(input.runs.length
       ? input.runs.flatMap((r) => [
           `### Run ${r.id} — ${r.status} (${r.startedAt.slice(0, 10)})`,
-          ...(r.findings.length ? r.findings.map((f) => `- ${f.id} ${f.rule} — ${f.item} (${f.severity}) · ${f.citation}`) : ["- no findings"]),
+          ...(r.findings.length
+            ? r.findings.map((f) =>
+                `- ${f.id} ${f.rule} — ${f.item} (${f.severity}) · ${f.citation} · ${
+                  f.disposition ? `${f.disposition.status} by ${f.disposition.by}${f.disposition.secondedBy ? ` (seconded ${f.disposition.secondedBy})` : ""}: ${f.disposition.note}` : "OPEN"
+                }`,
+              )
+            : ["- no findings"]),
         ])
       : ["- No review runs on record."]),
     "",
@@ -796,7 +947,16 @@ export function composeProcurementFile(input: {
       ? [
           `- Matrix ${c.matrix.id} — ${c.matrix.status}${c.matrix.certifiedBy ? ` by ${c.matrix.certifiedBy}` : ""}`,
           `- Criteria: ${c.matrix.criteria.map((x) => `${x.title} (${x.weight}%)`).join(", ")}`,
-          ...c.matrix.bids.map((b) => `  - ${b.bidder}: ${b.responsiveness} · technical ${b.technicalTotal} · total ${b.total ?? "—"} · ${b.verdict}`),
+          ...(c.matrix.evaluationCurrency ? [`- Evaluated-price basis: ${c.matrix.evaluationCurrency}`] : []),
+          ...(c.matrix.fxRates ?? []).map(
+            (rate) =>
+              `  - FX ${rate.base}→${rate.quote} ${rate.rate} · ${rate.source} · observed ${rate.asOf.slice(0, 10)}`,
+          ),
+          ...c.matrix.bids.map((b) =>
+            `  - ${b.bidder}: ${b.responsiveness} · technical ${b.technicalTotal} · total ${b.total ?? "—"} · ${b.verdict}${b.financial?.evaluatedAmount !== undefined ? ` · evaluated ${b.financial.evaluatedCurrency} ${b.financial.evaluatedAmount.toLocaleString()}` : ""}`,
+          ),
+          ...(c.matrix.sheets?.length ? [`- Evaluator sheets: ${c.matrix.sheets.length}`] : []),
+          ...(c.matrix.consensus ? [`- Consensus recorded ${c.matrix.consensus.recordedAt.slice(0, 10)} by ${c.matrix.consensus.recordedBy}`] : []),
           ...(c.matrix.med ? [`- MED recorded ${c.matrix.med.recordedAt.slice(0, 10)} with ${c.matrix.med.attendees.length} attendee(s)`] : []),
         ]
       : ["- No evaluation matrix on record."]),
@@ -806,6 +966,13 @@ export function composeProcurementFile(input: {
     "",
     "## 6. Award",
     "",
+    ...(c?.assurance
+      ? [
+          `- Supplier assurance — ${c.assurance.supplier}: ${c.assurance.status} · ${c.assurance.source ?? "source not recorded"}${c.assurance.checkedBy ? ` by ${c.assurance.checkedBy}` : ""}${c.assurance.checkedAt ? ` on ${c.assurance.checkedAt.slice(0, 10)}` : ""}${c.assurance.expiresAt ? ` · expires ${c.assurance.expiresAt.slice(0, 10)}` : ""}`,
+          `  - Registry ${c.assurance.registryStatus ?? "—"} · tax ${c.assurance.taxStatus ?? "—"} · sanctions ${c.assurance.sanctions ?? "—"} · PEP ${c.assurance.pep ?? "—"} · beneficial owners ${c.assurance.beneficialOwners ?? 0} · documents ${c.assurance.documents ?? 0}`,
+          ...(c.assurance.failures?.length ? [`  - Failures: ${c.assurance.failures.join("; ")}`] : []),
+        ]
+      : ["- No supplier assurance check on record."]),
     ...(c?.awardReport
       ? [
           `- Recommendation: ${c.awardReport.recommendation ?? "—"}`,
@@ -814,6 +981,11 @@ export function composeProcurementFile(input: {
       : ["- No award report on record."]),
     ...(c?.awardNotice
       ? [`- Notice published: ${c.awardNotice.publishedAt ? `${c.awardNotice.publishedAt.slice(0, 10)} to ${c.awardNotice.portal}` : "no"} · sha ${c.awardNotice.sha ?? "—"}`]
+      : []),
+    ...(input.deployment
+      ? [
+          `- Publication mode: ${input.deployment.mode}${input.deployment.label ? ` — ${input.deployment.label}` : ""}${input.deployment.receiptId ? ` · receipt ${input.deployment.receiptId}` : ""}`,
+        ]
       : []),
     ...(c?.standstill ? [`- Standstill: ${c.standstill.startsAt.slice(0, 10)} → ${c.standstill.endsAt.slice(0, 10)} (${c.standstill.days} working days, ${c.standstill.status})`] : []),
     ...(c?.debriefs.length ? c.debriefs.map((d) => `- Debrief ${d.bidder}: ${d.status}`) : []),
@@ -834,10 +1006,21 @@ export function composeProcurementFile(input: {
     "",
     ...(c?.contract
       ? [
-          `- Contract with ${c.contract.supplier} — ${c.contract.currency ?? ""} ${c.contract.value.toLocaleString()}${c.contract.completedAt ? ` · completed ${c.contract.completedAt.slice(0, 10)}` : ""}`,
+          `- Contract with ${c.contract.supplier} — ${c.contract.currency ?? ""} ${c.contract.value.toLocaleString()}${c.contract.status ? ` · ${c.contract.status}` : " · LEGACY_UNEXECUTED"}${c.contract.completedAt ? ` · completed ${c.contract.completedAt.slice(0, 10)}` : ""}`,
+          `- Execution: ${c.contract.executedAt ? `${c.contract.executedAt.slice(0, 10)} by ${c.contract.executedBy ?? "—"}` : "not executed — no payment may certify"}`,
+          `- Supplier acceptance: ${c.contract.supplierAcceptedAt ? `${c.contract.supplierAcceptedAt.slice(0, 10)} by ${c.contract.supplierSignatory ?? "—"}` : "not recorded"}`,
+          ...(c.contract.performanceSecurity
+            ? [`- Performance security: ${c.contract.performanceSecurity.amount.toLocaleString()} · ${c.contract.performanceSecurity.issuer} · valid to ${c.contract.performanceSecurity.validUntil.slice(0, 10)}`]
+            : ["- Performance security: none"]),
+          ...(c.contract.insurance
+            ? [`- Insurance: ${c.contract.insurance.policyNo} · ${c.contract.insurance.issuer} · valid to ${c.contract.insurance.validUntil.slice(0, 10)}`]
+            : ["- Insurance: none"]),
+          `- Retention: ${c.contract.retentionPct ?? 0}% · warranty: ${c.contract.warrantyDays ?? 0} days`,
           `- Milestones: ${c.contract.milestones.map((m) => `${m.title} (${m.status})`).join(", ") || "none"}`,
-          `- Variations: ${c.contract.variations.map((v) => `${v.description} ${v.pctOfContract}% (${v.status})`).join("; ") || "none"}`,
-          `- Payments certified: ${c.contract.payments.length}`,
+          `- Variations: ${c.contract.variations.map((v) => `${v.description} ${v.pctOfContract}%${v.cumulativePct !== undefined ? ` (cumulative ${v.cumulativePct}%)` : ""} (${v.status})`).join("; ") || "none"}`,
+          `- Payments: ${c.contract.payments.length} raised · ${c.contract.payments
+            .map((p) => `${p.description} gross ${p.amount.toLocaleString()}${p.net !== undefined ? ` net ${p.net.toLocaleString()}` : ""} (${p.status ?? (p.certifiedAt ? "CERTIFIED" : "PENDING")})`)
+            .join("; ") || "none"}`,
         ]
       : ["- No contract on record."]),
   ];
@@ -868,7 +1051,7 @@ export function cycleAnalytics(input: {
   const certifiedMatrices = cycles.filter((c) => c.matrix?.status === "CERTIFIED").length;
   const albOpen = cycles.reduce((n, c) => n + (c.alb.filter((a) => !a.resolution).length ?? 0), 0);
   const complaints = cycles.reduce((n, c) => n + c.complaints.length, 0);
-  const openComplaints = cycles.reduce((n, c) => n + c.complaints.filter((x) => x.status === "OPEN").length, 0);
+  const openComplaints = cycles.reduce((n, c) => n + c.complaints.filter((x) => x.status === "OPEN" || x.status === "ESCALATED").length, 0);
   const findingsTotal = input.runs.reduce((n, r) => n + r.findings.length, 0);
   const contractsActive = cycles.filter((c) => c.contract && !c.contract.completedAt).length;
   const contractsClosed = cycles.filter((c) => c.contract?.completedAt).length;

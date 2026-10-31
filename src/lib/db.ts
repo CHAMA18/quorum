@@ -106,6 +106,9 @@ export type OversightAction =
   | "SESSIONS_REVOKED"
   | "ORG_SUSPENDED"
   | "ORG_REACTIVATED"
+  | "ORG_APPEAL_FILED"
+  | "ORG_APPEAL_UPHELD"
+  | "ORG_REINSTATED_ON_APPEAL"
   | "INVITE_REVOKED";
 
 export interface OversightEventRow {
@@ -205,6 +208,32 @@ export interface ScheduledMeetingRow {
   seriesCount?: number;
 }
 
+/* A meeting note is the Meta agent's minutes for one scheduled meeting: the
+   transcript it heard, the structured minutes it filed, and who filed them.
+   Notes are append-only evidence — correcting one means filing a new note. */
+export interface MeetingMinutesRow {
+  summary: string;
+  decisions: string[];
+  actions: { owner: string; action: string; due: string | null }[];
+  attendees: string[];
+  quotes: string[];
+}
+
+export interface MeetingNoteRow {
+  id: string;
+  meetingId: string;
+  meetingTitle: string;
+  meetingStartsAt: Date;
+  agenda: string | null;
+  createdBy: string;
+  createdById: string;
+  createdAt: Date;
+  provider: "meta" | "local";
+  model: string;
+  transcript: string;
+  minutes: MeetingMinutesRow;
+}
+
 export type InviteStatus = "PENDING" | "CLAIMED" | "REVOKED";
 
 export interface InviteRow {
@@ -271,6 +300,21 @@ export interface OrgPasswordResetRow {
   usedAt: Date | null;
 }
 
+/* A suspension appeal — the supplier door's one lawful way back in while the
+   account is blocked. Filed without a session (the door is closed), matched
+   by email AND registration number, decided by a named reviewer. One OPEN
+   appeal per organization; the decision is final until a fresh suspension. */
+export interface OrgAppealRow {
+  id: string;
+  orgId: string;
+  reason: string;
+  status: "OPEN" | "UPHELD" | "REINSTATED";
+  reviewer?: string;
+  reviewNote?: string;
+  createdAt: Date;
+  decidedAt?: Date;
+}
+
 interface StoreShape {
   workspaceId: string;
   users: UserRow[];
@@ -279,11 +323,13 @@ interface StoreShape {
   committeeMembers: CommitteeMemberRow[];
   sittings: SittingRow[];
   scheduledMeetings: ScheduledMeetingRow[];
+  meetingNotes: MeetingNoteRow[];
   settings: Record<string, string>;
   invites: InviteRow[];
   organizations: OrganizationRow[];
   orgSessions: OrgSessionRow[];
   orgPasswordResets: OrgPasswordResetRow[];
+  orgAppeals: OrgAppealRow[];
   stepUpLogs: StepUpLogRow[];
   notifications: NotificationRow[];
   notificationDeliveries: NotificationDeliveryRow[];
@@ -325,7 +371,7 @@ function resolveStoreFile(): string {
 
 const FILE = resolveStoreFile();
 const LEGACY_FILE = path.join(process.cwd(), "db", "quorum-store.json");
-const DATE_FIELDS = ["createdAt", "updatedAt", "expiresAt", "claimedAt", "usedAt", "readAt"] as const;
+const DATE_FIELDS = ["createdAt", "updatedAt", "expiresAt", "claimedAt", "usedAt", "readAt", "decidedAt"] as const;
 
 function revive<T>(rows: unknown): T[] {
   if (!Array.isArray(rows)) return [];
@@ -409,6 +455,47 @@ function reviveMeetings(rows: unknown): ScheduledMeetingRow[] {
   });
 }
 
+/* Notes revive their nested minutes too, so a restart never hands the UI a
+   maybe-array where a section expects real minutes. */
+function reviveMeetingNotes(rows: unknown): MeetingNoteRow[] {
+  if (!Array.isArray(rows)) return [];
+  const asDate = (v: unknown): Date | null =>
+    typeof v === "string" ? new Date(v) : v instanceof Date ? v : null;
+  return rows
+    .map((raw): MeetingNoteRow => {
+      const r = raw as Record<string, unknown>;
+      const m = (r.minutes ?? {}) as Record<string, unknown>;
+      const actions = Array.isArray(m.actions) ? (m.actions as Record<string, unknown>[]) : [];
+      return {
+        id: String(r.id ?? ""),
+        meetingId: String(r.meetingId ?? ""),
+        meetingTitle: String(r.meetingTitle ?? "Meeting"),
+        meetingStartsAt: asDate(r.meetingStartsAt) ?? new Date(),
+        agenda: typeof r.agenda === "string" && r.agenda.trim() ? r.agenda : null,
+        createdBy: String(r.createdBy ?? "unknown officer"),
+        createdById: String(r.createdById ?? ""),
+        createdAt: asDate(r.createdAt) ?? new Date(),
+        provider: r.provider === "meta" ? "meta" : "local",
+        model: String(r.model ?? "deterministic"),
+        transcript: typeof r.transcript === "string" ? r.transcript : "",
+        minutes: {
+          summary: typeof m.summary === "string" ? m.summary : "",
+          decisions: Array.isArray(m.decisions) ? m.decisions.map(String).filter(Boolean) : [],
+          actions: actions
+            .map((action) => ({
+              owner: String(action.owner ?? "Unassigned"),
+              action: String(action.action ?? ""),
+              due: typeof action.due === "string" && action.due.trim() ? action.due : null,
+            }))
+            .filter((action) => action.action),
+          attendees: Array.isArray(m.attendees) ? m.attendees.map(String).filter(Boolean) : [],
+          quotes: Array.isArray(m.quotes) ? m.quotes.map(String).filter(Boolean) : [],
+        },
+      };
+    })
+    .filter((note) => note.id && note.meetingId);
+}
+
 function load(): StoreShape {
   const empty: StoreShape = {
     workspaceId: randomUUID(),
@@ -418,11 +505,13 @@ function load(): StoreShape {
     committeeMembers: [],
     sittings: [],
     scheduledMeetings: [],
+    meetingNotes: [],
     settings: {},
     invites: [],
     organizations: [],
     orgSessions: [],
     orgPasswordResets: [],
+    orgAppeals: [],
     stepUpLogs: [],
     notifications: [],
     notificationDeliveries: [],
@@ -452,11 +541,13 @@ function load(): StoreShape {
     committeeMembers: revive<CommitteeMemberRow>(raw.committeeMembers),
     sittings: reviveSittings(raw.sittings),
     scheduledMeetings: reviveMeetings(raw.scheduledMeetings),
+    meetingNotes: reviveMeetingNotes(raw.meetingNotes),
     settings: (raw.settings as Record<string, string>) ?? {},
     invites: revive<InviteRow>(raw.invites),
     organizations: revive<OrganizationRow>(raw.organizations),
     orgSessions: revive<OrgSessionRow>(raw.orgSessions),
     orgPasswordResets: revive<OrgPasswordResetRow>(raw.orgPasswordResets),
+    orgAppeals: revive<OrgAppealRow>(raw.orgAppeals),
     stepUpLogs: revive<StepUpLogRow>(raw.stepUpLogs),
     notifications: revive<NotificationRow>(raw.notifications),
     notificationDeliveries: revive<NotificationDeliveryRow>(raw.notificationDeliveries),
@@ -475,9 +566,11 @@ if (!store.workspaceId) store.workspaceId = randomUUID();
 for (const user of store.users) if (!user.workspaceId) user.workspaceId = store.workspaceId;
 if (!Array.isArray(store.sittings)) store.sittings = [];
 if (!Array.isArray(store.scheduledMeetings)) store.scheduledMeetings = [];
+if (!Array.isArray(store.meetingNotes)) store.meetingNotes = [];
 if (!Array.isArray(store.organizations)) store.organizations = [];
 if (!Array.isArray(store.orgSessions)) store.orgSessions = [];
 if (!Array.isArray(store.orgPasswordResets)) store.orgPasswordResets = [];
+if (!Array.isArray(store.orgAppeals)) store.orgAppeals = [];
 if (!Array.isArray(store.stepUpLogs)) store.stepUpLogs = [];
 if (!Array.isArray(store.notifications)) store.notifications = [];
 if (!Array.isArray(store.notificationDeliveries)) store.notificationDeliveries = [];
@@ -1009,6 +1102,25 @@ export function updateScheduledMeeting(
   return row;
 }
 
+/* ── Meeting notes — the Meta agent's minutes ───────────────────────────── */
+
+export function listMeetingNotes(take = 100): MeetingNoteRow[] {
+  return [...store.meetingNotes]
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, take);
+}
+
+export function findMeetingNoteById(id: string): MeetingNoteRow | null {
+  return store.meetingNotes.find((note) => note.id === id) ?? null;
+}
+
+export function createMeetingNote(data: Omit<MeetingNoteRow, "id">): MeetingNoteRow {
+  const row: MeetingNoteRow = { id: `note_${randomUUID().slice(0, 8)}`, ...data };
+  store.meetingNotes.unshift(row);
+  persist();
+  return row;
+}
+
 /* ── Organizations — the supplier side of the desk ──────────────────────── */
 
 export function listOrganizations(): OrganizationRow[] {
@@ -1180,6 +1292,54 @@ export function consumeOrgPasswordReset(tokenHash: string): void {
     row.usedAt = now();
     persist();
   }
+}
+
+/* ── Suspension appeals — filed while the door is closed ────────────────── */
+
+/** The public, hand-copy-safe reference for an appeal row. */
+export function appealReference(id: string): string {
+  return `APL-${id.replace(/^apl_/, "").slice(0, 6).toUpperCase()}`;
+}
+
+export function createOrgAppeal(orgId: string, reason: string): OrgAppealRow {
+  const row: OrgAppealRow = {
+    id: `apl_${randomUUID().slice(0, 8)}`,
+    orgId,
+    reason: reason.trim().slice(0, 1200),
+    status: "OPEN",
+    createdAt: now(),
+  };
+  store.orgAppeals.push(row);
+  persist();
+  return row;
+}
+
+export function findOpenAppealForOrg(orgId: string): OrgAppealRow | null {
+  return store.orgAppeals.find((a) => a.orgId === orgId && a.status === "OPEN") ?? null;
+}
+
+export function findOrgAppealById(id: string): OrgAppealRow | null {
+  return store.orgAppeals.find((a) => a.id === id) ?? null;
+}
+
+export function listOrgAppeals(): OrgAppealRow[] {
+  return [...store.orgAppeals].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+}
+
+/** Decide an appeal. A REINSTATED decision restores the organization's access. */
+export function decideOrgAppeal(
+  id: string,
+  input: { decision: "UPHELD" | "REINSTATED"; reviewer: string; note: string },
+): OrgAppealRow | null {
+  const row = findOrgAppealById(id);
+  if (!row) return null;
+  row.status = input.decision;
+  row.reviewer = input.reviewer.trim().slice(0, 120);
+  row.reviewNote = input.note.trim().slice(0, 600);
+  row.decidedAt = now();
+  if (input.decision === "REINSTATED") setOrganizationStatus(row.orgId, "ACTIVE");
+  persist();
+  return row;
 }
 
 export function updateOrganizationPassword(orgId: string, passwordHash: string): OrganizationRow | null {

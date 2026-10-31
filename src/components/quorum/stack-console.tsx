@@ -57,7 +57,18 @@ interface Health {
     providerLabel?: string;
     endpoint?: string | null;
     configuredBy?: string | null;
-    lastCall?: { tool?: string; model?: string; source?: string | null; at?: string; runId?: string | null } | null;
+    /* IN_REGION | HOSTED | HYBRID — where the gateway may send evidence. */
+    residency?: string;
+    /* The in-region fallback tried when the primary fails. */
+    fallback?: { model?: string; providerLabel?: string; endpoint?: string } | null;
+    lastCall?: {
+      tool?: string;
+      model?: string;
+      source?: string | null;
+      at?: string;
+      runId?: string | null;
+      redactions?: number;
+    } | null;
   };
 }
 
@@ -109,6 +120,7 @@ interface RunModelAttribution {
   models: string[];
   promptTokens: number;
   completionTokens: number;
+  redactions?: number;
 }
 
 interface Run {
@@ -618,16 +630,27 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
   const lastRun = runs[0];
   const model = health?.model;
   const lastModelCall = model?.lastCall;
+  const fallback = model?.fallback;
   const answeredModel = lastModelCall?.source === "llm" ? lastModelCall.model : null;
   const modelLabel = !model
     ? "MODEL · …"
     : model.configured
-      ? `${answeredModel ?? model.model ?? "configured model"} · ${model.providerLabel ?? "configured endpoint"}`
+      ? `${answeredModel ?? model.model ?? "configured model"} · ${model.providerLabel ?? "configured endpoint"}${fallback?.model ? ` → ${fallback.model}` : ""}`
       : "TEMPLATE FALLBACK";
+  const fallbackDetail = fallback?.model
+    ? ` · fallback ${fallback.model} (${fallback.providerLabel ?? "in-region"})`
+    : " · no fallback configured";
+  const redactionDetail = lastModelCall?.redactions
+    ? ` · ${lastModelCall.redactions} span(s) redacted before the hosted call`
+    : " · no redactions";
+  const lastCallDetail =
+    lastModelCall?.source === "llm"
+      ? ` · latest answer: ${lastModelCall.model} via ${lastModelCall.tool}${redactionDetail}`
+      : " · no model-attributed call in the log yet";
   const modelTitle = !model
     ? "Reading the configured drafting endpoint from quorum-mcp…"
     : model.configured
-      ? `${model.providerLabel ?? "Model"} at ${model.endpoint ?? "configured endpoint"}${lastModelCall?.source === "llm" ? ` · latest attributed answer: ${lastModelCall.model} via ${lastModelCall.tool}` : " · no model-attributed call in the log yet"}`
+      ? `${model.providerLabel ?? "Model"} at ${model.endpoint ?? "configured endpoint"} · residency ${model.residency ?? "IN_REGION"}${fallbackDetail}${lastCallDetail}`
       : "No drafting endpoint on this host — redlines are deterministic template output";
 
   return (

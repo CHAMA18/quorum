@@ -74,6 +74,7 @@ export function buildReport(runId: string): { filename: string; markdown: string
   lines.push(`| Drafts from template | ${attribution.draftTemplate} |`);
   lines.push(`| Model(s) returned by the endpoint | ${attribution.models.length ? attribution.models.map((m) => `\`${m}\``).join(", ") : "none — template mode"} |`);
   lines.push(`| Tokens | ${(attribution.promptTokens + attribution.completionTokens).toLocaleString()} (${attribution.promptTokens.toLocaleString()} in / ${attribution.completionTokens.toLocaleString()} out) |`);
+  lines.push(`| Redactions before a hosted call | ${attribution.redactions.toLocaleString()} span(s) — supplier names and currency amounts replaced; zero means the in-region path saw the full evidence |`);
   lines.push("");
 
   if (run.plan) {

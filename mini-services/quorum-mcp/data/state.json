@@ -1799,7 +1799,8 @@
       },
       "status": "ACTIVE",
       "addedBy": "org:E2E Probe Org 1792594435",
-      "createdAt": "2026-10-21T14:53:55.472Z"
+      "createdAt": "2026-10-21T14:53:55.472Z",
+      "updatedAt": "2026-10-31T07:40:30.741Z"
     },
     {
       "id": "sup_d0214ba5",
@@ -2094,6 +2095,8 @@
     "checklist": "STRICT",
     "registryCrossCheck": true,
     "dualApprovalThreshold": 0,
+    "scoreDivergencePoints": 25,
+    "fxStalenessDays": 30,
     "updatedAt": "2026-10-28T19:55:50.410Z",
     "updatedBy": "Chungu Chipimo Chama"
   },
@@ -2192,6 +2195,8 @@
       "createdAt": "2026-10-30T04:06:06.579Z"
     }
   ],
+  "budgetLines": [],
+  "commitments": [],
   "stepUpUses": [
     {
       "jti": "2c1fed8b-446d-45b4-998d-9dcd48d13597",
@@ -2219,5 +2224,39 @@
     }
   ],
   "agentMode": "enabled",
-  "seq": 7914
+  "deployment": {
+    "mode": "RECORD_ONLY",
+    "publication": {
+      "mode": "SIMULATED",
+      "portal": "e-GP portal (simulated — no transmission)"
+    },
+    "updatedAt": null,
+    "updatedBy": null
+  },
+  "features": {
+    "recordOnlyEnforcement": true,
+    "truthInLabeling": true,
+    "liveRuleCatalogue": true,
+    "connectedPublication": false,
+    "sealedBids": true,
+    "bidLifecycle": true,
+    "jurisdictionClock": true,
+    "addendumEnforcement": true,
+    "actorBoundOffice": true,
+    "dualApproval": true,
+    "findingDispositions": true,
+    "complaintSuspension": true,
+    "contractExecution": true,
+    "paymentCaps": true,
+    "supplierAssurance": true,
+    "methodControl": true,
+    "evaluationIntegrity": true,
+    "sittingQuorum": false,
+    "minutesEvidential": false,
+    "unifiedAudit": false,
+    "residencyPolicy": false
+  },
+  "jurisdictionId": "ZM",
+  "stateVersion": 1,
+  "seq": 14467
 }

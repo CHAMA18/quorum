@@ -18,9 +18,8 @@
  *     runs an agentic loop: reads (runs, approvals, deadlines, the committee
  *     register, one tender's record) execute at once, and actions — approve
  *     or return a gate, launch a review — come back as HMAC-signed proposal
- *     cards. A full LLM brain answers whenever a model is reachable (Meta
- *     key or the platform's own served model), with a deterministic local
- *     brain as the last resort — the panel never shows a setup notice.
+ *     cards. A full LLM brain answers whenever Meta Muse is configured, with
+ *     a deterministic local brain otherwise — the panel never shows a setup notice.
  *   · acting   — a proposal card waits for the officer. Confirm stages it
  *     through /api/muse/execute under their own session; a gate decision
  *     opens the same step-up dialog the Approvals screen uses before the
@@ -64,7 +63,7 @@ const SUGGESTIONS = [
 
 const VOICE_KEY = "quorum.muse.voice";
 const MODEL_KEY = "quorum.barry.model";
-type ModelPreference = "automatic" | "meta" | "platform";
+type ModelPreference = "automatic" | "meta";
 type AssistantSection = "chat" | "model" | "support";
 
 /** Cloudflare Workers AI speakers; "browser" skips the edge and uses the device. */
@@ -797,7 +796,7 @@ export function MuseAssistant({ name }: { name?: string }) {
             shut();
           } else {
             const savedModel = window.localStorage.getItem(MODEL_KEY);
-            if (savedModel === "automatic" || savedModel === "meta" || savedModel === "platform") {
+            if (savedModel === "automatic" || savedModel === "meta") {
               setModelPreference(savedModel);
             }
             setSection("chat");
@@ -1107,12 +1106,6 @@ export function MuseAssistant({ name }: { name?: string }) {
                           ? `Use ${metaModel ?? "the configured Meta model"} for chat.`
                           : "Unavailable: Meta access is not configured for this workspace.",
                         disabled: !metaAvailable,
-                      },
-                      {
-                        id: "platform",
-                        title: "Quorum AI",
-                        detail: "Use the platform-hosted model, with the local desk assistant as fallback.",
-                        disabled: false,
                       },
                     ] as const).map((option) => (
                       <button

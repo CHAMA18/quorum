@@ -54,6 +54,23 @@ export interface Requirement {
   page: number;
 }
 
+/* A finding is only closed by a named human who says what was decided. `OPEN`
+   is the absence of this record — never a status inferred from silence. */
+export type DispositionStatus = "CLEARED" | "WAIVED" | "RE_CHECK";
+
+export interface FindingDisposition {
+  status: DispositionStatus;
+  by: string;
+  /* The signed-in user id behind the disposition, when the web layer attests one. */
+  byId?: string;
+  at: string;
+  note: string;
+  evidence?: string;
+  /* A waiver is a second pair of eyes: the officer who seconded it. */
+  secondedBy?: string;
+  gateId?: string;
+}
+
 export interface Finding {
   id: string;
   rule: string;
@@ -63,6 +80,9 @@ export interface Finding {
   citation: string;
   /* Set when the bounded repair loop re-anchored this finding to a verified line of its cited document. */
   repaired?: boolean;
+  /* The award is blocked while a HIGH finding against the recommended bid has
+     no disposition. Legacy findings simply have none — they fail closed. */
+  disposition?: FindingDisposition;
 }
 
 export interface Draft {
@@ -75,6 +95,9 @@ export interface Draft {
   /* "llm" only when the model's reply was used; "template" when the fallback text is the proposal. */
   source?: "llm" | "template";
   usage?: { promptTokens: number; completionTokens: number };
+  /* Spans the model gateway replaced before a hosted call (names + amounts).
+     Zero on the in-region path, where the full evidence stayed on the desk. */
+  redactions?: number;
   latencyMs?: number;
 }
 
@@ -183,6 +206,9 @@ export interface Run {
 /* The committee roster as the sidecar reads it from the web app. The office
    rides along when the register carries it — office-aware gates need it. */
 export interface RosterMemberForGate {
+  /* The web user id behind the roster row. Office authority is bound to this
+     id, not to a typed name. Older rosters may not carry it. */
+  id?: string;
   name: string;
   status: "PRESENT" | "EXCUSED";
   office?: Office;
@@ -393,6 +419,25 @@ export interface OpeningBidRow {
   receivedAt: string;
   late: boolean;
   priceRead?: string;
+  /* Set when the row was revealed from the sealed vault. The receipt is the
+     link back to the filing; the commitment proves the revealed price is the
+     one the bidder sealed. */
+  applicationId?: string;
+  receiptId?: string;
+  commitment?: string;
+  sealed?: boolean;
+}
+
+export interface OpeningReconciliation {
+  sealed: number;
+  manual: number;
+  derived: number;
+  withdrawn: number;
+  amended: number;
+  missingFromRegister: string[];
+  extraInRegister: string[];
+  matches: boolean;
+  note: string;
 }
 
 export interface BidOpeningRegister {
@@ -402,10 +447,20 @@ export interface BidOpeningRegister {
   closingDate?: string;
   rows: OpeningBidRow[];
   minutesMd: string;
+  reconciliation?: OpeningReconciliation;
   certifiedAt?: string;
   certifiedBy?: string;
   sha?: string;
   gateId?: string;
+}
+
+/* A structured connection named in a declaration: the firm or person the
+   member is connected to, and how. The evaluator screen writes these by name
+   so the bidder/owner screen can compare entities rather than prose. */
+export interface CoiEntity {
+  name: string;
+  relationship?: string;
+  kind?: "ENTITY" | "PERSON";
 }
 
 export interface CoiDeclaration {
@@ -414,6 +469,14 @@ export interface CoiDeclaration {
   member: string;
   declaration: "NO_CONFLICT" | "CONFLICT_DECLARED";
   conflicts?: string;
+  /* The names the declaration covers. Screening compares them with the
+     bidders on the matrix and their beneficial owners; a hit under a
+     NO_CONFLICT declaration blocks certification until the member amends it. */
+  entities?: CoiEntity[];
+  /* The member has stepped aside from this tender's evaluation. Recusal is
+     recorded separately from the declaration so a conflict can be declared
+     and the panel composition read from the same record. */
+  recused?: boolean;
   declaredAt: string;
 }
 
@@ -469,6 +532,68 @@ export interface EvalScore {
   evidence?: EvalEvidence[];
 }
 
+/* One evaluator's own sheet: every bidder against every criterion, sealed
+   with a digest over the submitted cells. A sheet is evidence of what that
+   evaluator scored before the committee met — it is never overwritten by
+   consensus, and a resubmission supersedes its predecessor explicitly. */
+export interface EvalSheetScore {
+  bidder: string;
+  criterionId: string;
+  score: number; /* 0-100 */
+  note?: string;
+}
+
+export interface EvalScoreSheet {
+  id: string;
+  matrixId: string;
+  tenderId: string;
+  evaluator: string;
+  evaluatorId?: string;
+  scores: EvalSheetScore[];
+  note?: string;
+  submittedBy: string;
+  submittedAt: string;
+  version: number;
+  supersedes?: string;
+  signature: string;
+}
+
+/* A disagreement the committee has to look at: the spread across sheets for
+   one cell, with the values and the evaluators who gave them. */
+export interface EvalDivergence {
+  bidder: string;
+  criterionId: string;
+  min: number;
+  max: number;
+  spread: number;
+  values: { evaluator: string; score: number }[];
+}
+
+/* The committee's agreed scores, computed from the sheets and signed by the
+   recorder. The matrix's technical column is only rewritten from here. */
+export interface EvalConsensus {
+  matrixId: string;
+  scores: EvalSheetScore[];
+  attendees: string[];
+  notes: string;
+  divergences: EvalDivergence[];
+  recordedBy: string;
+  recordedAt: string;
+  signature: string;
+}
+
+/* An FX quote used to put every bid on one evaluated-price basis. `base` is
+   the bid's currency, `quote` the evaluation currency; rate is quote per one
+   base unit. A quote carries its source and observation date, and the gate
+   refuses a stale or unsourced one. */
+export interface FxRate {
+  base: string;
+  quote: string;
+  rate: number;
+  source: string;
+  asOf: string;
+}
+
 export type Responsiveness = "ADMINISTRATIVELY_NONRESPONSIVE" | "MATERIALLY_NONRESPONSIVE" | "RESPONSIVE";
 
 export interface EvalBidResult {
@@ -481,7 +606,19 @@ export interface EvalBidResult {
   evidenceByCriterion?: EvalEvidenceGroup[];
   priceSignals?: EvalPriceSignal[];
   technicalTotal: number; /* weighted 0-100 */
-  financial?: { amount: number; currency?: string; formulaScore?: number };
+  financial?: {
+    amount: number;
+    currency?: string;
+    formulaScore?: number;
+    /* The evaluated basis the formula scored. Present when a conversion was
+       applied; `fxError` explains why a foreign price could not be scored. */
+    evaluatedAmount?: number;
+    evaluatedCurrency?: string;
+    fxRate?: number;
+    fxSource?: string;
+    fxAsOf?: string;
+    fxError?: string;
+  };
   total?: number; /* technical × techWeightPct + financial × rest */
   verdict: "RECOMMENDED" | "NOT_RECOMMENDED" | "DISQUALIFIED";
 }
@@ -494,6 +631,13 @@ export interface EvalMatrix {
   criteria: EvalCriterion[];
   technicalWeightPct: number;
   bids: EvalBidResult[];
+  /* The common basis every bid is scored in. Absent on legacy matrices — the
+     financial formula then compares stated amounts as before. */
+  evaluationCurrency?: string;
+  fxRates?: FxRate[];
+  /* WS7 — evaluator sheets and the committee consensus drawn from them. */
+  sheets?: EvalScoreSheet[];
+  consensus?: EvalConsensus;
   med?: {
     recordedAt: string;
     attendees: string[];
@@ -540,6 +684,9 @@ export interface AwardNotice {
   md: string;
   sha: string;
   portal: string;
+  /* What kind of publication this actually is. A simulated notice is a
+     rehearsal record; it never authorises a contract. */
+  publication?: ExternalPublication;
   gateId?: string;
   publishedAt?: string;
   publishedBy?: string;
@@ -578,20 +725,66 @@ export interface ContractVariation {
   description: string;
   valueDelta: number;
   pctOfContract: number;
+  /* The share of the original contract value all approved variations now
+     represent. Computed when the variation is requested, stored for the file. */
+  cumulativePct?: number;
   status: "APPROVED" | "REJECTED" | "PENDING";
   at: string;
   gateId?: string;
   decidedBy?: string;
+  approvedAt?: string;
+  /* A cumulative-cap override: a named reason and the officer who seconded it. */
+  override?: { reason: string; secondedBy: string; by: string; at: string };
 }
 
 export interface ContractPayment {
   id: string;
   description: string;
+  /* `amount` is the gross claim, kept for records written before the payment
+     cap existed. New payments carry the split explicitly. */
   amount: number;
+  gross?: number;
+  retention?: number;
+  withholding?: number;
+  net?: number;
   currency?: string;
+  fxRate?: number;
+  invoiceId?: string;
+  milestoneId?: string;
+  goodsReceiptId?: string;
+  status?: "PENDING" | "CERTIFIED" | "PAID";
   gateId?: string;
   certifiedAt?: string;
   certifiedBy?: string;
+}
+
+export interface PerformanceSecurity {
+  amount: number;
+  issuer: string;
+  validUntil: string;
+  documentId?: string;
+}
+
+export interface ContractInsurance {
+  policyNo: string;
+  issuer: string;
+  validUntil: string;
+  cover?: string;
+}
+
+export interface ContractCondition {
+  id: string;
+  text: string;
+  metAt?: string;
+}
+
+export interface ContractCompletion {
+  certificateId: string;
+  defectsLiabilityEndsAt: string;
+  performanceRating: number;
+  note?: string;
+  at: string;
+  by: string;
 }
 
 export interface ContractFile {
@@ -602,11 +795,33 @@ export interface ContractFile {
   openedAt: string;
   openedFromGate?: string;
   packMd?: string;
+  /* DRAFT is a signed pack; EXECUTED is the instrument the supplier accepted;
+     only an executed contract may carry a payment. */
+  status?: "DRAFT" | "EXECUTED" | "COMPLETED";
+  executedAt?: string;
+  executedBy?: string;
+  supplierAcceptedAt?: string;
+  supplierSignatory?: string;
+  acceptanceHash?: string;
+  performanceSecurity?: PerformanceSecurity;
+  insurance?: ContractInsurance;
+  subcontractors?: { name: string; scope: string }[];
+  retentionPct?: number;
+  warrantyDays?: number;
+  conditions?: ContractCondition[];
+  completion?: ContractCompletion;
   milestones: ContractMilestone[];
   variations: ContractVariation[];
   payments: ContractPayment[];
   completedAt?: string;
   completedBy?: string;
+}
+
+export interface ComplaintIndependentReview {
+  reviewer: string;
+  at: string;
+  outcome: string;
+  note: string;
 }
 
 export interface Complaint {
@@ -618,8 +833,50 @@ export interface Complaint {
   receivedAt: string;
   duringStandstill: boolean;
   response?: { md: string; at: string; by: string; gateId?: string };
-  status: "OPEN" | "ANSWERED" | "WITHDRAWN";
+  /* The complainant is told the outcome; an escalation goes to independent
+     review. Contract and payment stay blocked while OPEN or ESCALATED. */
+  status: "OPEN" | "ANSWERED" | "ESCALATED" | "CLOSED" | "WITHDRAWN";
+  acknowledgedAt?: string;
+  escalatedAt?: string;
+  escalationReason?: string;
+  independentReview?: ComplaintIndependentReview;
+  closedAt?: string;
+  closedBy?: string;
 }
+
+/* ── Budget and commitment ledger ───────────────────────────────────────────
+   The award commits money before it is spent. A commitment is released when
+   the contract closes; a payment draws down `spent` against the line. */
+
+export interface BudgetLine {
+  id: string;
+  workspaceId?: string;
+  fiscalYear: number;
+  code: string;
+  currency: string;
+  approved: number;
+  committed: number;
+  spent: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Commitment {
+  id: string;
+  workspaceId?: string;
+  tenderId: string;
+  budgetLineId: string;
+  amount: number;
+  currency?: string;
+  createdAt: string;
+  createdBy: string;
+  releasedAt?: string;
+  releasedBy?: string;
+}
+
+/* The cap on cumulative variations, as a share of the original contract value.
+   A lawful variation regime needs a ceiling, not only a gate. */
+export const VARIATION_CUMULATIVE_CAP_PCT = 25;
 
 export interface Clarification {
   id: string;
@@ -687,6 +944,20 @@ export interface TenderCycle {
   tenderId: string;
   tenantId?: string;
   workspaceId?: string;
+  /* The lawful method this tender runs under (methods.ts), and the record
+     that makes a non-open choice defensible: a stated justification, the
+     accounting officer's method gate, and — where the law requires it — the
+     authority's prior approval reference. */
+  methodId?: string;
+  methodJustification?: string;
+  methodApprovalRef?: string;
+  methodApprovedBy?: string;
+  methodApprovedAt?: string;
+  methodGateId?: string;
+  /* The value the method was tested against when it was recorded; the award
+     re-tests against the winning bid's actual value. */
+  methodValue?: number;
+  methodCurrency?: string;
   closingDate?: string;
   closingSetBy?: string;
   closingSetAt?: string;
@@ -778,9 +1049,60 @@ export interface Supplier {
   categories: string[];   /* what they supply / works they execute */
   metadata: Record<string, string>;  /* free-form extras, legal form etc. */
   status: "ACTIVE" | "SUSPENDED" | "BLACKLISTED";
+  /* The latest assurance check on this supplier — registry, tax, beneficial
+     ownership, sanctions/PEP and documents. Optional because the register
+     predates it; absent fails closed whenever assurance is enforced. */
+  verification?: SupplierVerification;
   addedBy: string;
   createdAt: string;
   updatedAt?: string;
+}
+
+/* ── Supplier assurance (WS6) ──────────────────────────────────────────────
+   A point-in-time check, not a permanent badge: registry standing, tax
+   standing, who ultimately owns the firm, sanctions/PEP screening and the
+   documents behind it. It carries its source (a live registry lookup or a
+   labelled manual attestation) and an expiry, because a clean check today is
+   not evidence of a clean check at award. */
+
+export type VerificationSource = "REGISTRY_LOOKUP" | "MANUAL_ATTESTATION";
+export type RegistryStatus = "REGISTERED" | "NOT_FOUND" | "STRUCK_OFF";
+export type TaxStatus = "VALID" | "EXPIRED" | "NOT_FOUND";
+export type ScreeningResult = "CLEAR" | "HIT";
+
+export interface BeneficialOwner {
+  name: string;
+  role?: string;
+  /* Percentage of the firm ultimately held; 0 when not stated. */
+  ownershipPct?: number;
+  nationality?: string;
+  idNo?: string;
+}
+
+export interface VerificationDocument {
+  id: string;
+  kind: string;
+  reference?: string;
+  issuedAt?: string;
+  expiresAt?: string;
+}
+
+export interface SupplierVerification {
+  status: "VERIFIED" | "FAILED";
+  registryStatus: RegistryStatus;
+  taxStatus: TaxStatus;
+  beneficialOwners: BeneficialOwner[];
+  sanctions: ScreeningResult;
+  pep: ScreeningResult;
+  /* Named matches behind a HIT — the reviewer sees who and where. */
+  sanctionsMatches?: string[];
+  pepMatches?: string[];
+  documents: VerificationDocument[];
+  checkedAt: string;
+  expiresAt: string;
+  source: VerificationSource;
+  checkedBy: string;
+  notes?: string;
 }
 
 /* An application an organization files against a published tender from the
@@ -798,11 +1120,43 @@ export interface SupplierApplication {
   actor: string;                 /* org:<name> — the gateway-sealed identity */
   supplierId?: string;           /* the supplier-register entry synced on filing */
   registrationNo: string;        /* the organization's legal registration number */
-  amount: number;
+  /* Legacy plaintext filings keep their amount. A sealed filing never stores
+     the price: `sealed` holds the only copy, encrypted. */
+  amount?: number;
   currency?: string;
   coverNote?: string;
+  sealed?: SealedBidEnvelope;
+  receiptId?: string;
+  version?: number;
+  supersedesId?: string;
+  withdrawnAt?: string;
+  amendedAt?: string;
   receivedAt: string;
-  status: "RECEIVED" | "WITHDRAWN";
+  status: "RECEIVED" | "WITHDRAWN" | "AMENDED";
+}
+
+export interface BidReceipt {
+  id: string;
+  tenderId: string;
+  orgId: string;
+  orgName: string;
+  commitment: string;
+  receivedAt: string;
+  algorithm: "AES-256-GCM";
+  signature: string;
+}
+
+export interface SealedBidEnvelope {
+  version: 1;
+  algorithm: "AES-256-GCM";
+  envelopeId: string;
+  salt: string;
+  iv: string;
+  tag: string;
+  ciphertext: string;
+  commitment: string;
+  sealedAt: string;
+  receipt: BidReceipt;
 }
 
 /* The tunable guards — the thresholds the agent obeys inside a run. The Rules &
@@ -816,6 +1170,12 @@ export interface Guards {
   /* A gate whose stated value is at or above this figure needs two named
      approvals from two different officers. 0 disables the rule. */
   dualApprovalThreshold: number;
+  /* A spread this wide (in score points) between evaluator sheets is a
+     structured divergence the committee must minute before certifying. */
+  scoreDivergencePoints: number;
+  /* An FX quote older than this many days is stale and cannot carry the
+     evaluated-price basis. */
+  fxStalenessDays: number;
   /* Who last moved a guard, and when — the audit line on the page. */
   updatedAt: string | null;
   updatedBy: string | null;
@@ -826,6 +1186,8 @@ export const DEFAULT_GUARDS: Guards = {
   checklist: "STANDARD",
   registryCrossCheck: true,
   dualApprovalThreshold: 0,
+  scoreDivergencePoints: 25,
+  fxStalenessDays: 30,
   updatedAt: null,
   updatedBy: null,
 };
@@ -845,6 +1207,14 @@ export function normalizeGuards(raw: unknown): Guards {
       typeof g.dualApprovalThreshold === "number" && g.dualApprovalThreshold > 0
         ? g.dualApprovalThreshold
         : DEFAULT_GUARDS.dualApprovalThreshold,
+    scoreDivergencePoints:
+      typeof g.scoreDivergencePoints === "number" && g.scoreDivergencePoints > 0 && g.scoreDivergencePoints <= 100
+        ? g.scoreDivergencePoints
+        : DEFAULT_GUARDS.scoreDivergencePoints,
+    fxStalenessDays:
+      typeof g.fxStalenessDays === "number" && g.fxStalenessDays > 0 && g.fxStalenessDays <= 365
+        ? g.fxStalenessDays
+        : DEFAULT_GUARDS.fxStalenessDays,
     updatedAt: typeof g.updatedAt === "string" ? g.updatedAt : null,
     updatedBy: typeof g.updatedBy === "string" ? g.updatedBy : null,
   };
@@ -857,6 +1227,8 @@ export interface StepUpUse {
   usedAt: string;
 }
 
+export type JurisdictionId = "KE" | "ZM";
+
 interface PersistShape {
   gates: Gate[];
   runs: Run[];
@@ -866,12 +1238,309 @@ interface PersistShape {
   guards: Guards;
   cycle: TenderCycle[];
   pipeline: PipelineEntry[];
+  budgetLines: BudgetLine[];
+  commitments: Commitment[];
   stepUpUses: StepUpUse[];
   agentMode: AgentMode;
+  deployment: Deployment;
+  connector: ConnectorRegistration | null;
+  sittings: Sitting[];
+  /* Idempotency keys of web-side events already written into the chain —
+     the outbox's replay guarantee across restarts. */
+  forwardedKeys: string[];
+  features: Features;
+  jurisdictionId: JurisdictionId;
+  stateVersion: number;
 }
 
 export type AgentMode = "enabled" | "read-only" | "disabled";
 export const DEFAULT_AGENT_MODE: AgentMode = "enabled";
+
+/* ── Deployment truth ──────────────────────────────────────────────────────
+   A workspace starts in RECORD_ONLY: it may rehearse the whole cycle, but a
+   contract or payment cannot be signed on a local record. CONNECTED requires a
+   verified external publication receipt; the normaliser fails closed, so a
+   hand-edited state file cannot jump the gate. */
+export type DeploymentMode = "RECORD_ONLY" | "CONNECTED";
+export type PublicationMode = "SIMULATED" | "CONNECTED";
+
+export interface ExternalPublication {
+  mode: PublicationMode;
+  portal: string;
+  receiptId?: string;
+  publishedAt?: string;
+  verifiedAt?: string;
+  evidenceHash?: string;
+}
+
+export interface Deployment {
+  mode: DeploymentMode;
+  publication: ExternalPublication;
+  /* The registered connector this mode runs through. A receipt alone can be
+     pasted from anywhere; a CONNECTED workspace must name the connector that
+     actually carried the notice, and that connector must still be active. */
+  connectorId?: string;
+  updatedAt: string | null;
+  updatedBy: string | null;
+  reason?: string;
+}
+
+/* ── The external connector — what "CONNECTED" means ─────────────────────
+   A deployment can only ever be as connected as the thing it is connected
+   TO. A workspace claims CONNECTED only while a real connector is registered
+   (by a named operator, with an endpoint, on the record) and still active.
+   Deregistering (deactivating) a connector collapses the deployment to
+   RECORD_ONLY at the next normalisation — truth follows the connector. */
+export interface ConnectorRegistration {
+  id: string;
+  name: string;
+  endpoint: string;
+  operator: string;
+  operatorId?: string;
+  registeredAt: string;
+  active: boolean;
+  deactivatedAt?: string;
+  deactivatedBy?: string;
+  note?: string;
+}
+
+export function activeConnector(state): ConnectorRegistration | null {
+  const c = state.connector;
+  return c && c.active ? c : null;
+}
+
+/** (raw, connector) — CONNECTED requires the receipt AND a live registered
+    connector named by connectorId. Fails closed: a hand-edited state file
+    claiming CONNECTED with no connector collapses to RECORD_ONLY. */
+export function normalizeDeployment(raw: unknown, connector?: ConnectorRegistration | null): Deployment {
+  const r = (raw ?? {}) as Partial<Deployment>;
+  const p = (r.publication ?? {}) as Partial<ExternalPublication>;
+  const portal = typeof p.portal === "string" && p.portal.trim() ? p.portal.trim().slice(0, 200) : SIMULATED_PORTAL;
+  const receiptId = typeof p.receiptId === "string" ? p.receiptId.trim().slice(0, 200) : "";
+  const evidenceHash = typeof p.evidenceHash === "string" ? p.evidenceHash.trim().slice(0, 200) : "";
+  const connectorId = typeof r.connectorId === "string" ? r.connectorId.trim().slice(0, 120) : "";
+  const connectorLive = !!connector && connector.active && (!connectorId || connectorId === connector.id);
+  /* CONNECTED is only as good as its receipt AND its connector. Without the
+     external id, the evidence hash, a real timestamp and a registered
+     connector, the record says what it can prove: a rehearsal. */
+  const connected =
+    r.mode === "CONNECTED" &&
+    p.mode === "CONNECTED" &&
+    !!receiptId &&
+    !!evidenceHash &&
+    connectorLive &&
+    typeof p.publishedAt === "string" &&
+    !Number.isNaN(new Date(p.publishedAt).getTime());
+  return {
+    mode: connected ? "CONNECTED" : "RECORD_ONLY",
+    publication: connected
+      ? {
+          mode: "CONNECTED",
+          portal,
+          receiptId,
+          evidenceHash,
+          publishedAt: p.publishedAt,
+          ...(typeof p.verifiedAt === "string" ? { verifiedAt: p.verifiedAt } : {}),
+        }
+      : { mode: "SIMULATED", portal: SIMULATED_PORTAL },
+    ...(connected ? { connectorId: connector!.id } : {}),
+    updatedAt: typeof r.updatedAt === "string" ? r.updatedAt : null,
+    updatedBy: typeof r.updatedBy === "string" ? r.updatedBy : null,
+    ...(typeof r.reason === "string" && r.reason.trim() ? { reason: r.reason.trim().slice(0, 240) } : {}),
+  };
+}
+
+export const SIMULATED_PORTAL = "e-GP portal (simulated — no transmission)";
+
+export const DEFAULT_DEPLOYMENT: Deployment = {
+  mode: "RECORD_ONLY",
+  publication: { mode: "SIMULATED", portal: SIMULATED_PORTAL },
+  updatedAt: null,
+  updatedBy: null,
+};
+
+/* ── Sittings — the noticed meeting a quorum is drawn from ────────────────
+   A committee roll is who the desk SAYS is present; a sitting is where the
+   evidence lives: a notice issued ahead of time, attendance admitted at the
+   door and withdrawn again when a member leaves. A gate linked to a tender
+   under the sittingQuorum flag must draw its quorum from the sitting's
+   admitted attendance — never from a hand-set PRESENT flag. */
+export interface SittingAttendance {
+  name: string;
+  memberId?: string;
+  status: "ADMITTED" | "WITHDRAWN" | "EXCUSED";
+  at: string;
+  by?: string;
+}
+
+export type SittingStatus = "SCHEDULED" | "NOTICED" | "LIVE" | "ENDED";
+
+export interface Sitting {
+  id: string;
+  workspaceId?: string;
+  tenderIds: string[];
+  title?: string;
+  scheduledAt: string;
+  /* The moment the summons to members was issued. Attendance counts only
+     for sittings that carry one — an unnotified sitting is not a committee. */
+  noticeAt?: string;
+  noticeIssuedBy?: string;
+  location?: string;
+  quorumRequired?: number;
+  attendance: SittingAttendance[];
+  status: SittingStatus;
+  endedAt?: string;
+  /* The emergency path exists but is never free: it is named, reasoned and
+     audited, and it still names the members who attended. */
+  emergency?: { by: string; reason: string; at: string };
+}
+
+/* Rows written by earlier versions simply load back with what they carry. */
+export function normalizeSitting(raw: unknown): Sitting | null {
+  const r = (raw ?? {}) as Partial<Sitting>;
+  if (!Array.isArray(r.tenderIds)) return null;
+  const tenderIds = r.tenderIds.filter((t): t is string => typeof t === "string" && !!t.trim());
+  if (!tenderIds.length) return null;
+  const scheduledAt = typeof r.scheduledAt === "string" ? r.scheduledAt : "";
+  if (!scheduledAt || Number.isNaN(new Date(scheduledAt).getTime())) return null;
+  const attendance = (Array.isArray(r.attendance) ? r.attendance : []).flatMap((a) => {
+    const row = (a ?? {}) as Partial<SittingAttendance>;
+    const name = typeof row.name === "string" ? row.name.trim().slice(0, 160) : "";
+    if (!name) return [];
+    return [{
+      name,
+      ...(typeof row.memberId === "string" ? { memberId: row.memberId } : {}),
+      status: row.status === "ADMITTED" || row.status === "WITHDRAWN" || row.status === "EXCUSED" ? row.status : "ADMITTED" as const,
+      at: typeof row.at === "string" ? row.at : new Date().toISOString(),
+      ...(typeof row.by === "string" ? { by: row.by } : {}),
+    }];
+  });
+  const emergency = (r.emergency ?? {}) as Partial<NonNullable<Sitting["emergency"]>>;
+  return {
+    id: typeof r.id === "string" && r.id ? r.id : `sit_${randomUUID().slice(0, 10)}`,
+    ...(typeof r.workspaceId === "string" ? { workspaceId: r.workspaceId } : {}),
+    tenderIds,
+    ...(typeof r.title === "string" && r.title.trim() ? { title: r.title.trim().slice(0, 160) } : {}),
+    scheduledAt,
+    ...(typeof r.noticeAt === "string" && !Number.isNaN(new Date(r.noticeAt).getTime())
+      ? { noticeAt: r.noticeAt, noticeIssuedBy: typeof r.noticeIssuedBy === "string" ? r.noticeIssuedBy.slice(0, 160) : undefined }
+      : {}),
+    ...(typeof r.location === "string" && r.location.trim() ? { location: r.location.trim().slice(0, 200) } : {}),
+    ...(typeof r.quorumRequired === "number" && Number.isFinite(r.quorumRequired) && r.quorumRequired > 0
+      ? { quorumRequired: Math.round(r.quorumRequired) }
+      : {}),
+    attendance,
+    status: r.status === "NOTICED" || r.status === "LIVE" || r.status === "ENDED" ? r.status : "SCHEDULED" as const,
+    ...(typeof r.endedAt === "string" && !Number.isNaN(new Date(r.endedAt).getTime()) ? { endedAt: r.endedAt } : {}),
+    ...(typeof emergency.by === "string" && typeof emergency.reason === "string" && emergency.reason.trim().length >= 12
+      ? { emergency: { by: emergency.by, reason: emergency.reason.trim().slice(0, 400), at: typeof emergency.at === "string" ? emergency.at : new Date().toISOString() } }
+      : {}),
+  };
+}
+
+/* The connector in a state file loads back exactly as registered or not at
+   all — a half-baked record is not registered. Deactivation is history, not
+   deletion, so a connector sugar-coated to look live in a hand edit fails. */
+export function normalizeConnector(raw: unknown): ConnectorRegistration | null {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const id = typeof r.id === "string" ? r.id.trim().slice(0, 120) : "";
+  const name = typeof r.name === "string" ? r.name.trim().slice(0, 200) : "";
+  const endpoint = typeof r.endpoint === "string" ? r.endpoint.trim().slice(0, 400) : "";
+  const operator = typeof r.operator === "string" ? r.operator.trim().slice(0, 160) : "";
+  if (!id || !name || !endpoint || !operator) return null;
+  if (typeof r.registeredAt !== "string" || Number.isNaN(new Date(r.registeredAt).getTime())) return null;
+  const active = r.active !== false;
+  return {
+    id,
+    name,
+    endpoint,
+    operator,
+    ...(typeof r.operatorId === "string" && r.operatorId.trim() ? { operatorId: r.operatorId.trim().slice(0, 120) } : {}),
+    registeredAt: r.registeredAt,
+    active,
+    ...(active ? {} : { deactivatedAt: typeof r.deactivatedAt === "string" ? r.deactivatedAt : new Date().toISOString() }),
+    ...(active ? {} : { deactivatedBy: typeof r.deactivatedBy === "string" ? r.deactivatedBy.slice(0, 160) : "system" }),
+    ...(typeof r.note === "string" && r.note.trim() ? { note: r.note.trim().slice(0, 240) } : {}),
+  };
+}
+
+/* Bounded, de-duplicated, string-only: the harmless keys of past receipts. */
+function forwardKeysFrom(raw: unknown): string[] {
+  const rows = Array.isArray(raw) ? raw : [];
+  const keys: string[] = [];
+  const seen = new Set<string>();
+  for (const row of rows) {
+    if (typeof row !== "string") continue;
+    const key = row.trim().slice(0, 200);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    keys.push(key);
+    if (keys.length >= 5000) break;
+  }
+  return keys;
+}
+
+/** A registered, active connector: the shape every CONNECTED workspace must
+ *  carry. The approval route builds one from the attested request; tests and
+ *  tooling use this to stage a record that can honestly say CONNECTED. */
+export function registeredConnector(
+  overrides: Partial<ConnectorRegistration> = {},
+): ConnectorRegistration {
+  return {
+    id: `con_${randomUUID().slice(0, 10)}`,
+    name: "e-GP portal connector",
+    endpoint: "https://egp.gov.zm/api",
+    operator: "System Administrator",
+    registeredAt: new Date().toISOString(),
+    active: true,
+    ...overrides,
+  };
+}
+
+/* ── Feature flags ─────────────────────────────────────────────────────────
+   The registry is the source of truth for what has actually shipped. Refusals
+   that protect the record are locked on; future workstreams ship dark. */
+export const FEATURE_FLAGS = [
+  { key: "recordOnlyEnforcement", label: "Record-only enforcement", description: "Refuse contracts and payments while no external publication is connected.", phase: "Phase 0", default: true, locked: true },
+  { key: "truthInLabeling", label: "Truth-in-labeling", description: "Label simulated notices, receipts and exports as simulations.", phase: "Phase 0", default: true, locked: true },
+  { key: "liveRuleCatalogue", label: "Live rule catalogue", description: "Generate the published rule register from the live guard values.", phase: "Phase 0", default: true, locked: true },
+  { key: "connectedPublication", label: "Connected e-GP publication", description: "Allow CONNECTED deployment after a verified portal receipt exists.", phase: "WS0", default: false },
+  { key: "sealedBids", label: "Sealed bid vault", description: "Encrypt bid payloads until the certified opening reveal.", phase: "WS1", default: true },
+  { key: "bidLifecycle", label: "Bid withdrawal and amendment", description: "Offer receipts, withdrawal and amendment before closing.", phase: "WS1", default: true },
+  { key: "jurisdictionClock", label: "Jurisdiction clocks", description: "Compute statutory periods against a signed holiday/timezone pack.", phase: "WS2", default: true },
+  { key: "addendumEnforcement", label: "Addendum notice control", description: "Refuse a late addendum that does not extend the closing date.", phase: "WS2", default: true },
+  { key: "actorBoundOffice", label: "Actor-bound office authority", description: "Bind every office gate to a user ID, not a typed name.", phase: "WS3", default: true },
+  { key: "dualApproval", label: "Dual approval", description: "Require two different officers above the configured value.", phase: "WS3", default: true },
+  { key: "findingDispositions", label: "Finding dispositions", description: "Block award while a HIGH finding is undispositioned.", phase: "WS4", default: true },
+  { key: "complaintSuspension", label: "Complaint suspension", description: "Block contract and payment while a complaint is open.", phase: "WS4", default: true },
+  { key: "contractExecution", label: "Contract execution", description: "Require supplier acceptance, bonds and insurance before payment.", phase: "WS5", default: true },
+  { key: "paymentCaps", label: "Payment and variation caps", description: "Enforce contract value, retention and cumulative variation limits.", phase: "WS5", default: true },
+  { key: "supplierAssurance", label: "Supplier assurance", description: "Verify registry, tax, sanctions and beneficial ownership before award.", phase: "WS6", default: true },
+  { key: "methodControl", label: "Procurement method control", description: "Require a lawful method and a signed justification for non-open methods.", phase: "WS6", default: true },
+  { key: "evaluationIntegrity", label: "Evaluation integrity", description: "Per-evaluator sheets, consensus, structured conflicts and FX scoring.", phase: "WS7", default: true },
+  { key: "sittingQuorum", label: "Sitting quorum", description: "Derive quorum from a noticed sitting's admitted attendance.", phase: "WS8", default: false },
+  { key: "minutesEvidential", label: "Evidential minutes", description: "Attendee filing, approval, hashing, quote checks and scoped access.", phase: "WS8", default: false },
+  { key: "unifiedAudit", label: "Unified audit spine", description: "Forward web-side mutations into the verifiable chain.", phase: "WS9", default: true, locked: true },
+  { key: "residencyPolicy", label: "Data residency policy", description: "Route model calls by workspace residency and redaction policy.", phase: "WS10", default: true, locked: true },
+] as const;
+
+export type FeatureFlagKey = (typeof FEATURE_FLAGS)[number]["key"];
+export type Features = Record<FeatureFlagKey, boolean>;
+
+export const DEFAULT_FEATURES = Object.fromEntries(
+  FEATURE_FLAGS.map((flag) => [flag.key, flag.default]),
+) as Features;
+
+export function normalizeFeatures(raw: unknown): Features {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const next = { ...DEFAULT_FEATURES };
+  for (const flag of FEATURE_FLAGS) {
+    if (typeof r[flag.key] === "boolean") next[flag.key] = r[flag.key] as boolean;
+  }
+  return next;
+}
+
+export const STATE_VERSION = 1;
 const workspaceContext = new AsyncLocalStorage<string>();
 export const currentWorkspaceId = () => workspaceContext.getStore() ?? "demo";
 export function workspaceRows<T extends { workspaceId?: string }>(rows: readonly T[], workspaceId = currentWorkspaceId()): T[] {
@@ -891,8 +1560,17 @@ export const state: PersistShape = {
   guards: { ...DEFAULT_GUARDS },
   cycle: [],
   pipeline: [],
+  budgetLines: [],
+  commitments: [],
   stepUpUses: [],
   agentMode: DEFAULT_AGENT_MODE,
+  deployment: { ...DEFAULT_DEPLOYMENT, publication: { ...DEFAULT_DEPLOYMENT.publication } },
+  connector: null,
+  sittings: [],
+  forwardedKeys: [],
+  features: { ...DEFAULT_FEATURES },
+  jurisdictionId: "ZM",
+  stateVersion: STATE_VERSION,
 };
 
 export async function loadState() {
@@ -943,9 +1621,26 @@ export async function loadState() {
     state.cycle.push(...(raw.cycle ?? []));
     state.pipeline.length = 0;
     state.pipeline.push(...(raw.pipeline ?? []));
+    state.budgetLines.length = 0;
+    state.budgetLines.push(...(raw.budgetLines ?? []));
+    state.commitments.length = 0;
+    state.commitments.push(...(raw.commitments ?? []));
     state.stepUpUses.length = 0;
     state.stepUpUses.push(...(raw.stepUpUses ?? []));
+    state.connector = normalizeConnector(raw.connector);
+    state.sittings.length = 0;
+    state.sittings.push(...((raw.sittings ?? []) as unknown[]).map(normalizeSitting).filter((s): s is Sitting => s !== null));
+    state.forwardedKeys.length = 0;
+    state.forwardedKeys.push(...forwardKeysFrom(raw.forwardedKeys));
     state.agentMode = raw.agentMode === "read-only" || raw.agentMode === "disabled" ? raw.agentMode : DEFAULT_AGENT_MODE;
+    /* Deployment and feature flags are normalised on every boot. A state file
+       written before them, or edited by hand to claim CONNECTED, loads as the
+       conservative record it can actually prove — and the connector has to be
+       registered and live for the claim to survive. */
+    state.deployment = normalizeDeployment(raw.deployment, state.connector);
+    state.features = normalizeFeatures(raw.features);
+    state.jurisdictionId = raw.jurisdictionId === "KE" || raw.jurisdictionId === "ZM" ? raw.jurisdictionId : "ZM";
+    state.stateVersion = STATE_VERSION;
     /* Merged over the defaults so a store written before the guards existed
        still boots with the carved settings. */
     state.guards = normalizeGuards(raw.guards);

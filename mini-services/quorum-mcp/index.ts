@@ -71,10 +71,14 @@ import { getOcpDatasets, loadOcpSnapshot } from "./ocp-live";
 import { rollupCountries } from "./ocp-africa-roll";
 import { ocpRefreshStatus, refreshOcpRegistry, startOcpAutoRefresh } from "./ocp-refresh";
 import { connectMany, loadPortalLinks } from "./portal-links";
+import { createSitting, endSitting, recordAttendance } from "./sittings";
+import { forwardWebEvent } from "./audit-forward";
+import { normalizeDeployment, registeredConnector } from "./store";
 import { disabledPortalIds, loadPortalState, setPortalsEnabled } from "./portal-state";
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { loadPack, TENDERS_DIR } from "./engine";
 import { modelAttributionForRun, modelStatus } from "./model";
+import { residencyFromEnv } from "./model-gateway";
 import { parseClosingDate } from "./cycle";
 import {
   marketplaceEntries,
@@ -108,14 +112,29 @@ function readAnchorFile(): AnchorRecord[] {
   }
 }
 
-/** Members who declared a conflict on this tender leave its quorum. */
+/** Members who declared a conflict, recused, or were screened against a bidder
+ *  on this tender leave its quorum. A screened connection under a NO_CONFLICT
+ *  declaration is treated as unresolved: the member cannot vote or sign until
+ *  the declaration is amended. */
 function conflictedMembers(tenderId: string): Set<string> {
   const cycle = state.cycle.find(
     (c) => c.tenderId === tenderId && (c.workspaceId ?? "demo") === currentWorkspaceId(),
   );
   const names = new Set<string>();
   for (const declaration of cycle?.coi ?? []) {
-    if (declaration.declaration === "CONFLICT_DECLARED") names.add(declaration.member.trim().toLowerCase());
+    if (declaration.declaration === "CONFLICT_DECLARED" || declaration.recused === true) {
+      names.add(declaration.member.trim().toLowerCase());
+    }
+  }
+  if (cycle?.matrix) {
+    const hits = conflictScreening(
+      cycle.coi,
+      cycle.matrix.bids.map((bid) => bid.bidder),
+      state.suppliers,
+    );
+    for (const hit of hits) {
+      if (hit.declaration !== "CONFLICT_DECLARED") names.add(hit.member.trim().toLowerCase());
+    }
   }
   return names;
 }
@@ -129,7 +148,7 @@ function conflictedMembers(tenderId: string): Set<string> {
 function separationOfDuties(gate: Gate, approver: string): string | null {
   const who = approver.trim().toLowerCase();
   if (conflictedMembers(gate.tenderId).has(who)) {
-    return `${approver.trim()} declared a conflict of interest on ${gate.tenderId} — another officer must sign this decision.`;
+    return `${approver.trim()} declared a conflict, recused, or was screened against a bidder on ${gate.tenderId} — another officer must sign this decision.`;
   }
   const cycle = state.cycle.find(
     (c) => c.tenderId === gate.tenderId && (c.workspaceId ?? "demo") === currentWorkspaceId(),
@@ -154,7 +173,8 @@ function gateValue(gate: Gate): number | null {
   const raw = inputs.value ?? inputs.amount ?? inputs.awardValue;
   if (typeof raw === "number" && Number.isFinite(raw)) return raw;
   if (typeof raw !== "string") return null;
-  const digits = raw.replace(/[^0-9.]/g, "");
+  /* Grouping commas are not decimal points: "ZMW 1,250,000" is 1,250,000. */
+  const digits = raw.replace(/,/g, "").replace(/[^0-9.]/g, "");
   if (!digits) return null;
   const value = Number(digits);
   return Number.isFinite(value) ? value : null;
@@ -211,9 +231,15 @@ import {
   TOOLS,
   verifySessionActor,
 } from "./engine";
-import { cycleToolCall, executeCycleGateAction, handleCycleRoutes, nextPipelineRef, preApprovalCheck } from "./cycle-routes";
+import { coreVerifySupplier, cycleToolCall, executeCycleGateAction, handleCycleRoutes, nextPipelineRef, preApprovalCheck } from "./cycle-routes";
+import { conflictScreening } from "./evaluation";
+import { sittingQuorumRefusal } from "./sittings";
+import { FEATURE_FLAGS, SIMULATED_PORTAL } from "./store";
+import { buildRuleCatalogue } from "./rule-catalogue";
+import { formatPriceRead, redactApplication, sealBid, verifyBidReceipt } from "./bid-vault";
+import { isJurisdictionId, jurisdictionPack, packSummary } from "./jurisdiction";
 import { consumeStepUp, verifyStepUp } from "./step-up";
-import { signGate, verifyGateSignature } from "./receipts";
+import { signGate, signingKeyStatus, verifyGateSignature } from "./receipts";
 import { notifyWebSoon } from "./notify";
 const PORT = 3031;
 
@@ -221,6 +247,11 @@ const PORT = 3031;
 function strOpt(v: unknown): string | undefined {
   const s = String(v ?? "").trim().slice(0, 200);
   return s.length > 0 ? s : undefined;
+}
+
+/* A string field — trims and caps; empty collapses to "". */
+function str(v: unknown, max = 400): string {
+  return String(v ?? "").trim().slice(0, max);
 }
 
 /* Log outputs are capped to a JSON string on disk; in-memory rows may still
@@ -265,6 +296,7 @@ function latestModelCall() {
       source,
       at: entry.ts,
       runId: entry.runId ?? null,
+      redactions: typeof outputs.redactions === "number" ? outputs.redactions : 0,
     };
   }
   return null;
@@ -354,6 +386,9 @@ async function callOwnTool(name: string, args: Record<string, unknown>, runId?: 
     case "draft_award_report":
     case "publish_award_notice":
     case "prepare_contract_pack":
+    case "execute_contract":
+    case "set_procurement_method":
+    case "verify_supplier":
     case "request_variation":
     case "log_complaint":
     case "log_clarification":
@@ -421,7 +456,7 @@ function handInkFrom(body: unknown): { image: string; signedAt: string; strokes:
   };
 }
 
-async function decideGate(id: string, decision: string, approver: string, note?: string, signedInAs?: string, stepUpToken?: string, workspaceId = currentWorkspaceId(), hand?: { image: string; signedAt: string; strokes: number }) {
+async function decideGate(id: string, decision: string, approver: string, note?: string, signedInAs?: string, stepUpToken?: string, workspaceId = currentWorkspaceId(), hand?: { image: string; signedAt: string; strokes: number }, attestedActorId?: string) {
   const gate = state.gates.find((g) => g.id === id && (g.workspaceId ?? "demo") === workspaceId);
   if (!gate) return { error: "gate not found", code: 404 };
   const awaitingSecond = gate.status === "AWAITING_SECOND";
@@ -516,7 +551,7 @@ async function decideGate(id: string, decision: string, approver: string, note?:
       return { error: verdict.reason, code: 403 };
     }
     /* Office-aware gates and cycle preconditions — checked before anything changes. */
-    const pre = preApprovalCheck(gate, name, roster, signedInAs);
+    const pre = preApprovalCheck(gate, name, roster, signedInAs, attestedActorId);
     if (pre) {
       appendLog({ actor: "quorum-mcp", server: "quorum-mcp", tool: "gate_decision", kind: "GATE_DECISION", runId: gate.runId, inputs: { gateId: id, decision, approver: name }, outputs: { refused: pre }, status: "ERROR", durationMs: 0 });
       return { error: pre, code: 403 };
@@ -530,6 +565,19 @@ async function decideGate(id: string, decision: string, approver: string, note?:
   if (!roll.ok) {
     appendLog({ actor: "quorum-mcp", server: "quorum-mcp", tool: "gate_decision", kind: "GATE_DECISION", runId: gate.runId, inputs: { gateId: id, decision, approver: name }, outputs: { refused: roll.reason, quorum: roll }, status: "ERROR", durationMs: 0 });
     return { error: roll.reason, code: 409, quorum: roll };
+  }
+
+  /* WS8 — the roll alone is a hand-set flag. With the sittingQuorum flag on,
+     the act also needs a noticed sitting with admitted attendance to carry
+     its quorum. The refusal names the missing notice, not just the number. */
+  const sittingRefusal = sittingQuorumRefusal({
+    tenderId: gate.tenderId,
+    required: quorum.required,
+    signedInAs,
+  });
+  if (sittingRefusal) {
+    appendLog({ actor: "quorum-mcp", server: "quorum-mcp", tool: "gate_decision", kind: "GATE_DECISION", runId: gate.runId, inputs: { gateId: id, decision, approver: name }, outputs: { refused: sittingRefusal }, status: "ERROR", durationMs: 0 });
+    return { error: sittingRefusal, code: 409, sitting: true };
   }
 
   /* Every precondition has passed. Burn the one-time token before the gate
@@ -716,11 +764,16 @@ Bun.serve({
        (POST /mcp) stays the documented agent door: its irreversible steps
        halt behind named-human gates regardless of who connects. */
     let attestedActor = "";
+    let attestedActorId = "";
     let workspaceId = "demo";
     if (path !== "/mcp" && req.method !== "OPTIONS") {
       const seal = attestVerify(req.method, path, req.headers);
       if (seal.ok) {
         attestedActor = seal.actor;
+        /* The gateway also seals the session's user id. It is only trusted on
+           a request that carries the gateway HMAC — a browser header alone is
+           never accepted as office authority. */
+        attestedActorId = req.headers.get("x-quorum-actor-id")?.trim().slice(0, 80) ?? "";
         workspaceId = req.headers.get("x-quorum-workspace")?.trim() ?? "";
         if (!workspaceId) return json({ error: "The gateway seal is missing its workspace scope." }, 401);
       } else if (req.method !== "GET" && req.method !== "HEAD") {
@@ -729,6 +782,7 @@ Bun.serve({
           return json({ error: `${seal.reason} Sign in (a verified session is accepted) and retry.` }, 401);
         }
         attestedActor = session.actor;
+        attestedActorId = session.actorId ?? "";
         workspaceId = session.workspaceId;
       } else {
         workspaceId = req.headers.get("x-quorum-workspace")?.trim() || "demo";
@@ -760,7 +814,7 @@ Bun.serve({
         agent: { mode: state.agentMode, storage: process.env.DATABASE_URL ? "postgres-configured" : "json" },
         graphs: ["review_graph (8 nodes)", "filing_graph (2 nodes)"],
         /* Configured endpoint + the newest real model answer in the log. */
-        model: { ...modelStatus(), lastCall: latestModelCall() },
+        model: { ...modelStatus(), residency: residencyFromEnv(), lastCall: latestModelCall() },
         counts: { toolCalls: toolLog.length, runs: state.runs.length, gates: state.gates.length, pendingGates: state.gates.filter((g) => g.status === "PENDING").length },
         auditSpine: {
           logWriteFailing: auditHealth.logWriteFailing,
@@ -772,6 +826,16 @@ Bun.serve({
           unsignedExecuted: auditHealth.unsignedExecuted,
           logChainEntries: toolLog.length,
           decisions: readLedger(DECISIONS_FILE).length,
+          /* Forwarded web events resolve against the same chain. */
+          forwardedKeys: state.forwardedKeys.length,
+        },
+        governance: {
+          deploymentMode: state.deployment.mode,
+          connector: state.connector ? { id: state.connector.id, name: state.connector.name, active: state.connector.active } : null,
+          sittings: state.sittings.length,
+          sittingQuorumFlag: state.features.sittingQuorum,
+          /* Key custody — env/file/development-managed, with the live key id. */
+          gateKey: signingKeyStatus(),
         },
       });
     }
@@ -815,7 +879,7 @@ Bun.serve({
             layer: "MODEL",
             name: model.configured ? `${model.model} · ${model.providerLabel}` : "Template fallback (no model configured)",
             detail: model.configured
-              ? `OpenAI-compatible at ${model.endpoint}. Every draft records the exact model string the endpoint returns; the key is never exposed.`
+              ? `OpenAI-compatible at ${model.endpoint}. Fallback: ${model.fallback ? `${model.fallback.model} · ${model.fallback.providerLabel}` : "none configured"}. Hosted calls are redacted by the model gateway; every draft records the exact model string the endpoint returns.`
               : "No drafting endpoint on this host. Redlines come from the deterministic template and every draft says so."
           },
           {
@@ -1176,6 +1240,21 @@ Bun.serve({
           note,
           reason,
           files: strings(body.files, 120, 20),
+          humanReviewRequired: body.humanReviewRequired === true,
+          /* SAM only locates a region; the box is a pointer for a human, not
+             a finding. Keep the provenance compact and auditable. */
+          vision:
+            body.vision && typeof body.vision === "object"
+              ? {
+                  model: String((body.vision as Record<string, unknown>).model ?? "").slice(0, 60) || undefined,
+                  ok: (body.vision as Record<string, unknown>).ok === true,
+                  matches: Number((body.vision as Record<string, unknown>).matches) || 0,
+                  page: Number((body.vision as Record<string, unknown>).page) || undefined,
+                  prompt: String((body.vision as Record<string, unknown>).prompt ?? "").slice(0, 60) || undefined,
+                  latencyMs: Number((body.vision as Record<string, unknown>).latencyMs) || 0,
+                  note: String((body.vision as Record<string, unknown>).note ?? "").slice(0, 220) || undefined,
+                }
+              : undefined,
         },
         status: "OK",
         durationMs: Math.max(0, Math.min(600_000, Number(body.durationMs) || 0)),
@@ -1402,6 +1481,303 @@ Bun.serve({
       return json(file);
     }
 
+    /* ── Jurisdiction clock — the calendar the statutory periods run on ───── */
+    if (path === "/api/jurisdiction" && req.method === "GET") {
+      const pack = jurisdictionPack(state.jurisdictionId);
+      return json({ id: pack.id, jurisdiction: packSummary(pack), packs: [packSummary(jurisdictionPack("ZM")), packSummary(jurisdictionPack("KE"))] });
+    }
+
+    if (path === "/api/jurisdiction" && (req.method === "PATCH" || req.method === "PUT")) {
+      const body = await readBody(req);
+      const next = body.id ?? body.jurisdictionId;
+      if (!isJurisdictionId(next)) return json({ error: 'id must be "ZM" or "KE"' }, 422);
+      if (next === state.jurisdictionId) return json({ id: state.jurisdictionId, changed: false });
+      const before = state.jurisdictionId;
+      state.jurisdictionId = next;
+      const actor = (attestedActor || strOpt(body.actor) || "unknown").slice(0, 80);
+      saveState();
+      appendLog({
+        actor,
+        server: "quorum-mcp",
+        tool: "set_jurisdiction",
+        kind: "WRITES",
+        inputs: { before },
+        outputs: { after: state.jurisdictionId, timezone: jurisdictionPack(state.jurisdictionId).timezone },
+        status: "OK",
+        durationMs: 0,
+      });
+      return json({ id: state.jurisdictionId, changed: true });
+    }
+
+    /* ── Deployment truth — RECORD_ONLY is the default ─────────────────────
+       A local record may rehearse the cycle, but it cannot authorise a
+       contract or a payment. CONNECTED is refused unless the connector flag is
+       on AND the caller supplies a verifiable external publication receipt. */
+    if (path === "/api/deployment" && req.method === "GET") {
+      return json({ deployment: state.deployment });
+    }
+
+    if (path === "/api/deployment" && (req.method === "PATCH" || req.method === "PUT")) {
+      const body = await readBody(req);
+      const mode = body.mode === "CONNECTED" ? "CONNECTED" : body.mode === "RECORD_ONLY" ? "RECORD_ONLY" : null;
+      if (!mode) return json({ error: 'mode must be "RECORD_ONLY" or "CONNECTED"' }, 422);
+      let connectorId: string | undefined;
+      const reason = String(body.reason ?? "").trim().slice(0, 240);
+      if (reason.length < 8) {
+        return json({ error: "A reason of at least 8 characters is required for a deployment change." }, 422);
+      }
+      const actor = (attestedActor || strOpt(body.actor) || "unknown").slice(0, 80);
+      const before = { mode: state.deployment.mode, publication: state.deployment.publication };
+      let publication = { ...state.deployment.publication };
+
+      if (mode === "CONNECTED") {
+        if (!state.features.connectedPublication) {
+          return json(
+            {
+              error:
+                "Connected publication is not enabled. Turn on the connectedPublication feature flag only after a real portal connector is installed and tested.",
+            },
+            409,
+          );
+        }
+        const connector = state.connector;
+        if (!connector || !connector.active) {
+          return json(
+            {
+              error:
+                "No live connector is registered. CONNECTED means connected to something real — register the portal connector first (POST /api/deployment/connector), then attach the publication receipt.",
+            },
+            409,
+          );
+        }
+        const raw = (body.publication ?? {}) as Record<string, unknown>;
+        const portal = String(raw.portal ?? "").trim().slice(0, 200);
+        const receiptId = String(raw.receiptId ?? "").trim().slice(0, 200);
+        const evidenceHash = String(raw.evidenceHash ?? "").trim().slice(0, 200);
+        const publishedAt = new Date(String(raw.publishedAt ?? ""));
+        if (!portal || !receiptId || !evidenceHash || Number.isNaN(publishedAt.getTime())) {
+          return json(
+            {
+              error:
+                "Connected mode requires portal, receiptId, evidenceHash and a real publishedAt from the external system. A local record is not a publication receipt.",
+            },
+            422,
+          );
+        }
+        publication = {
+          mode: "CONNECTED",
+          portal,
+          receiptId,
+          evidenceHash,
+          publishedAt: publishedAt.toISOString(),
+          verifiedAt: new Date().toISOString(),
+        };
+        connectorId = state.connector!.id;
+      } else {
+        publication = { mode: "SIMULATED", portal: SIMULATED_PORTAL };
+      }
+
+      const changed = before.mode !== mode || JSON.stringify(before.publication) !== JSON.stringify(publication);
+      if (!changed) return json({ deployment: state.deployment, changed: false });
+
+      state.deployment = {
+        mode,
+        publication,
+        ...(connectorId ? { connectorId } : {}),
+        updatedAt: new Date().toISOString(),
+        updatedBy: actor,
+        reason,
+      };
+      saveState();
+      appendLog({
+        actor,
+        server: "quorum-mcp",
+        tool: "set_deployment",
+        kind: "WRITES",
+        inputs: { before, reason },
+        outputs: { after: state.deployment },
+        status: "OK",
+        durationMs: 0,
+      });
+      return json({ deployment: state.deployment, changed: true });
+    }
+
+    /* ── Unified audit spine — web-side events join the chain (WS9) ─────────
+       Server-to-server only: the web app seals the forward with the same
+       HMAC it puts on every mutation. A browser call (session-cookie path)
+       is refused — an end user cannot write audit lines. */
+    if (path === "/api/audit/forward" && req.method === "POST") {
+      const seal = attestVerify(req.method, path, req.headers);
+      if (!seal.ok) return json({ error: seal.reason }, 401);
+      const envelopeWorkspace = req.headers.get("x-quorum-workspace")?.trim() || "demo";
+      const body = await readBody(req);
+      const verdict = forwardWebEvent(body, seal.actor, envelopeWorkspace);
+      if (!verdict.ok) {
+        appendLog({
+          actor: "web-app",
+          server: "quorum-mcp",
+          tool: "audit_forward",
+          kind: "WRITES",
+          inputs: { type: (body as { type?: unknown }).type ?? null },
+          outputs: { refused: verdict.error },
+          status: "ERROR",
+          durationMs: 0,
+        });
+        return json({ error: verdict.error }, verdict.code);
+      }
+      return json({ logId: verdict.logId, duplicate: verdict.duplicate, highRisk: verdict.highRisk }, 200);
+    }
+
+    /* ── Sittings — quorum from a noticed meeting (WS8) ────────────────────── */
+    if (path === "/api/sittings" && req.method === "POST") {
+      const body = await readBody(req);
+      const actor = attestedActor || str(body.actor) || "unknown officer";
+      const out = createSitting(body, actor);
+      return json(out.body, out.code);
+    }
+    if (path.startsWith("/api/sittings/") && req.method === "POST") {
+      const parts = path.split("/");
+      const sittingId = decodeURIComponent(parts[3] ?? "");
+      const action = parts[4] ?? "";
+      const body = await readBody(req);
+      const actor = attestedActor || str(body.actor) || "unknown officer";
+      if (action === "attendance") {
+        const out = recordAttendance(sittingId, body, actor);
+        return json(out.body, out.code);
+      }
+      if (action === "end") {
+        const out = endSitting(sittingId, body, actor);
+        return json(out.body, out.code);
+      }
+      return json({ error: 'unknown sitting action — use "attendance" or "end"' }, 404);
+    }
+    if (path === "/api/sittings" && req.method === "GET") {
+      const rows = state.sittings.filter((s) => (s.workspaceId ?? "demo") === currentWorkspaceId());
+      return json({ sittings: rows, flagOn: state.features.sittingQuorum });
+    }
+
+    /* ── The connector — what CONNECTED actually means ───────────────────────
+       Registering one records who, what endpoint and when. Deregistering
+       (deactivate) collapses the deployment back to RECORD_ONLY at the next
+       normalisation — truth follows the connector, never the mode flag. */
+    if (path === "/api/deployment/connector" && req.method === "POST") {
+      const body = await readBody(req);
+      const actor = attestedActor || str(body.operator) || "unknown operator";
+      const name = str(body.name).slice(0, 200);
+      const endpoint = str(body.endpoint).slice(0, 400);
+      if (!name || !endpoint) return json({ error: "A connector needs a name and an endpoint." }, 422);
+      let parsed: URL | null = null;
+      try {
+        parsed = new URL(endpoint);
+      } catch {
+        return json({ error: "The endpoint must be an absolute URL." }, 422);
+      }
+      if (parsed.protocol !== "https:") {
+        return json({ error: "The connector endpoint must speak HTTPS — a national portal cannot be reached on the wire." }, 422);
+      }
+      const registration = registeredConnector({
+        name,
+        endpoint,
+        operator: actor,
+        ...(attestedActorId ? { operatorId: attestedActorId } : {}),
+        ...(str(body.note, 240) ? { note: str(body.note, 240) } : {}),
+      });
+      const previousActive = state.connector?.active ?? false;
+      state.connector = registration;
+      /* A new connector does not by itself connect anything: CONNECTED still
+         needs the verified receipt, set through PATCH /api/deployment. */
+      if (!previousActive && state.deployment.mode === "CONNECTED") {
+        state.deployment = normalizeDeployment({ ...state.deployment }, registration);
+      }
+      saveState();
+      appendLog({
+        actor,
+        server: "quorum-mcp",
+        tool: "register_connector",
+        kind: "IRREVERSIBLE",
+        inputs: { name, endpoint, operator: actor },
+        outputs: { connectorId: registration.id, active: registration.active },
+        status: "OK",
+        durationMs: 0,
+      });
+      return json({ connector: registration }, 201);
+    }
+    if (path === "/api/deployment/connector/deactivate" && req.method === "POST") {
+      const body = await readBody(req);
+      const actor = attestedActor || str(body.operator) || "unknown operator";
+      if (!state.connector) return json({ error: "No connector is registered." }, 404);
+      if (!state.connector.active) return json({ error: "The connector is already inactive." }, 409);
+      state.connector = { ...state.connector, active: false, deactivatedAt: new Date().toISOString(), deactivatedBy: actor };
+      state.deployment = normalizeDeployment({ ...state.deployment }, state.connector);
+      saveState();
+      appendLog({
+        actor,
+        server: "quorum-mcp",
+        tool: "deregister_connector",
+        kind: "IRREVERSIBLE",
+        inputs: { connectorId: state.connector.id },
+        outputs: { active: false, deploymentMode: state.deployment.mode },
+        status: "OK",
+        durationMs: 0,
+      });
+      return json({ connector: state.connector, deployment: state.deployment });
+    }
+
+    /* ── Feature flags — the registry of what has actually shipped ───────── */
+    if (path === "/api/features" && req.method === "GET") {
+      return json({ features: state.features, registry: FEATURE_FLAGS });
+    }
+
+    if (path === "/api/features" && (req.method === "PATCH" || req.method === "PUT")) {
+      const body = await readBody(req);
+      const raw =
+        body.features && typeof body.features === "object" && !Array.isArray(body.features)
+          ? (body.features as Record<string, unknown>)
+          : body;
+      const changes: Record<string, boolean> = {};
+      for (const flag of FEATURE_FLAGS) {
+        if (raw[flag.key] === undefined) continue;
+        if (typeof raw[flag.key] !== "boolean") {
+          return json({ error: `${flag.key} must be true or false` }, 422);
+        }
+        if ("locked" in flag && flag.locked === true) {
+          return json(
+            { error: `${flag.label} is locked on — it is a record-integrity refusal and cannot be disabled.` },
+            409,
+          );
+        }
+        if (state.features[flag.key] !== raw[flag.key]) changes[flag.key] = raw[flag.key] as boolean;
+      }
+      if (Object.keys(changes).length === 0) return json({ features: state.features, changed: false });
+
+      const actor = (attestedActor || strOpt(body.actor) || "unknown").slice(0, 80);
+      const before = { ...state.features };
+      state.features = { ...state.features, ...changes } as typeof state.features;
+      saveState();
+      appendLog({
+        actor,
+        server: "quorum-mcp",
+        tool: "set_feature_flags",
+        kind: "WRITES",
+        inputs: { before },
+        outputs: { after: state.features, changed: changes },
+        status: "OK",
+        durationMs: 0,
+      });
+      return json({ features: state.features, changed: true });
+    }
+
+    /* The published rule register — interpolated from the live guards so the
+       manual cannot drift from the engine. */
+    if (path === "/api/rule-catalogue" && req.method === "GET") {
+      return json({
+        rules: buildRuleCatalogue(state.guards),
+        guards: state.guards,
+        deployment: state.deployment,
+        generatedAt: new Date().toISOString(),
+      });
+    }
+
     /* ── The tunable guards — written here by name, obeyed by the engine ─── */
     if (path === "/api/guards" && req.method === "GET") {
       return json({ guards: state.guards });
@@ -1413,7 +1789,9 @@ Bun.serve({
         body.priceVariancePct === undefined &&
         body.checklist === undefined &&
         body.registryCrossCheck === undefined &&
-        body.dualApprovalThreshold === undefined
+        body.dualApprovalThreshold === undefined &&
+        body.scoreDivergencePoints === undefined &&
+        body.fxStalenessDays === undefined
       ) {
         return json({ error: "no guard fields supplied" }, 422);
       }
@@ -1423,6 +1801,8 @@ Bun.serve({
         checklist: state.guards.checklist,
         registryCrossCheck: state.guards.registryCrossCheck,
         dualApprovalThreshold: state.guards.dualApprovalThreshold,
+        scoreDivergencePoints: state.guards.scoreDivergencePoints,
+        fxStalenessDays: state.guards.fxStalenessDays,
       };
       const next = { ...before };
       if (body.priceVariancePct !== undefined) {
@@ -1445,12 +1825,28 @@ Bun.serve({
         }
         next.dualApprovalThreshold = threshold;
       }
+      if (body.scoreDivergencePoints !== undefined) {
+        const points = Number(body.scoreDivergencePoints);
+        if (!Number.isFinite(points) || points <= 0 || points > 100) {
+          return json({ error: "scoreDivergencePoints must be a number above 0 and at most 100" }, 422);
+        }
+        next.scoreDivergencePoints = points;
+      }
+      if (body.fxStalenessDays !== undefined) {
+        const days = Number(body.fxStalenessDays);
+        if (!Number.isFinite(days) || days < 1 || days > 365) {
+          return json({ error: "fxStalenessDays must be a number between 1 and 365" }, 422);
+        }
+        next.fxStalenessDays = days;
+      }
       /* A no-op is not a change — nothing moves, nothing is logged. */
       const touched =
         before.priceVariancePct !== next.priceVariancePct ||
         before.checklist !== next.checklist ||
         before.registryCrossCheck !== next.registryCrossCheck ||
-        before.dualApprovalThreshold !== next.dualApprovalThreshold;
+        before.dualApprovalThreshold !== next.dualApprovalThreshold ||
+        before.scoreDivergencePoints !== next.scoreDivergencePoints ||
+        before.fxStalenessDays !== next.fxStalenessDays;
       if (touched) {
         state.guards = { ...next, updatedAt: new Date().toISOString(), updatedBy: actor };
         saveState();
@@ -1524,6 +1920,20 @@ Bun.serve({
         durationMs: 0,
       });
       return json({ supplier }, 201);
+    }
+
+    /* WS6 — an assurance check recorded against the supplier. The check is
+       evidence, not a verdict the client asserts: the store derives VERIFIED
+       or FAILED from the registry, tax, screening, ownership and documents. */
+    if (/^\/api\/suppliers\/[A-Za-z0-9._-]+\/verification$/.test(path) && req.method === "POST") {
+      const id = decodeURIComponent(path.split("/")[3] ?? "");
+      const body = await readBody(req);
+      const checkedBy = (attestedActor || String(body.by ?? "")).trim();
+      try {
+        return json(coreVerifySupplier(id, body, checkedBy || "officer"), 201);
+      } catch (err) {
+        return json({ error: (err as Error).message }, 422);
+      }
     }
 
     if (/^\/api\/suppliers\/[A-Za-z0-9._-]+$/.test(path) && (req.method === "PATCH" || req.method === "PUT")) {
@@ -1633,7 +2043,7 @@ Bun.serve({
         for (const name of ["01-tender-notice.md", "01-manual-notice.md"]) {
           try {
             const text = await Bun.file(TENDERS_DIR + s.ref + "/" + name).text();
-            const closing = parseClosingDate(text);
+            const closing = parseClosingDate(text, jurisdictionPack(state.jurisdictionId).utcOffsetHours);
             if (closing) {
               closingFromNotices[s.ref] = closing;
               break;
@@ -1659,7 +2069,107 @@ Bun.serve({
       let rows = [...state.applications].reverse();
       if (tenderId) rows = rows.filter((a) => a.tenderId === tenderId);
       if (orgId) rows = rows.filter((a) => a.orgId === orgId);
-      return json({ applications: rows, total: rows.length });
+      /* A sealed filing never exposes its amount here. The price is revealed
+         only in the certified opening register. Legacy plaintext filings keep
+         the amount they were filed with. */
+      const applications = rows.map((a) => (a.sealed ? redactApplication(a) : a));
+      return json({ applications, total: applications.length });
+    }
+
+    /* ── Bid lifecycle — receipt, withdrawal and amendment before closing ── */
+    if (/^\/api\/applications\/[^/]+\/receipt$/.test(path) && req.method === "GET") {
+      const id = decodeURIComponent(path.split("/")[3] ?? "");
+      const application = state.applications.find((a) => a.id === id);
+      if (!application) return json({ error: "application not found" }, 404);
+      /* The receipt carries no price — only the commitment and its signature.
+         It is still scoped to the filing organization, whose id is verified
+         by the org proxy before this call. */
+      const orgId = url.searchParams.get("orgId") ?? "";
+      if (!orgId || orgId !== application.orgId) {
+        return json({ error: "Receipts are readable only by the filing organization." }, 403);
+      }
+      if (!application.sealed) return json({ error: "This application predates the sealed vault and has no envelope receipt." }, 404);
+      const receipt = application.sealed.receipt;
+      return json({ receipt, verified: verifyBidReceipt(receipt), commitment: application.sealed.commitment });
+    }
+
+    if (/^\/api\/applications\/[^/]+\/withdraw$/.test(path) && req.method === "POST") {
+      const id = decodeURIComponent(path.split("/")[3] ?? "");
+      const application = state.applications.find((a) => a.id === id);
+      if (!application) return json({ error: "application not found" }, 404);
+      if (application.actor !== attestedActor) return json({ error: "Only the filing organization may withdraw its bid." }, 403);
+      if (application.status !== "RECEIVED") return json({ error: `The application is already ${application.status}.` }, 409);
+      const cycle = state.cycle.find((c) => c.tenderId === application.tenderId);
+      if (cycle?.closingDate && Date.now() > new Date(cycle.closingDate).getTime()) {
+        return json({ error: "The closing date has passed — a filed bid cannot be withdrawn after closing." }, 409);
+      }
+      application.status = "WITHDRAWN";
+      application.withdrawnAt = new Date().toISOString();
+      saveState();
+      appendLog({
+        actor: attestedActor,
+        server: "quorum-mcp",
+        tool: "withdraw_application",
+        kind: "WRITES",
+        inputs: { applicationId: application.id, tenderId: application.tenderId },
+        outputs: { status: "WITHDRAWN", receiptId: application.receiptId ?? null },
+        status: "OK",
+        durationMs: 0,
+      });
+      return json({ application: redactApplication(application), receipt: application.sealed?.receipt ?? null });
+    }
+
+    if (/^\/api\/applications\/[^/]+\/amend$/.test(path) && req.method === "POST") {
+      const id = decodeURIComponent(path.split("/")[3] ?? "");
+      const body = await readBody(req);
+      const prior = state.applications.find((a) => a.id === id);
+      if (!prior) return json({ error: "application not found" }, 404);
+      if (prior.actor !== attestedActor) return json({ error: "Only the filing organization may amend its bid." }, 403);
+      if (prior.status !== "RECEIVED") return json({ error: `The application is already ${prior.status}.` }, 409);
+      const cycle = state.cycle.find((c) => c.tenderId === prior.tenderId);
+      if (cycle?.closingDate && Date.now() > new Date(cycle.closingDate).getTime()) {
+        return json({ error: "The closing date has passed — a filed bid cannot be amended after closing." }, 409);
+      }
+      const amount = Number(body.amount);
+      if (!Number.isFinite(amount) || amount <= 0) return json({ error: "The amended bid amount must be a positive number." }, 422);
+      const envelope = sealBid({
+        tenderId: prior.tenderId,
+        orgId: prior.orgId,
+        orgName: prior.orgName,
+        amount,
+        currency: typeof body.currency === "string" && body.currency.trim() ? body.currency.trim().slice(0, 8) : prior.currency,
+        coverNote: typeof body.coverNote === "string" && body.coverNote.trim() ? body.coverNote.trim().slice(0, 1200) : undefined,
+      });
+      prior.status = "AMENDED";
+      prior.amendedAt = new Date().toISOString();
+      const replacement: SupplierApplication = {
+        ...prior,
+        id: `app_${randomUUID().slice(0, 8)}`,
+        amount: undefined,
+        currency: undefined,
+        coverNote: undefined,
+        sealed: envelope,
+        receiptId: envelope.receipt.id,
+        version: (prior.version ?? 1) + 1,
+        supersedesId: prior.id,
+        receivedAt: envelope.sealedAt,
+        status: "RECEIVED",
+        amendedAt: undefined,
+        withdrawnAt: undefined,
+      };
+      state.applications.push(replacement);
+      saveState();
+      appendLog({
+        actor: attestedActor,
+        server: "quorum-mcp",
+        tool: "amend_application",
+        kind: "WRITES",
+        inputs: { applicationId: prior.id, tenderId: prior.tenderId, version: replacement.version },
+        outputs: { replacementId: replacement.id, commitment: envelope.commitment },
+        status: "OK",
+        durationMs: 0,
+      });
+      return json({ application: redactApplication(replacement), receipt: envelope.receipt }, 201);
     }
 
     /* Filing an application. The identity is the gateway's attested
@@ -1701,7 +2211,7 @@ Bun.serve({
         for (const name of ["01-tender-notice.md", "01-manual-notice.md"]) {
           try {
             const text = await Bun.file(TENDERS_DIR + tenderRef + "/" + name).text();
-            closingDate = parseClosingDate(text) ?? undefined;
+            closingDate = parseClosingDate(text, jurisdictionPack(state.jurisdictionId).utcOffsetHours) ?? undefined;
             if (closingDate) break;
           } catch {
             /* no notice with that name — the next one, then none */
@@ -1724,6 +2234,7 @@ Bun.serve({
         existing: state.applications,
         registrationNo,
         supplierStatus: supplier?.status,
+        ...(supplier?.verification ? { verification: supplier.verification } : {}),
         now: new Date(),
       });
       if (!admission.ok) {
@@ -1760,18 +2271,32 @@ Bun.serve({
 
       /* The name on the record comes from the attested actor, never the body. */
       const actorName = attestedActor.slice(4).trim();
-      const application: SupplierApplication = {
-        id: `app_${randomUUID().slice(0, 8)}`,
+      const orgName = (actorName || String(orgBlock.name ?? "unknown")).slice(0, 160);
+      const orgId = String(orgBlock.id ?? "").trim().slice(0, 64);
+      const envelope = sealBid({
         tenderId: tenderRef,
-        orgId: String(orgBlock.id ?? "").trim().slice(0, 64),
-        orgName: (actorName || String(orgBlock.name ?? "unknown")).slice(0, 160),
-        actor: attestedActor,
-        supplierId,
-        registrationNo,
+        orgId,
+        orgName,
         amount: Number(body.amount),
         currency: strOpt(body.currency),
         coverNote: typeof body.coverNote === "string" && body.coverNote.trim() ? body.coverNote.trim().slice(0, 1200) : undefined,
-        receivedAt: new Date().toISOString(),
+      });
+      const application: SupplierApplication = {
+        id: `app_${randomUUID().slice(0, 8)}`,
+        tenderId: tenderRef,
+        orgId,
+        orgName,
+        actor: attestedActor,
+        supplierId,
+        registrationNo,
+        /* The price lives only inside the envelope. */
+        amount: undefined,
+        currency: undefined,
+        coverNote: undefined,
+        sealed: envelope,
+        receiptId: envelope.receipt.id,
+        version: 1,
+        receivedAt: envelope.sealedAt,
         status: "RECEIVED",
       };
       state.applications.push(application);
@@ -1781,12 +2306,20 @@ Bun.serve({
         server: "quorum-mcp",
         tool: "supplier_application",
         kind: "WRITES",
-        inputs: { tenderId: application.tenderId, amount: application.amount, currency: application.currency },
-        outputs: { id: application.id, orgName: application.orgName, supplierId: supplierId ?? null, closingDate: closingDate ?? null, status: "RECEIVED" },
+        inputs: { tenderId: application.tenderId, sealed: true },
+        outputs: {
+          id: application.id,
+          orgName: application.orgName,
+          supplierId: supplierId ?? null,
+          closingDate: closingDate ?? null,
+          status: "RECEIVED",
+          receiptId: envelope.receipt.id,
+          commitment: envelope.commitment,
+        },
         status: "OK",
         durationMs: 0,
       });
-      return json({ application }, 201);
+      return json({ application: redactApplication(application), receipt: envelope.receipt }, 201);
     }
 
     if (path.startsWith("/api/gates/") && req.method === "POST") {
@@ -1813,6 +2346,7 @@ Bun.serve({
         req.headers.get("x-quorum-stepup") ?? undefined,
         workspaceId,
         ink,
+        attestedActorId,
       );
       if (out.error) return json(out, out.code ?? 400);
       return json(out);
@@ -1835,7 +2369,7 @@ Bun.serve({
     }
 
     /* ── The tender cycle — solicitation to closure (waves 1-3) ───────── */
-    if (path.startsWith("/api/cycle") || path.startsWith("/api/procurement-file") || path.startsWith("/api/pipeline") || /^\/api\/tenders\/[A-Za-z0-9._-]+\/(closing|opening|coi|matrix|alb|award-report|award-notice|standstill|debrief|contract|complaints|clarifications|addenda|notices|specs)/.test(path) || /^\/api\/tenders\/[A-Za-z0-9._-]+$/.test(path)) {
+    if (path.startsWith("/api/cycle") || path.startsWith("/api/budget-lines") || path.startsWith("/api/procurement-file") || path.startsWith("/api/pipeline") || /^\/api\/tenders\/[A-Za-z0-9._-]+\/(closing|opening|coi|matrix|alb|award-report|award-notice|standstill|debrief|contract|findings|complaints|clarifications|addenda|notices|specs)/.test(path) || /^\/api\/tenders\/[A-Za-z0-9._-]+$/.test(path)) {
       const cycleBody = req.method === "POST" ? await readBody(req) : {};
       return withWorkspace(workspaceId, () => handleCycleRoutes(path, req.method, cycleBody, attestedActor, workspaceId)).then((response) => response ?? json({ error: "not found" }, 404));
     }

@@ -12,6 +12,7 @@ import {
   CircleAlert,
   CircleCheck,
   Clock,
+  FileSignature,
   FileText,
   LayoutGrid,
   Loader2,
@@ -27,6 +28,7 @@ import {
   X,
 } from "lucide-react";
 import { QuorumLogo } from "@/components/quorum/logo";
+import { DeploymentBanner } from "@/components/quorum/deployment-banner";
 import { SearchSelect, type SelectOption } from "@/components/quorum/org/search-select";
 import { COUNTRIES, SUGGESTED_COUNTRIES, findCountry, type Country } from "@/lib/countries";
 import { LEGAL_FORMS, LEGAL_FORM_GROUPS, LEGAL_FORM_OTHER } from "@/lib/legal-forms";
@@ -34,20 +36,22 @@ import type { PublicOrg } from "@/lib/org-auth";
 import { cn } from "@/lib/utils";
 import { ThemeModeRow } from "@/components/quorum/theme-toggle";
 import { ApplicationTable } from "./application-table";
+import { ContractAcceptance } from "./contract-acceptance";
 import { SupplierOverview } from "./supplier-overview";
-import { completeness, fmtDate, money, type Application, type Tender } from "./supplier-data";
+import { completeness, fmtDate, money, type Application, type OrgContract, type Tender } from "./supplier-data";
 
 /**
- * The organization console — the supplier's desk. Four surfaces: Overview
+ * The organization console — the supplier's desk. Five surfaces: Overview
  * (what the desk sees), Profile (the legal identity, editable), Opportunities
- * (the open tenders, with apply) and Applications (what this organization has
- * on the record). Every application it files is attested org:<name> and lands
- * in the same audit spine the officers read.
+ * (the open tenders, with apply), Applications (what this organization has
+ * on the record) and Contracts (the signed packs it may accept). Every
+ * application it files is attested org:<name> and lands in the same audit
+ * spine the officers read.
  */
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-type Tab = "overview" | "profile" | "opportunities" | "applications";
+type Tab = "overview" | "profile" | "opportunities" | "applications" | "contracts";
 
 const inputCls =
   "h-11 w-full rounded-xl border border-ink-200 bg-white px-3.5 text-[14px] text-ink-950 outline-none transition-all placeholder:text-ink-300 focus:border-ink-950 focus:ring-4 focus:ring-ink-950/10 dark:border-white/10 dark:bg-night-2 dark:text-white dark:placeholder:text-ink-500";
@@ -253,6 +257,7 @@ function ConsoleSidebar({
 const QUICK_LINKS: { id: Tab; label: string; hint: string; icon: typeof LayoutGrid }[] = [
   { id: "opportunities", label: "Opportunities", hint: "The open tender board", icon: ScrollText },
   { id: "applications", label: "Applications", hint: "Everything you have filed", icon: FileText },
+  { id: "contracts", label: "Contracts", hint: "Signed packs and acceptance", icon: FileSignature },
   { id: "profile", label: "Profile", hint: "The identity the desk verifies", icon: Building2 },
 ];
 
@@ -391,7 +396,7 @@ function SearchPalette({
                     >
                       <span className="font-code text-[10px] font-semibold text-ink-600 dark:text-ink-600">{a.tenderId}</span>
                       <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink-800 dark:text-ink-800">
-                        {money(a.amount, a.currency)}
+                        {a.sealed ? "Sealed — price withheld until opening" : money(a.amount ?? 0, a.currency)}
                       </span>
                       <span className="shrink-0 font-code text-[9px] uppercase tracking-[0.1em] text-ink-400">{a.status}</span>
                     </button>
@@ -469,8 +474,11 @@ function ApplyDialog({
               <h3 className="text-[18px] font-bold text-ink-950 dark:text-white">Application on the record</h3>
               <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-500 dark:text-ink-500">
                 Filed as <span className="font-code text-[12px] font-semibold text-brand-700 dark:text-brand-300">app · {filed.id}</span> and appended
-                to the procurement audit log for {tender.ref}. The desk sees it the moment it certifies the opening.
+                to the procurement audit log for {tender.ref}. The price is sealed in an encrypted envelope; the desk sees it only when it certifies the opening.
               </p>
+              {filed.receiptId ? (
+                <p className="font-code text-[9px] tracking-[0.12em] text-ink-400">RECEIPT {filed.receiptId}</p>
+              ) : null}
             </div>
             <button type="button" onClick={onClose} className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-ink-950 text-[14px] font-semibold text-white transition-all hover:bg-brand-600">
               Done
@@ -895,6 +903,8 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
   const [tenders, setTenders] = useState<Tender[] | null>(null);
   const [applications, setApplications] = useState<Application[] | null>(null);
   const [applicationsError, setApplicationsError] = useState<string | null>(null);
+  const [contracts, setContracts] = useState<OrgContract[] | null>(null);
+  const [contractsError, setContractsError] = useState<string | null>(null);
   const [tenderError, setTenderError] = useState<string | null>(null);
   const [applying, setApplying] = useState<Tender | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
@@ -934,20 +944,49 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
     }
   }, []);
 
+  const loadContracts = useCallback(async () => {
+    try {
+      const res = await fetch("/api/org/contracts", { cache: "no-store" });
+      const j = (await res.json().catch(() => ({}))) as { contracts?: OrgContract[]; error?: string };
+      if (!res.ok) {
+        setContractsError(j.error ?? "Contracts are not reachable right now.");
+        return;
+      }
+      setContractsError(null);
+      setContracts(j.contracts ?? []);
+    } catch {
+      setContractsError("Contracts are not reachable right now.");
+    }
+  }, []);
+
   useEffect(() => {
     /* Deferred kick (never setState synchronously inside an effect) plus the
-       same 5s poll the officer desk runs — both surfaces stay live. */
+       same 5s poll the officer desk runs — both surfaces stay live. Contracts
+       are heavier to compute (one sidecar read per application), so they poll
+       on their own slower clock. */
     const kick = () => {
       void loadTenders();
       void loadApplications();
     };
     const t = setTimeout(kick, 0);
     const id = setInterval(kick, 5000);
+    const ct = setTimeout(() => void loadContracts(), 0);
+    const cid = setInterval(() => void loadContracts(), 30_000);
     return () => {
       clearTimeout(t);
       clearInterval(id);
+      clearTimeout(ct);
+      clearInterval(cid);
     };
-  }, [loadTenders, loadApplications]);
+  }, [loadTenders, loadApplications, loadContracts]);
+
+  useEffect(() => {
+    if (tab !== "contracts") return;
+    /* Deferred like the initial kick: the fetch sets state when it answers,
+       not synchronously inside the effect. */
+    const t = setTimeout(() => void loadContracts(), 0);
+    return () => clearTimeout(t);
+  }, [tab, loadContracts]);
 
   useEffect(() => {
     /* Never leave the Applications tab on an endless skeleton: if the first
@@ -1008,11 +1047,16 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
     setNavOpen(false);
   };
 
+  const awaitingAcceptance = (contracts ?? []).filter(
+    (row) => row.contract.status === "DRAFT" && !row.contract.supplierAcceptedAt,
+  ).length;
+
   const TABS: { id: Tab; label: string; icon: typeof LayoutGrid; badge?: number }[] = [
     { id: "overview", label: "Overview", icon: LayoutGrid },
     { id: "profile", label: "Profile", icon: Building2, badge: profile.missing.length > 0 ? profile.missing.length : undefined },
     { id: "opportunities", label: "Opportunities", icon: ScrollText, badge: openTenders.length || undefined },
     { id: "applications", label: "Applications", icon: FileText, badge: applications?.length || undefined },
+    { id: "contracts", label: "Contracts", icon: FileSignature, badge: awaitingAcceptance || undefined },
   ];
 
   const onFiled = (a: Application) => {
@@ -1135,6 +1179,7 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
         </aside>
 
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+          <DeploymentBanner />
           <AnimatePresence>
             {flash ? (
               <motion.div
@@ -1175,6 +1220,7 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
                 onRetry={() => {
                   void loadTenders();
                   void loadApplications();
+                  void loadContracts();
                 }}
               />
             ) : null}
@@ -1379,6 +1425,10 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
               </div>
             ) : null}
 
+            {tab === "contracts" ? (
+              <ContractAcceptance contracts={contracts} error={contractsError} onRefresh={loadContracts} />
+            ) : null}
+
             {tab === "applications" ? (
               <div className="space-y-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -1456,6 +1506,10 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
                       tenders={tenders ?? []}
                       onViewTender={viewTender}
                       onBrowse={() => setTab("opportunities")}
+                      onChanged={() => {
+                        void loadApplications();
+                        void loadTenders();
+                      }}
                       filterable
                       orgName={org.name}
                     />

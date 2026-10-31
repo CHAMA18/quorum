@@ -42,6 +42,9 @@ export type Capability =
   | "manage_sources"
   | "run_reviews"
   | "sign_gates"
+  | "dispose_findings"
+  | "manage_contracts"
+  | "certify_payments"
   | "view_oversight"
   | "read_audit"
   | "read_documents";
@@ -56,6 +59,11 @@ const MATRIX: Record<Capability, readonly WorkspaceRole[]> = {
   manage_sources: ["OWNER", "ADMIN", "OFFICER"],
   run_reviews: ["OWNER", "ADMIN", "OFFICER"],
   sign_gates: ["OWNER", "ADMIN", "OFFICER", "COMMITTEE"],
+  /* A disposition is a decision about a finding, not a review run: the
+     committee may propose one, but the desk's officers own the award file. */
+  dispose_findings: ["OWNER", "ADMIN", "OFFICER"],
+  manage_contracts: ["OWNER", "ADMIN", "OFFICER"],
+  certify_payments: ["OWNER", "ADMIN", "OFFICER"],
   view_oversight: ["OWNER", "ADMIN", "AUDITOR"],
   read_audit: ["OWNER", "ADMIN", "OFFICER", "COMMITTEE", "AUDITOR"],
   /* Committee members read the file before signing; auditors read it for
@@ -94,7 +102,7 @@ export function canAssignRole(actor: WorkspaceRole, target: WorkspaceRole): bool
  */
 export function canReadSidecar(role: WorkspaceRole | null | undefined, path: string): boolean {
   if (!role) return false;
-  if (path.startsWith("/api/guards") || path.startsWith("/api/settings")) return can(role, "manage_rules");
+  if (path.startsWith("/api/guards") || path.startsWith("/api/settings") || path.startsWith("/api/jurisdiction")) return can(role, "manage_rules");
   if (path.startsWith("/api/portal-state") || path.startsWith("/api/portal-connect") || path.startsWith("/api/portal-links")) {
     return can(role, "manage_sources");
   }
@@ -122,9 +130,21 @@ export function canMutateSidecar(
 
   if (/^\/api\/agent-mode$/.test(path)) return can(role, "manage_rules");
   if (/^\/api\/gates\/[^/]+\/decision$/.test(path)) return can(role, "sign_gates");
-  if (path.startsWith("/api/guards") || path.startsWith("/api/portal-state") || path.startsWith("/api/settings")) {
+  if (
+    path.startsWith("/api/guards") ||
+    path.startsWith("/api/portal-state") ||
+    path.startsWith("/api/settings") ||
+    path.startsWith("/api/jurisdiction")
+  ) {
     return can(role, "manage_rules");
   }
+  if (path.startsWith("/api/deployment") || path.startsWith("/api/features")) {
+    return can(role, "manage_rules");
+  }
+  if (path.startsWith("/api/budget-lines")) return can(role, "manage_rules");
+  if (/\/findings\/[^/]+\/dispose$/.test(path)) return can(role, "dispose_findings");
+  if (/\/contract\/payments$/.test(path)) return can(role, "certify_payments");
+  if (/\/contract(\/|$)/.test(path)) return can(role, "manage_contracts");
   if (path.startsWith("/api/suppliers") || path.startsWith("/api/applications")) {
     return can(role, "manage_suppliers");
   }

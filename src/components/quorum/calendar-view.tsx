@@ -32,6 +32,7 @@ import {
   Stamp,
 } from "lucide-react";
 import { SpecBar } from "@/components/quorum/reveal";
+import { MeetingNotes } from "@/components/quorum/meeting-notes";
 import { cn } from "@/lib/utils";
 
 const SVC = "?XTransformPort=3031";
@@ -917,6 +918,8 @@ export function CalendarView({
           </div>
         </div>
       </div>
+
+      <MeetingNotes meetings={meetings} onToast={onToast} />
     </div>
   );
 }
