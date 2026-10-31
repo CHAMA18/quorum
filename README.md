@@ -399,7 +399,7 @@ Copy `.env.example` — every variable is optional; the product runs fully witho
 
 ## Integrations
 
-The workspace sidebar's **Integrations** section checks the published Quorum MCP endpoint with a read-only `initialize` request and shows client configuration only when the server responds. The provider catalog also documents setup requirements for WhatsApp Business, Slack, Microsoft Teams, email, calendars, document storage, and procurement data feeds. A static-site deployment cannot run the MCP sidecar; remote MCP requires a server deployment and an HTTPS route to `/mcp`.
+The workspace sidebar's **Integrations** section explains how to connect Quorum to MCP-compatible AI clients, including Cursor, Claude Desktop, VS Code, Windsurf, and Cline. These local configurations launch the included stdio bridge, which exposes only tools marked `READ` and talks to the loopback MCP sidecar. Install the bridge dependencies with `npm install --prefix vscode-extension`, start Quorum with `bun run dev`, enter the absolute repository path, then copy the selected client's configuration. The current Render deployment is static, and the public edge `/mcp` route is not enabled; remote MCP clients therefore need a separately deployed, authenticated HTTPS gateway. Never expose port 3031 directly. The provider catalog also documents setup requirements for WhatsApp Business, Slack, Microsoft Teams, email, calendars, document storage, and procurement data feeds.
 
 ## VS Code integration
 

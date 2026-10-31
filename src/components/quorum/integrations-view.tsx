@@ -9,6 +9,7 @@ import {
   ChevronDown,
   Cloud,
   Copy,
+  Code2,
   Mail,
   MessageSquare,
   Radio,
@@ -27,6 +28,32 @@ type Integration = {
   href?: string;
   icon: "whatsapp" | "slack" | "mail" | "calendar" | "cloud" | "data" | "teams";
 };
+
+const MCP_CLIENTS = ["Cursor", "Claude Desktop", "VS Code", "Windsurf", "Cline", "Other MCP client"] as const;
+type McpClient = (typeof MCP_CLIENTS)[number];
+const MCP_CLIENT_GUIDES: Record<McpClient, { setup: string; href?: string }> = {
+  Cursor: { setup: "Add this entry in Cursor’s MCP settings or save it to .cursor/mcp.json.", href: "https://cursor.com/docs/context/mcp" },
+  "Claude Desktop": { setup: "Add this local server in Claude Desktop’s MCP settings, then restart or reload the client.", href: "https://support.claude.com/en/articles/10949351-getting-started-with-local-mcp-servers-on-claude-desktop" },
+  "VS Code": { setup: "Save this entry under the top-level servers key in .vscode/mcp.json, then start the server from the MCP Servers view.", href: "https://code.visualstudio.com/docs/agents/reference/mcp-configuration" },
+  Windsurf: { setup: "Add this entry to Windsurf’s MCP configuration, then refresh Cascade’s MCP server list.", href: "https://docs.windsurf.com/windsurf/cascade/mcp" },
+  Cline: { setup: "Open MCP Servers in Cline, choose Configure, and add this entry under mcpServers.", href: "https://github.com/cline/cline/blob/main/docs/mcp/mcp-overview.mdx" },
+  "Other MCP client": { setup: "Use the client’s local stdio server configuration format. Most clients accept a command, arguments, and environment variables.", href: "https://modelcontextprotocol.io/docs/develop/connect-local-servers" },
+};
+
+function clientConfig(client: McpClient, projectPath: string) {
+  const server = {
+    command: "node",
+    args: [`${projectPath || "/ABSOLUTE/PATH/TO/quorum"}/vscode-extension/server.mjs`],
+    env: { QUORUM_MCP_URL: "http://127.0.0.1:3031" },
+  };
+  return JSON.stringify(
+    client === "VS Code"
+      ? { servers: { quorum: { type: "stdio", ...server } } }
+      : { mcpServers: { quorum: server } },
+    null,
+    2,
+  );
+}
 
 const INTEGRATIONS: Integration[] = [
   {
@@ -128,47 +155,36 @@ function IntegrationMark({ kind }: { kind: Integration["icon"] }) {
 
 export function IntegrationsView() {
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [mcpState, setMcpState] = useState<"checking" | "connected" | "unavailable">("checking");
+  const [mcpState, setMcpState] = useState<"checking" | "connected" | "unavailable">("unavailable");
   const [mcpEndpoint, setMcpEndpoint] = useState("");
   const [copied, setCopied] = useState(false);
+  const [client, setClient] = useState<McpClient>("Cursor");
+  const [projectPath, setProjectPath] = useState("");
+  const localRuntime = mcpEndpoint.startsWith("http://127.0.0.1:3031");
 
   const checkMcp = useCallback(async () => {
-    if (!mcpEndpoint) return;
+    if (!localRuntime) return;
     setMcpState("checking");
     try {
-      const response = await fetch(mcpEndpoint, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: "quorum-integration-check",
-          method: "initialize",
-          params: {
-            protocolVersion: "2024-11-05",
-            capabilities: {},
-            clientInfo: { name: "quorum-integrations-check", version: "1.0.0" },
-          },
-        }),
-        cache: "no-store",
-      });
+      const response = await fetch("/api/agent-status", { cache: "no-store" });
       const payload = await response.json();
-      setMcpState(response.ok && payload?.result?.serverInfo?.name === "quorum-mcp" ? "connected" : "unavailable");
+      setMcpState(response.ok && payload?.health?.service === "quorum-mcp" ? "connected" : "unavailable");
     } catch {
       setMcpState("unavailable");
     }
-  }, [mcpEndpoint]);
+  }, [localRuntime]);
 
   useEffect(() => {
-    setMcpEndpoint(`${window.location.origin}/mcp`);
+    const timer = window.setTimeout(() => {
+      const isLocal = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+      setMcpEndpoint(isLocal ? "http://127.0.0.1:3031/mcp" : (process.env.NEXT_PUBLIC_MCP_URL?.trim() ?? ""));
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
-
-  useEffect(() => {
-    if (mcpEndpoint) void checkMcp();
-  }, [checkMcp, mcpEndpoint]);
 
   const copyMcpConfig = async () => {
     try {
-      await navigator.clipboard.writeText(JSON.stringify({ mcpServers: { quorum: { url: mcpEndpoint } } }, null, 2));
+      await navigator.clipboard.writeText(clientConfig(client, projectPath));
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1600);
     } catch {
@@ -178,6 +194,57 @@ export function IntegrationsView() {
 
   return (
     <div className="space-y-6">
+      <section className="panel overflow-hidden rounded-[12px]" aria-labelledby="ai-client-setup-title">
+        <div className="px-5 py-6 sm:px-7 sm:py-7">
+          <div className="flex items-start gap-4">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-600 text-white">
+              <Code2 className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <div>
+              <p className="font-code text-[8px] font-bold tracking-[0.2em] text-brand-700 dark:text-brand-300">MODEL CONTEXT PROTOCOL · MCP</p>
+              <h2 id="ai-client-setup-title" className="mt-1 text-[20px] font-black tracking-tight text-ink-950 dark:text-white">Bring Quorum into your AI workspace.</h2>
+              <p className="mt-2 max-w-3xl text-[12px] leading-relaxed text-ink-600 dark:text-ink-300">
+                Connect compatible AI clients—including Cursor, Claude Desktop, VS Code, Windsurf and Cline—to Quorum’s read-only procurement tools. MCP is the shared interface; your client’s model stays in control of the conversation.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+            <div className="space-y-3">
+              <label className="block">
+                <span className="mb-1.5 block font-code text-[8px] font-bold tracking-[0.13em] text-ink-500 dark:text-ink-400">AI CLIENT</span>
+                <select value={client} onChange={(event) => setClient(event.target.value as McpClient)} className="min-h-10 w-full rounded-lg border border-ink-200 bg-white px-3 text-[11px] text-ink-900 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-white">
+                  {MCP_CLIENTS.map((name) => <option key={name} value={name}>{name}</option>)}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block font-code text-[8px] font-bold tracking-[0.13em] text-ink-500 dark:text-ink-400">LOCAL QUORUM CHECKOUT PATH</span>
+                <input value={projectPath} onChange={(event) => setProjectPath(event.target.value.trim())} placeholder="/Users/you/projects/quorum" className="min-h-10 w-full rounded-lg border border-ink-200 bg-white px-3 font-mono text-[10px] text-ink-900 outline-none placeholder:text-ink-400 focus:border-brand-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-white" />
+              </label>
+              <p className="text-[10px] leading-relaxed text-ink-500 dark:text-ink-400">Install the bridge once with <code>npm install --prefix vscode-extension</code>, then run Quorum locally with <code>bun run dev</code>. Replace the sample path with your repository’s absolute path.</p>
+              <p className="text-[10px] leading-relaxed text-ink-500 dark:text-ink-400">{MCP_CLIENT_GUIDES[client].setup}</p>
+              <a href={MCP_CLIENT_GUIDES[client].href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-code text-[8px] font-bold tracking-[0.1em] text-brand-700 hover:text-brand-600 dark:text-brand-300">
+                {client} MCP SETUP GUIDE <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
+              </a>
+              <button type="button" onClick={() => void copyMcpConfig()} className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-ink-950 px-3 text-[10px] font-semibold text-white transition hover:bg-ink-800 dark:bg-white dark:text-ink-950 dark:hover:bg-ink-100">
+                {copied ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
+                {copied ? "Configuration copied" : `Copy ${client} configuration`}
+              </button>
+            </div>
+            <div className="min-w-0 overflow-hidden rounded-xl border border-ink-200 bg-ink-950 dark:border-white/10">
+              <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
+                <span className="font-code text-[8px] font-bold tracking-[0.13em] text-white/60">LOCAL MCP CONFIG · READ-ONLY BRIDGE</span>
+                <span className="rounded-full bg-emerald-400/10 px-2 py-1 font-code text-[7px] font-bold tracking-[0.1em] text-emerald-300">STDIO</span>
+              </div>
+              <pre className="max-h-56 overflow-auto p-3 text-[9px] leading-relaxed text-emerald-100"><code>{clientConfig(client, projectPath)}</code></pre>
+            </div>
+          </div>
+          <p className="mt-4 rounded-lg border border-amber-300/70 bg-amber-50 px-3.5 py-3 text-[10px] leading-relaxed text-amber-950 dark:border-amber-500/20 dark:bg-amber-500/[0.07] dark:text-amber-100">
+            Local setup is available now. The hosted Render site is static and the public edge <code>/mcp</code> route is not currently published, so a remote URL will not connect yet. Keep the sidecar on loopback; do not expose port 3031 directly. Remote client setup needs an authenticated HTTPS MCP gateway.
+          </p>
+        </div>
+      </section>
+
       <section className="panel overflow-hidden rounded-[12px]" aria-labelledby="quorum-mcp-integration-title">
         <div className="flex flex-col gap-5 px-5 py-6 sm:px-7 sm:py-7">
           <div className="flex items-start gap-4">
@@ -185,12 +252,10 @@ export function IntegrationsView() {
               <Cable className="h-5 w-5" aria-hidden="true" />
             </span>
             <div className="min-w-0 flex-1">
-              <a href="https://m8ven.ai/mcp/chama18-quorum-5uxqrc?s=integrations" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-code text-[8px] font-bold tracking-[0.2em] text-brand-700 hover:text-brand-600 dark:text-brand-300">
-                PUBLISHED MCP SERVER <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
-              </a>
+              <p className="font-code text-[8px] font-bold tracking-[0.2em] text-brand-700 dark:text-brand-300">QUORUM TOOL SERVER</p>
               <h2 id="quorum-mcp-integration-title" className="mt-1 text-[20px] font-black tracking-tight text-ink-950 dark:text-white">Quorum MCP</h2>
               <p className="mt-2 max-w-3xl text-[12px] leading-relaxed text-ink-600 dark:text-ink-300">
-                Connect an MCP client to Quorum’s JSON-RPC endpoint. The check sends only the standard MCP initialize request; it does not call tools or change workspace data.
+                The MCP sidecar exposes Quorum tools over JSON-RPC. Local clients connect through the read-only stdio bridge above; direct internet access is not enabled on this deployment.
               </p>
             </div>
             <span className={cn(
@@ -199,18 +264,18 @@ export function IntegrationsView() {
                 ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
                 : "border-ink-200 bg-white text-ink-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-300",
             )}>
-              {mcpState === "checking" ? "CHECKING" : mcpState === "connected" ? "CONNECTED" : "UNAVAILABLE"}
+              {mcpState === "checking" ? "CHECKING LOCAL SERVER" : mcpState === "connected" ? "LOCAL SERVER READY" : localRuntime ? "LOCAL SERVER OFFLINE" : "LOCAL CONNECTION ONLY"}
             </span>
           </div>
 
           <div className="rounded-xl border border-ink-100 bg-paper/70 p-4 dark:border-white/[0.07] dark:bg-white/[0.025]">
-            <p className="font-code text-[7px] font-bold tracking-[0.15em] text-ink-400">ENDPOINT · HTTP JSON-RPC 2.0</p>
-            <code className="mt-1 block break-all text-[11px] text-ink-900 dark:text-white">{mcpEndpoint || "Preparing endpoint…"}</code>
+            <p className="font-code text-[7px] font-bold tracking-[0.15em] text-ink-400">LOCAL ENDPOINT · HTTP JSON-RPC 2.0</p>
+            <code className="mt-1 block break-all text-[11px] text-ink-900 dark:text-white">{mcpEndpoint || "No public remote MCP endpoint configured"}</code>
             <div className="mt-3 flex flex-wrap gap-2">
-              <button type="button" onClick={() => void checkMcp()} disabled={!mcpEndpoint || mcpState === "checking"} className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-ink-950 px-3 text-[10px] font-semibold text-white transition hover:bg-ink-800 disabled:opacity-50 dark:bg-white dark:text-ink-950 dark:hover:bg-ink-100">
+              {localRuntime ? <button type="button" onClick={() => void checkMcp()} disabled={mcpState === "checking"} className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-ink-950 px-3 text-[10px] font-semibold text-white transition hover:bg-ink-800 disabled:opacity-50 dark:bg-white dark:text-ink-950 dark:hover:bg-ink-100">
                 <RefreshCw className={cn("h-3.5 w-3.5", mcpState === "checking" && "animate-spin")} aria-hidden="true" />
-                Check connection
-              </button>
+                Check local server
+              </button> : null}
               {mcpState === "connected" ? (
                 <button type="button" onClick={() => void copyMcpConfig()} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-ink-200 px-3 text-[10px] font-semibold text-ink-700 hover:bg-white dark:border-white/10 dark:text-ink-200 dark:hover:bg-white/[0.05]">
                   {copied ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
@@ -222,7 +287,7 @@ export function IntegrationsView() {
 
           {mcpState === "unavailable" ? (
             <p role="status" className="rounded-lg border border-amber-300/70 bg-amber-50 px-3.5 py-3 text-[10.5px] leading-relaxed text-amber-950 dark:border-amber-500/20 dark:bg-amber-500/[0.07] dark:text-amber-100">
-              This host did not answer the MCP initialize request. The current Render service is a static site, so it cannot run the Quorum MCP sidecar or serve <code>/mcp</code>. Remote MCP connections need a server deployment with the sidecar and an HTTPS proxy route to it; port 3031 is loopback-only and should not be exposed directly.
+              {localRuntime ? <>The local Quorum web server could not reach its MCP sidecar. Start the project with <code>bun run dev</code>, then check again.</> : <>This hosted page cannot reach the local MCP sidecar. Remote connections require a public authenticated HTTPS MCP gateway; the current static deployment does not provide one.</>}
             </p>
           ) : null}
         </div>
