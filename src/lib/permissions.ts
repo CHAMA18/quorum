@@ -135,30 +135,14 @@ export function canMutateSidecar(
   if (path.startsWith("/api/exceptions")) return can(role, "run_reviews");
   /* Document register upkeep: OCR review confirmations and archiving. */
   if (path.startsWith("/api/documents")) return can(role, "run_reviews");
-  if (path.startsWith("/api/guards") || path.startsWith("/api/portal-state") || path.startsWith("/api/settings") || path.startsWith("/api/jurisdiction")) {
-    return can(role, "manage_rules");
-  }
-  if (path.startsWith("/api/deployment") || path.startsWith("/api/features")) {
-    return can(role, "manage_rules");
-  }
+  if (["/api/guards", "/api/portal-state", "/api/settings", "/api/jurisdiction", "/api/deployment", "/api/features"].some((prefix) => path.startsWith(prefix))) return can(role, "manage_rules");
   if (path.startsWith("/api/budget-lines")) return can(role, "manage_rules");
   if (/\/findings\/[^/]+\/dispose$/.test(path)) return can(role, "dispose_findings");
   if (/\/contract\/payments$/.test(path)) return can(role, "certify_payments");
   if (/\/contract(\/|$)/.test(path)) return can(role, "manage_contracts");
-  if (path.startsWith("/api/suppliers") || path.startsWith("/api/applications")) {
-    return can(role, "manage_suppliers");
-  }
-  if (path.startsWith("/api/source-requests") || path.startsWith("/api/ocp-refresh") || path.startsWith("/api/pack-binding")) {
-    return can(role, "manage_sources");
-  }
-  if (
-    path.startsWith("/api/runs") ||
-    path.startsWith("/api/tenders") ||
-    path.startsWith("/api/pipeline") ||
-    path.startsWith("/api/procurement-file")
-  ) {
-    return can(role, "run_reviews");
-  }
+  if (["/api/suppliers", "/api/applications"].some((prefix) => path.startsWith(prefix))) return can(role, "manage_suppliers");
+  if (["/api/source-requests", "/api/ocp-refresh", "/api/pack-binding"].some((prefix) => path.startsWith(prefix))) return can(role, "manage_sources");
+  if (["/api/runs", "/api/tenders", "/api/pipeline", "/api/procurement-file"].some((prefix) => path.startsWith(prefix))) return can(role, "run_reviews");
 
   /* Any other sidecar mutation is an evaluation action. Read-only roles are
      refused by default rather than being allowed through an unmapped path. */
