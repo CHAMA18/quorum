@@ -84,9 +84,12 @@ export default async function RootLayout({
 }>) {
   /* The officer's first name rides to the bubble when a session exists — the
      agent greets by it and signs nothing under it; the gavel stays theirs. */
-  const jar = await cookies();
-  const officer = await getUserFromToken(jar.get(SESSION_COOKIE)?.value).catch(() => null);
-  const firstName = officer?.name?.trim().split(/\s+/)[0] || undefined;
+  let firstName: string | undefined;
+  if (process.env.STATIC_EXPORT !== "1") {
+    const jar = await cookies();
+    const officer = await getUserFromToken(jar.get(SESSION_COOKIE)?.value).catch(() => null);
+    firstName = officer?.name?.trim().split(/\s+/)[0] || undefined;
+  }
 
   return (
     <html lang="en" suppressHydrationWarning>
