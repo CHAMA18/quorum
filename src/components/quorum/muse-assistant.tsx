@@ -36,7 +36,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Image from "next/image";
-import { Ban, Check, CircleHelp, Mic, MessageSquare, Send, ShieldAlert, Sparkles, Square, Volume2, VolumeX, X } from "lucide-react";
+import { Ban, Check, ChevronRight, CircleHelp, Mic, MessageSquare, Send, ShieldAlert, Square, Volume2, VolumeX, X } from "lucide-react";
 import { requestStepUp, StepUpHost } from "@/components/quorum/step-up";
 import type { Proposal } from "@/lib/muse-actions";
 import { cn } from "@/lib/utils";
@@ -49,7 +49,6 @@ type Turn = {
   role: "user" | "assistant";
   text: string;
   heard?: string;
-  tools?: string[];
   proposal?: Proposal;
   proposalState?: ProposalState;
 };
@@ -442,7 +441,6 @@ export function MuseAssistant({ name }: { name?: string }) {
         });
         const data = (await res.json().catch(() => ({}))) as {
           reply?: string;
-          toolsRead?: string[];
           proposal?: Proposal;
           error?: string;
         };
@@ -453,7 +451,6 @@ export function MuseAssistant({ name }: { name?: string }) {
             id: nextId(),
             role: "assistant",
             text: reply,
-            ...(data.toolsRead && data.toolsRead.length ? { tools: data.toolsRead } : {}),
             ...(data.proposal ? { proposal: data.proposal, proposalState: "pending" as const } : {}),
           },
         ]);
@@ -810,24 +807,26 @@ export function MuseAssistant({ name }: { name?: string }) {
             transition={{ duration: 0.26, ease: EASE }}
             role="dialog"
             aria-label="Barry — Quorum AI assistant"
-            className="fixed bottom-24 right-4 z-[76] flex max-h-[72vh] w-[min(400px,calc(100vw-2rem))] flex-col overflow-hidden rounded-[12px] border border-white/10 bg-night text-white shadow-[0_1px_0_rgba(255,255,255,0.07)_inset,0_40px_90px_-30px_rgba(11,12,15,0.9)] sm:right-7"
+            className="fixed bottom-[88px] right-3 z-[76] flex h-[min(680px,calc(100dvh-112px))] w-[min(400px,calc(100vw-24px))] flex-col overflow-hidden rounded-[24px] border border-black/[0.06] bg-white text-[#202124] shadow-[0_24px_80px_-20px_rgba(24,39,75,0.28)] sm:right-7"
           >
-            <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-50" aria-hidden="true" />
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand-500/70 to-transparent"
-            />
-
-            {/* Header */}
-            <header className="relative flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3.5">
-              <div className="min-w-0">
-                <p className="flex items-center gap-1.5 font-code text-[8px] font-bold tracking-[0.22em] text-brand-400">
-                  <Sparkles className="h-3 w-3" aria-hidden="true" />
-                  BARRY · QUORUM AI ASSISTANT
-                </p>
-                <p className="mt-1 truncate text-[12.5px] font-semibold text-ink-100">
-                  Reads the desk · acts on your consent · signs only with you
-                </p>
+            <header className="relative flex shrink-0 items-center justify-between gap-3 bg-brand-700 px-5 py-4 text-white">
+              <div className="flex min-w-0 items-center gap-3">
+                <Image
+                  src="/logo.svg"
+                  width={44}
+                  height={44}
+                  alt=""
+                  aria-hidden="true"
+                  unoptimized
+                  className="h-11 w-11 shrink-0 rounded-[14px] border border-white/20 shadow-sm"
+                />
+                <div className="min-w-0">
+                  <p className="truncate text-[15px] font-semibold tracking-[-0.01em]">Quorum</p>
+                  <p className="mt-0.5 flex items-center gap-1.5 truncate text-[11px] text-white/75">
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-300" aria-hidden="true" />
+                    Barry is here to help
+                  </p>
+                </div>
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 <button
@@ -840,12 +839,12 @@ export function MuseAssistant({ name }: { name?: string }) {
                   aria-label={speakOn ? "Mute spoken replies" : "Unmute spoken replies"}
                   title={speakOn ? "Mute replies" : "Unmute replies"}
                   className={cn(
-                    "grid h-8 w-8 place-items-center rounded-lg transition-colors",
+                    "grid h-9 w-9 place-items-center rounded-full transition-colors",
                     speakOn
                       ? speaking
-                        ? "text-brand-300 hover:bg-white/10 hover:text-white"
-                        : "text-ink-300 hover:bg-white/10 hover:text-white"
-                      : "text-ink-500 hover:bg-white/10 hover:text-white"
+                        ? "bg-white/15 text-white"
+                        : "text-white/80 hover:bg-white/15 hover:text-white"
+                      : "text-white/60 hover:bg-white/15 hover:text-white"
                   )}
                 >
                   {speakOn ? <Volume2 className="h-4 w-4" aria-hidden="true" /> : <VolumeX className="h-4 w-4" aria-hidden="true" />}
@@ -854,238 +853,222 @@ export function MuseAssistant({ name }: { name?: string }) {
                   type="button"
                   onClick={shut}
                   aria-label="Close the assistant"
-                  className="grid h-8 w-8 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-white/10 hover:text-white"
+                  className="grid h-9 w-9 place-items-center rounded-full text-white/80 transition-colors hover:bg-white/15 hover:text-white"
                 >
                   <X className="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
             </header>
 
-            <nav className="relative grid grid-cols-2 gap-1 border-b border-white/10 px-3 py-2" aria-label="Barry assistant sections">
-              {([
-                { id: "chat", label: "Chat", Icon: MessageSquare },
-                { id: "support", label: "Support", Icon: CircleHelp },
-              ] as const).map(({ id, label, Icon }) => (
-                <button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  id={`barry-tab-${id}`}
-                  aria-selected={section === id}
-                  aria-controls={`barry-panel-${id}`}
-                  onClick={() => setSection(id)}
-                  className={cn(
-                    "inline-flex h-9 items-center justify-center gap-1.5 rounded-lg font-code text-[8px] font-bold tracking-[0.12em] transition-colors",
-                    section === id
-                      ? "bg-white/[0.1] text-white"
-                      : "text-ink-400 hover:bg-white/[0.05] hover:text-ink-200",
-                  )}
-                >
-                  <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-                  {label.toUpperCase()}
-                </button>
-              ))}
-            </nav>
-
-            {/* Transcript */}
             <div
               ref={scrollerRef}
-              className="relative min-h-[180px] flex-1 overflow-y-auto px-4 py-4 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/15 [&::-webkit-scrollbar]:w-1"
+              className="relative min-h-0 flex-1 overflow-y-auto bg-[#f7f8fa] px-4 py-5 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar]:w-1"
               aria-live="polite"
             >
               {section === "chat" ? (
-                <div id="barry-panel-chat" role="tabpanel" aria-labelledby="barry-tab-chat" className="space-y-3">
-              {turns.length === 0 && (
-                <div className="space-y-3">
-                  <p className="text-[13px] leading-relaxed text-ink-300">
-                    Barry is your desk agent — he reads the live record (evaluations, approvals, quorum, statutory clocks,
-                    audit, suppliers, one tender&apos;s file) and it can act: approve or return a file at the gate, launch a
-                    review on a tender. Nothing moves on its word alone — every action lands as a confirmation card, and a
-                    gate decision still wants your step-up signature. Answers are read aloud in a real neural voice.
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {SUGGESTIONS.map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => {
-                          prime();
-                          void ask(s);
-                        }}
-                        className="rounded-full border border-white/12 px-2.5 py-1.5 font-code text-[8px] font-semibold tracking-[0.12em] text-ink-200 transition-colors hover:border-brand-500/60 hover:text-white"
-                      >
-                        {s.toUpperCase()}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {turns.map((t) => (
-                <div key={t.id} className={cn("flex", t.role === "user" ? "justify-end" : "justify-start")}>
-                  <div
-                    className={cn(
-                      "max-w-[85%] rounded-[10px] px-3.5 py-2.5",
-                      t.role === "user"
-                        ? "rounded-br-md bg-brand-600 text-white"
-                        : "rounded-bl-md bg-white/[0.06] text-ink-100 ring-1 ring-inset ring-white/10"
-                    )}
-                  >
-                    {t.heard && t.heard !== t.text && (
-                      <p className="mb-1 font-code text-[7.5px] tracking-[0.14em] text-brand-200/80">
-                        HEARD · {t.heard.toUpperCase()}
-                      </p>
-                    )}
-                    <p className="text-[13px] leading-relaxed">{t.text}</p>
-
-                    {/* The consent card — an action the agent staged, waiting
-                        for the officer's hand. Nothing runs without it. */}
-                    {t.proposal && (
-                      <div className="mt-2.5 overflow-hidden rounded-lg border border-brand-500/40 bg-black/30">
-                        <div className="flex items-center justify-between gap-2 border-b border-white/10 bg-brand-500/10 px-2.5 py-1.5">
-                          <span className="flex items-center gap-1.5 font-code text-[7.5px] font-bold tracking-[0.16em] text-brand-200">
-                            <ShieldAlert className="h-3 w-3" aria-hidden="true" />
-                            {t.proposal.needsStepUp ? "GATE DECISION · NEEDS YOUR SIGNATURE" : "DESK ACTION · NEEDS YOUR CONSENT"}
-                          </span>
-                          <span
-                            className={cn(
-                              "rounded px-1.5 py-0.5 font-code text-[6.5px] font-bold tracking-[0.14em]",
-                              t.proposal.risk === "IRREVERSIBLE" ? "bg-brand-600 text-white" : "bg-white/10 text-ink-200"
-                            )}
-                          >
-                            {t.proposal.risk}
-                          </span>
-                        </div>
-                        <div className="px-2.5 py-2">
-                          <p className="text-[12px] font-semibold leading-snug text-ink-100">{t.proposal.label}</p>
-                          <div className="mt-1.5 space-y-0.5">
-                            {t.proposal.summary.map((row) => (
-                              <p key={row.key} className="font-code text-[7.5px] leading-relaxed tracking-[0.1em] text-ink-300">
-                                <span className="text-ink-500">{row.key}</span> · {row.value}
-                              </p>
-                            ))}
+                <div id="barry-panel-chat" role="tabpanel" aria-labelledby="barry-tab-chat" className="space-y-5">
+                  {turns.length === 0 && (
+                    <div className="space-y-5">
+                      <div className="flex items-start gap-2.5">
+                        <Image
+                          src="/logo.svg"
+                          width={32}
+                          height={32}
+                          alt=""
+                          aria-hidden="true"
+                          unoptimized
+                          className="mt-5 h-8 w-8 shrink-0 rounded-[10px] shadow-sm"
+                        />
+                        <div className="min-w-0">
+                          <p className="mb-1.5 text-[11px] font-medium text-[#73777f]">Barry · Quorum</p>
+                          <div className="rounded-2xl rounded-tl-md border border-[#e8e9ec] bg-white px-4 py-3.5 shadow-[0_1px_2px_rgba(20,25,35,0.04)]">
+                            <p className="text-[14px] font-semibold leading-snug text-[#25272b]">
+                              Hi{name ? ` ${name.split(" ")[0]}` : " there"}! How can I help?
+                            </p>
+                            <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#62666e]">
+                              Ask me about tenders, approvals, your committee, or the workspace.
+                            </p>
                           </div>
-                          {t.proposalState === "pending" && (
-                            <div className="mt-2.5 flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => void confirmProposal(t.id, t.proposal!)}
-                                disabled={!!confirmingId}
-                                className="h-7 flex-1 rounded-md bg-brand-600 px-2 font-code text-[8px] font-bold tracking-[0.12em] text-white transition-colors hover:bg-brand-500 disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                {confirmingId === t.id ? "CONFIRMING…" : t.proposal.needsStepUp ? "CONFIRM & SIGN" : "CONFIRM & RUN"}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => declineProposal(t.id)}
-                                disabled={!!confirmingId}
-                                className="h-7 rounded-md border border-white/15 px-2.5 font-code text-[8px] font-bold tracking-[0.12em] text-ink-300 transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                DECLINE
-                              </button>
+                        </div>
+                      </div>
+                      <div className="pl-[42px]">
+                        <p className="mb-2 text-[11px] font-medium text-[#858991]">A few things you can ask</p>
+                        <div className="space-y-2">
+                          {SUGGESTIONS.map((s) => (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() => {
+                                prime();
+                                void ask(s);
+                              }}
+                              className="group flex w-full items-center justify-between gap-3 rounded-xl border border-[#e6e8eb] bg-white px-3.5 py-3 text-left text-[12px] font-medium text-[#363a40] shadow-[0_1px_2px_rgba(20,25,35,0.03)] transition-colors hover:border-brand-300 hover:bg-brand-50/40"
+                            >
+                              <span>{s}</span>
+                              <ChevronRight className="h-4 w-4 shrink-0 text-[#9a9ea5] transition-transform group-hover:translate-x-0.5 group-hover:text-brand-700" aria-hidden="true" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {turns.map((t) => (
+                    <div key={t.id} className={cn("flex items-end gap-2", t.role === "user" ? "justify-end" : "justify-start")}>
+                      {t.role === "assistant" && (
+                        <Image
+                          src="/logo.svg"
+                          width={28}
+                          height={28}
+                          alt=""
+                          aria-hidden="true"
+                          unoptimized
+                          className="mb-1 h-7 w-7 shrink-0 rounded-[9px] shadow-sm"
+                        />
+                      )}
+                      <div className={cn("flex max-w-[86%] min-w-0 flex-col", t.role === "user" ? "items-end" : "items-start")}>
+                        {t.role === "assistant" && <p className="mb-1.5 ml-1 text-[10.5px] font-medium text-[#73777f]">Barry</p>}
+                        <div
+                          className={cn(
+                            "max-w-full rounded-2xl px-3.5 py-3 shadow-[0_1px_2px_rgba(20,25,35,0.05)]",
+                            t.role === "user"
+                              ? "rounded-br-md bg-brand-700 text-white"
+                              : "rounded-bl-md border border-[#e8e9ec] bg-white text-[#292c31]"
+                          )}
+                        >
+                          {t.heard && t.heard !== t.text && (
+                            <p className={cn("mb-1.5 text-[10px] leading-relaxed", t.role === "user" ? "text-white/70" : "text-[#838791]")}>
+                              Voice input · {t.heard}
+                            </p>
+                          )}
+                          <p className="whitespace-pre-wrap text-[13px] leading-[1.55]">{t.text}</p>
+
+                          {/* Staged actions remain explicit and consent-gated. */}
+                          {t.proposal && (
+                            <div className="mt-3 overflow-hidden rounded-xl border border-brand-200 bg-[#fffafa]">
+                              <div className="flex items-start justify-between gap-2 border-b border-brand-100 bg-brand-50 px-3 py-2">
+                                <span className="flex items-center gap-1.5 text-[10px] font-semibold leading-snug text-brand-900">
+                                  <ShieldAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                  {t.proposal.needsStepUp ? "Signature required" : "Your confirmation is required"}
+                                </span>
+                                <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[8px] font-semibold text-[#6b4650]">
+                                  {t.proposal.risk === "IRREVERSIBLE" ? "High impact" : "Review"}
+                                </span>
+                              </div>
+                              <div className="p-3">
+                                <p className="text-[12px] font-semibold leading-snug text-[#292c31]">{t.proposal.label}</p>
+                                <div className="mt-2 space-y-1">
+                                  {t.proposal.summary.map((row) => (
+                                    <p key={row.key} className="text-[10px] leading-relaxed text-[#62666e]">
+                                      <span className="font-medium text-[#454950]">{row.key}</span>: {row.value}
+                                    </p>
+                                  ))}
+                                </div>
+                                {t.proposalState === "pending" && (
+                                  <div className="mt-3 flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => void confirmProposal(t.id, t.proposal!)}
+                                      disabled={!!confirmingId}
+                                      className="h-9 flex-1 rounded-full bg-brand-700 px-3 text-[11px] font-semibold text-white transition-colors hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      {confirmingId === t.id ? "Confirming…" : t.proposal.needsStepUp ? "Confirm and sign" : "Confirm and run"}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => declineProposal(t.id)}
+                                      disabled={!!confirmingId}
+                                      className="h-9 rounded-full border border-[#d9dbe0] bg-white px-3 text-[11px] font-medium text-[#50545b] transition-colors hover:bg-[#f5f6f8] disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      Decline
+                                    </button>
+                                  </div>
+                                )}
+                                {t.proposalState === "confirmed" && <p className="mt-2 text-[11px] font-medium text-brand-800">Confirmed · running…</p>}
+                                {t.proposalState === "executed" && <p className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-emerald-700"><Check className="h-3.5 w-3.5" aria-hidden="true" />Completed · receipt added</p>}
+                                {t.proposalState === "declined" && <p className="mt-2 text-[11px] text-[#686c74]">Declined · nothing changed</p>}
+                                {t.proposalState === "failed" && <p className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-brand-800"><ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" />Action could not be completed</p>}
+                              </div>
                             </div>
-                          )}
-                          {t.proposalState === "confirmed" && (
-                            <p className="mt-2 font-code text-[7.5px] font-bold tracking-[0.14em] text-brand-200">
-                              CONFIRMED · RUNNING…
-                            </p>
-                          )}
-                          {t.proposalState === "executed" && (
-                            <p className="mt-2 flex items-center gap-1 font-code text-[7.5px] font-bold tracking-[0.14em] text-emerald-300">
-                              <Check className="h-3 w-3" aria-hidden="true" /> EXECUTED · RECEIPT ON THE RECORD
-                            </p>
-                          )}
-                          {t.proposalState === "declined" && (
-                            <p className="mt-2 flex items-center gap-1 font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-400">
-                              <Ban className="h-3 w-3" aria-hidden="true" /> DECLINED · NOTHING MOVED
-                            </p>
-                          )}
-                          {t.proposalState === "failed" && (
-                            <p className="mt-2 flex items-center gap-1 font-code text-[7.5px] font-bold tracking-[0.14em] text-brand-300">
-                              <ShieldAlert className="h-3 w-3" aria-hidden="true" /> REFUSED · NOTHING MOVED
-                            </p>
                           )}
                         </div>
                       </div>
-                    )}
-
-                    {t.tools?.length ? (
-                      <p className="mt-2 flex flex-wrap items-center gap-1 font-code text-[7px] tracking-[0.14em] text-ink-400">
-                        <>DESK:
-                          {t.tools.map((tool, i) => (
-                            <span key={`${tool}-${i}`} className="rounded bg-white/[0.07] px-1.5 py-0.5 text-ink-300">
-                              {tool.toUpperCase()}
-                            </span>
-                          ))}
-                        </>
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
+                    </div>
+                  ))}
 
               {busy && (
-                <div className="flex justify-start">
-                  <div className="flex items-center gap-1.5 rounded-[10px] rounded-bl-md bg-white/[0.06] px-3.5 py-3 ring-1 ring-inset ring-white/10">
+                <div className="flex items-end gap-2">
+                  <Image src="/logo.svg" width={28} height={28} alt="" aria-hidden="true" unoptimized className="h-7 w-7 rounded-[9px] shadow-sm" />
+                  <div className="flex items-center gap-2 rounded-2xl rounded-bl-md border border-[#e8e9ec] bg-white px-3.5 py-3 shadow-[0_1px_2px_rgba(20,25,35,0.05)]">
                     {[0, 1, 2].map((i) => (
                       <motion.span
                         key={i}
                         aria-hidden="true"
-                        className="h-1.5 w-1.5 rounded-full bg-brand-400"
+                        className="h-1.5 w-1.5 rounded-full bg-brand-600"
                         animate={reduce ? undefined : { opacity: [0.25, 1, 0.25], y: [0, -2, 0] }}
                         transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.15 }}
                       />
                     ))}
-                    <span className="ml-1 font-code text-[7.5px] tracking-[0.16em] text-ink-300">READING THE DESK</span>
+                    <span className="ml-1 text-[11px] text-[#747881]">Barry is typing</span>
                   </div>
                 </div>
               )}
 
               {voiceNote && (
-                <p className="rounded-xl border border-brand-500/30 bg-brand-500/10 px-3 py-2 font-code text-[8px] leading-[1.9] tracking-[0.1em] text-brand-200">
-                  {voiceNote.toUpperCase()}
+                <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-900">
+                  {voiceNote}
                 </p>
               )}
                 </div>
               ) : null}
               {section === "support" ? (
-                <section id="barry-panel-support" role="tabpanel" aria-labelledby="barry-tab-support" className="space-y-4">
-                  <div>
-                    <p className="font-code text-[8px] font-bold tracking-[0.18em] text-brand-300">BARRY · SUPPORT</p>
-                    <h3 className="mt-1 text-[17px] font-bold text-white">How can we help?</h3>
-                    <p className="mt-1 text-[11.5px] leading-relaxed text-ink-300">
-                      Quick guidance for using the assistant and getting a useful answer.
+                <section id="barry-panel-support" role="tabpanel" aria-labelledby="barry-tab-support" className="space-y-3.5">
+                  <div className="rounded-[20px] bg-brand-700 p-5 text-white shadow-[0_8px_22px_rgba(130,25,20,0.16)]">
+                    <p className="text-[11px] font-medium text-white/70">Quorum support</p>
+                    <h3 className="mt-1 text-[21px] font-semibold tracking-[-0.02em]">How can we help?</h3>
+                    <p className="mt-1.5 text-[12px] leading-relaxed text-white/80">
+                      Find a quick answer or start a conversation with Barry.
                     </p>
-                  </div>
-                  <div className="space-y-3 rounded-xl border border-white/10 bg-white/[0.03] p-3.5">
-                    <div>
-                      <p className="text-[11px] font-semibold text-ink-100">Ask about live desk work</p>
-                      <p className="mt-1 text-[10.5px] leading-relaxed text-ink-400">Try “What is waiting at the gate?”, “Is quorum present?” or name a tender reference.</p>
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-semibold text-ink-100">Actions always need your approval</p>
-                      <p className="mt-1 text-[10.5px] leading-relaxed text-ink-400">Barry stages proposed actions for your review. Gate decisions still require your signature.</p>
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-semibold text-ink-100">Something not working?</p>
-                      <p className="mt-1 text-[10.5px] leading-relaxed text-ink-400">Retry once, then contact your workspace administrator with the error and tender reference. Do not send passwords or confidential bid documents in a support request.</p>
-                    </div>
                   </div>
                   <a
                     href="/docs"
-                    className="inline-flex h-9 items-center justify-center rounded-lg border border-white/15 px-3 text-[10px] font-semibold text-ink-200 transition-colors hover:border-brand-400/60 hover:text-white"
+                    className="group flex items-center gap-3 rounded-2xl border border-[#e6e8eb] bg-white p-4 shadow-[0_1px_2px_rgba(20,25,35,0.04)] transition-colors hover:border-brand-300"
                   >
-                    Open Quorum guide
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#f3f4f6] text-[#555b64]">
+                      <CircleHelp className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[12px] font-semibold text-[#30343a]">Browse the Quorum guide</span>
+                      <span className="mt-0.5 block text-[11px] text-[#777c84]">Setup, tenders, approvals and more</span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-[#9a9ea5] transition-transform group-hover:translate-x-0.5 group-hover:text-brand-700" aria-hidden="true" />
                   </a>
+                  <button
+                    type="button"
+                    onClick={() => setSection("chat")}
+                    className="group flex w-full items-center gap-3 rounded-2xl border border-[#e6e8eb] bg-white p-4 text-left shadow-[0_1px_2px_rgba(20,25,35,0.04)] transition-colors hover:border-brand-300"
+                  >
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-800">
+                      <MessageSquare className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[12px] font-semibold text-[#30343a]">Message Barry</span>
+                      <span className="mt-0.5 block text-[11px] text-[#777c84]">Ask about work in your Quorum workspace</span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-[#9a9ea5] transition-transform group-hover:translate-x-0.5 group-hover:text-brand-700" aria-hidden="true" />
+                  </button>
+                  <p className="px-1 pt-1 text-[11px] leading-relaxed text-[#777c84]">
+                    Barry can prepare actions for review. You always approve them before anything changes.
+                  </p>
                 </section>
               ) : null}
             </div>
 
             {/* Composer */}
-            {section === "chat" ? <div className="relative border-t border-white/10 px-3 py-3">
+            {section === "chat" ? <div className="relative border-t border-[#eceef0] bg-white px-3.5 py-3">
               {/* The meter — the mic is honest about hearing you */}
               {hearing && (
-                <div className="mb-2.5 flex items-center gap-2.5 rounded-xl bg-white/[0.05] px-3 py-2">
+                <div className="mb-2.5 flex items-center gap-2.5 rounded-xl bg-brand-50 px-3 py-2">
                   <div className="flex h-4 items-end gap-[3px]" aria-hidden="true">
                     {Array.from({ length: 12 }).map((_, i) => {
                       const seed = Math.sin(i * 1.7 + heardLevel * 9) * 0.5 + 0.5;
@@ -1093,15 +1076,15 @@ export function MuseAssistant({ name }: { name?: string }) {
                       return (
                         <motion.span
                           key={i}
-                          className="w-[3px] rounded-full bg-brand-400"
+                          className="w-[3px] rounded-full bg-brand-600"
                           animate={{ height: `${Math.min(100, h)}%` }}
                           transition={{ duration: 0.09 }}
                         />
                       );
                     })}
                   </div>
-                  <span className="font-code text-[8px] font-bold tracking-[0.16em] text-brand-300">
-                    LISTENING · TAP TO SEND
+                  <span className="text-[11px] font-medium text-brand-900">
+                    Listening · tap to send
                   </span>
                 </div>
               )}
@@ -1124,10 +1107,10 @@ export function MuseAssistant({ name }: { name?: string }) {
                   aria-label={hearing ? "Stop listening and send" : "Ask by voice"}
                   title={hearing ? "Send the question" : "Tap to speak, then tap again to send"}
                   className={cn(
-                    "grid h-11 w-11 shrink-0 place-items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                    "grid h-10 w-10 shrink-0 place-items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                     hearing
-                      ? "bg-brand-500 text-white shadow-[0_0_0_4px_rgba(232,56,42,0.25)]"
-                      : "bg-white/[0.07] text-ink-200 ring-1 ring-inset ring-white/10 hover:bg-white/[0.12] hover:text-white"
+                      ? "bg-brand-700 text-white shadow-[0_0_0_3px_rgba(232,56,42,0.14)]"
+                      : "bg-[#f1f2f4] text-[#656a72] hover:bg-[#e7e9ec] hover:text-[#30343a]"
                   )}
                 >
                   {hearing ? <Square className="h-4 w-4" aria-hidden="true" /> : <Mic className="h-4 w-4" aria-hidden="true" />}
@@ -1136,21 +1119,45 @@ export function MuseAssistant({ name }: { name?: string }) {
                   ref={inputRef}
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
-                  placeholder={hearing ? "Listening…" : "Ask Barry…"}
+                  placeholder={hearing ? "Listening…" : "Write a message…"}
                   disabled={hearing || busy}
                   maxLength={2000}
-                  className="h-11 min-w-0 flex-1 rounded-full border border-white/12 bg-white/[0.05] px-4 text-[13px] text-white outline-none transition-colors placeholder:text-ink-500 focus:border-brand-500/60 disabled:opacity-60"
+                  className="h-11 min-w-0 flex-1 rounded-full border border-[#e6e8eb] bg-[#f7f8fa] px-4 text-[13px] text-[#26292e] outline-none transition-colors placeholder:text-[#9a9ea5] focus:border-brand-400 focus:bg-white disabled:opacity-60"
                 />
                 <button
                   type="submit"
                   disabled={busy || !draft.trim() || hearing}
                   aria-label="Send the question"
-                  className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-600 text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-700 text-white shadow-sm transition-colors hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Send className="h-4 w-4" aria-hidden="true" />
                 </button>
               </form>
             </div> : null}
+
+            <nav role="tablist" aria-label="Chat and support" className="grid shrink-0 grid-cols-2 border-t border-[#eceef0] bg-white px-5 py-1.5">
+              {([
+                { id: "chat", label: "Chat", Icon: MessageSquare },
+                { id: "support", label: "Support", Icon: CircleHelp },
+              ] as const).map(({ id, label, Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  id={`barry-tab-${id}`}
+                  aria-selected={section === id}
+                  aria-controls={`barry-panel-${id}`}
+                  onClick={() => setSection(id)}
+                  className={cn(
+                    "flex h-[52px] flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-medium transition-colors",
+                    section === id ? "text-brand-800" : "text-[#898e96] hover:bg-[#f7f8fa] hover:text-[#464a51]",
+                  )}
+                >
+                  <Icon className={cn("h-[18px] w-[18px]", section === id && "fill-brand-100")} aria-hidden="true" />
+                  {label}
+                </button>
+              ))}
+            </nav>
           </motion.div>
         )}
       </AnimatePresence>
