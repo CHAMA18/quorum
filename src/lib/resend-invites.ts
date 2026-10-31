@@ -24,6 +24,7 @@ export async function sendWorkspaceInviteEmail(input: {
   code: string;
   inviteUrl: string;
   inviteId: string;
+  idempotencyKey?: string;
 }): Promise<InviteEmailResult> {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   const domainId = process.env.RESEND_DOMAIN_ID?.trim();
@@ -66,19 +67,20 @@ export async function sendWorkspaceInviteEmail(input: {
       headers: {
         authorization: `Bearer ${apiKey}`,
         "content-type": "application/json",
-        "idempotency-key": `team-invite/${input.inviteId}`,
+        "idempotency-key": input.idempotencyKey ?? `team-invite/${input.inviteId}`,
       },
       body: JSON.stringify({ from, to: [input.to], subject, html, text }),
       cache: "no-store",
       signal: AbortSignal.timeout(10_000),
     });
-    const payload = (await response.json().catch(() => ({}))) as { id?: string };
+    const payload = (await response.json().catch(() => ({}))) as { id?: string; message?: string };
     if (!response.ok) {
+      const providerMessage = payload.message?.replace(/[\r\n\t]+/g, " ").trim().slice(0, 240);
       const detail = response.status === 401
         ? "Resend rejected its API key; check the deployment secret."
         : response.status === 403 || response.status === 422
-          ? "Resend rejected the sender or recipient; confirm RESEND_FROM uses the verified domain and the recipient is valid."
-          : `Resend did not accept the invitation (HTTP ${response.status}).`;
+          ? `Resend rejected the sender or recipient${providerMessage ? `: ${providerMessage}` : "; confirm RESEND_FROM uses the verified domain and the recipient is valid."}`
+          : `Resend did not accept the invitation (HTTP ${response.status})${providerMessage ? `: ${providerMessage}` : "."}`;
       return { status: "FAILED", detail };
     }
     return {

@@ -248,6 +248,9 @@ export interface InviteRow {
   claimedBy: string | null;
   claimedByEmail: string | null;
   status: InviteStatus;
+  emailDeliveryStatus?: "SENT" | "SKIPPED" | "FAILED";
+  emailDeliveryDetail?: string;
+  emailDeliveryAttemptedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
   claimedAt: Date | null;
@@ -372,7 +375,7 @@ function resolveStoreFile(): string {
 
 const FILE = resolveStoreFile();
 const LEGACY_FILE = path.join(process.cwd(), "db", "quorum-store.json");
-const DATE_FIELDS = ["createdAt", "updatedAt", "expiresAt", "claimedAt", "usedAt", "readAt", "decidedAt"] as const;
+const DATE_FIELDS = ["createdAt", "updatedAt", "expiresAt", "claimedAt", "usedAt", "readAt", "decidedAt", "emailDeliveryAttemptedAt"] as const;
 
 function revive<T>(rows: unknown): T[] {
   if (!Array.isArray(rows)) return [];
@@ -1035,7 +1038,7 @@ export function createInvite(data: {
 
 export function updateInvite(
   id: string,
-  patch: Partial<Pick<InviteRow, "status" | "claimedBy" | "claimedByEmail" | "claimedAt">>,
+  patch: Partial<Pick<InviteRow, "email" | "status" | "claimedBy" | "claimedByEmail" | "claimedAt" | "emailDeliveryStatus" | "emailDeliveryDetail" | "emailDeliveryAttemptedAt">>,
   workspaceId = store.workspaceId,
 ): InviteRow | null {
   const row = store.invites.find((invite) => invite.id === id && invite.workspaceId === workspaceId) ?? null;

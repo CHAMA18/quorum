@@ -59,6 +59,7 @@ import {
 } from "lucide-react";
 import { AuditView } from "@/components/quorum/audit-view";
 import { OversightView } from "@/components/quorum/oversight-view";
+import { TeamInviteDeliveryActions } from "@/components/quorum/team-invite-delivery-actions";
 import { CalendarView } from "@/components/quorum/calendar-view";
 import { IntegrationsView } from "@/components/quorum/integrations-view";
 import { CYCLE_STAGE_PAGES, CycleView, type CycleStageTab } from "@/components/quorum/cycle-view";
@@ -6852,6 +6853,9 @@ type TeamInvite = {
   status: "PENDING" | "CLAIMED" | "REVOKED";
   inviterName: string;
   claimedByEmail: string | null;
+  emailDeliveryStatus: "SENT" | "SKIPPED" | "FAILED" | null;
+  emailDeliveryDetail: string | null;
+  emailDeliveryAttemptedAt: string | null;
   createdAt: string;
   expiresInDays: number;
 };
@@ -7112,6 +7116,14 @@ function TeamMembersSection({
                       ? "revoked"
                       : `expires in ${inv.expiresInDays} day${inv.expiresInDays === 1 ? "" : "s"}`}
                 </span>
+                {inv.status === "PENDING" && (
+                  <TeamInviteDeliveryActions
+                    invite={inv}
+                    canManage={data.canManage}
+                    onToast={onToast}
+                    onUpdated={() => { void load(); }}
+                  />
+                )}
                 {inv.status === "PENDING" && (
                   <button
                     type="button"

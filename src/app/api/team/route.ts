@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { randomBytes } from "crypto";
+import { randomBytes, randomUUID } from "crypto";
 import {
   countSessionsForUser,
   createInvite,
@@ -84,6 +84,9 @@ export async function GET(req: NextRequest) {
     status: inv.status,
     inviterName: inv.inviterName,
     claimedByEmail: inv.claimedByEmail,
+    emailDeliveryStatus: canManagePeople ? inv.emailDeliveryStatus ?? null : null,
+    emailDeliveryDetail: canManagePeople ? inv.emailDeliveryDetail ?? null : null,
+    emailDeliveryAttemptedAt: canManagePeople ? inv.emailDeliveryAttemptedAt ?? null : null,
     createdAt: inv.createdAt,
     expiresInDays: Math.max(0, Math.ceil((inv.createdAt.getTime() + 14 * 86_400_000 - now) / 86_400_000)),
   }));
@@ -112,6 +115,24 @@ export async function POST(req: NextRequest) {
   }
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!body) return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+
+  const resendInviteId = typeof body.inviteId === "string" ? body.inviteId.trim() : "";
+  if (resendInviteId) {
+    const invite = findInviteById(resendInviteId, actor.workspaceId);
+    if (!invite) return NextResponse.json({ error: "Invite not found in this workspace." }, { status: 404 });
+    if (invite.status !== "PENDING") return NextResponse.json({ error: `This invite is already ${invite.status.toLowerCase()}.` }, { status: 409 });
+    if (Date.now() - invite.createdAt.getTime() > 14 * 86_400_000) {
+      return NextResponse.json({ error: "This invite has expired. Create a fresh invite for the recipient." }, { status: 410 });
+    }
+    if (!invite.email) return NextResponse.json({ error: "Add a recipient email to this invite before sending it." }, { status: 422 });
+    if (!canAssignRole(actor.role, invite.role as WorkspaceRole)) {
+      return NextResponse.json({ error: `Your role cannot resend an invitation granting ${invite.role.toLowerCase()} access.` }, { status: 403 });
+    }
+    const result = await deliverInvite(req, actor, invite, `team-invite/${invite.id}/retry/${randomUUID()}`);
+    return NextResponse.json({ invite: inviteResponse(result.invite), delivery: result.delivery });
+  }
+
   const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
   const requested = typeof body?.role === "string" ? body.role.toUpperCase() : "OFFICER";
   const role: WorkspaceRole = isAssignableRole(requested) ? requested : "OFFICER";
@@ -131,30 +152,12 @@ export async function POST(req: NextRequest) {
     inviterName: actor.name,
   });
 
-  const delivery = email
-    ? await sendWorkspaceInviteEmail({
-        to: email,
-        inviterName: actor.name,
-        workspaceName: actor.organization ?? "your Quorum workspace",
-        role,
-        code: invite.code,
-        inviteUrl: invitationUrl(req, invite.code),
-        inviteId: invite.id,
-      })
-    : { status: "SKIPPED" as const, detail: "No email address was entered; share the invite code directly." };
+  const result = await deliverInvite(req, actor, invite);
 
   return NextResponse.json(
     {
-      invite: {
-        id: invite.id,
-        code: invite.code,
-        email: invite.email,
-        role: invite.role,
-        status: invite.status,
-        createdAt: invite.createdAt,
-        expiresInDays: 14,
-      },
-      delivery: { status: delivery.status, detail: delivery.detail },
+      invite: inviteResponse(result.invite),
+      delivery: result.delivery,
     },
     { status: 201 }
   );
@@ -176,6 +179,45 @@ function invitationUrl(req: NextRequest, code: string): string {
   return url.toString();
 }
 
+function inviteResponse(invite: ReturnType<typeof findInviteById>) {
+  if (!invite) return null;
+  return {
+    id: invite.id,
+    code: invite.code,
+    email: invite.email,
+    role: invite.role,
+    status: invite.status,
+    createdAt: invite.createdAt,
+    expiresInDays: Math.max(0, Math.ceil((invite.createdAt.getTime() + 14 * 86_400_000 - Date.now()) / 86_400_000)),
+  };
+}
+
+async function deliverInvite(
+  req: NextRequest,
+  actor: NonNullable<Awaited<ReturnType<typeof requireUser>>>,
+  invite: NonNullable<ReturnType<typeof findInviteById>>,
+  idempotencyKey?: string,
+) {
+  const delivery = invite.email
+    ? await sendWorkspaceInviteEmail({
+        to: invite.email,
+        inviterName: invite.inviterName || actor.name,
+        workspaceName: actor.organization ?? "your Quorum workspace",
+        role: invite.role,
+        code: invite.code,
+        inviteUrl: invitationUrl(req, invite.code),
+        inviteId: invite.id,
+        ...(idempotencyKey ? { idempotencyKey } : {}),
+      })
+    : { status: "SKIPPED" as const, detail: "No email address was entered; share the invite code directly." };
+  const updated = updateInvite(invite.id, {
+    emailDeliveryStatus: delivery.status,
+    emailDeliveryDetail: delivery.detail,
+    emailDeliveryAttemptedAt: new Date(),
+  }, actor.workspaceId);
+  return { invite: updated ?? invite, delivery: { status: delivery.status, detail: delivery.detail } };
+}
+
 export async function PATCH(req: NextRequest) {
   const actor = await requireUser(req);
   if (!actor) return NextResponse.json({ error: "Sign in to manage workspace access." }, { status: 401 });
@@ -185,6 +227,31 @@ export async function PATCH(req: NextRequest) {
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   if (!body) return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+
+  const inviteId = typeof body.inviteId === "string" ? body.inviteId.trim() : "";
+  if (inviteId) {
+    if (!rateLimit(`team-invite:${actor.id}`, 10, 15 * 60_000)) {
+      return NextResponse.json({ error: "Too many invitations. Wait a few minutes and try again." }, { status: 429 });
+    }
+    const invite = findInviteById(inviteId, actor.workspaceId);
+    if (!invite) return NextResponse.json({ error: "Invite not found in this workspace." }, { status: 404 });
+    if (invite.status !== "PENDING") return NextResponse.json({ error: `This invite is already ${invite.status.toLowerCase()}.` }, { status: 409 });
+    if (invite.email) return NextResponse.json({ error: "This invite already has a recipient. Use its send or resend action." }, { status: 409 });
+    if (Date.now() - invite.createdAt.getTime() > 14 * 86_400_000) {
+      return NextResponse.json({ error: "This invite has expired. Create a fresh invite for the recipient." }, { status: 410 });
+    }
+    if (!canAssignRole(actor.role, invite.role as WorkspaceRole)) {
+      return NextResponse.json({ error: `Your role cannot send an invitation granting ${invite.role.toLowerCase()} access.` }, { status: 403 });
+    }
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+      return NextResponse.json({ error: "Enter a valid recipient email address." }, { status: 422 });
+    }
+    const attached = updateInvite(invite.id, { email }, actor.workspaceId);
+    if (!attached) return NextResponse.json({ error: "Invite could not be updated." }, { status: 409 });
+    const result = await deliverInvite(req, actor, attached, `team-invite/${invite.id}/recipient/${randomUUID()}`);
+    return NextResponse.json({ invite: inviteResponse(result.invite), delivery: result.delivery });
+  }
 
   const userId = typeof body.userId === "string" ? body.userId : "";
   const target = findUserById(userId, actor.workspaceId);

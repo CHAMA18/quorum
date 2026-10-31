@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { SpecBar } from "@/components/quorum/reveal";
+import { TeamInviteDeliveryActions } from "@/components/quorum/team-invite-delivery-actions";
 import type { AuthUser } from "@/lib/auth-types";
 import {
   ASSIGNABLE_ROLES,
@@ -63,6 +64,9 @@ type TeamInvite = {
   status: "PENDING" | "CLAIMED" | "REVOKED";
   inviterName: string;
   claimedByEmail: string | null;
+  emailDeliveryStatus: "SENT" | "SKIPPED" | "FAILED" | null;
+  emailDeliveryDetail: string | null;
+  emailDeliveryAttemptedAt: string | null;
   createdAt: string;
   expiresInDays: number;
 };
@@ -768,6 +772,15 @@ export function OversightView({
                                   ? "revoked"
                                   : `expires in ${inviteRow.expiresInDays} day${inviteRow.expiresInDays === 1 ? "" : "s"}`}
                             </span>
+                            {inviteRow.status === "PENDING" && (
+                              <TeamInviteDeliveryActions
+                                invite={inviteRow}
+                                canManage={canManage}
+                                disabled={busy !== null}
+                                onToast={onToast}
+                                onUpdated={() => { void load(); }}
+                              />
+                            )}
                             {inviteRow.status === "PENDING" && (
                               <button
                                 type="button"
