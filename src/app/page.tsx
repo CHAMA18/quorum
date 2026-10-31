@@ -166,6 +166,7 @@ export default function Home() {
         {view === "landing" ? (
           <motion.div
             key="landing"
+            className="dark"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, transition: { duration: 0.22 } }}
