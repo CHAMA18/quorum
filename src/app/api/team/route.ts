@@ -13,7 +13,8 @@ import {
   updateInvite,
   updateUserRole,
 } from "@/lib/db";
-import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
+import { getUserFromToken, rateLimit, SESSION_COOKIE } from "@/lib/auth";
+import { sendWorkspaceInviteEmail } from "@/lib/resend-invites";
 import {
   can,
   canAssignRole,
@@ -92,6 +93,11 @@ export async function GET(req: NextRequest) {
     invites: invitesView,
     canManage: canManagePeople,
     actorRole: actor.role,
+    emailDeliveryConfigured: Boolean(
+      process.env.RESEND_API_KEY?.trim() &&
+      process.env.RESEND_DOMAIN_ID?.trim() &&
+      process.env.RESEND_FROM?.trim()
+    ),
   });
 }
 
@@ -100,6 +106,9 @@ export async function POST(req: NextRequest) {
   if (!actor) return NextResponse.json({ error: "Sign in to invite teammates." }, { status: 401 });
   if (!can(actor.role, "manage_people")) {
     return NextResponse.json({ error: "Only owners and admins can invite people." }, { status: 403 });
+  }
+  if (!rateLimit(`team-invite:${actor.id}`, 10, 15 * 60_000)) {
+    return NextResponse.json({ error: "Too many invitations. Wait a few minutes and try again." }, { status: 429 });
   }
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
@@ -122,6 +131,18 @@ export async function POST(req: NextRequest) {
     inviterName: actor.name,
   });
 
+  const delivery = email
+    ? await sendWorkspaceInviteEmail({
+        to: email,
+        inviterName: actor.name,
+        workspaceName: actor.organization ?? "your Quorum workspace",
+        role,
+        code: invite.code,
+        inviteUrl: invitationUrl(req, invite.code),
+        inviteId: invite.id,
+      })
+    : { status: "SKIPPED" as const, detail: "No email address was entered; share the invite code directly." };
+
   return NextResponse.json(
     {
       invite: {
@@ -133,9 +154,26 @@ export async function POST(req: NextRequest) {
         createdAt: invite.createdAt,
         expiresInDays: 14,
       },
+      delivery: { status: delivery.status, detail: delivery.detail },
     },
     { status: 201 }
   );
+}
+
+function invitationUrl(req: NextRequest, code: string): string {
+  const configured = process.env.QUORUM_APP_URL?.trim();
+  const candidate = configured || (process.env.NODE_ENV === "development" ? req.nextUrl.origin : "https://quorum-solutions.com");
+  let origin = "https://quorum-solutions.com";
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol === "https:" || parsed.protocol === "http:") origin = parsed.origin;
+  } catch {
+    /* A bad optional URL must not strand an invite after its record is saved. */
+  }
+  const url = new URL("/", origin);
+  url.searchParams.set("inviteCode", code);
+  url.hash = "/register";
+  return url.toString();
 }
 
 export async function PATCH(req: NextRequest) {

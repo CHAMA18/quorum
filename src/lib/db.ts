@@ -1003,8 +1003,8 @@ export function findInviteById(id: string, workspaceId = store.workspaceId): Inv
   return store.invites.find((invite) => invite.id === id && invite.workspaceId === workspaceId) ?? null;
 }
 
-export function findInviteByCode(code: string, workspaceId = store.workspaceId): InviteRow | null {
-  return store.invites.find((invite) => invite.code === code && invite.workspaceId === workspaceId) ?? null;
+export function findInviteByCode(code: string, workspaceId?: string): InviteRow | null {
+  return store.invites.find((invite) => invite.code === code && (!workspaceId || invite.workspaceId === workspaceId)) ?? null;
 }
 
 export function createInvite(data: {

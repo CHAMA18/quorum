@@ -72,6 +72,7 @@ type TeamPayload = {
   invites: TeamInvite[];
   canManage: boolean;
   actorRole: WorkspaceRole;
+  emailDeliveryConfigured: boolean;
 };
 
 type OrgRow = {
@@ -201,7 +202,12 @@ export function OversightView({
   const [busy, setBusy] = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<AssignableRole>("OFFICER");
-  const [freshInvite, setFreshInvite] = useState<{ code: string; email: string | null; role: WorkspaceRole } | null>(null);
+  const [freshInvite, setFreshInvite] = useState<{
+    code: string;
+    email: string | null;
+    role: WorkspaceRole;
+    delivery: { status: "SENT" | "SKIPPED" | "FAILED"; detail: string };
+  } | null>(null);
   const [copied, setCopied] = useState(false);
   const [suspendTarget, setSuspendTarget] = useState<OrgRow | null>(null);
   const [suspendReason, setSuspendReason] = useState("");
@@ -371,13 +377,17 @@ export function OversightView({
       });
       const data = (await res.json()) as {
         invite?: { code: string; email: string | null; role: WorkspaceRole };
+        delivery?: { status: "SENT" | "SKIPPED" | "FAILED"; detail: string };
         error?: string;
       };
       if (!res.ok || !data.invite) throw new Error(data.error ?? "Invite failed.");
-      setFreshInvite(data.invite);
+      const delivery = data.delivery ?? { status: "SKIPPED" as const, detail: "Invite created; share the code directly." };
+      setFreshInvite({ ...data.invite, delivery });
       setCopied(false);
       setInviteEmail("");
-      onToast(`INVITE CREATED — ${data.invite.code}`);
+      onToast(delivery.status === "SENT"
+        ? `INVITATION EMAIL ACCEPTED BY RESEND — ${data.invite.email}`
+        : `INVITE CREATED · ${delivery.detail}`);
       await load();
     } catch (err) {
       onToast((err as Error).message.toUpperCase());
@@ -687,8 +697,8 @@ export function OversightView({
                         type="email"
                         value={inviteEmail}
                         onChange={(e) => setInviteEmail(e.target.value)}
-                        placeholder="colleague@authority.go.ke (optional note)"
-                        aria-label="Colleague email (optional)"
+                        placeholder="colleague@authority.go.ke"
+                        aria-label="Colleague email"
                         className="h-10 min-w-0 flex-1 rounded-lg border border-ink-200 bg-white px-3 text-[13px] text-ink-950 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-400"
                       />
                       <select
@@ -714,7 +724,9 @@ export function OversightView({
                       </button>
                     </div>
                     <p className="mt-2 text-[11px] leading-relaxed text-ink-400">
-                      No mail provider is configured — Quorum hands you the code. Share it directly; it is shown once here.
+                      {team?.emailDeliveryConfigured
+                        ? "Enter a work email to send this invitation through Resend. The recipient link opens registration with the code filled in."
+                        : "Email delivery is not configured on this deployment. Quorum will create a shareable code instead."}
                     </p>
 
                     {freshInvite && (
@@ -726,6 +738,9 @@ export function OversightView({
                           {freshInvite.role}
                         </span>
                         {freshInvite.email && <span className="truncate text-[11px] text-brand-800">for {freshInvite.email}</span>}
+                        <span role="status" className={cn("text-[11px]", freshInvite.delivery.status === "SENT" ? "text-emerald-800" : freshInvite.delivery.status === "FAILED" ? "text-brand-800" : "text-ink-500")}>
+                          {freshInvite.delivery.detail}
+                        </span>
                         <button
                           type="button"
                           onClick={() => void copyInvite()}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
 import { ArrowRight, CircleAlert, Eye, EyeOff, FileText, Landmark, Loader2, Lock, ShieldCheck, UserRound } from "lucide-react";
 import { AuthFilm } from "@/components/quorum/auth-film";
@@ -28,6 +28,28 @@ import { cn } from "@/lib/utils";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const EASE = [0.22, 1, 0.36, 1] as const;
+const INVITE_LINK_EVENT = "quorum:invite-link";
+
+function subscribeInviteLink(onChange: () => void) {
+  window.addEventListener("popstate", onChange);
+  window.addEventListener("hashchange", onChange);
+  window.addEventListener(INVITE_LINK_EVENT, onChange);
+  return () => {
+    window.removeEventListener("popstate", onChange);
+    window.removeEventListener("hashchange", onChange);
+    window.removeEventListener(INVITE_LINK_EVENT, onChange);
+  };
+}
+
+function inviteCodeSnapshot(): string {
+  const state = window.history.state as Record<string, unknown> | null;
+  if (typeof state?.quorumInviteCode === "string") return state.quorumInviteCode;
+  return new URLSearchParams(window.location.search).get("inviteCode")?.trim().toUpperCase() ?? "";
+}
+
+function serverInviteCodeSnapshot(): string {
+  return "";
+}
 
 /*
  * Google sign-in denials, spelled out. The Firebase popup can fail for very
@@ -501,7 +523,9 @@ interface AuthScreenProps {
 }
 
 export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, onClose }: AuthScreenProps) {
-  const [values, setValues] = useState({ name: "", email: "", organization: "", inviteCode: "", password: "" });
+  const [values, setValues] = useState({ name: "", email: "", organization: "", password: "" });
+  const [inviteCodeDraft, setInviteCodeDraft] = useState<string | null>(null);
+  const linkedInviteCode = useSyncExternalStore(subscribeInviteLink, inviteCodeSnapshot, serverInviteCodeSnapshot);
   const [remember, setRemember] = useState(true);
   const [terms, setTerms] = useState(false);
   const [showPw, setShowPw] = useState(false);
@@ -525,6 +549,23 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
   const pwScore = PW_CHECKS.filter((c) => c.test(values.password)).length;
   const pwMeta = PW_META[pwScore];
   const firstName = granted?.name.trim().split(/\s+/)[0] ?? null;
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("inviteCode")?.trim().toUpperCase();
+    if (!code) return;
+    const state = window.history.state && typeof window.history.state === "object"
+      ? window.history.state as Record<string, unknown>
+      : {};
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.delete("inviteCode");
+    window.history.replaceState(
+      { ...state, quorumInviteCode: code },
+      "",
+      `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`,
+    );
+    window.dispatchEvent(new Event(INVITE_LINK_EVENT));
+  }, []);
 
   function set(field: keyof typeof values, v: string) {
     setValues((prev) => ({ ...prev, [field]: v }));
@@ -723,7 +764,7 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
           email: values.email.trim(),
           password: values.password,
           organization: values.organization.trim() || undefined,
-          inviteCode: values.inviteCode.trim() || undefined,
+          inviteCode: (inviteCodeDraft ?? linkedInviteCode).trim() || undefined,
         }),
       });
       const data = (await res.json().catch(() => null)) as
@@ -1041,8 +1082,8 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
                                   <input
                                     id="auth-invite"
                                     type="text"
-                                    value={values.inviteCode}
-                                    onChange={(e) => set("inviteCode", e.target.value)}
+                                    value={inviteCodeDraft ?? linkedInviteCode}
+                                    onChange={(e) => setInviteCodeDraft(e.target.value)}
                                     placeholder="Q-XXXX-XXXX"
                                     autoCapitalize="characters"
                                     className={inputCls}

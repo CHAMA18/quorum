@@ -68,6 +68,13 @@ export async function POST(req: NextRequest) {
       ? invite
       : null;
 
+  if (usableInvite?.email && usableInvite.email.toLowerCase() !== email) {
+    return NextResponse.json(
+      { error: "This invitation was issued to a different email address. Register using the address that received it." },
+      { status: 403 },
+    );
+  }
+
   const passwordHash = await hashPassword(password);
   const user = createUser({
     name,

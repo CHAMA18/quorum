@@ -6870,6 +6870,7 @@ type TeamData = {
   invites: TeamInvite[];
   canManage: boolean;
   actorRole: WorkspaceRole;
+  emailDeliveryConfigured: boolean;
 };
 
 function TeamMembersSection({
@@ -6887,6 +6888,7 @@ function TeamMembersSection({
   const [inviteRole, setInviteRole] = useState<AssignableRole>("OFFICER");
   const [busy, setBusy] = useState(false);
   const [freshCode, setFreshCode] = useState<string | null>(null);
+  const [freshDelivery, setFreshDelivery] = useState<{ status: "SENT" | "SKIPPED" | "FAILED"; detail: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
   const load = useCallback(() => {
@@ -6920,12 +6922,19 @@ function TeamMembersSection({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: inviteEmail.trim() || undefined, role: inviteRole }),
       });
-      const d = (await res.json()) as { invite?: { code: string }; error?: string };
+      const d = (await res.json()) as {
+        invite?: { code: string; email: string | null };
+        delivery?: { status: "SENT" | "SKIPPED" | "FAILED"; detail: string };
+        error?: string;
+      };
       if (!res.ok || !d.invite) throw new Error(d.error ?? "failed");
       setFreshCode(d.invite.code);
+      setFreshDelivery(d.delivery ?? { status: "SKIPPED", detail: "Invite created; share the code directly." });
       setCopied(false);
       setInviteEmail("");
-      onToast(`INVITE CREATED — ${d.invite.code}`);
+      onToast(d.delivery?.status === "SENT"
+        ? `INVITATION EMAIL ACCEPTED BY RESEND — ${d.invite.email}`
+        : `INVITE CREATED · ${d.delivery?.detail ?? d.invite.code}`);
       load();
     } catch (err) {
       onToast(`INVITE FAILED — ${(err as Error).message.toUpperCase()}`);
@@ -7034,8 +7043,8 @@ function TeamMembersSection({
               type="email"
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
-              placeholder="colleague@authority.go.ke (optional note)"
-              aria-label="Colleague email (optional)"
+              placeholder="colleague@authority.go.ke"
+              aria-label="Colleague email"
               className="h-10 min-w-0 flex-1 rounded-lg border border-ink-200 bg-white px-3 text-[13px] text-ink-950 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-400"
             />
             <select
@@ -7063,12 +7072,14 @@ function TeamMembersSection({
             </button>
           </div>
           <p className="mt-2 text-[11.5px] leading-relaxed text-ink-400">
-            No email provider is configured — Quorum gives you a code instead. Share it with your teammate; they
-            paste it during registration (it expires in 14 days).
+            {data.emailDeliveryConfigured
+              ? "Enter a work email to send the invitation through Resend. The recipient link opens registration with the code filled in; the code can also be shared manually."
+              : "Email delivery is not configured on this deployment. Quorum will create a shareable code; enter an email when Resend is configured to send the invite directly."}
           </p>
           {freshCode && (
             <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2.5">
               <span className="font-code text-[13px] font-bold tracking-[0.18em] text-brand-800" aria-live="polite">{freshCode}</span>
+              {freshDelivery && <span role="status" className={cn("text-[11px]", freshDelivery.status === "SENT" ? "text-emerald-800" : freshDelivery.status === "FAILED" ? "text-brand-800" : "text-ink-500")}>{freshDelivery.detail}</span>}
               <button
                 type="button"
                 onClick={copyCode}
