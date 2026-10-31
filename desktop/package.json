@@ -1,0 +1,11 @@
+{
+  "name": "quorum-desktop",
+  "version": "0.2.2",
+  "private": true,
+  "description": "Quorum desktop workspace",
+  "main": "main.cjs",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^45.2.1"
+  }
+}

@@ -1,6 +1,6 @@
 {
   "name": "nextjs_tailwind_shadcn_ts",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "license": "MIT",
   "llamaLicense": "Llama 3.2 Community License — see NOTICE",
@@ -12,7 +12,9 @@
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint .",
     "test": "bun test mini-services/quorum-mcp/ src/lib/gate-receipts.test.ts src/lib/quorum-knowledge.test.ts src/lib/quorum-nav.test.ts src/lib/tender-extract.test.ts src/lib/sam.test.ts src/lib/tender-access.test.ts src/lib/audit-export.test.ts src/lib/tender-local-store.test.ts src/lib/supplier-pulse.test.ts src/app/api/public/summary/route.test.ts workers/quorum-edge/http-range.test.ts workers/quorum-edge/worker.test.ts",
-    "test:edge": "bash -c 'set -a; [ -f .env.local ] && . ./.env.local; set +a; bun test workers/quorum-edge/ \"src/app/api/tenders/[ref]/docs/route.test.ts\"'"
+    "test:edge": "bash -c 'set -a; [ -f .env.local ] && . ./.env.local; set +a; bun test workers/quorum-edge/ \"src/app/api/tenders/[ref]/docs/route.test.ts\"'",
+    "desktop:icons": "node scripts/desktop-icons.mjs",
+    "desktop:build": "npm run desktop:icons && electron-builder --publish never"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -88,12 +90,66 @@
     "zod": "^4.0.2",
     "zustand": "^5.0.6"
   },
+  "build": {
+    "appId": "africa.quorum.desktop",
+    "productName": "Quorum",
+    "asar": true,
+    "directories": {
+      "app": "desktop",
+      "output": "release"
+    },
+    "mac": {
+      "category": "public.app-category.business",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "identity": null,
+      "icon": "build/desktop/icon.icns",
+      "artifactName": "Quorum-macOS.${ext}"
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/desktop/icon.ico",
+      "artifactName": "Quorum-Windows-Setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "artifactName": "Quorum-${version}-${os}-${arch}.${ext}"
+  },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "bun-types": "^1.3.4",
     "docx": "^9.15.0",
+    "electron": "^45.2.1",
+    "electron-builder": "^26.18.0",
     "eslint": "^9",
     "eslint-config-next": "^16.1.1",
     "exceljs": "^4.4.0",

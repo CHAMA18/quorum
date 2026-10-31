@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { TopTicker } from "@/components/quorum/top-ticker";
 import { SiteHeader } from "@/components/quorum/site-header";
 import { Hero } from "@/components/quorum/hero";
+import { DesktopDownloads } from "@/components/quorum/desktop-downloads";
 import { Overview } from "@/components/quorum/overview";
 import { RuleBand } from "@/components/quorum/rule-band";
 import { UseCases } from "@/components/quorum/use-cases";
@@ -184,6 +185,7 @@ export default function Home() {
               <ScrollProgress />
               <main className="w-full flex-1">
                 <Hero onGetStarted={() => openAuth("register")} />
+                <DesktopDownloads />
                 <Overview />
                 <RuleBand />
                 <UseCases />

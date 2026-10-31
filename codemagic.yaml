@@ -1,0 +1,57 @@
+workflows:
+  quorum_macos:
+    name: Quorum for macOS
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      node: lts
+      groups:
+        - github_credentials
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: "v*"
+          include: true
+    scripts:
+      - name: Install dependencies
+        script: npm ci
+      - name: Generate application icons
+        script: npm run desktop:icons
+      - name: Package macOS app
+        script: npx electron-builder --mac dmg zip --universal --publish never
+    artifacts:
+      - release/*.dmg
+      - release/*.zip
+    publishing:
+      scripts:
+        - name: Publish tagged build to GitHub Releases
+          script: node scripts/publish-github-release.mjs
+
+  quorum_windows:
+    name: Quorum for Windows
+    max_build_duration: 60
+    instance_type: windows_x2
+    environment:
+      node: lts
+      groups:
+        - github_credentials
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: "v*"
+          include: true
+    scripts:
+      - name: Install dependencies
+        script: npm ci
+      - name: Generate application icons
+        script: npm run desktop:icons
+      - name: Package Windows app
+        script: cmd.exe /c npx electron-builder --win nsis --publish never
+    artifacts:
+      - release/*.exe
+    publishing:
+      scripts:
+        - name: Publish tagged build to GitHub Releases
+          script: node scripts/publish-github-release.mjs
