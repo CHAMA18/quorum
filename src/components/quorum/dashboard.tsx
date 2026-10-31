@@ -61,7 +61,7 @@ import { AuditView } from "@/components/quorum/audit-view";
 import { OversightView } from "@/components/quorum/oversight-view";
 import { CalendarView } from "@/components/quorum/calendar-view";
 import { IntegrationsView } from "@/components/quorum/integrations-view";
-import { CycleView } from "@/components/quorum/cycle-view";
+import { CYCLE_STAGE_PAGES, CycleView, type CycleStageTab } from "@/components/quorum/cycle-view";
 import { GovernanceView } from "@/components/quorum/governance-view";
 import { ComplianceView } from "@/components/quorum/compliance-view";
 import { ReadinessView } from "@/components/quorum/readiness-view";
@@ -503,10 +503,19 @@ type SectionId =
 
 type NavBadge = "runs" | "gates" | "findings";
 
+type NavItem = {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  badge?: NavBadge;
+  href?: string;
+  subpages?: readonly { id: CycleStageTab; label: string }[];
+};
+
 const NAV_GROUPS: {
   group: string;
   /* An item with `href` opens its own URL — a real page, not a section. */
-  items: { id: string; label: string; icon: LucideIcon; badge?: NavBadge; href?: string }[];
+  items: NavItem[];
 }[] = [
   {
     group: "COMMAND",
@@ -514,7 +523,7 @@ const NAV_GROUPS: {
       { id: "mc-overview", label: "Overview", icon: Gauge },
       { id: "mc-runs", label: "Evaluations", icon: Terminal, badge: "runs" },
       { id: "mc-gates", label: "Approvals", icon: Stamp, badge: "gates" },
-      { id: "mc-cycle", label: "Tender Cycle", icon: Workflow },
+      { id: "mc-cycle", label: "Tender Cycle", icon: Workflow, subpages: CYCLE_STAGE_PAGES },
       { id: "mc-activity", label: "Live Activity", icon: Radio },
     ],
   },
@@ -2027,18 +2036,22 @@ function NewRunModal({
 
 function SidebarContent({
   active,
+  activeCycleStage,
   user,
   counts,
   agent,
   onNavigate,
+  onNavigateCycleStage,
   onSignOut,
   onExit,
 }: {
   active: SectionId;
+  activeCycleStage: CycleStageTab;
   user: AuthUser | null;
   counts: { runs: number; gates: number; findings: number };
   agent: AgentStatus;
   onNavigate: (id: SectionId) => void;
+  onNavigateCycleStage: (stage: CycleStageTab) => void;
   onSignOut: () => void;
   onExit: () => void;
 }) {
@@ -2096,6 +2109,8 @@ function SidebarContent({
                         type="button"
                         onClick={() => onNavigate(item.id as SectionId)}
                         aria-current={isActive ? "true" : undefined}
+                        aria-expanded={item.subpages?.length ? isActive : undefined}
+                        aria-controls={item.subpages?.length ? "mc-cycle-subpages" : undefined}
                         className={itemClass}
                       >
                         {isActive && (
@@ -2128,8 +2143,52 @@ function SidebarContent({
                             {badge}
                           </span>
                         )}
+                        {item.subpages?.length ? (
+                          <ChevronDown
+                            className={cn("h-3.5 w-3.5 shrink-0 text-ink-500 transition-transform duration-200", isActive && "rotate-180 text-ink-300")}
+                            aria-hidden="true"
+                          />
+                        ) : null}
                       </button>
                     )}
+                    {!item.href && item.subpages?.length ? (
+                      <ul
+                        id="mc-cycle-subpages"
+                        className={cn("ml-[18px] mt-1 space-y-0.5 border-l border-white/[0.09] pl-2.5", !isActive && "hidden")}
+                        aria-label="Tender Cycle pages"
+                      >
+                        {item.subpages.map((page, pageIndex) => {
+                          const pageActive = activeCycleStage === page.id;
+                          return (
+                            <li key={page.id}>
+                              <button
+                                type="button"
+                                onClick={() => onNavigateCycleStage(page.id)}
+                                aria-current={pageActive ? "page" : undefined}
+                                className={cn(
+                                  "focus-brand group flex min-h-8 w-full items-center gap-2 rounded-md px-2 text-left transition-colors duration-150",
+                                  pageActive
+                                    ? "bg-brand-500/[0.12] text-white"
+                                    : "text-ink-500 hover:bg-white/[0.04] hover:text-ink-200",
+                                )}
+                              >
+                                <span
+                                  className={cn(
+                                    "w-4 shrink-0 font-code text-[7.5px] font-bold tabular",
+                                    pageActive ? "text-brand-400" : "text-ink-600 group-hover:text-ink-400",
+                                  )}
+                                  aria-hidden="true"
+                                >
+                                  {String(pageIndex + 1).padStart(2, "0")}
+                                </span>
+                                <span className="truncate text-[11px] font-medium">{page.label}</span>
+                                {pageActive ? <span className="ml-auto h-1 w-1 shrink-0 rounded-full bg-brand-400" aria-hidden="true" /> : null}
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    ) : null}
                   </li>
                 );
               })}
@@ -9942,6 +10001,7 @@ export function Dashboard({
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<RunFilter>("all");
   const [active, setActive] = useState<SectionId>("mc-overview");
+  const [activeCycleStage, setActiveCycleStage] = useState<CycleStageTab>("solicitation");
   const [navOpen, setNavOpen] = useState(false);
   /* Desktop sidebar: the whole rail collapses, and the choice is remembered. */
   const [navCollapsed, setNavCollapsed] = useState<boolean>(() => {
@@ -10046,6 +10106,11 @@ export function Dashboard({
     setNavOpen(false);
     setActive(id);
     requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+  };
+
+  const switchToCycleStage = (stage: CycleStageTab) => {
+    setActiveCycleStage(stage);
+    switchTo("mc-cycle");
   };
 
   /* One launch door for every button and tour action — a read-only role never
@@ -10318,6 +10383,8 @@ export function Dashboard({
             user={user}
             onToast={onToast}
             canDeleteDocuments={canDo(user?.role, "run_reviews")}
+            selectedStage={activeCycleStage}
+            onStageChange={setActiveCycleStage}
           />
         );
       case "mc-findings":
@@ -10415,10 +10482,12 @@ export function Dashboard({
             <div className="relative flex h-full flex-col">
               <SidebarContent
                 active={active}
+                activeCycleStage={activeCycleStage}
                 user={user}
                 counts={{ runs: runs.length, gates: queue.length, findings: openFindings }}
                 agent={agent}
                 onNavigate={switchTo}
+                onNavigateCycleStage={switchToCycleStage}
                 onSignOut={onSignOut}
                 onExit={onExit}
               />
@@ -10478,10 +10547,12 @@ export function Dashboard({
                 </button>
                 <SidebarContent
                   active={active}
+                  activeCycleStage={activeCycleStage}
                   user={user}
                   counts={{ runs: runs.length, gates: queue.length, findings: openFindings }}
                   agent={agent}
                   onNavigate={switchTo}
+                  onNavigateCycleStage={switchToCycleStage}
                   onSignOut={onSignOut}
                   onExit={onExit}
                 />

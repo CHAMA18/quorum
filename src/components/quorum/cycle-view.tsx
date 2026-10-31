@@ -408,10 +408,10 @@ function sheetDivergences(sheets: EvalSheetDto[]): EvalDivergenceDto[] {
     .sort((a, b) => b.spread - a.spread || a.bidder.localeCompare(b.bidder));
 }
 
-type CycleStageTab = "solicitation" | "opening" | "evaluation" | "award" | "standstill" | "contract" | "closure";
+export type CycleStageTab = "solicitation" | "opening" | "evaluation" | "award" | "standstill" | "contract" | "closure";
 type CycleTab = CycleStageTab | "deadlines" | "complaints" | "analytics";
 
-const STAGE_TABS: { id: CycleStageTab; label: string }[] = [
+export const CYCLE_STAGE_PAGES: { id: CycleStageTab; label: string }[] = [
   { id: "solicitation", label: "Solicitation" },
   { id: "opening", label: "Opening" },
   { id: "evaluation", label: "Evaluation" },
@@ -420,6 +420,8 @@ const STAGE_TABS: { id: CycleStageTab; label: string }[] = [
   { id: "contract", label: "Contract" },
   { id: "closure", label: "Closure" },
 ];
+
+const STAGE_TABS = CYCLE_STAGE_PAGES;
 
 const UTILITY_TABS: { id: CycleTab; label: string }[] = [
   { id: "deadlines", label: "Deadlines" },
@@ -2227,14 +2229,18 @@ function TenderCompare({
 export function CycleView({
   onToast,
   canDeleteDocuments = false,
+  selectedStage = "solicitation",
+  onStageChange,
 }: {
   user?: unknown;
   onToast: (m: string) => void;
   canDeleteDocuments?: boolean;
+  selectedStage?: CycleStageTab;
+  onStageChange?: (stage: CycleStageTab) => void;
 }) {
   const [tenders, setTenders] = useState<{ ref: string; title: string }[]>([]);
   const [ref, setRef] = useState("");
-  const [tab, setTab] = useState<CycleTab>("solicitation");
+  const [tab, setTab] = useState<CycleTab>(selectedStage);
   const [cycles, setCycles] = useState<CycleDto[]>([]);
   const [pipeline, setPipeline] = useState<PipelineDto[]>([]);
   const [deadlines, setDeadlines] = useState<DeadlineDto[]>([]);
@@ -2345,6 +2351,15 @@ export function CycleView({
   };
 
   const cycle = useMemo(() => cycles.find((c) => c.tenderId === ref) ?? null, [cycles, ref]);
+
+  useEffect(() => {
+    setTab(selectedStage);
+  }, [selectedStage]);
+
+  const selectTab = (next: CycleTab) => {
+    setTab(next);
+    if (STAGE_TABS.some((stage) => stage.id === next)) onStageChange?.(next as CycleStageTab);
+  };
 
   const pull = useCallback(async () => {
     try {
@@ -4559,7 +4574,7 @@ export function CycleView({
                           <button
                             type="button"
                             onClick={() => {
-                              setTab(w.tab);
+                              selectTab(w.tab);
                               document.getElementById(`cycle-tab-${w.tab}`)?.focus();
                             }}
                             className="focus-brand inline-flex items-center gap-1 rounded font-code text-[8px] font-bold tracking-[0.14em] text-brand-700 underline decoration-brand-500/40 underline-offset-4 transition-colors hover:decoration-brand-500 dark:text-brand-300"
@@ -4680,7 +4695,7 @@ export function CycleView({
       aria-selected={tab === t.id}
       aria-controls="cycle-panel"
       tabIndex={tab === t.id ? 0 : -1}
-      onClick={() => setTab(t.id)}
+      onClick={() => selectTab(t.id)}
       className={cn(
         "relative -mb-px flex items-center gap-1.5 whitespace-nowrap px-3 py-3 font-code text-[9px] font-bold tracking-[0.15em] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fffdfb] dark:focus-visible:ring-offset-[#111318]",
         tab === t.id
@@ -4753,7 +4768,7 @@ export function CycleView({
         </header>
 
         <div className="border-t border-ink-100/80 dark:border-white/[0.055]">
-          <CycleRail cycle={cycle} selectedTab={tab} onSelect={setTab} />
+          <CycleRail cycle={cycle} selectedTab={tab} onSelect={selectTab} />
         </div>
 
         <VitalStrip cycle={cycle} />
@@ -4773,7 +4788,7 @@ export function CycleView({
                   ? TABS.length - 1
                   : (i + (e.key === "ArrowRight" ? 1 : -1) + TABS.length) % TABS.length;
             const id = TABS[next].id;
-            setTab(id);
+            selectTab(id);
             document.getElementById(`cycle-tab-${id}`)?.focus();
           }}
         >
@@ -4855,7 +4870,7 @@ export function CycleView({
                     <button
                       type="button"
                       onClick={() => {
-                        setTab("solicitation");
+                        selectTab("solicitation");
                         document.getElementById("cycle-tab-solicitation")?.focus();
                       }}
                       className="focus-brand inline-flex h-10 items-center gap-2 rounded-lg bg-brand-600 px-4 text-[12.5px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_22px_-14px_rgba(217,38,22,0.9)] transition-[background-color,transform] duration-150 hover:bg-brand-500 active:scale-[0.985]"
@@ -4886,7 +4901,7 @@ export function CycleView({
                 <nav className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-ink-200/70 pt-4 dark:border-white/[0.08]" aria-label="Stage page navigation">
                   <button
                     type="button"
-                    onClick={() => previousStage && setTab(previousStage.id)}
+                    onClick={() => previousStage && selectTab(previousStage.id)}
                     disabled={!previousStage}
                     className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-ink-200 bg-paper px-3.5 text-[11.5px] font-semibold text-ink-700 transition-colors hover:border-ink-400 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/[0.12] dark:bg-white/[0.03] dark:text-ink-300 dark:hover:border-white/25 dark:hover:text-white"
                   >
@@ -4898,7 +4913,7 @@ export function CycleView({
                   </span>
                   <button
                     type="button"
-                    onClick={() => setTab((nextStage ?? STAGE_TABS[0]).id)}
+                    onClick={() => selectTab((nextStage ?? STAGE_TABS[0]).id)}
                     className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-brand-600 px-4 text-[11.5px] font-semibold text-white shadow-[0_8px_18px_-12px_rgba(217,38,22,0.8)] transition-colors hover:bg-brand-500"
                   >
                     {nextStage ? `Next: ${nextStage.label}` : "Return to Solicitation"}
