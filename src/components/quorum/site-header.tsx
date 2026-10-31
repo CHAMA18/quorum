@@ -8,7 +8,6 @@ import { QuorumLogo } from "@/components/quorum/logo";
 import { MasterSwitcher } from "@/components/quorum/master-switcher";
 import type { AuthUser } from "@/lib/auth-types";
 import { cn } from "@/lib/utils";
-import { ThemeToggle } from "@/components/quorum/theme-toggle";
 
 const NAV = [
   { label: "Overview", href: "#overview" },
@@ -189,7 +188,6 @@ export function SiteHeader({
 
         {/* Actions */}
         <div className="hidden items-center gap-2 justify-self-end lg:flex">
-          <ThemeToggle className="h-10 w-10 rounded-full" />
           {!authReady ? (
             <div className="h-10 w-[196px] animate-pulse rounded-full bg-ink-100/70" aria-hidden="true" />
           ) : user ? (
@@ -316,9 +314,8 @@ export function SiteHeader({
                 </a>
               ))}
 
-              <div className="flex items-center justify-between gap-3 pb-1 pt-4">
+              <div className="flex items-center justify-start pb-1 pt-4">
                 <MasterSwitcher active="quorum" />
-                <ThemeToggle className="h-10 w-10 rounded-full" />
               </div>
 
               {!authReady ? (
