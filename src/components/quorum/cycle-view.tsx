@@ -409,7 +409,7 @@ function sheetDivergences(sheets: EvalSheetDto[]): EvalDivergenceDto[] {
 }
 
 export type CycleStageTab = "solicitation" | "opening" | "evaluation" | "award" | "standstill" | "contract" | "closure";
-type CycleTab = CycleStageTab | "deadlines" | "complaints" | "analytics";
+export type CyclePageTab = CycleStageTab | "deadlines" | "complaints" | "analytics";
 
 export const CYCLE_STAGE_PAGES: { id: CycleStageTab; label: string }[] = [
   { id: "solicitation", label: "Solicitation" },
@@ -423,13 +423,16 @@ export const CYCLE_STAGE_PAGES: { id: CycleStageTab; label: string }[] = [
 
 const STAGE_TABS = CYCLE_STAGE_PAGES;
 
-const UTILITY_TABS: { id: CycleTab; label: string }[] = [
+const UTILITY_TABS: { id: CyclePageTab; label: string }[] = [
   { id: "deadlines", label: "Deadlines" },
   { id: "complaints", label: "Complaints" },
   { id: "analytics", label: "Analytics" },
 ];
 
-const TABS: { id: CycleTab; label: string }[] = [...STAGE_TABS, ...UTILITY_TABS];
+export const CYCLE_PAGE_PAGES: { id: CyclePageTab; label: string; group?: string }[] = [
+  ...CYCLE_STAGE_PAGES,
+  ...UTILITY_TABS.map((page) => ({ ...page, group: "DESK TOOLS" })),
+];
 
 const STAGE_INTROS: Record<CycleStageTab, string> = {
   solicitation: "Prepare the tender pack, confirm its notice, and keep the planned procurement record together.",
@@ -1098,21 +1101,13 @@ function StageLegend() {
   );
 }
 
-function CycleRail({
-  cycle,
-  selectedTab,
-  onSelect,
-}: {
-  cycle: CycleDto | null;
-  selectedTab: CycleTab;
-  onSelect: (tab: CycleStageTab) => void;
-}) {
+function CycleRail({ cycle }: { cycle: CycleDto | null }) {
   const { stages, doneCount, currentIndex } = useMemo(() => deriveStages(cycle), [cycle]);
   const pct = Math.round((doneCount / stages.length) * 100);
   const current = stages[currentIndex];
 
   return (
-    <div className="px-5 pb-4 pt-4" role="navigation" aria-label="Cycle stages">
+    <div className="px-5 pb-4 pt-4" role="group" aria-label="Tender cycle progress">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1 eyebrow">
           <span className="text-ink-400 dark:text-ink-500">Cycle</span>
@@ -1148,26 +1143,18 @@ function CycleRail({
       </div>
 
       <div className="-mx-1 mt-3.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <ol className="grid min-w-[660px] grid-cols-7 gap-1.5 sm:gap-2">
+        <ol aria-label="Cycle stages" className="grid min-w-[660px] grid-cols-7 gap-1.5 sm:gap-2">
         {stages.map((s, i) => {
           /* With no cycle record there is no current stage — the rail stays
              neutral rather than claiming a stage the desk has not reached. */
           const done = cycle ? s.state === "done" : false;
           const isCurrent = cycle ? s.state === "current" : false;
           const atGate = cycle ? isCurrent && !!s.held : false;
-          const isSelected = selectedTab === s.tab;
           return (
             <li key={s.key} className="min-w-0">
-              <button
-                type="button"
-                onClick={() => onSelect(s.tab)}
-                aria-current={isSelected ? "page" : isCurrent ? "step" : undefined}
-                aria-label={`${s.label} subpage — ${done ? "complete" : atGate ? "waiting at a human gate" : isCurrent ? "current stage" : "upcoming"}`}
+              <div
                 title={`${s.label} — ${s.caption ?? ""}`}
-                className={cn(
-                  "group block w-full min-w-0 rounded-lg px-1.5 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fffdfb] dark:focus-visible:ring-offset-[#111318]",
-                  isSelected && "bg-brand-50/80 dark:bg-brand-500/[0.08]",
-                )}
+                className="block w-full min-w-0 rounded-lg px-1.5 py-1.5 text-left"
               >
                 {/* The meter: one segment per stage, so progress is read at a glance. */}
                 <span
@@ -1176,7 +1163,7 @@ function CycleRail({
                     done && "bg-emerald-500/85",
                     isCurrent && !atGate && "bg-brand-500/20",
                     atGate && "bg-brand-500/20",
-                    !done && !isCurrent && "bg-ink-100 group-hover:bg-ink-200 dark:bg-white/[0.09] dark:group-hover:bg-white/[0.16]",
+                    !done && !isCurrent && "bg-ink-100 dark:bg-white/[0.09]",
                   )}
                   aria-hidden="true"
                 >
@@ -1201,7 +1188,7 @@ function CycleRail({
                       /* Held at a gate: the gavel belongs to a human — the
                          ring says so without claiming completion. */
                       atGate && "border-brand-600/70 bg-brand-500/[0.12] text-brand-700 ring-2 ring-brand-500/25 dark:border-brand-400/70 dark:text-brand-300",
-                      !done && !isCurrent && "border-ink-200 text-ink-400 group-hover:border-ink-300 group-hover:text-ink-600 dark:border-white/[0.12] dark:text-ink-500 dark:group-hover:border-white/25",
+                      !done && !isCurrent && "border-ink-200 text-ink-400 dark:border-white/[0.12] dark:text-ink-500",
                     )}
                     aria-hidden="true"
                   >
@@ -1210,8 +1197,8 @@ function CycleRail({
                   <span
                     className={cn(
                       "truncate font-code text-[7.5px] font-bold tracking-[0.1em] transition-colors",
-                      (isCurrent || isSelected) && "text-brand-700 dark:text-brand-300",
-                      !isCurrent && !isSelected && "text-ink-500 group-hover:text-ink-900 dark:text-ink-400 dark:group-hover:text-ink-200",
+                      isCurrent && "text-brand-700 dark:text-brand-300",
+                      !isCurrent && "text-ink-500 dark:text-ink-400",
                     )}
                   >
                     {s.label.toUpperCase()}
@@ -1235,7 +1222,7 @@ function CycleRail({
                     AT GATE
                   </span>
                 ) : null}
-              </button>
+              </div>
             </li>
           );
         })}
@@ -2229,18 +2216,18 @@ function TenderCompare({
 export function CycleView({
   onToast,
   canDeleteDocuments = false,
-  selectedStage = "solicitation",
-  onStageChange,
+  selectedPage = "solicitation",
+  onPageChange,
 }: {
   user?: unknown;
   onToast: (m: string) => void;
   canDeleteDocuments?: boolean;
-  selectedStage?: CycleStageTab;
-  onStageChange?: (stage: CycleStageTab) => void;
+  selectedPage?: CyclePageTab;
+  onPageChange?: (page: CyclePageTab) => void;
 }) {
   const [tenders, setTenders] = useState<{ ref: string; title: string }[]>([]);
   const [ref, setRef] = useState("");
-  const [tab, setTab] = useState<CycleTab>(selectedStage);
+  const [tab, setTab] = useState<CyclePageTab>(selectedPage);
   const [cycles, setCycles] = useState<CycleDto[]>([]);
   const [pipeline, setPipeline] = useState<PipelineDto[]>([]);
   const [deadlines, setDeadlines] = useState<DeadlineDto[]>([]);
@@ -2353,12 +2340,12 @@ export function CycleView({
   const cycle = useMemo(() => cycles.find((c) => c.tenderId === ref) ?? null, [cycles, ref]);
 
   useEffect(() => {
-    setTab(selectedStage);
-  }, [selectedStage]);
+    setTab(selectedPage);
+  }, [selectedPage]);
 
-  const selectTab = (next: CycleTab) => {
+  const selectTab = (next: CyclePageTab) => {
     setTab(next);
-    if (STAGE_TABS.some((stage) => stage.id === next)) onStageChange?.(next as CycleStageTab);
+    onPageChange?.(next);
   };
 
   const pull = useCallback(async () => {
@@ -4544,7 +4531,7 @@ export function CycleView({
             {/* Watchlist — the exceptions that need a human, each with the
                 tab that resolves it. Zero stays zero; nothing is invented. */}
             {(() => {
-              const watches: { count: number; label: string; tab: CycleTab; tabLabel: string }[] = [
+              const watches: { count: number; label: string; tab: CyclePageTab; tabLabel: string }[] = [
                 { count: Number(analytics.lateBids ?? 0), label: "late bids rejected unopened", tab: "opening", tabLabel: "OPENING" },
                 { count: Number(analytics.albOpen ?? 0), label: "abnormally-low-bid queries open", tab: "evaluation", tabLabel: "EVALUATION" },
                 { count: Number(analytics.openComplaints ?? 0), label: "complaints awaiting a response", tab: "complaints", tabLabel: "COMPLAINTS" },
@@ -4575,7 +4562,6 @@ export function CycleView({
                             type="button"
                             onClick={() => {
                               selectTab(w.tab);
-                              document.getElementById(`cycle-tab-${w.tab}`)?.focus();
                             }}
                             className="focus-brand inline-flex items-center gap-1 rounded font-code text-[8px] font-bold tracking-[0.14em] text-brand-700 underline decoration-brand-500/40 underline-offset-4 transition-colors hover:decoration-brand-500 dark:text-brand-300"
                           >
@@ -4653,69 +4639,11 @@ export function CycleView({
 
   /* ── Shell ───────────────────────────────────────────────────────────────── */
 
-  /* Tab context badges — the numbers that matter, on the tabs themselves. */
-  const tabBadge = (id: CycleTab): ReactNode => {
-    switch (id) {
-      case "solicitation":
-        return planned.length ? <Badge>{planned.length}</Badge> : null;
-      case "deadlines":
-        return overdueList.length ? <Badge tone="alert">{overdueList.length}</Badge> : null;
-      case "opening":
-        return cycle?.opening?.certifiedAt ? <Dot tone="ok" /> : cycle?.opening ? <Dot tone="alert" /> : null;
-      case "evaluation":
-        return cycle?.matrix ? <Dot tone={cycle.matrix.certifiedBy ? "ok" : "alert"} /> : null;
-      case "award":
-        return cycle?.awardReport?.signedAt ? <Dot tone="ok" /> : null;
-      case "standstill":
-        return cycle?.standstill ? <Dot tone={cycle.standstill.status === "ACTIVE" ? "alert" : "ok"} /> : null;
-      case "contract":
-        return cycle?.contract ? <Dot tone={cycle.contract.completedAt ? "ok" : "alert"} /> : null;
-      case "closure":
-        return cycle?.contract?.completedAt ? <Dot tone="ok" /> : null;
-      case "complaints": {
-        const open = cycle?.complaints.filter((c) => c.status === "OPEN").length ?? 0;
-        return open ? <Badge tone="alert">{open}</Badge> : null;
-      }
-      default:
-        return null;
-    }
-  };
-
   const stageIndex = STAGE_TABS.findIndex((stage) => stage.id === tab);
   const activeStage = stageIndex >= 0 ? STAGE_TABS[stageIndex] : null;
   const activeStageRecord = activeStage && cycle ? deriveStages(cycle).stages[stageIndex] : null;
   const previousStage = stageIndex > 0 ? STAGE_TABS[stageIndex - 1] : null;
   const nextStage = stageIndex >= 0 && stageIndex < STAGE_TABS.length - 1 ? STAGE_TABS[stageIndex + 1] : null;
-  const renderTabButton = (t: { id: CycleTab; label: string }) => (
-    <button
-      key={t.id}
-      id={`cycle-tab-${t.id}`}
-      type="button"
-      role="tab"
-      aria-selected={tab === t.id}
-      aria-controls="cycle-panel"
-      tabIndex={tab === t.id ? 0 : -1}
-      onClick={() => selectTab(t.id)}
-      className={cn(
-        "relative -mb-px flex items-center gap-1.5 whitespace-nowrap px-3 py-3 font-code text-[9px] font-bold tracking-[0.15em] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fffdfb] dark:focus-visible:ring-offset-[#111318]",
-        tab === t.id
-          ? "text-ink-950 dark:text-white"
-          : "text-ink-500 hover:text-ink-900 dark:text-ink-400 dark:hover:text-ink-100",
-      )}
-    >
-      {t.label.toUpperCase()}
-      {tabBadge(t.id)}
-      {tab === t.id ? (
-        <motion.span
-          layoutId="cycle-tab-underline"
-          className="absolute inset-x-2.5 -bottom-px h-[2px] rounded-full bg-brand-500 dark:bg-brand-400"
-          transition={{ duration: 0.25, ease: EASE }}
-          aria-hidden="true"
-        />
-      ) : null}
-    </button>
-  );
-
   return (
     <section id="mc-cycle" aria-labelledby="mc-cycle-h" className="scroll-mt-24">
       <motion.div
@@ -4768,41 +4696,12 @@ export function CycleView({
         </header>
 
         <div className="border-t border-ink-100/80 dark:border-white/[0.055]">
-          <CycleRail cycle={cycle} selectedTab={tab} onSelect={selectTab} />
+          <CycleRail cycle={cycle} />
         </div>
 
         <VitalStrip cycle={cycle} />
 
-        <nav
-          className="relative flex gap-0.5 overflow-x-auto border-y border-ink-100/80 px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden dark:border-white/[0.06]"
-          role="tablist"
-          aria-label="Tender Cycle subpages and desk tools"
-          onKeyDown={(e) => {
-            if (!["ArrowRight", "ArrowLeft", "Home", "End"].includes(e.key)) return;
-            e.preventDefault();
-            const i = TABS.findIndex((t) => t.id === tab);
-            const next =
-              e.key === "Home"
-                ? 0
-                : e.key === "End"
-                  ? TABS.length - 1
-                  : (i + (e.key === "ArrowRight" ? 1 : -1) + TABS.length) % TABS.length;
-            const id = TABS[next].id;
-            selectTab(id);
-            document.getElementById(`cycle-tab-${id}`)?.focus();
-          }}
-        >
-          {STAGE_TABS.map(renderTabButton)}
-          <span className="mx-1 my-2 w-px shrink-0 bg-ink-200 dark:bg-white/[0.12]" aria-hidden="true" />
-          <span className="flex shrink-0 items-center px-2 font-code text-[7.5px] font-bold tracking-[0.16em] text-ink-400">DESK TOOLS</span>
-          {UTILITY_TABS.map(renderTabButton)}
-        </nav>
-
         <div
-          id="cycle-panel"
-          role="tabpanel"
-          aria-labelledby={`cycle-tab-${tab}`}
-          tabIndex={0}
           className="relative flex-1 bg-[#f8f7f3] px-4 py-4 outline-none sm:px-5 sm:py-5 dark:bg-[#090b0f]"
         >
           <AnimatePresence mode="wait" initial={false}>
@@ -4871,7 +4770,6 @@ export function CycleView({
                       type="button"
                       onClick={() => {
                         selectTab("solicitation");
-                        document.getElementById("cycle-tab-solicitation")?.focus();
                       }}
                       className="focus-brand inline-flex h-10 items-center gap-2 rounded-lg bg-brand-600 px-4 text-[12.5px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_22px_-14px_rgba(217,38,22,0.9)] transition-[background-color,transform] duration-150 hover:bg-brand-500 active:scale-[0.985]"
                     >
@@ -5605,32 +5503,7 @@ function PlanTenderIntake({
   );
 }
 
-/* ── small shared pieces defined once, used by the tabs ────────────────────── */
-
-function Badge({ children, tone }: { children: ReactNode; tone?: "alert" }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-1 font-code text-[7.5px] font-black leading-none",
-        tone === "alert" ? "bg-brand-500 text-white dark:bg-brand-400 dark:text-ink-50" : "bg-ink-200 text-ink-700 dark:bg-ink-300 dark:text-ink-50",
-      )}
-    >
-      {children}
-    </span>
-  );
-}
-
-function Dot({ tone }: { tone: "ok" | "alert" }) {
-  return (
-    <span
-      className={cn(
-        "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
-        tone === "ok" ? "bg-emerald-500" : "bg-brand-500 dark:bg-brand-400",
-      )}
-      aria-hidden="true"
-    />
-  );
-}
+/* ── small shared pieces defined once, used by the pages ────────────────────── */
 
 function DeadlineIcon({ kind }: { kind: string }) {
   const k = kind.toUpperCase();

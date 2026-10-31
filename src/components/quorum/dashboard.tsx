@@ -62,7 +62,7 @@ import { OversightView } from "@/components/quorum/oversight-view";
 import { TeamInviteDeliveryActions } from "@/components/quorum/team-invite-delivery-actions";
 import { CalendarView } from "@/components/quorum/calendar-view";
 import { IntegrationsView } from "@/components/quorum/integrations-view";
-import { CYCLE_STAGE_PAGES, CycleView, type CycleStageTab } from "@/components/quorum/cycle-view";
+import { CYCLE_PAGE_PAGES, CycleView, type CyclePageTab } from "@/components/quorum/cycle-view";
 import { GovernanceView } from "@/components/quorum/governance-view";
 import { ComplianceView } from "@/components/quorum/compliance-view";
 import { ReadinessView } from "@/components/quorum/readiness-view";
@@ -508,7 +508,7 @@ type NavItem = {
   icon: LucideIcon;
   badge?: NavBadge;
   href?: string;
-  subpages?: readonly { id: CycleStageTab; label: string }[];
+  subpages?: readonly { id: CyclePageTab; label: string; group?: string }[];
 };
 
 const NAV_GROUPS: {
@@ -522,7 +522,7 @@ const NAV_GROUPS: {
       { id: "mc-overview", label: "Overview", icon: Gauge },
       { id: "mc-runs", label: "Evaluations", icon: Terminal, badge: "runs" },
       { id: "mc-gates", label: "Approvals", icon: Stamp, badge: "gates" },
-      { id: "mc-cycle", label: "Tender Cycle", icon: Workflow, subpages: CYCLE_STAGE_PAGES },
+      { id: "mc-cycle", label: "Tender Cycle", icon: Workflow, subpages: CYCLE_PAGE_PAGES },
     ],
   },
   {
@@ -2034,22 +2034,22 @@ function NewRunModal({
 
 function SidebarContent({
   active,
-  activeCycleStage,
+  activeCyclePage,
   user,
   counts,
   agent,
   onNavigate,
-  onNavigateCycleStage,
+  onNavigateCyclePage,
   onSignOut,
   onExit,
 }: {
   active: SectionId;
-  activeCycleStage: CycleStageTab;
+  activeCyclePage: CyclePageTab;
   user: AuthUser | null;
   counts: { runs: number; gates: number; findings: number };
   agent: AgentStatus;
   onNavigate: (id: SectionId) => void;
-  onNavigateCycleStage: (stage: CycleStageTab) => void;
+  onNavigateCyclePage: (page: CyclePageTab) => void;
   onSignOut: () => void;
   onExit: () => void;
 }) {
@@ -2156,12 +2156,21 @@ function SidebarContent({
                         aria-label="Tender Cycle pages"
                       >
                         {item.subpages.map((page, pageIndex) => {
-                          const pageActive = activeCycleStage === page.id;
+                          const pageActive = activeCyclePage === page.id;
+                          const pageOrdinal = page.group
+                            ? item.subpages.slice(0, pageIndex).filter((candidate) => candidate.group === page.group).length + 1
+                            : pageIndex + 1;
+                          const groupStartsHere = page.group && item.subpages[pageIndex - 1]?.group !== page.group;
                           return (
                             <li key={page.id}>
+                              {groupStartsHere ? (
+                                <p className="px-2 pb-1 pt-2 font-code text-[7px] font-bold tracking-[0.16em] text-ink-600">
+                                  {page.group}
+                                </p>
+                              ) : null}
                               <button
                                 type="button"
-                                onClick={() => onNavigateCycleStage(page.id)}
+                                onClick={() => onNavigateCyclePage(page.id)}
                                 aria-current={pageActive ? "page" : undefined}
                                 className={cn(
                                   "focus-brand group flex min-h-8 w-full items-center gap-2 rounded-md px-2 text-left transition-colors duration-150",
@@ -2177,7 +2186,7 @@ function SidebarContent({
                                   )}
                                   aria-hidden="true"
                                 >
-                                  {String(pageIndex + 1).padStart(2, "0")}
+                                  {String(pageOrdinal).padStart(2, "0")}
                                 </span>
                                 <span className="truncate text-[11px] font-medium">{page.label}</span>
                                 {pageActive ? <span className="ml-auto h-1 w-1 shrink-0 rounded-full bg-brand-400" aria-hidden="true" /> : null}
@@ -9966,7 +9975,7 @@ export function Dashboard({
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<RunFilter>("all");
   const [active, setActive] = useState<SectionId>("mc-overview");
-  const [activeCycleStage, setActiveCycleStage] = useState<CycleStageTab>("solicitation");
+  const [activeCyclePage, setActiveCyclePage] = useState<CyclePageTab>("solicitation");
   const [navOpen, setNavOpen] = useState(false);
   /* Desktop sidebar: the whole rail collapses, and the choice is remembered. */
   const [navCollapsed, setNavCollapsed] = useState<boolean>(() => {
@@ -10073,8 +10082,8 @@ export function Dashboard({
     requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
   };
 
-  const switchToCycleStage = (stage: CycleStageTab) => {
-    setActiveCycleStage(stage);
+  const switchToCyclePage = (page: CyclePageTab) => {
+    setActiveCyclePage(page);
     switchTo("mc-cycle");
   };
 
@@ -10346,8 +10355,8 @@ export function Dashboard({
             user={user}
             onToast={onToast}
             canDeleteDocuments={canDo(user?.role, "run_reviews")}
-            selectedStage={activeCycleStage}
-            onStageChange={setActiveCycleStage}
+            selectedPage={activeCyclePage}
+            onPageChange={setActiveCyclePage}
           />
         );
       case "mc-findings":
@@ -10445,12 +10454,12 @@ export function Dashboard({
             <div className="relative flex h-full flex-col">
               <SidebarContent
                 active={active}
-                activeCycleStage={activeCycleStage}
+                activeCyclePage={activeCyclePage}
                 user={user}
                 counts={{ runs: runs.length, gates: queue.length, findings: openFindings }}
                 agent={agent}
                 onNavigate={switchTo}
-                onNavigateCycleStage={switchToCycleStage}
+                onNavigateCyclePage={switchToCyclePage}
                 onSignOut={onSignOut}
                 onExit={onExit}
               />
@@ -10510,12 +10519,12 @@ export function Dashboard({
                 </button>
                 <SidebarContent
                   active={active}
-                  activeCycleStage={activeCycleStage}
+                  activeCyclePage={activeCyclePage}
                   user={user}
                   counts={{ runs: runs.length, gates: queue.length, findings: openFindings }}
                   agent={agent}
                   onNavigate={switchTo}
-                  onNavigateCycleStage={switchToCycleStage}
+                  onNavigateCyclePage={switchToCyclePage}
                   onSignOut={onSignOut}
                   onExit={onExit}
                 />
