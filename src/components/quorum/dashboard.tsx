@@ -549,6 +549,12 @@ const NAV_GROUPS: {
     ],
   },
   {
+    group: "INTEGRATIONS",
+    items: [
+      { id: "mc-integrations", label: "Integrations", icon: Cable },
+    ],
+  },
+  {
     group: "SYSTEM",
     items: [
       { id: "mc-oversight", label: "Oversight", icon: Scale },

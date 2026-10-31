@@ -383,7 +383,7 @@ Copy `.env.example` — every variable is optional; the product runs fully witho
 
 ## Integrations
 
-The workspace sidebar's **Integrations** section is a setup catalog for WhatsApp Business, Slack, Microsoft Teams, email, calendars, document storage, and procurement data feeds. It shows provider requirements and does not claim that a provider is connected.
+The workspace sidebar's **Integrations** section checks the published Quorum MCP endpoint with a read-only `initialize` request and shows client configuration only when the server responds. The provider catalog also documents setup requirements for WhatsApp Business, Slack, Microsoft Teams, email, calendars, document storage, and procurement data feeds. A static-site deployment cannot run the MCP sidecar; remote MCP requires a server deployment and an HTTPS route to `/mcp`.
 
 ## VS Code integration
 

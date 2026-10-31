@@ -1,14 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ArrowUpRight,
   CalendarDays,
+  Cable,
+  Check,
   ChevronDown,
   Cloud,
+  Copy,
   Mail,
   MessageSquare,
   Radio,
+  RefreshCw,
   ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -124,9 +128,106 @@ function IntegrationMark({ kind }: { kind: Integration["icon"] }) {
 
 export function IntegrationsView() {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [mcpState, setMcpState] = useState<"checking" | "connected" | "unavailable">("checking");
+  const [mcpEndpoint, setMcpEndpoint] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const checkMcp = useCallback(async () => {
+    if (!mcpEndpoint) return;
+    setMcpState("checking");
+    try {
+      const response = await fetch(mcpEndpoint, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: "quorum-integration-check",
+          method: "initialize",
+          params: {
+            protocolVersion: "2024-11-05",
+            capabilities: {},
+            clientInfo: { name: "quorum-integrations-check", version: "1.0.0" },
+          },
+        }),
+        cache: "no-store",
+      });
+      const payload = await response.json();
+      setMcpState(response.ok && payload?.result?.serverInfo?.name === "quorum-mcp" ? "connected" : "unavailable");
+    } catch {
+      setMcpState("unavailable");
+    }
+  }, [mcpEndpoint]);
+
+  useEffect(() => {
+    setMcpEndpoint(`${window.location.origin}/mcp`);
+  }, []);
+
+  useEffect(() => {
+    if (mcpEndpoint) void checkMcp();
+  }, [checkMcp, mcpEndpoint]);
+
+  const copyMcpConfig = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify({ mcpServers: { quorum: { url: mcpEndpoint } } }, null, 2));
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setCopied(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
+      <section className="panel overflow-hidden rounded-[12px]" aria-labelledby="quorum-mcp-integration-title">
+        <div className="flex flex-col gap-5 px-5 py-6 sm:px-7 sm:py-7">
+          <div className="flex items-start gap-4">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-ink-950 text-white dark:bg-white dark:text-ink-950">
+              <Cable className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <a href="https://m8ven.ai/mcp/chama18-quorum-5uxqrc?s=integrations" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-code text-[8px] font-bold tracking-[0.2em] text-brand-700 hover:text-brand-600 dark:text-brand-300">
+                PUBLISHED MCP SERVER <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
+              </a>
+              <h2 id="quorum-mcp-integration-title" className="mt-1 text-[20px] font-black tracking-tight text-ink-950 dark:text-white">Quorum MCP</h2>
+              <p className="mt-2 max-w-3xl text-[12px] leading-relaxed text-ink-600 dark:text-ink-300">
+                Connect an MCP client to Quorum’s JSON-RPC endpoint. The check sends only the standard MCP initialize request; it does not call tools or change workspace data.
+              </p>
+            </div>
+            <span className={cn(
+              "shrink-0 rounded-full border px-2.5 py-1 font-code text-[7px] font-bold tracking-[0.12em]",
+              mcpState === "connected"
+                ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
+                : "border-ink-200 bg-white text-ink-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-300",
+            )}>
+              {mcpState === "checking" ? "CHECKING" : mcpState === "connected" ? "CONNECTED" : "UNAVAILABLE"}
+            </span>
+          </div>
+
+          <div className="rounded-xl border border-ink-100 bg-paper/70 p-4 dark:border-white/[0.07] dark:bg-white/[0.025]">
+            <p className="font-code text-[7px] font-bold tracking-[0.15em] text-ink-400">ENDPOINT · HTTP JSON-RPC 2.0</p>
+            <code className="mt-1 block break-all text-[11px] text-ink-900 dark:text-white">{mcpEndpoint || "Preparing endpoint…"}</code>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button type="button" onClick={() => void checkMcp()} disabled={!mcpEndpoint || mcpState === "checking"} className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-ink-950 px-3 text-[10px] font-semibold text-white transition hover:bg-ink-800 disabled:opacity-50 dark:bg-white dark:text-ink-950 dark:hover:bg-ink-100">
+                <RefreshCw className={cn("h-3.5 w-3.5", mcpState === "checking" && "animate-spin")} aria-hidden="true" />
+                Check connection
+              </button>
+              {mcpState === "connected" ? (
+                <button type="button" onClick={() => void copyMcpConfig()} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-ink-200 px-3 text-[10px] font-semibold text-ink-700 hover:bg-white dark:border-white/10 dark:text-ink-200 dark:hover:bg-white/[0.05]">
+                  {copied ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
+                  {copied ? "Copied" : "Copy MCP client config"}
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          {mcpState === "unavailable" ? (
+            <p role="status" className="rounded-lg border border-amber-300/70 bg-amber-50 px-3.5 py-3 text-[10.5px] leading-relaxed text-amber-950 dark:border-amber-500/20 dark:bg-amber-500/[0.07] dark:text-amber-100">
+              This host did not answer the MCP initialize request. The current Render service is a static site, so it cannot run the Quorum MCP sidecar or serve <code>/mcp</code>. Remote MCP connections need a server deployment with the sidecar and an HTTPS proxy route to it; port 3031 is loopback-only and should not be exposed directly.
+            </p>
+          ) : null}
+        </div>
+      </section>
+
       <section className="panel overflow-hidden rounded-[12px]">
         <div className="relative overflow-hidden px-5 py-6 sm:px-7 sm:py-8">
           <div className="pointer-events-none absolute -right-10 -top-20 h-56 w-56 rounded-full bg-brand-500/10 blur-3xl" aria-hidden="true" />
