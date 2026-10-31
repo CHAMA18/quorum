@@ -408,18 +408,36 @@ function sheetDivergences(sheets: EvalSheetDto[]): EvalDivergenceDto[] {
     .sort((a, b) => b.spread - a.spread || a.bidder.localeCompare(b.bidder));
 }
 
-type CycleTab = "pipeline" | "deadlines" | "opening" | "evaluation" | "award" | "contract" | "complaints" | "analytics";
+type CycleStageTab = "solicitation" | "opening" | "evaluation" | "award" | "standstill" | "contract" | "closure";
+type CycleTab = CycleStageTab | "deadlines" | "complaints" | "analytics";
 
-const TABS: { id: CycleTab; label: string }[] = [
-  { id: "pipeline", label: "Pipeline" },
-  { id: "deadlines", label: "Deadlines" },
+const STAGE_TABS: { id: CycleStageTab; label: string }[] = [
+  { id: "solicitation", label: "Solicitation" },
   { id: "opening", label: "Opening" },
   { id: "evaluation", label: "Evaluation" },
   { id: "award", label: "Award" },
+  { id: "standstill", label: "Standstill" },
   { id: "contract", label: "Contract" },
+  { id: "closure", label: "Closure" },
+];
+
+const UTILITY_TABS: { id: CycleTab; label: string }[] = [
+  { id: "deadlines", label: "Deadlines" },
   { id: "complaints", label: "Complaints" },
   { id: "analytics", label: "Analytics" },
 ];
+
+const TABS: { id: CycleTab; label: string }[] = [...STAGE_TABS, ...UTILITY_TABS];
+
+const STAGE_INTROS: Record<CycleStageTab, string> = {
+  solicitation: "Prepare the tender pack, confirm its notice, and keep the planned procurement record together.",
+  opening: "Record receipt and public opening with a complete, certifiable bid register.",
+  evaluation: "Run the evaluation against the published criteria, record conflicts, and certify the matrix.",
+  award: "Resolve blockers and prepare the award report for the accountable officer’s decision.",
+  standstill: "Publish the award notice, track the review window, and clear it only when conditions are met.",
+  contract: "Manage execution, milestones, variations, and payments against the approved award.",
+  closure: "Record final acceptance and preserve the evidence that closes this procurement cycle.",
+};
 
 /* ── formatting helpers ─────────────────────────────────────────────────────── */
 
@@ -450,7 +468,7 @@ type StageState = "done" | "current" | "todo";
 type Stage = {
   key: string;
   label: string;
-  tab: CycleTab;
+  tab: CycleStageTab;
   state: StageState;
   caption?: string;
   /* True when the desk has reached this stage but an irreversible step is
@@ -460,11 +478,11 @@ type Stage = {
 };
 
 function deriveStages(c: CycleDto | null): { stages: Stage[]; doneCount: number; currentIndex: number } {
-  const raw: { key: string; label: string; tab: CycleTab; done: boolean; caption: string; held?: boolean }[] = [
+  const raw: { key: string; label: string; tab: CycleStageTab; done: boolean; caption: string; held?: boolean }[] = [
     {
       key: "solicitation",
       label: "Solicitation",
-      tab: "pipeline",
+      tab: "solicitation",
       done: !!c?.opening,
       caption: c?.closingDate ? `closes ${fmtDate(c.closingDate)}` : "pack on the desk",
     },
@@ -495,7 +513,7 @@ function deriveStages(c: CycleDto | null): { stages: Stage[]; doneCount: number;
     {
       key: "standstill",
       label: "Standstill",
-      tab: "award",
+      tab: "standstill",
       done: !!c?.standstill && c.standstill.status !== "ACTIVE",
       held: c?.standstill?.status === "ACTIVE",
       caption: c?.standstill?.status === "ACTIVE" ? `ends ${fmtDate(c.standstill.endsAt)}` : c?.standstill ? "lifted — clear" : "10 wd on publication",
@@ -510,7 +528,7 @@ function deriveStages(c: CycleDto | null): { stages: Stage[]; doneCount: number;
     {
       key: "closure",
       label: "Closure",
-      tab: "analytics",
+      tab: "closure",
       done: !!c?.contract?.completedAt,
       caption: c?.contract?.completedAt ? "cycle closed" : "final acceptance",
     },
@@ -1078,7 +1096,15 @@ function StageLegend() {
   );
 }
 
-function CycleRail({ cycle }: { cycle: CycleDto | null }) {
+function CycleRail({
+  cycle,
+  selectedTab,
+  onSelect,
+}: {
+  cycle: CycleDto | null;
+  selectedTab: CycleTab;
+  onSelect: (tab: CycleStageTab) => void;
+}) {
   const { stages, doneCount, currentIndex } = useMemo(() => deriveStages(cycle), [cycle]);
   const pct = Math.round((doneCount / stages.length) * 100);
   const current = stages[currentIndex];
@@ -1127,15 +1153,19 @@ function CycleRail({ cycle }: { cycle: CycleDto | null }) {
           const done = cycle ? s.state === "done" : false;
           const isCurrent = cycle ? s.state === "current" : false;
           const atGate = cycle ? isCurrent && !!s.held : false;
+          const isSelected = selectedTab === s.tab;
           return (
             <li key={s.key} className="min-w-0">
               <button
                 type="button"
-                onClick={() => document.getElementById(`cycle-tab-${s.tab}`)?.click()}
-                aria-current={isCurrent ? "step" : undefined}
-                aria-label={`${s.label} — ${done ? "complete" : atGate ? "waiting at a human gate" : isCurrent ? "current stage" : "upcoming"}. Open the ${s.tab} tab.`}
-                title={`${s.label} — ${s.caption ?? ""} (opens the ${s.tab} tab)`}
-                className="group block w-full min-w-0 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50 focus-visible:ring-offset-4 focus-visible:ring-offset-[#fffdfb] dark:focus-visible:ring-offset-[#111318]"
+                onClick={() => onSelect(s.tab)}
+                aria-current={isSelected ? "page" : isCurrent ? "step" : undefined}
+                aria-label={`${s.label} subpage — ${done ? "complete" : atGate ? "waiting at a human gate" : isCurrent ? "current stage" : "upcoming"}`}
+                title={`${s.label} — ${s.caption ?? ""}`}
+                className={cn(
+                  "group block w-full min-w-0 rounded-lg px-1.5 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fffdfb] dark:focus-visible:ring-offset-[#111318]",
+                  isSelected && "bg-brand-50/80 dark:bg-brand-500/[0.08]",
+                )}
               >
                 {/* The meter: one segment per stage, so progress is read at a glance. */}
                 <span
@@ -1178,8 +1208,8 @@ function CycleRail({ cycle }: { cycle: CycleDto | null }) {
                   <span
                     className={cn(
                       "truncate font-code text-[7.5px] font-bold tracking-[0.1em] transition-colors",
-                      isCurrent && "text-brand-700 dark:text-brand-300",
-                      !isCurrent && "text-ink-500 group-hover:text-ink-900 dark:text-ink-400 dark:group-hover:text-ink-200",
+                      (isCurrent || isSelected) && "text-brand-700 dark:text-brand-300",
+                      !isCurrent && !isSelected && "text-ink-500 group-hover:text-ink-900 dark:text-ink-400 dark:group-hover:text-ink-200",
                     )}
                   >
                     {s.label.toUpperCase()}
@@ -2204,7 +2234,7 @@ export function CycleView({
 }) {
   const [tenders, setTenders] = useState<{ ref: string; title: string }[]>([]);
   const [ref, setRef] = useState("");
-  const [tab, setTab] = useState<CycleTab>("pipeline");
+  const [tab, setTab] = useState<CycleTab>("solicitation");
   const [cycles, setCycles] = useState<CycleDto[]>([]);
   const [pipeline, setPipeline] = useState<PipelineDto[]>([]);
   const [deadlines, setDeadlines] = useState<DeadlineDto[]>([]);
@@ -3727,34 +3757,6 @@ export function CycleView({
         </p>
       </Card>
 
-      <Card title="Notice of award + standstill" sub={`PUBLICATION (SIMULATED PORTAL) STARTS THE ${10}-WORKING-DAY STANDSTILL`} workflow busy={busy} actionLabel="Manage notice">
-        {cycle.standstill ? (
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <Chip tone={cycle.standstill.status === "ACTIVE" ? "brand" : "muted"}>STANDSTILL {cycle.standstill.status}</Chip>
-              <span className="font-code text-[9px] tracking-[0.12em] text-ink-500">
-                ENDS {fmtDate(cycle.standstill.endsAt)} ({cycle.standstill.days} WD)
-              </span>
-            </div>
-            {cycle.awardNotice?.publishedAt ? <p className="font-code text-[8.5px] tracking-[0.12em] text-ink-400">PUBLISHED {fmtDate(cycle.awardNotice.publishedAt)} · {cycle.awardNotice.portal}</p> : null}
-            {cycle.standstill.status === "ACTIVE" ? (
-              <Btn variant="ghost" onClick={() => act(`/api/tenders/${ref}/standstill/lift`, { actor: "officer" }, "STANDSTILL LIFTED").then((ok) => ok && refreshCycle())} disabled={busy}>
-                <Check className="h-3.5 w-3.5" aria-hidden="true" /> Lift the standstill (window closed, no complaint upheld)
-              </Btn>
-            ) : null}
-          </div>
-        ) : cycle.awardNotice ? (
-          <div className="space-y-2">
-            <Chip tone="brand">NOTICE DRAFTED — PUBLICATION GATE PENDING</Chip>
-          </div>
-        ) : (
-          <Btn onClick={publishNotice} disabled={busy || !ref || !cycle.awardReport?.signedAt}>
-            <Stamp className="h-3.5 w-3.5" aria-hidden="true" /> Publish the notice of award
-          </Btn>
-        )}
-        {!cycle.awardReport?.signedAt ? <p className="mt-3 text-[11.5px] text-ink-400">The publication gate opens when the award report is signed.</p> : null}
-      </Card>
-
       <Card title="Debrief letters" sub="QUALITATIVE DEBRIEFS FOR EVERY UNSUCCESSFUL BIDDER — DRAFTED FROM THEIR OWN RECORD" workflow busy={busy} actionLabel="Manage debriefs">
         {cycle.debriefs.length === 0 ? (
           <div className="space-y-2">
@@ -3814,6 +3816,92 @@ export function CycleView({
             ))}
           </ul>
         ) : null}
+      </Card>
+    </div>
+  ) : null;
+
+  /* ── Stage: standstill — notice publication and review window ─────────────── */
+
+  const StandstillTab = cycle ? (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Card
+        title="Award notice and standstill"
+        sub="PUBLICATION OPENS THE STATUTORY REVIEW WINDOW"
+        workflow
+        busy={busy}
+        actionLabel="Manage notice"
+      >
+        {cycle.standstill ? (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Chip tone={cycle.standstill.status === "ACTIVE" ? "brand" : "muted"}>STANDSTILL {cycle.standstill.status}</Chip>
+              <span className="font-code text-[9px] tracking-[0.12em] text-ink-500">
+                ENDS {fmtDate(cycle.standstill.endsAt)} · {cycle.standstill.days} WORKING DAYS
+              </span>
+            </div>
+            {cycle.awardNotice?.publishedAt ? (
+              <p className="font-code text-[8.5px] tracking-[0.12em] text-ink-400">
+                PUBLISHED {fmtDate(cycle.awardNotice.publishedAt)} · {cycle.awardNotice.portal}
+              </p>
+            ) : null}
+            {cycle.standstill.status === "ACTIVE" ? (
+              <Btn
+                variant="ghost"
+                onClick={() => act(`/api/tenders/${ref}/standstill/lift`, { actor: "officer" }, "STANDSTILL LIFTED").then((ok) => ok && refreshCycle())}
+                disabled={busy}
+              >
+                <Check className="h-3.5 w-3.5" aria-hidden="true" /> Lift the standstill
+              </Btn>
+            ) : (
+              <p className="text-[11.5px] leading-relaxed text-ink-500">The review window is closed. The contract stage can now proceed.</p>
+            )}
+          </div>
+        ) : cycle.awardNotice ? (
+          <div className="space-y-3">
+            <Chip tone="brand">NOTICE DRAFTED · PUBLICATION GATE PENDING</Chip>
+            <p className="text-[11.5px] leading-relaxed text-ink-500">Publication requires the signed award report and opens the standstill clock.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-[12px] leading-relaxed text-ink-500">
+              The notice is ready to publish once the award report has been signed by the accounting officer.
+            </p>
+            <Btn onClick={publishNotice} disabled={busy || !ref || !cycle.awardReport?.signedAt}>
+              <Stamp className="h-3.5 w-3.5" aria-hidden="true" /> Publish the notice of award
+            </Btn>
+            {!cycle.awardReport?.signedAt ? <p className="font-code text-[8px] tracking-[0.14em] text-ink-400">AWAITING SIGNED AWARD REPORT</p> : null}
+          </div>
+        )}
+      </Card>
+
+      <Card title="Review window" sub="THE CLOCK AND COMPLAINTS THAT HOLD THE CONTRACT" workflow busy={busy} actionLabel="Review standstill status">
+        {cycle.standstill ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-xl border border-ink-100 bg-paper px-3 py-3">
+                <p className="font-code text-[8px] font-bold tracking-[0.16em] text-ink-400">WINDOW</p>
+                <p className="mt-1.5 text-[15px] font-semibold text-ink-900">{cycle.standstill.days} working days</p>
+              </div>
+              <div className="rounded-xl border border-ink-100 bg-paper px-3 py-3">
+                <p className="font-code text-[8px] font-bold tracking-[0.16em] text-ink-400">ENDS</p>
+                <p className="mt-1.5 text-[15px] font-semibold text-ink-900">{fmtDate(cycle.standstill.endsAt)}</p>
+              </div>
+            </div>
+            <p className="text-[11.5px] leading-relaxed text-ink-500">
+              {cycle.standstill.status === "ACTIVE"
+                ? "Keep the contract on hold while the review window is active or any complaint remains unresolved."
+                : "The standstill is lifted. Keep the notice and complaint record with the award file."}
+            </p>
+            {cycle.complaints.some((complaint) => complaint.status === "OPEN" || complaint.status === "ESCALATED") ? (
+              <Chip tone="warn">OPEN COMPLAINT · CONTRACT REMAINS ON HOLD</Chip>
+            ) : null}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed border-ink-200 px-4 py-7 text-center dark:border-white/[0.12]">
+            <p className="text-[12px] font-semibold text-ink-700">Standstill has not started</p>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-ink-400">Publish the signed award notice to begin the review window.</p>
+          </div>
+        )}
       </Card>
     </div>
   ) : null;
@@ -3923,38 +4011,6 @@ export function CycleView({
               </Btn>
             </div>
           ) : null}
-          {!cycle.contract.completedAt ? (
-            <div className="mt-3 space-y-1.5 rounded-xl border border-dashed border-ink-200 p-3">
-              <p className="font-code text-[8.5px] tracking-[0.14em] text-ink-400">COMPLETION — CERTIFICATE, DEFECTS PERIOD, RATING</p>
-              <div className="grid gap-1.5 sm:grid-cols-3">
-                <input className={inputCls} placeholder="Certificate no." value={d.completeCert ?? ""} onChange={(e) => set("completeCert", e.target.value)} />
-                <input className={inputCls} type="date" value={d.completeDefects ?? ""} onChange={(e) => set("completeDefects", e.target.value)} />
-                <input className={inputCls} type="number" min={1} max={5} placeholder="Rating 1–5" value={d.completeRating ?? ""} onChange={(e) => set("completeRating", e.target.value)} />
-              </div>
-              <Btn
-                variant="ghost"
-                onClick={() =>
-                  act(
-                    `/api/tenders/${ref}/contract/complete`,
-                    {
-                      certificateId: d.completeCert,
-                      defectsLiabilityEndsAt: d.completeDefects,
-                      performanceRating: Number(d.completeRating),
-                      note: d.completeNote,
-                    },
-                    "COMPLETION GATE RAISED",
-                  ).then((ok) => ok && refreshCycle())
-                }
-                disabled={busy || !d.completeCert || !d.completeDefects || !d.completeRating}
-              >
-                <Check className="h-3.5 w-3.5" aria-hidden="true" /> Record final acceptance (gate)
-              </Btn>
-            </div>
-          ) : (
-            <p className="mt-3 text-[11.5px] text-ink-500">
-              Completed {fmtDate(cycle.contract.completedAt)} · certificate {cycle.contract.completion?.certificateId ?? "—"} · rating {cycle.contract.completion?.performanceRating ?? "—"}/5
-            </p>
-          )}
         </Card>
 
         <Card title="Milestones" sub={`${cycle.contract.milestones.length} ON THE SCHEDULE`} workflow busy={busy} actionLabel="Manage milestones">
@@ -4125,6 +4181,103 @@ export function CycleView({
         </Card>
       </div>
     )
+  ) : null;
+
+  /* ── Stage: closure — acceptance and completion evidence ──────────────────── */
+
+  const ClosureTab = cycle ? (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Card
+        title="Final acceptance"
+        sub="CERTIFICATE · DEFECTS PERIOD · PERFORMANCE RATING"
+        workflow
+        busy={busy}
+        actionLabel="Record final acceptance"
+      >
+        {cycle.contract?.completedAt ? (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Chip tone="ok">CYCLE CLOSED</Chip>
+              <span className="font-code text-[9px] font-bold tracking-[0.12em] text-ink-500">ACCEPTED {fmtDate(cycle.contract.completedAt)}</span>
+            </div>
+            <dl className="grid gap-2 sm:grid-cols-2">
+              <div className="rounded-xl border border-ink-100 bg-paper px-3 py-3">
+                <dt className="font-code text-[8px] font-bold tracking-[0.15em] text-ink-400">CERTIFICATE</dt>
+                <dd className="mt-1.5 text-[13px] font-semibold text-ink-900">{cycle.contract.completion?.certificateId ?? "—"}</dd>
+              </div>
+              <div className="rounded-xl border border-ink-100 bg-paper px-3 py-3">
+                <dt className="font-code text-[8px] font-bold tracking-[0.15em] text-ink-400">PERFORMANCE RATING</dt>
+                <dd className="mt-1.5 text-[13px] font-semibold text-ink-900">{cycle.contract.completion?.performanceRating ?? "—"} / 5</dd>
+              </div>
+            </dl>
+            <p className="text-[11.5px] leading-relaxed text-ink-500">The final acceptance record is retained with this tender’s contract and audit trail.</p>
+          </div>
+        ) : cycle.contract ? (
+          <div className="space-y-3">
+            <p className="text-[12px] leading-relaxed text-ink-500">
+              Record acceptance after the contract work is complete. The action creates an approval gate; it does not close the cycle until that gate is approved.
+            </p>
+            <div className="grid gap-1.5 sm:grid-cols-3">
+              <input className={inputCls} placeholder="Certificate no." value={d.completeCert ?? ""} onChange={(e) => set("completeCert", e.target.value)} />
+              <input className={inputCls} type="date" value={d.completeDefects ?? ""} onChange={(e) => set("completeDefects", e.target.value)} />
+              <input className={inputCls} type="number" min={1} max={5} placeholder="Rating 1–5" value={d.completeRating ?? ""} onChange={(e) => set("completeRating", e.target.value)} />
+            </div>
+            <textarea
+              className={cn(inputCls, "min-h-20 py-2")}
+              placeholder="Acceptance note and any remaining observations"
+              value={d.completeNote ?? ""}
+              onChange={(e) => set("completeNote", e.target.value)}
+            />
+            <Btn
+              onClick={() =>
+                act(
+                  `/api/tenders/${ref}/contract/complete`,
+                  {
+                    certificateId: d.completeCert,
+                    defectsLiabilityEndsAt: d.completeDefects,
+                    performanceRating: Number(d.completeRating),
+                    note: d.completeNote,
+                  },
+                  "COMPLETION GATE RAISED",
+                ).then((ok) => ok && refreshCycle())
+              }
+              disabled={busy || !d.completeCert || !d.completeDefects || !d.completeRating}
+            >
+              <Check className="h-3.5 w-3.5" aria-hidden="true" /> Record acceptance for approval
+            </Btn>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed border-ink-200 px-4 py-8 text-center dark:border-white/[0.12]">
+            <p className="text-[12px] font-semibold text-ink-700">Contract not ready for closure</p>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-ink-400">Complete award, standstill, and contract setup before recording final acceptance.</p>
+          </div>
+        )}
+      </Card>
+
+      <Card title="Closure file" sub="THE LAST RECORD IN THE PROCUREMENT CYCLE" workflow busy={busy} actionLabel="Review closure evidence">
+        <ul className="space-y-2 text-[12px] text-ink-600">
+          <li className="flex items-center justify-between gap-3 rounded-lg bg-paper px-3 py-2.5">
+            <span>Signed award report</span>
+            {cycle.awardReport?.signedAt ? <Chip tone="ok">ON FILE</Chip> : <Chip tone="warn">PENDING</Chip>}
+          </li>
+          <li className="flex items-center justify-between gap-3 rounded-lg bg-paper px-3 py-2.5">
+            <span>Standstill</span>
+            {cycle.standstill?.status === "LIFTED" ? <Chip tone="ok">LIFTED</Chip> : cycle.standstill ? <Chip tone="warn">{cycle.standstill.status}</Chip> : <Chip tone="muted">NOT STARTED</Chip>}
+          </li>
+          <li className="flex items-center justify-between gap-3 rounded-lg bg-paper px-3 py-2.5">
+            <span>Contract acceptance</span>
+            {cycle.contract?.supplierAcceptedAt ? <Chip tone="ok">RECORDED</Chip> : <Chip tone="warn">PENDING</Chip>}
+          </li>
+          <li className="flex items-center justify-between gap-3 rounded-lg bg-paper px-3 py-2.5">
+            <span>Final acceptance</span>
+            {cycle.contract?.completedAt ? <Chip tone="ok">RECORDED</Chip> : <Chip tone="muted">AWAITING APPROVAL</Chip>}
+          </li>
+        </ul>
+        <p className="mt-3 text-[11px] leading-relaxed text-ink-400">
+          Closure remains subject to the approval record. Keep every certificate, decision, and outstanding complaint linked to this tender.
+        </p>
+      </Card>
+    </div>
   ) : null;
 
   /* ── Tab: complaints (G14) ───────────────────────────────────────────────── */
@@ -4380,7 +4533,7 @@ export function CycleView({
                 { count: Number(analytics.lateBids ?? 0), label: "late bids rejected unopened", tab: "opening", tabLabel: "OPENING" },
                 { count: Number(analytics.albOpen ?? 0), label: "abnormally-low-bid queries open", tab: "evaluation", tabLabel: "EVALUATION" },
                 { count: Number(analytics.openComplaints ?? 0), label: "complaints awaiting a response", tab: "complaints", tabLabel: "COMPLAINTS" },
-                { count: Number(analytics.standstillsActive ?? 0), label: "standstill clocks running", tab: "award", tabLabel: "AWARD" },
+                { count: Number(analytics.standstillsActive ?? 0), label: "standstill clocks running", tab: "standstill", tabLabel: "STANDSTILL" },
               ];
               const raised = watches.filter((w) => w.count > 0);
               return (
@@ -4488,7 +4641,7 @@ export function CycleView({
   /* Tab context badges — the numbers that matter, on the tabs themselves. */
   const tabBadge = (id: CycleTab): ReactNode => {
     switch (id) {
-      case "pipeline":
+      case "solicitation":
         return planned.length ? <Badge>{planned.length}</Badge> : null;
       case "deadlines":
         return overdueList.length ? <Badge tone="alert">{overdueList.length}</Badge> : null;
@@ -4498,8 +4651,12 @@ export function CycleView({
         return cycle?.matrix ? <Dot tone={cycle.matrix.certifiedBy ? "ok" : "alert"} /> : null;
       case "award":
         return cycle?.awardReport?.signedAt ? <Dot tone="ok" /> : null;
+      case "standstill":
+        return cycle?.standstill ? <Dot tone={cycle.standstill.status === "ACTIVE" ? "alert" : "ok"} /> : null;
       case "contract":
         return cycle?.contract ? <Dot tone={cycle.contract.completedAt ? "ok" : "alert"} /> : null;
+      case "closure":
+        return cycle?.contract?.completedAt ? <Dot tone="ok" /> : null;
       case "complaints": {
         const open = cycle?.complaints.filter((c) => c.status === "OPEN").length ?? 0;
         return open ? <Badge tone="alert">{open}</Badge> : null;
@@ -4508,6 +4665,41 @@ export function CycleView({
         return null;
     }
   };
+
+  const stageIndex = STAGE_TABS.findIndex((stage) => stage.id === tab);
+  const activeStage = stageIndex >= 0 ? STAGE_TABS[stageIndex] : null;
+  const activeStageRecord = activeStage && cycle ? deriveStages(cycle).stages[stageIndex] : null;
+  const previousStage = stageIndex > 0 ? STAGE_TABS[stageIndex - 1] : null;
+  const nextStage = stageIndex >= 0 && stageIndex < STAGE_TABS.length - 1 ? STAGE_TABS[stageIndex + 1] : null;
+  const renderTabButton = (t: { id: CycleTab; label: string }) => (
+    <button
+      key={t.id}
+      id={`cycle-tab-${t.id}`}
+      type="button"
+      role="tab"
+      aria-selected={tab === t.id}
+      aria-controls="cycle-panel"
+      tabIndex={tab === t.id ? 0 : -1}
+      onClick={() => setTab(t.id)}
+      className={cn(
+        "relative -mb-px flex items-center gap-1.5 whitespace-nowrap px-3 py-3 font-code text-[9px] font-bold tracking-[0.15em] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fffdfb] dark:focus-visible:ring-offset-[#111318]",
+        tab === t.id
+          ? "text-ink-950 dark:text-white"
+          : "text-ink-500 hover:text-ink-900 dark:text-ink-400 dark:hover:text-ink-100",
+      )}
+    >
+      {t.label.toUpperCase()}
+      {tabBadge(t.id)}
+      {tab === t.id ? (
+        <motion.span
+          layoutId="cycle-tab-underline"
+          className="absolute inset-x-2.5 -bottom-px h-[2px] rounded-full bg-brand-500 dark:bg-brand-400"
+          transition={{ duration: 0.25, ease: EASE }}
+          aria-hidden="true"
+        />
+      ) : null}
+    </button>
+  );
 
   return (
     <section id="mc-cycle" aria-labelledby="mc-cycle-h" className="scroll-mt-24">
@@ -4561,7 +4753,7 @@ export function CycleView({
         </header>
 
         <div className="border-t border-ink-100/80 dark:border-white/[0.055]">
-          <CycleRail cycle={cycle} />
+          <CycleRail cycle={cycle} selectedTab={tab} onSelect={setTab} />
         </div>
 
         <VitalStrip cycle={cycle} />
@@ -4569,7 +4761,7 @@ export function CycleView({
         <nav
           className="relative flex gap-0.5 overflow-x-auto border-y border-ink-100/80 px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden dark:border-white/[0.06]"
           role="tablist"
-          aria-label="Cycle phases"
+          aria-label="Tender Cycle subpages and desk tools"
           onKeyDown={(e) => {
             if (!["ArrowRight", "ArrowLeft", "Home", "End"].includes(e.key)) return;
             e.preventDefault();
@@ -4585,35 +4777,10 @@ export function CycleView({
             document.getElementById(`cycle-tab-${id}`)?.focus();
           }}
         >
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              id={`cycle-tab-${t.id}`}
-              type="button"
-              role="tab"
-              aria-selected={tab === t.id}
-              aria-controls="cycle-panel"
-              tabIndex={tab === t.id ? 0 : -1}
-              onClick={() => setTab(t.id)}
-              className={cn(
-                "relative -mb-px flex items-center gap-1.5 whitespace-nowrap px-3 py-3 font-code text-[9px] font-bold tracking-[0.15em] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fffdfb] dark:focus-visible:ring-offset-[#111318]",
-                tab === t.id
-                  ? "text-ink-950 dark:text-white"
-                  : "text-ink-500 hover:text-ink-900 dark:text-ink-400 dark:hover:text-ink-100",
-              )}
-            >
-              {t.label.toUpperCase()}
-              {tabBadge(t.id)}
-              {tab === t.id ? (
-                <motion.span
-                  layoutId="cycle-tab-underline"
-                  className="absolute inset-x-2.5 -bottom-px h-[2px] rounded-full bg-brand-500 dark:bg-brand-400"
-                  transition={{ duration: 0.25, ease: EASE }}
-                  aria-hidden="true"
-                />
-              ) : null}
-            </button>
-          ))}
+          {STAGE_TABS.map(renderTabButton)}
+          <span className="mx-1 my-2 w-px shrink-0 bg-ink-200 dark:bg-white/[0.12]" aria-hidden="true" />
+          <span className="flex shrink-0 items-center px-2 font-code text-[7.5px] font-bold tracking-[0.16em] text-ink-400">DESK TOOLS</span>
+          {UTILITY_TABS.map(renderTabButton)}
         </nav>
 
         <div
@@ -4631,15 +4798,44 @@ export function CycleView({
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.22, ease: EASE }}
             >
-              {tab === "pipeline" ? PipelineTab : null}
+              {activeStage ? (
+                <header className="mb-5 flex flex-wrap items-end justify-between gap-3 border-b border-ink-200/70 pb-4 dark:border-white/[0.08]">
+                  <div className="min-w-0">
+                    <p className="font-code text-[8px] font-bold tracking-[0.18em] text-brand-600 dark:text-brand-300">
+                      STAGE {String(stageIndex + 1).padStart(2, "0")} / {String(STAGE_TABS.length).padStart(2, "0")}
+                    </p>
+                    <h3 className="mt-1 font-display text-[20px] font-bold tracking-[-0.025em] text-ink-950 dark:text-white">{activeStage.label}</h3>
+                    <p className="mt-1 max-w-[70ch] text-[11.5px] leading-relaxed text-ink-500">{STAGE_INTROS[activeStage.id]}</p>
+                  </div>
+                  {cycle && activeStageRecord ? <Chip tone={activeStageRecord.state === "done" ? "ok" : activeStageRecord.held ? "warn" : "muted"}>
+                    {activeStageRecord.state === "done"
+                      ? "COMPLETE"
+                      : activeStageRecord.held
+                        ? "AT HUMAN GATE"
+                        : activeStageRecord.state === "current"
+                          ? "CURRENT STAGE"
+                          : "UPCOMING"}
+                  </Chip> : <Chip tone="muted">NO CYCLE RECORD</Chip>}
+                </header>
+              ) : (
+                <header className="mb-5 border-b border-ink-200/70 pb-4 dark:border-white/[0.08]">
+                  <p className="font-code text-[8px] font-bold tracking-[0.18em] text-brand-600 dark:text-brand-300">TENDER CYCLE · DESK TOOLS</p>
+                  <h3 className="mt-1 font-display text-[20px] font-bold tracking-[-0.025em] text-ink-950 dark:text-white">
+                    {UTILITY_TABS.find((item) => item.id === tab)?.label}
+                  </h3>
+                </header>
+              )}
+              {tab === "solicitation" ? PipelineTab : null}
               {tab === "deadlines" ? DeadlinesTab : null}
               {tab === "opening" ? OpeningTab : null}
               {tab === "evaluation" ? EvaluationTab : null}
               {tab === "award" ? AwardTab : null}
+              {tab === "standstill" ? StandstillTab : null}
               {tab === "contract" ? ContractTab : null}
+              {tab === "closure" ? ClosureTab : null}
               {tab === "complaints" ? ComplaintsTab : null}
               {tab === "analytics" ? AnalyticsTab : null}
-              {tab !== "pipeline" && tab !== "deadlines" && !cycle ? (
+              {tab !== "solicitation" && tab !== "deadlines" && !cycle ? (
                 /* No cycle record — the one empty state that asks for a hand.
                    The action is real: it opens the pipeline tab where the pack
                    is actually staged. No decorative buttons. */
@@ -4659,8 +4855,8 @@ export function CycleView({
                     <button
                       type="button"
                       onClick={() => {
-                        setTab("pipeline");
-                        document.getElementById("cycle-tab-pipeline")?.focus();
+                        setTab("solicitation");
+                        document.getElementById("cycle-tab-solicitation")?.focus();
                       }}
                       className="focus-brand inline-flex h-10 items-center gap-2 rounded-lg bg-brand-600 px-4 text-[12.5px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_22px_-14px_rgba(217,38,22,0.9)] transition-[background-color,transform] duration-150 hover:bg-brand-500 active:scale-[0.985]"
                     >
@@ -4685,6 +4881,30 @@ export function CycleView({
                     7 STAGES · EVERY IRREVERSIBLE STEP STOPS AT A NAMED HUMAN
                   </p>
                 </div>
+              ) : null}
+              {activeStage ? (
+                <nav className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-ink-200/70 pt-4 dark:border-white/[0.08]" aria-label="Stage page navigation">
+                  <button
+                    type="button"
+                    onClick={() => previousStage && setTab(previousStage.id)}
+                    disabled={!previousStage}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-ink-200 bg-paper px-3.5 text-[11.5px] font-semibold text-ink-700 transition-colors hover:border-ink-400 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/[0.12] dark:bg-white/[0.03] dark:text-ink-300 dark:hover:border-white/25 dark:hover:text-white"
+                  >
+                    <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                    {previousStage ? `Previous: ${previousStage.label}` : "First stage"}
+                  </button>
+                  <span className="font-code text-[8px] font-bold tracking-[0.15em] text-ink-400">
+                    PAGE {String(stageIndex + 1).padStart(2, "0")} OF {String(STAGE_TABS.length).padStart(2, "0")}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setTab((nextStage ?? STAGE_TABS[0]).id)}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-brand-600 px-4 text-[11.5px] font-semibold text-white shadow-[0_8px_18px_-12px_rgba(217,38,22,0.8)] transition-colors hover:bg-brand-500"
+                  >
+                    {nextStage ? `Next: ${nextStage.label}` : "Return to Solicitation"}
+                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </nav>
               ) : null}
             </motion.div>
           </AnimatePresence>
