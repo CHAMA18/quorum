@@ -34,7 +34,8 @@ refusal as proof the agent cannot file.
 The Windows and macOS downloads on the landing page are Electron desktop shells for
 the hosted Quorum workspace. They keep the web workspace in a dedicated, isolated
 window and require an internet connection. Version tags (`v*`) build a Windows x64
-installer and a universal macOS disk image with Codemagic. Build artifacts are also
+installer with Wine cross-compilation and a universal macOS disk image with Codemagic.
+Build artifacts are also
 retained on each Codemagic build. To publish permanent GitHub Release downloads, add
 a repository-scoped GitHub token with **Contents: read and write** permission as the
 `GITHUB_TOKEN` secret in the `github_credentials` Codemagic variable group before

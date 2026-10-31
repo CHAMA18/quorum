@@ -31,7 +31,7 @@ workflows:
   quorum_windows:
     name: Quorum for Windows
     max_build_duration: 60
-    instance_type: windows_x2
+    instance_type: mac_mini_m2
     environment:
       node: lts
       groups:
@@ -45,10 +45,12 @@ workflows:
     scripts:
       - name: Install dependencies
         script: npm ci
+      - name: Install Wine for the Windows installer
+        script: brew install --cask wine-stable
       - name: Generate application icons
         script: npm run desktop:icons
       - name: Package Windows app
-        script: cmd.exe /c npx electron-builder --win nsis --publish never
+        script: npx electron-builder --win nsis --publish never
     artifacts:
       - release/*.exe
     publishing:
