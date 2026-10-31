@@ -16,28 +16,25 @@
  *     buffered to disk and no setup notice ever appears.
  *   · thinking — the sentence goes to /api/muse/chat, where the desk agent
  *     runs an agentic loop: reads (runs, approvals, deadlines, the committee
- *     register, one tender's record) execute at once, and actions — approve
- *     or return a gate, launch a review — come back as HMAC-signed proposal
- *     cards. A full LLM brain answers whenever Meta Muse is configured, with
+ *     register, one tender's record) execute at once, and a review assignment
+ *     comes back as an HMAC-signed proposal card. A full LLM brain answers
+ *     whenever Meta Muse is configured, with
  *     a deterministic local brain otherwise — the panel never shows a setup notice.
- *   · acting   — a proposal card waits for the officer. Confirm stages it
- *     through /api/muse/execute under their own session; a gate decision
- *     opens the same step-up dialog the Approvals screen uses before the
- *     sidecar executes anything. Decline voids the card — nothing moves.
+ *   · acting   — a proposal card waits for the signed-in user. The server
+ *     checks their role and confirmation before it assigns a review. Final
+ *     procurement decisions remain in the human Approvals workflow.
  *   · speaking — the reply is read aloud in a real neural voice. Deepgram
  *     Aura-2 runs through Cloudflare Workers AI; MeloTTS is the server-side
  *     fallback; the browser's installed voice is the last resort. The voice
  *     can be changed in the panel and is remembered on the device.
  *
- * The agent is consent-gated, not read-only: it can carry the gavel to the
- * desk, but it can only lift it when the officer's own hand is on the handle.
+ * The agent can do permitted preparatory work, but it never holds the gavel.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Image from "next/image";
 import { Ban, Check, ChevronRight, CircleHelp, Mic, MessageSquare, Send, ShieldAlert, Square, Volume2, VolumeX, X } from "lucide-react";
-import { requestStepUp, StepUpHost } from "@/components/quorum/step-up";
 import type { Proposal } from "@/lib/muse-actions";
 import { cn } from "@/lib/utils";
 
@@ -56,8 +53,8 @@ type Turn = {
 const SUGGESTIONS = [
   "What is waiting at the gate?",
   "Is quorum present?",
-  "Approve the pending gate",
-  "Launch a review for a tender",
+  "Explain the evidence on a pending gate",
+  "What can you investigate for me?",
 ];
 
 const VOICE_KEY = "quorum.muse.voice";
@@ -436,7 +433,6 @@ export function MuseAssistant({ name }: { name?: string }) {
           body: JSON.stringify({
             message: text,
             history,
-            ...(name ? { who: name } : {}),
           }),
         });
         const data = (await res.json().catch(() => ({}))) as {
@@ -482,42 +478,27 @@ export function MuseAssistant({ name }: { name?: string }) {
       setConfirmingId(turnId);
       patchTurn(turnId, { proposalState: "confirmed" });
       try {
-        /* The gavel is personal: actions run under the signed-in officer. */
+        /* The server resolves identity and permissions from the signed-in session. */
         const me = await fetch("/api/auth/me")
           .then((r) => r.json())
           .catch(() => null);
         if (!me?.user) {
           patchTurn(turnId, { proposalState: "pending" });
-          say("You are not signed in — the agent's actions run under a named officer, never anonymously. Sign in to the workspace and ask me again.");
-          void speak("Sign in first. The gavel is personal.");
+          say("Sign in to Quorum first. The server checks your workspace role before it starts an assigned review.");
+          void speak("Sign in to Quorum first.");
           return;
-        }
-
-        /* A gate decision demands the officer's own step-up signature — the
-           same dialog the Approvals screen opens, hosted by this bubble. */
-        let stepUp: string | undefined;
-        if (proposal.needsStepUp) {
-          const token = await requestStepUp(String(proposal.args?.gateId ?? ""));
-          if (!token) {
-            patchTurn(turnId, { proposalState: "pending" });
-            say("The step-up signature was cancelled — nothing was signed, nothing changed. The card stays open if you want it back.");
-            void speak("Signature cancelled. Nothing changed.");
-            return;
-          }
-          stepUp = token;
         }
 
         const res = await fetch("/api/muse/execute", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ proposal, consent: true, ...(stepUp ? { stepUp } : {}) }),
+          body: JSON.stringify({ proposal, consent: true }),
         });
         const data = (await res.json().catch(() => ({}))) as {
           executed?: boolean;
           headline?: string;
           detail?: string[];
           tool?: string;
-          needsStepUp?: boolean;
           error?: string;
         };
         if (res.ok && data.executed) {
@@ -528,13 +509,9 @@ export function MuseAssistant({ name }: { name?: string }) {
               id: nextId(),
               role: "assistant",
               text: data.headline ?? "Done.",
-              tools: data.tool ? [data.tool] : undefined,
             },
           ]);
           void speak(data.headline ?? "Done.");
-        } else if (data.needsStepUp) {
-          patchTurn(turnId, { proposalState: "pending" });
-          say(`${data.error ?? "The step-up signature was refused."} Confirm the card again when ready — nothing changed.`);
         } else {
           patchTurn(turnId, { proposalState: "failed" });
           say(`${data.error ?? "The desk refused the action."} Nothing changed.`);
@@ -949,14 +926,17 @@ export function MuseAssistant({ name }: { name?: string }) {
                               <div className="flex items-start justify-between gap-2 border-b border-brand-100 bg-brand-50 px-3 py-2">
                                 <span className="flex items-center gap-1.5 text-[10px] font-semibold leading-snug text-brand-900">
                                   <ShieldAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                                  {t.proposal.needsStepUp ? "Signature required" : "Your confirmation is required"}
+                                  Review assignment · confirmation required
                                 </span>
                                 <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[8px] font-semibold text-[#6b4650]">
-                                  {t.proposal.risk === "IRREVERSIBLE" ? "High impact" : "Review"}
+                                  Agent task
                                 </span>
                               </div>
                               <div className="p-3">
                                 <p className="text-[12px] font-semibold leading-snug text-[#292c31]">{t.proposal.label}</p>
+                                <p className="mt-1.5 text-[11px] leading-relaxed text-[#62666e]">
+                                  Quorum will analyze the tender and prepare cited findings. An authorized human keeps every final decision.
+                                </p>
                                 <div className="mt-2 space-y-1">
                                   {t.proposal.summary.map((row) => (
                                     <p key={row.key} className="text-[10px] leading-relaxed text-[#62666e]">
@@ -972,7 +952,7 @@ export function MuseAssistant({ name }: { name?: string }) {
                                       disabled={!!confirmingId}
                                       className="h-9 flex-1 rounded-full bg-brand-700 px-3 text-[11px] font-semibold text-white transition-colors hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
-                                      {confirmingId === t.id ? "Confirming…" : t.proposal.needsStepUp ? "Confirm and sign" : "Confirm and run"}
+                                      {confirmingId === t.id ? "Assigning…" : "Assign review"}
                                     </button>
                                     <button
                                       type="button"
@@ -1162,10 +1142,6 @@ export function MuseAssistant({ name }: { name?: string }) {
         )}
       </AnimatePresence>
 
-      {/* The step-up host rides with the bubble: a gate decision staged in
-          chat opens the same signature dialog the Approvals screen uses,
-          on any screen. The dashboard's own host stays underneath it. */}
-      {open && <StepUpHost />}
     </>
   );
 }

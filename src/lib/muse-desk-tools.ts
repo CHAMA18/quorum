@@ -5,9 +5,8 @@
  * quorum-mcp sidecar (:3031) or the web app's committee register. The
  * system_guide tool returns Quorum's own static operating manual. There is
  * deliberately no tool here that can sign, award, return, file, summon or
- * register: the assistant answers questions about the desk, and the gavel
- * stays where the product puts it — behind a named human at the Approvals
- * gate.
+ * register: the assistant can investigate the desk, and the gavel stays
+ * where the product puts it — behind a named human at the Approvals gate.
  *
  * The definitions travel to the model; the executors stay on the server, so
  * the model never chooses a URL, never sees a session and can only ask for
@@ -15,10 +14,16 @@
  */
 
 import { GUIDE_IDS, readSystemGuide } from "@/lib/quorum-knowledge";
+import { canReadSidecar } from "@/lib/permissions";
+import { getCommitteeState } from "@/lib/committee";
+import { attestSignature } from "@/lib/sidecar-attest";
+import type { AuthUser } from "@/lib/auth-types";
 
 const SIDECAR = "http://127.0.0.1:3031";
-/* The committee register lives in the web app's JSON store, not the sidecar. */
-const WEB = (process.env.QUORUM_WEB_URL?.trim() || "http://127.0.0.1:3000").replace(/\/+$/, "");
+
+export interface DeskToolContext {
+  user: AuthUser;
+}
 
 export interface DeskTool {
   name: string;
@@ -127,22 +132,34 @@ export const DESK_TOOLS: DeskTool[] = [
 
 /* ── Executors (these stay on the server) ────────────────────────────────── */
 
-async function getJson(path: string, timeoutMs = 6000): Promise<Record<string, unknown>> {
+async function getJson(path: string, actor: string, workspaceId: string, timeoutMs = 6000): Promise<Record<string, unknown>> {
+  const timestamp = Date.now();
+  const pathname = path.split("?")[0];
   const res = await fetch(`${SIDECAR}${path}`, {
     cache: "no-store",
+    headers: {
+      "x-quorum-actor": actor,
+      "x-quorum-workspace": workspaceId,
+      "x-quorum-ts": String(timestamp),
+      "x-quorum-attest": attestSignature("GET", pathname, actor, timestamp, workspaceId),
+    },
     signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) throw new Error(`sidecar ${res.status} on ${path}`);
   return (await res.json().catch(() => ({}))) as Record<string, unknown>;
 }
 
-async function getWebJson(path: string, timeoutMs = 6000): Promise<Record<string, unknown>> {
-  const res = await fetch(`${WEB}${path}`, {
-    cache: "no-store",
-    signal: AbortSignal.timeout(timeoutMs),
-  });
-  if (!res.ok) throw new Error(`web ${res.status} on ${path}`);
-  return (await res.json().catch(() => ({}))) as Record<string, unknown>;
+export function canReadDeskTool(name: string, args: Record<string, unknown>, user: AuthUser): boolean {
+  if (name === "system_guide") return true;
+  const path =
+    name === "list_audit" ? "/api/log" :
+    name === "list_suppliers" ? "/api/suppliers" :
+    name === "find_tender" ? `/api/tenders/${encodeURIComponent(String(args.tenderId ?? ""))}` :
+    name === "desk_snapshot" || name === "list_evaluations" ? "/api/runs" :
+    name === "list_approvals" ? "/api/gates" :
+    name === "list_deadlines" ? "/api/cycle/deadlines" :
+    name === "committee_state" ? "/api/committee" : null;
+  return path !== null && canReadSidecar(user.role, path);
 }
 
 /* The sidecar answers with its own shapes; the model sees a trimmed, stable
@@ -214,17 +231,21 @@ function viewGate(g: Gate) {
   };
 }
 
-export async function runDeskTool(name: string, args: Record<string, unknown>): Promise<string> {
+export async function runDeskTool(name: string, args: Record<string, unknown>, context: DeskToolContext): Promise<string> {
+  if (!canReadDeskTool(name, args, context.user)) {
+    return JSON.stringify({ error: `Your workspace role (${context.user.role}) cannot read this desk record.` });
+  }
+  const read = (path: string, timeoutMs = 6000) => getJson(path, context.user.name, context.user.workspaceId, timeoutMs);
   try {
     switch (name) {
       case "system_guide":
         return readSystemGuide(String(args.topic ?? ""));
       case "desk_snapshot": {
         const [runs, gates, health, committee] = await Promise.all([
-          getJson("/api/runs"),
-          getJson("/api/gates"),
-          getJson("/api/health", 3000).catch(() => null),
-          getWebJson("/api/committee", 4000).catch(() => null),
+          read("/api/runs"),
+          read("/api/gates"),
+          read("/api/health", 3000).catch(() => null),
+          getCommitteeState(context.user).catch(() => null),
         ]);
         const list = (runs.runs ?? []) as Run[];
         const gateList = (gates.gates ?? []) as Gate[];
@@ -263,19 +284,19 @@ export async function runDeskTool(name: string, args: Record<string, unknown>): 
       }
       case "list_evaluations": {
         const limit = Math.min(Math.max(Number(args.limit ?? 10) || 10, 1), 25);
-        const runs = await getJson("/api/runs");
+        const runs = await read("/api/runs");
         const list = ((runs.runs ?? []) as Run[]).slice(0, limit);
         return JSON.stringify({ count: list.length, evaluations: list.map(viewRun) });
       }
       case "list_approvals": {
         const limit = Math.min(Math.max(Number(args.limit ?? 15) || 15, 1), 40);
-        const gates = await getJson("/api/gates");
+        const gates = await read("/api/gates");
         const list = ((gates.gates ?? []) as Gate[]).slice(0, limit);
         return JSON.stringify({ count: list.length, approvals: list.map(viewGate) });
       }
       case "list_audit": {
         const limit = Math.min(Math.max(Number(args.limit ?? 12) || 12, 1), 40);
-        const log = await getJson(`/api/log?limit=${limit}`);
+        const log = await read(`/api/log?limit=${limit}`);
         const entries = ((log.entries ?? []) as {
           seq: number;
           ts: string;
@@ -301,7 +322,7 @@ export async function runDeskTool(name: string, args: Record<string, unknown>): 
       }
       case "list_suppliers": {
         const limit = Math.min(Math.max(Number(args.limit ?? 20) || 20, 1), 50);
-        const suppliers = await getJson("/api/suppliers");
+        const suppliers = await read("/api/suppliers");
         const list = ((suppliers.suppliers ?? []) as {
           id: string;
           name: string;
@@ -322,7 +343,7 @@ export async function runDeskTool(name: string, args: Record<string, unknown>): 
         });
       }
       case "list_deadlines": {
-        const dl = await getJson("/api/cycle/deadlines");
+        const dl = await read("/api/cycle/deadlines");
         const items = (dl.deadlines ?? []) as {
           tenderId: string;
           kind: string;
@@ -342,7 +363,7 @@ export async function runDeskTool(name: string, args: Record<string, unknown>): 
         });
       }
       case "committee_state": {
-        const cm = await getWebJson("/api/committee");
+        const cm = await getCommitteeState(context.user);
         return JSON.stringify({
           seats: cm.seats ?? null,
           required: cm.required ?? null,
@@ -357,7 +378,7 @@ export async function runDeskTool(name: string, args: Record<string, unknown>): 
       case "find_tender": {
         const raw = String(args.tenderId ?? "").trim();
         if (!raw) return JSON.stringify({ error: "A tender reference is required." });
-        const detail = await getJson(`/api/tenders/${encodeURIComponent(raw)}`);
+        const detail = await read(`/api/tenders/${encodeURIComponent(raw)}`);
         if (detail.error) return JSON.stringify({ error: String(detail.error) });
         const cycle = detail.cycle as Record<string, unknown> | undefined;
         const runs = (detail.runs ?? []) as { id: string; status: string; startedAt: string }[];
