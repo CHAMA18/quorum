@@ -1,9 +1,10 @@
 {
   "name": "quorum-desktop",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "private": true,
   "description": "Quorum desktop workspace",
   "main": "main.cjs",
+  "author": "CHAMA18",
   "license": "MIT",
   "devDependencies": {
     "electron": "^45.2.1"
