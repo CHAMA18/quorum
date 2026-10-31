@@ -3,10 +3,9 @@
  *
  * Two jobs:
  *
- *  1. Put the EC2 origin behind a managed HTTPS hostname while DNS/TLS on the
- *     custom domain is still being fixed. This is a transparent reverse proxy:
- *     every request to the worker goes to ORIGIN_URL, and cookies, redirects
- *     and streaming bodies are preserved.
+ *  1. Put the Quorum API behind a managed HTTPS origin. This is a transparent
+ *     reverse proxy: every app request goes to ORIGIN_URL, and cookies,
+ *     redirects and streaming bodies are preserved.
  *
  *  2. Hold the R2 upload endpoints. They are deliberately gated by a
  *     server-to-server shared secret, never exposed to the browser. If R2 is
@@ -14,9 +13,9 @@
  *     of pretending an upload happened. Downloads support a single HTTP byte
  *     range, so a large tender document can be resumed or paged.
  *
- * This worker is stateless. The Quorum sidecar, SQLite/JSON state and the
- * filesystem MCP server stay on the persistent EC2 host; Workers are not a
- * replacement for that process.
+ * This worker is stateless. The Quorum sidecar, JSON state and filesystem MCP
+ * server run beside the Next.js API on Render's persistent disk; Workers are
+ * not a replacement for that process.
  */
 
 import { ifRangeAllows, parseByteRange } from "./http-range";
