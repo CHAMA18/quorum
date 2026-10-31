@@ -32,6 +32,7 @@ interface R2ObjectMeta {
 interface Env {
   ORIGIN_URL: string;
   EDGE_SHARED_SECRET?: string;
+  MCP_REMOTE_TOKEN?: string;
   AI?: {
     run(model: string, input: Record<string, unknown>): Promise<unknown>;
   };
@@ -470,7 +471,49 @@ async function proxy(request: Request, env: Env, url: URL): Promise<Response> {
   });
 }
 
-export default {
+const MCP_CORS_HEADERS = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-methods": "POST, GET, OPTIONS",
+  "access-control-allow-headers": "authorization, content-type, mcp-protocol-version, mcp-session-id, last-event-id",
+  "access-control-expose-headers": "content-type, mcp-session-id, mcp-protocol-version",
+  "access-control-max-age": "86400",
+  vary: "Origin",
+};
+
+function mcpUnauthorized(): Response {
+  return json({ error: "A valid Quorum MCP bearer token is required." }, 401, {
+    ...MCP_CORS_HEADERS,
+    "www-authenticate": 'Bearer realm="Quorum MCP"',
+  });
+}
+
+async function remoteMcp(request: Request, env: Env, url: URL): Promise<Response> {
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: MCP_CORS_HEADERS });
+  if (request.method !== "POST" && request.method !== "GET") {
+    return json({ error: "Use POST for MCP JSON-RPC requests." }, 405, { ...MCP_CORS_HEADERS, allow: "POST, GET, OPTIONS" });
+  }
+
+  const configuredToken = env.MCP_REMOTE_TOKEN ?? "";
+  const authorization = request.headers.get("authorization") ?? "";
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
+  if (!configuredToken || !match || !constantTimeEqual(match[1], configuredToken)) return mcpUnauthorized();
+  if (!env.EDGE_SHARED_SECRET) return json({ error: "MCP origin authentication is not configured." }, 503, MCP_CORS_HEADERS);
+
+  // Authenticate callers here, then authenticate the edge-to-origin hop too.
+  const headers = new Headers(request.headers);
+  headers.delete("authorization");
+  headers.set("x-quorum-edge-key", env.EDGE_SHARED_SECRET);
+  const upstreamRequest = new Request(request, { headers });
+  // Keep the public endpoint at /mcp while using the Next route under /api,
+  // which also lets static-export builds omit server routes cleanly.
+  const originRoute = new URL("/api/mcp", url.origin);
+  const response = await proxy(upstreamRequest, env, originRoute);
+  const responseHeaders = new Headers(response.headers);
+  for (const [name, value] of Object.entries(MCP_CORS_HEADERS)) responseHeaders.set(name, value);
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers: responseHeaders });
+}
+
+const worker = {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
@@ -491,6 +534,14 @@ export default {
     if (url.pathname === "/__edge/tts") return speak(request, env);
     if (url.pathname === "/__edge/asr") return transcribe(request, env);
 
+    if (url.pathname === "/mcp") {
+      try {
+        return await remoteMcp(request, env, url);
+      } catch (err) {
+        return json({ error: "MCP origin unreachable", detail: (err as Error).message.slice(0, 240) }, 502, MCP_CORS_HEADERS);
+      }
+    }
+
     try {
       return await proxy(request, env, url);
     } catch (err) {
@@ -504,3 +555,5 @@ export default {
     }
   },
 };
+
+export default worker;

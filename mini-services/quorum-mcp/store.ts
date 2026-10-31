@@ -790,6 +790,8 @@ export interface ContractCompletion {
   note?: string;
   at: string;
   by: string;
+}
+
 export interface ContractPerfSecurity {
   id: string;
   instrument: "BANK_GUARANTEE" | "INSURANCE_BOND" | "CASH_DEPOSIT" | "OTHER";

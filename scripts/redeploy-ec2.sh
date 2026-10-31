@@ -14,6 +14,7 @@
 #   APP_DIR=/home/ubuntu/quorum   WEB_SERVICE=quorum-web   MCP_SERVICE=quorum-mcp
 #   APP_PORT=3000                 PULL=1                    SKIP_INSTALL=1
 #   KEEP_PREV=0                   HEALTH_TIMEOUT=90
+#   PULL_REMOTE_URL=https://github.com/CHAMA18/quorum.git PULL_BRANCH=main
 #
 # The code must already be in APP_DIR. This script does not rsync or commit;
 # PULL=1 only does a fast-forward git pull.
@@ -25,6 +26,8 @@ MCP_SERVICE="${MCP_SERVICE:-quorum-mcp}"
 APP_PORT="${APP_PORT:-3000}"
 BASE_URL="${BASE_URL:-http://127.0.0.1:${APP_PORT}}"
 PULL="${PULL:-0}"
+PULL_REMOTE_URL="${PULL_REMOTE_URL:-https://github.com/CHAMA18/quorum.git}"
+PULL_BRANCH="${PULL_BRANCH:-main}"
 SKIP_INSTALL="${SKIP_INSTALL:-0}"
 KEEP_PREV="${KEEP_PREV:-1}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-90}"
@@ -84,8 +87,9 @@ else
 fi
 
 if [ "$PULL" = "1" ]; then
-  say "Pulling the latest main (fast-forward only)"
-  git -C "$APP_DIR" pull --ff-only
+  say "Fetching ${PULL_BRANCH} from ${PULL_REMOTE_URL} (fast-forward only)"
+  git -C "$APP_DIR" fetch --no-tags "$PULL_REMOTE_URL" "$PULL_BRANCH"
+  git -C "$APP_DIR" merge --ff-only FETCH_HEAD
 fi
 
 if [ "$SKIP_INSTALL" != "1" ]; then

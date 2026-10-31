@@ -31,6 +31,7 @@ type Integration = {
 
 const MCP_CLIENTS = ["Cursor", "Claude Desktop", "VS Code", "Windsurf", "Cline", "Other MCP client"] as const;
 type McpClient = (typeof MCP_CLIENTS)[number];
+const REMOTE_MCP_ENDPOINT = "https://quorum-edge.chungu424.workers.dev/mcp";
 const MCP_CLIENT_GUIDES: Record<McpClient, { setup: string; href?: string }> = {
   Cursor: { setup: "Add this entry in Cursor’s MCP settings or save it to .cursor/mcp.json.", href: "https://cursor.com/docs/context/mcp" },
   "Claude Desktop": { setup: "Add this local server in Claude Desktop’s MCP settings, then restart or reload the client.", href: "https://support.claude.com/en/articles/10949351-getting-started-with-local-mcp-servers-on-claude-desktop" },
@@ -50,6 +51,21 @@ function clientConfig(client: McpClient, projectPath: string) {
     client === "VS Code"
       ? { servers: { quorum: { type: "stdio", ...server } } }
       : { mcpServers: { quorum: server } },
+    null,
+    2,
+  );
+}
+
+function remoteClientConfig(client: McpClient, token: string) {
+  const entry = {
+    ...(client === "Cline" ? { type: "streamableHttp" } : {}),
+    url: REMOTE_MCP_ENDPOINT,
+    headers: { Authorization: `Bearer ${token || "YOUR_MCP_REMOTE_TOKEN"}` },
+  };
+  return JSON.stringify(
+    client === "VS Code"
+      ? { servers: { quorum: { type: "http", ...entry } } }
+      : { mcpServers: { quorum: entry } },
     null,
     2,
   );
@@ -160,6 +176,8 @@ export function IntegrationsView() {
   const [copied, setCopied] = useState(false);
   const [client, setClient] = useState<McpClient>("Cursor");
   const [projectPath, setProjectPath] = useState("");
+  const [remoteToken, setRemoteToken] = useState("");
+  const [remoteState, setRemoteState] = useState<"idle" | "checking" | "connected" | "unavailable">("idle");
   const localRuntime = mcpEndpoint.startsWith("http://127.0.0.1:3031");
 
   const checkMcp = useCallback(async () => {
@@ -185,6 +203,37 @@ export function IntegrationsView() {
   const copyMcpConfig = async () => {
     try {
       await navigator.clipboard.writeText(clientConfig(client, projectPath));
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  const checkRemoteMcp = async () => {
+    setRemoteState("checking");
+    try {
+      const response = await fetch(REMOTE_MCP_ENDPOINT, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${remoteToken}` },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: "quorum-remote-check",
+          method: "initialize",
+          params: { protocolVersion: "2024-11-05", capabilities: {}, clientInfo: { name: "quorum-integrations-check", version: "1.0.0" } },
+        }),
+        cache: "no-store",
+      });
+      const payload = await response.json();
+      setRemoteState(response.ok && payload?.result?.serverInfo?.name === "quorum-mcp" ? "connected" : "unavailable");
+    } catch {
+      setRemoteState("unavailable");
+    }
+  };
+
+  const copyRemoteConfig = async () => {
+    try {
+      await navigator.clipboard.writeText(remoteClientConfig(client, remoteToken));
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1600);
     } catch {
@@ -242,6 +291,50 @@ export function IntegrationsView() {
           <p className="mt-4 rounded-lg border border-amber-300/70 bg-amber-50 px-3.5 py-3 text-[10px] leading-relaxed text-amber-950 dark:border-amber-500/20 dark:bg-amber-500/[0.07] dark:text-amber-100">
             Local setup is available now. The hosted Render site is static and the public edge <code>/mcp</code> route is not currently published, so a remote URL will not connect yet. Keep the sidecar on loopback; do not expose port 3031 directly. Remote client setup needs an authenticated HTTPS MCP gateway.
           </p>
+        </div>
+      </section>
+
+      <section className="panel overflow-hidden rounded-[12px]" aria-labelledby="remote-mcp-title">
+        <div className="px-5 py-6 sm:px-7 sm:py-7">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="font-code text-[8px] font-bold tracking-[0.2em] text-brand-700 dark:text-brand-300">REMOTE · HTTPS · BEARER AUTH</p>
+              <h2 id="remote-mcp-title" className="mt-1 text-[18px] font-black tracking-tight text-ink-950 dark:text-white">Connect an AI client from anywhere.</h2>
+              <p className="mt-1.5 max-w-3xl text-[11px] leading-relaxed text-ink-600 dark:text-ink-300">The remote gateway uses a client token at the Cloudflare edge and a separate private credential for the origin hop. Only read-only MCP tools are exposed; the sidecar remains loopback-only.</p>
+            </div>
+            <span className={cn("rounded-full border px-2.5 py-1 font-code text-[7px] font-bold tracking-[0.12em]", remoteState === "connected" ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300" : "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-500/20 dark:bg-amber-500/[0.07] dark:text-amber-100")}>
+              {remoteState === "connected" ? "REMOTE READY" : remoteState === "checking" ? "CHECKING" : remoteState === "unavailable" ? "NOT REACHABLE" : "DEPLOYMENT REQUIRED"}
+            </span>
+          </div>
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+            <div className="space-y-3">
+              <div>
+                <span className="mb-1.5 block font-code text-[8px] font-bold tracking-[0.13em] text-ink-500 dark:text-ink-400">REMOTE MCP URL</span>
+                <code className="block break-all rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-[10px] text-ink-900 dark:border-white/10 dark:bg-white/[0.04] dark:text-white">{REMOTE_MCP_ENDPOINT}</code>
+              </div>
+              <label className="block">
+                <span className="mb-1.5 block font-code text-[8px] font-bold tracking-[0.13em] text-ink-500 dark:text-ink-400">REMOTE CLIENT TOKEN</span>
+                <input type="password" autoComplete="off" value={remoteToken} onChange={(event) => setRemoteToken(event.target.value)} placeholder="Paste the MCP_REMOTE_TOKEN set by the service administrator" className="min-h-10 w-full rounded-lg border border-ink-200 bg-white px-3 font-mono text-[10px] text-ink-900 outline-none placeholder:text-ink-400 focus:border-brand-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-white" />
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => void copyRemoteConfig()} className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-ink-950 px-3 text-[10px] font-semibold text-white hover:bg-ink-800 dark:bg-white dark:text-ink-950 dark:hover:bg-ink-100">
+                  {copied ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
+                  {copied ? "Remote config copied" : `Copy ${client} remote config`}
+                </button>
+                <button type="button" onClick={() => void checkRemoteMcp()} disabled={!remoteToken || remoteState === "checking"} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-ink-200 px-3 text-[10px] font-semibold text-ink-700 hover:bg-white disabled:opacity-50 dark:border-white/10 dark:text-ink-200 dark:hover:bg-white/[0.05]">
+                  <RefreshCw className={cn("h-3.5 w-3.5", remoteState === "checking" && "animate-spin")} aria-hidden="true" />
+                  Check remote connection
+                </button>
+              </div>
+              <p className="text-[9px] leading-relaxed text-ink-500 dark:text-ink-400">The token stays in this page’s memory and is only used for the check or the configuration you copy. Store it in your client’s private settings; never commit it.</p>
+            </div>
+            <div className="min-w-0 overflow-hidden rounded-xl border border-ink-200 bg-ink-950 dark:border-white/10">
+              <div className="border-b border-white/10 px-3 py-2"><span className="font-code text-[8px] font-bold tracking-[0.13em] text-white/60">REMOTE MCP · HTTP STREAMABLE</span></div>
+              <pre className="max-h-56 overflow-auto p-3 text-[9px] leading-relaxed text-emerald-100"><code>{remoteClientConfig(client, remoteToken)}</code></pre>
+            </div>
+          </div>
+          {remoteState === "unavailable" || remoteState === "idle" ? <p className="mt-4 rounded-lg border border-amber-300/70 bg-amber-50 px-3.5 py-3 text-[10px] leading-relaxed text-amber-950 dark:border-amber-500/20 dark:bg-amber-500/[0.07] dark:text-amber-100">The gateway route and its secrets must be deployed before this endpoint accepts connections. Keep the origin secret server-side and use a separate long random client token.</p> : null}
+          {client === "Claude Desktop" ? <p className="mt-3 text-[9px] leading-relaxed text-ink-500 dark:text-ink-400">Claude Desktop supports local MCP servers through the setup above. For remote access, use its supported connector flow if available for your account; otherwise use the local bridge.</p> : null}
         </div>
       </section>
 
