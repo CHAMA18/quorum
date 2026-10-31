@@ -83,6 +83,10 @@ export interface Finding {
   /* The award is blocked while a HIGH finding against the recommended bid has
      no disposition. Legacy findings simply have none — they fail closed. */
   disposition?: FindingDisposition;
+  /* Phase 6 (AI safety): the named human disposition for a model-surfaced
+     finding. Nothing is accepted or rejected silently — the reviewer, the
+     decision, when it happened and why are all part of the record. */
+  review?: { decision: "ACCEPTED" | "REJECTED"; by: string; at: string; note?: string };
 }
 
 export interface Draft {
@@ -218,6 +222,7 @@ export interface RosterMemberForGate {
 const DATA = resolveDataDir();
 /** The record directory — the sidecar's own data files live here. */
 export const DATA_DIR = DATA;
+export { DATA };
 
 function cap(value: unknown, max = 420): unknown {
   const s = typeof value === "string" ? value : JSON.stringify(value);
@@ -785,6 +790,17 @@ export interface ContractCompletion {
   note?: string;
   at: string;
   by: string;
+export interface ContractPerfSecurity {
+  id: string;
+  instrument: "BANK_GUARANTEE" | "INSURANCE_BOND" | "CASH_DEPOSIT" | "OTHER";
+  amount: number;
+  currency?: string;
+  provider?: string;
+  reference?: string;
+  validUntil?: string;
+  receivedAt: string;
+  verifiedBy?: string;
+  verifiedAt?: string;
 }
 
 export interface ContractFile {
@@ -803,7 +819,7 @@ export interface ContractFile {
   supplierAcceptedAt?: string;
   supplierSignatory?: string;
   acceptanceHash?: string;
-  performanceSecurity?: PerformanceSecurity;
+  security?: PerformanceSecurity;
   insurance?: ContractInsurance;
   subcontractors?: { name: string; scope: string }[];
   retentionPct?: number;
@@ -813,6 +829,9 @@ export interface ContractFile {
   milestones: ContractMilestone[];
   variations: ContractVariation[];
   payments: ContractPayment[];
+  /* Phase 2 (lifecycle): performance security held against the contract.
+     Recorded on receipt; verification is a named officer's act. */
+  performanceSecurity: ContractPerfSecurity[];
   completedAt?: string;
   completedBy?: string;
 }
@@ -938,6 +957,16 @@ export interface PipelineEntry {
   status: "PLANNED" | "LINKED";
   linkedTenderId?: string;
   createdAt: string;
+  /* Phase 2 (lifecycle): requisition and budget validation sits between
+     planning and publication. The officer who confirms the budget signs the
+     record; the planning entry cannot be published without it. */
+  requisition?: {
+    budgetValidated: boolean;
+    budgetReference?: string;
+    validatedBy?: string;
+    validatedAt?: string;
+    note?: string;
+  };
 }
 
 export interface TenderCycle {
@@ -975,7 +1004,22 @@ export interface TenderCycle {
   addenda: Addendum[];
   notices: NoticeDraft[];
   specs: SpecDraft[];
+  /* Phase 2 (committee decision support): minority positions and dissenting
+     recommendations, recorded by the member who holds them. A dissent is a
+     right, not an approval — it never needs a gate, but it is evidence and
+     the procurement file carries it. */
+  dissents: TenderDissent[];
   createdAt: string;
+}
+
+export interface TenderDissent {
+  id: string;
+  stage: "EVALUATION_CERTIFICATION" | "AWARD_REPORT" | "CONTRACT_PACK";
+  member: string;
+  position: "DISSENT" | "ABSTAIN" | "CONCUR_WITH_NOTES";
+  basis: string;
+  recordedAt: string;
+  recordedBy: string;
 }
 
 export interface SourceRequest {
@@ -987,6 +1031,49 @@ export interface SourceRequest {
   requestedBy: string;
   createdAt: string;
   status: "PENDING" | "CONNECTED" | "DISMISSED";
+}
+
+/* ── Phase 2 (exception handling): the formal exception register ────────────
+   Every departure from the standard route — single-source, emergency, direct
+   award, non-compliance, post-award correction — lives here with its extra
+   evidence. Approval is never an ordinary write: raising an exception raises
+   a GATE for the accounting officer, and only a signed decision registers it.
+   Public-sector reality: an exception without a paper trail is a scandal. */
+export const EXCEPTION_KINDS = [
+  "SINGLE_SOURCE",
+  "EMERGENCY",
+  "DIRECT_AWARD",
+  "NON_COMPLIANCE",
+  "POST_AWARD_CORRECTION",
+] as const;
+export type ExceptionKind = (typeof EXCEPTION_KINDS)[number];
+
+export const EXCEPTION_KIND_LABELS: Record<ExceptionKind, string> = {
+  SINGLE_SOURCE: "Single-source procurement",
+  EMERGENCY: "Emergency procurement",
+  DIRECT_AWARD: "Direct award",
+  NON_COMPLIANCE: "Non-compliance exception",
+  POST_AWARD_CORRECTION: "Post-award correction",
+};
+
+export interface ProcurementException {
+  id: string;
+  tenderId?: string;
+  kind: ExceptionKind;
+  title: string;
+  justification: string;
+  /* References to the evidence pack: document keys, file names, gate ids —
+     whatever anchors the justification to the record. */
+  evidence: string[];
+  valueImpact?: { amount: number; currency?: string };
+  requestedBy: string;
+  requestedAt: string;
+  status: "PENDING_GATE" | "APPROVED" | "REFUSED" | "WITHDRAWN";
+  gateId?: string;
+  decidedBy?: string;
+  decidedAt?: string;
+  decisionNote?: string;
+  withdrawnAt?: string;
 }
 
 /* ── Cycle input shapes — what the REST/MCP surface passes to the pure engine ── */
@@ -1228,6 +1315,80 @@ export interface StepUpUse {
 }
 
 export type JurisdictionId = "KE" | "ZM";
+/* ── Phase 4 (evidence architecture): the document register ─────────────────
+   One row per known document across every channel (sample pack, staged text,
+   R2 upload, gate artifact). Content hash, version line, provenance and
+   chain-of-custody events make a document's life reconstructible — and make
+   silent replacement detectable: a new row with the same key and a different
+   hash is a version, never an overwrite. */
+export const DOCUMENT_KINDS = [
+  "NOTICE",
+  "BID",
+  "OCDS",
+  "SPECIFICATION",
+  "EVIDENCE",
+  "CONTRACT",
+  "RECEIPT",
+  "OTHER",
+] as const;
+export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
+
+export type TrustChannel = "web_upload" | "sidecar_stage" | "sample_pack" | "gate_artifact" | "system";
+
+export interface DocumentCustodyEvent {
+  at: string;
+  actor: string;
+  action: "REGISTERED" | "VERSIONED" | "DOWNLOADED" | "REVIEWED" | "ARCHIVED" | "RESTORED";
+  detail?: string;
+}
+
+export interface DocumentRecord {
+  id: string;
+  tenderId?: string;
+  key: string;
+  title: string;
+  kind: DocumentKind;
+  sha256: string;
+  version: number;
+  previousSha?: string;
+  bytes: number;
+  contentType?: string;
+  channel: TrustChannel;
+  importer: string;
+  capturedAt: string;
+  provenance?: { originSystem?: string; note?: string };
+  /* Person-in-the-loop for low-confidence extraction: a LOW/MEDIUM flag is a
+     work item, cleared only by a named reviewer. */
+  extractionConfidence?: {
+    level: "HIGH" | "MEDIUM" | "LOW";
+    reason?: string;
+    reviewedBy?: string;
+    reviewedAt?: string;
+  };
+  retention: { schedule: string; years: number; disposeAfter?: string; status: "ACTIVE" | "ARCHIVED" };
+  custody: DocumentCustodyEvent[];
+}
+
+/* ── Phase 1 (governance): the authority configuration the desk runs on ─────
+   The role/capability matrix is code (the web app's permissions.ts); the part
+   that varies per installation — monetary approval bands and the governance
+   sign-off — is data, persisted here and changed only by named actors. */
+export interface ApprovalBand {
+  id: string;
+  label: string;
+  currency: string;
+  min: number;
+  max?: number;
+  approvalOffice: Office;
+  note?: string;
+}
+
+export interface GovernanceConfig {
+  bands: ApprovalBand[];
+  signedOff?: { by: string; at: string; scope: string };
+  updatedAt?: string;
+  updatedBy?: string;
+}
 
 interface PersistShape {
   gates: Gate[];
@@ -1241,6 +1402,9 @@ interface PersistShape {
   budgetLines: BudgetLine[];
   commitments: Commitment[];
   stepUpUses: StepUpUse[];
+  exceptions: ProcurementException[];
+  documents: DocumentRecord[];
+  governance: GovernanceConfig;
   agentMode: AgentMode;
   deployment: Deployment;
   connector: ConnectorRegistration | null;
@@ -1551,6 +1715,41 @@ export function withWorkspace<T>(workspaceId: string, work: () => T): T {
   return workspaceContext.run(workspaceId, work);
 }
 
+/* The seed bands are the desk's working defaults, plainly marked illustrative:
+   they name the office that approves in each band but carry no invented legal
+   numbers. The operational owner confirms or replaces them, and the change is
+   logged like every other governance act. */
+export const DEFAULT_GOVERNANCE: GovernanceConfig = {
+  bands: [
+    {
+      id: "band-small",
+      label: "Small value",
+      currency: "ZMW",
+      min: 0,
+      max: 250_000,
+      approvalOffice: "PROCUREMENT_UNIT",
+      note: "Illustrative default — the operational owner confirms the real bands before live use.",
+    },
+    {
+      id: "band-medium",
+      label: "Medium value",
+      currency: "ZMW",
+      min: 250_000,
+      max: 2_000_000,
+      approvalOffice: "EVALUATION_COMMITTEE",
+      note: "Illustrative default — the operational owner confirms the real bands before live use.",
+    },
+    {
+      id: "band-large",
+      label: "Large / material value",
+      currency: "ZMW",
+      min: 2_000_000,
+      approvalOffice: "ACCOUNTING_OFFICER",
+      note: "Material awards carry independent committee review and the accounting officer's signature.",
+    },
+  ],
+};
+
 export const state: PersistShape = {
   gates: [],
   runs: [],
@@ -1563,6 +1762,9 @@ export const state: PersistShape = {
   budgetLines: [],
   commitments: [],
   stepUpUses: [],
+  exceptions: [],
+  documents: [],
+  governance: { bands: DEFAULT_GOVERNANCE.bands.map((b) => ({ ...b })) },
   agentMode: DEFAULT_AGENT_MODE,
   deployment: { ...DEFAULT_DEPLOYMENT, publication: { ...DEFAULT_DEPLOYMENT.publication } },
   connector: null,
@@ -1632,6 +1834,16 @@ export async function loadState() {
     state.sittings.push(...((raw.sittings ?? []) as unknown[]).map(normalizeSitting).filter((s): s is Sitting => s !== null));
     state.forwardedKeys.length = 0;
     state.forwardedKeys.push(...forwardKeysFrom(raw.forwardedKeys));
+    state.exceptions.length = 0;
+    state.exceptions.push(...(raw.exceptions ?? []));
+    state.documents.length = 0;
+    state.documents.push(...(raw.documents ?? []));
+    state.governance = {
+      bands: Array.isArray(raw.governance?.bands) && raw.governance.bands.length > 0 ? raw.governance.bands : DEFAULT_GOVERNANCE.bands,
+      ...(raw.governance?.signedOff ? { signedOff: raw.governance.signedOff } : {}),
+      ...(raw.governance?.updatedAt ? { updatedAt: raw.governance.updatedAt } : {}),
+      ...(raw.governance?.updatedBy ? { updatedBy: raw.governance.updatedBy } : {}),
+    };
     state.agentMode = raw.agentMode === "read-only" || raw.agentMode === "disabled" ? raw.agentMode : DEFAULT_AGENT_MODE;
     /* Deployment and feature flags are normalised on every boot. A state file
        written before them, or edited by hand to claim CONNECTED, loads as the

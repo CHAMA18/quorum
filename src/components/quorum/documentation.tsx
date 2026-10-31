@@ -43,6 +43,42 @@ type RuleCatalogueRow = {
 
 const DOC_CHAPTERS: DocChapter[] = [
   {
+    id: "control",
+    kicker: "The control environment",
+    title: "Governance, compliance & readiness",
+    lead: "The platform is built to be governed: an authority matrix served live by the code that enforces it, a compliance engine with hard-fail conditions, a formal exception register, and a launch gate no one can pre-fill.",
+    blocks: [
+      {
+        kind: "p",
+        text: "Three voices appear on every procurement record, and the record shows which spoke: the system's recommendation (findings and drafts, labeled as such, each citing its source line), the committee's decision (the certified matrix, the MED, the dissents), and the signed award authority (the gate receipt — who signed, when, against which inputs hash, with which second factor). Keeping them distinct is the whole design.",
+      },
+      {
+        kind: "table",
+        title: "Where the controls live in the workspace",
+        head: ["CONTROL", "WHERE TO FIND IT", "WHAT IT GIVES YOU"],
+        rows: [
+          ["Authority matrix", "Governance (sidebar: CONTROL)", "Every governed action mapped to role, office, escalation and evidence — served live, never a stale PDF."],
+          ["Approval bands", "Governance", "Value bands naming the approving office; illustrative until the operational owner signs, and the screen says so."],
+          ["Access posture & MFA policy", "Governance", "Who holds power, who lacks a second factor; one control turns on MFA-for-admins."],
+          ["Rule pack & compliance summary", "Compliance", "Every rule with legal basis and exception logic; a per-tender verdict with hard-fail conditions that are never warnings."],
+          ["Exception register", "Compliance", "Single-source, emergency, direct award and corrections — each raised with evidence and decided by the accounting officer at a gate."],
+          ["Document review queue", "Compliance", "Low-confidence extractions wait for a named reviewer before the document is relied on."],
+          ["Launch readiness gate", "Readiness", "Nine criteria recomputed live; the last one is a named human's signature."],
+        ],
+      },
+      {
+        kind: "callout",
+        tone: "rule",
+        title: "Exceptions ride gates",
+        text: "Raising an exception raises a gate for the accounting officer. The officer who requests never approves — the register refuses to let a request become its own decision.",
+      },
+      {
+        kind: "p",
+        text: "Evidence handling follows the same discipline end to end: every document is registered with a content hash, provenance and a version line (a changed hash is a version, never an overwrite), downloads and reviews are custody events, and the procurement file reconstructs the complete decision history — findings with their human dispositions included. The full policy texts live in the repository under docs/: governance-policy.md, records-retention.md, dr-runbook.md and pilot-plan.md.",
+      },
+    ],
+  },
+  {
     id: "start",
     kicker: "Orientation",
     title: "What Quorum is",

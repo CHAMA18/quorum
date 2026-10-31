@@ -126,9 +126,37 @@ export function buildReport(runId: string): { filename: string; markdown: string
         lines.push(`- **Proposed redline:** ${mdEscape(draft.proposed)}`);
         lines.push(`- **Rationale** (drafted by \`${draft.model}\`): ${mdEscape(draft.rationale)}`);
       }
+      if (f.review) {
+        lines.push(`- **Human disposition:** ${f.review.decision} by **${mdEscape(f.review.by)}** at ${f.review.at}${f.review.note ? ` — “${mdEscape(f.review.note)}”` : ""}`);
+      } else {
+        lines.push("- **Human disposition:** pending — this model-surfaced finding has not been accepted or rejected by a named reviewer yet.");
+      }
       lines.push("");
     }
   } else lines.push("_No findings raised — the pack reviewed clean against the selected checks._");
+  lines.push("");
+
+  /* Phase 6 (AI safety): the disposition roll-up — an auditor reads this
+     section to see exactly which model suggestions a human accepted, which
+     they refused and why, without reconstructing it from the log. */
+  const dispositions = run.findings.filter((f) => f.review);
+  lines.push("## Human review of model output");
+  lines.push("");
+  if (dispositions.length > 0) {
+    lines.push("| Finding | Rule | Decision | Reviewer | When | Reason |");
+    lines.push("| --- | --- | --- | --- | --- | --- |");
+    for (const f of dispositions) {
+      lines.push(`| ${f.id} | ${f.rule} | ${f.review!.decision} | ${mdEscape(f.review!.by)} | ${f.review!.at.slice(0, 16).replace("T", " ")} | ${f.review!.note ? mdEscape(f.review!.note) : "—"} |`);
+    }
+    const accepted = dispositions.filter((f) => f.review!.decision === "ACCEPTED").length;
+    const rejected = dispositions.length - accepted;
+    lines.push("");
+    lines.push(`_${accepted} accepted · ${rejected} rejected · ${run.findings.length - dispositions.length} still pending human review._`);
+  } else {
+    lines.push(run.findings.length > 0
+      ? "_No dispositions recorded yet — every finding above still awaits a named reviewer._"
+      : "_Nothing to review — the model raised no findings on this run._");
+  }
   lines.push("");
 
   lines.push(`## Redline drafts (${run.drafts.length})`);

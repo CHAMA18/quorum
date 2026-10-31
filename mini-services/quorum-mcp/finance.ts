@@ -113,11 +113,11 @@ export function executionBlockReason(contract: ContractFile | undefined, nowIso 
   if (contract.status === undefined) blockers.push("the contract has no execution record (LEGACY_UNEXECUTED)");
   if (!contract.supplierAcceptedAt) blockers.push("the supplier has not accepted the pack");
   if (!contract.supplierSignatory?.trim()) blockers.push("the supplier's signatory is not named");
-  if (!contract.performanceSecurity) blockers.push("no performance security is recorded");
+  if (!contract.security) blockers.push("no performance security is recorded");
   else {
-    if (!(contract.performanceSecurity.amount > 0)) blockers.push("the performance security states no amount");
-    if (!contract.performanceSecurity.issuer?.trim()) blockers.push("the performance security names no issuer");
-    if (!contract.performanceSecurity.validUntil || new Date(contract.performanceSecurity.validUntil).getTime() <= new Date(nowIso).getTime()) {
+    if (!(contract.security.amount > 0)) blockers.push("the performance security states no amount");
+    if (!contract.security.issuer?.trim()) blockers.push("the performance security names no issuer");
+    if (!contract.security.validUntil || new Date(contract.security.validUntil).getTime() <= new Date(nowIso).getTime()) {
       blockers.push("the performance security has expired");
     }
   }

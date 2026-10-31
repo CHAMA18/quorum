@@ -879,12 +879,16 @@ export function composeProcurementFile(input: {
       severity: string;
       citation: string;
       disposition?: { status: string; by: string; note: string; secondedBy?: string };
+      review?: { decision: string; by: string; at: string };
     }[];
     drafts: { id: string }[];
     startedAt: string;
   }[];
   gates: { id: string; tool: string; status: string; approver?: string; decidedAt?: string; receipt?: Record<string, unknown> }[];
   logVerified?: { ok: boolean; checked: number };
+  dissents?: { stage: string; member: string; position: string; basis: string; recordedAt: string }[];
+  exceptions?: { id: string; kind: string; status: string; title: string; requestedBy: string; decidedBy?: string }[];
+  compliance?: { verdict: string; hardFails: { rule: string; detail: string }[]; lines: { rule: string; count: number; hardFail: boolean }[] };
   generatedAt: string;
   deployment?: { mode: string; label?: string; receiptId?: string };
 }): string {
@@ -1002,15 +1006,43 @@ export function composeProcurementFile(input: {
       ? c.complaints.map((x) => `- ${x.complainant}: ${x.subject} — ${x.status} (${x.receivedAt.slice(0, 10)})`)
       : ["- None on record."]),
     "",
-    "## 9. Contract administration",
+    "## 9. Dissents and minority positions",
+    "",
+    ...(input.dissents?.length
+      ? input.dissents.map(
+          (d) => `- ${d.member} — ${d.position.replace(/_/g, " ").toLowerCase()} on ${d.stage.replace(/_/g, " ").toLowerCase()} (${d.recordedAt.slice(0, 10)}): ${d.basis}`,
+        )
+      : ["- None recorded. A dissent is a right, not a defect — its absence means none was declared."]),
+    "",
+    "## 10. Exceptions",
+    "",
+    ...(input.exceptions?.length
+      ? input.exceptions.map(
+          (e) => `- ${e.id} ${e.kind.replace(/_/g, " ").toLowerCase()} — ${e.status}${e.decidedBy ? ` by ${e.decidedBy}` : ""} · requested by ${e.requestedBy}: ${e.title}`,
+        )
+      : ["- None on record."]),
+    "",
+    "## 11. Compliance verdict",
+    "",
+    ...(input.compliance
+      ? [
+          `- Verdict: ${input.compliance.verdict}`,
+          ...(input.compliance.hardFails.length
+            ? input.compliance.hardFails.map((h) => `  - HARD FAIL ${h.rule}: ${h.detail}`)
+            : ["- No hard-fail conditions."]),
+          `- Rule lines on record: ${input.compliance.lines.length}`,
+        ]
+      : ["- Compliance summary not computed at file time."]),
+    "",
+    "## 12. Contract administration",
     "",
     ...(c?.contract
       ? [
           `- Contract with ${c.contract.supplier} — ${c.contract.currency ?? ""} ${c.contract.value.toLocaleString()}${c.contract.status ? ` · ${c.contract.status}` : " · LEGACY_UNEXECUTED"}${c.contract.completedAt ? ` · completed ${c.contract.completedAt.slice(0, 10)}` : ""}`,
           `- Execution: ${c.contract.executedAt ? `${c.contract.executedAt.slice(0, 10)} by ${c.contract.executedBy ?? "—"}` : "not executed — no payment may certify"}`,
           `- Supplier acceptance: ${c.contract.supplierAcceptedAt ? `${c.contract.supplierAcceptedAt.slice(0, 10)} by ${c.contract.supplierSignatory ?? "—"}` : "not recorded"}`,
-          ...(c.contract.performanceSecurity
-            ? [`- Performance security: ${c.contract.performanceSecurity.amount.toLocaleString()} · ${c.contract.performanceSecurity.issuer} · valid to ${c.contract.performanceSecurity.validUntil.slice(0, 10)}`]
+          ...(c.contract.security
+            ? [`- Performance security: ${c.contract.security.amount.toLocaleString()} · ${c.contract.security.issuer} · valid to ${c.contract.security.validUntil.slice(0, 10)}`]
             : ["- Performance security: none"]),
           ...(c.contract.insurance
             ? [`- Insurance: ${c.contract.insurance.policyNo} · ${c.contract.insurance.issuer} · valid to ${c.contract.insurance.validUntil.slice(0, 10)}`]
@@ -1021,6 +1053,8 @@ export function composeProcurementFile(input: {
           `- Payments: ${c.contract.payments.length} raised · ${c.contract.payments
             .map((p) => `${p.description} gross ${p.amount.toLocaleString()}${p.net !== undefined ? ` net ${p.net.toLocaleString()}` : ""} (${p.status ?? (p.certifiedAt ? "CERTIFIED" : "PENDING")})`)
             .join("; ") || "none"}`,
+          `- Performance security held: ${c.contract.performanceSecurity.length ? c.contract.performanceSecurity.map((s) => `${s.instrument.replace(/_/g, " ").toLowerCase()} ${s.currency ?? ""} ${s.amount.toLocaleString()}${s.verifiedBy ? ` (verified by ${s.verifiedBy})` : " (unverified)"}`).join("; ") : "none on record"}`,
+          `- Payments certified: ${c.contract.payments.length}`,
         ]
       : ["- No contract on record."]),
   ];

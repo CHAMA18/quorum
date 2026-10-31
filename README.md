@@ -1,5 +1,7 @@
 # Quorum — agentic tender review for public procurement
 
+[![M8ven Verified](https://m8ven.ai/badge/mcp/chama18-quorum-5uxqrc?variant=verified&v=af20baa4bb1f5d01b367572d01a455d7)](https://m8ven.ai/mcp/chama18-quorum-5uxqrc?s=readme)
+
 **The agent prepares the file. The committee awards the tender.**
 
 **Meta Global AI Developer Hackathon 2026** · Theme: **Build for Your World** · Track: **Indie developer** · Built by **CHAMA18** · Live HTTPS: [`quorum-edge.chungu424.workers.dev`](https://quorum-edge.chungu424.workers.dev) (Cloudflare Worker front door; custom domain pending) · AWS `af-south-1`, hosted on EC2 · Stack: Next.js 16 · Bun · LangGraph.js · MCP · **Meta models**

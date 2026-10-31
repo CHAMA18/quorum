@@ -134,8 +134,15 @@ export function canMutateSidecar(
     path.startsWith("/api/guards") ||
     path.startsWith("/api/portal-state") ||
     path.startsWith("/api/settings") ||
-    path.startsWith("/api/jurisdiction")
+    path.startsWith("/api/jurisdiction") ||
+    path.startsWith("/api/governance")
   ) {
+  /* Exceptions are requested by the desk; approval itself is a gate decision
+     for the accounting officer (the sidecar enforces the office). */
+  if (path.startsWith("/api/exceptions")) return can(role, "run_reviews");
+  /* Document register upkeep: OCR review confirmations and archiving. */
+  if (path.startsWith("/api/documents")) return can(role, "run_reviews");
+  if (path.startsWith("/api/guards") || path.startsWith("/api/portal-state") || path.startsWith("/api/settings") || path.startsWith("/api/jurisdiction")) {
     return can(role, "manage_rules");
   }
   if (path.startsWith("/api/deployment") || path.startsWith("/api/features")) {

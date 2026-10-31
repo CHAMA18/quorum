@@ -109,7 +109,8 @@ export type OversightAction =
   | "ORG_APPEAL_FILED"
   | "ORG_APPEAL_UPHELD"
   | "ORG_REINSTATED_ON_APPEAL"
-  | "INVITE_REVOKED";
+  | "INVITE_REVOKED"
+  | "ACCESS_REVIEW";
 
 export interface OversightEventRow {
   id: string;

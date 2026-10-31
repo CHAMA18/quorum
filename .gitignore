@@ -81,3 +81,4 @@ mini-services/quorum-mcp/data/ocp-refresh.json
 workers/*/.wrangler/
 workers/*/.dev.vars
 the-bid-box-challenge/
+backups/
