@@ -13,11 +13,10 @@
  * the same cores the MCP tools call — and irreversible steps always land
  * in the Approvals queue for a named human with the right office.
  *
- * The shell is a live instrument: the cycle rail derives the tender's real
- * stage from its record and lets the officer jump between phases, the
- * vitals strip reads the desk's numbers, and the tab bar carries context
- * badges. Both themes are first-class — every raw colour carries a dark
- * variant, tokens do the rest.
+ * The shell is a live instrument: the cycle rail summarizes the tender's
+ * recorded progress, the sidebar owns page navigation, and the vitals strip
+ * reads the desk's numbers. Both themes are first-class — every raw colour
+ * carries a dark variant, tokens do the rest.
  */
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
@@ -89,12 +88,12 @@ type OpeningDto = {
     derived: number;
     withdrawn: number;
     amended: number;
-    missingFromRegister: string[];
-    extraInRegister: string[];
+    missingFromRegister?: string[];
+    extraInRegister?: string[];
     matches: boolean;
     note: string;
   };
-  minutesMd: string;
+  minutesMd?: string;
   certifiedAt?: string;
   certifiedBy?: string;
   sha?: string;
@@ -229,7 +228,22 @@ type CycleDto = {
       certifiedAt?: string;
     }[];
   };
-  complaints: { id: string; complainant: string; subject: string; status: string; duringStandstill: boolean; receivedAt: string }[];
+  complaints: {
+    id: string;
+    complainant: string;
+    subject: string;
+    body: string;
+    status: "OPEN" | "ANSWERED" | "ESCALATED" | "CLOSED" | "WITHDRAWN";
+    duringStandstill: boolean;
+    receivedAt: string;
+    acknowledgedAt?: string;
+    response?: { md: string; at: string; by: string; gateId?: string };
+    escalationReason?: string;
+    escalatedAt?: string;
+    independentReview?: { reviewer: string; at: string; outcome: string; note: string };
+    closedAt?: string;
+    closedBy?: string;
+  }[];
   clarifications: { id: string; question: string; askedBy: string; answer?: string }[];
   addenda: { id: string; number: number; summary: string; extendsClosingTo?: string; closingExtensionRequired?: boolean }[];
 };
@@ -254,7 +268,7 @@ type BudgetLineDto = {
   committed: number;
   spent: number;
 };
-type MemberDto = { name: string; office?: string; status: string };
+type MemberDto = { name: string; office?: string; status: "PRESENT" | "EXCUSED" };
 type MethodDto = {
   id: string;
   name: string;
@@ -325,7 +339,24 @@ type NoticeAnalysisState = {
    tab reads real arrays instead of a maybe. */
 function normalizeCycle(raw: CycleDto): CycleDto {
   const opening = raw.opening
-    ? { ...raw.opening, rows: Array.isArray(raw.opening.rows) ? raw.opening.rows : [] }
+    ? {
+        ...raw.opening,
+        rows: Array.isArray(raw.opening.rows) ? raw.opening.rows : [],
+        minutesMd: typeof raw.opening.minutesMd === "string" ? raw.opening.minutesMd : "",
+        ...(raw.opening.reconciliation
+          ? {
+              reconciliation: {
+                ...raw.opening.reconciliation,
+                missingFromRegister: Array.isArray(raw.opening.reconciliation.missingFromRegister)
+                  ? raw.opening.reconciliation.missingFromRegister
+                  : [],
+                extraInRegister: Array.isArray(raw.opening.reconciliation.extraInRegister)
+                  ? raw.opening.reconciliation.extraInRegister
+                  : [],
+              },
+            }
+          : {}),
+      }
     : undefined;
   const matrix = raw.matrix
     ? {
@@ -442,6 +473,46 @@ const STAGE_INTROS: Record<CycleStageTab, string> = {
   standstill: "Publish the award notice, track the review window, and clear it only when conditions are met.",
   contract: "Manage execution, milestones, variations, and payments against the approved award.",
   closure: "Record final acceptance and preserve the evidence that closes this procurement cycle.",
+};
+
+const CYCLE_PAGE_EMPTY_GUIDES: Partial<
+  Record<CyclePageTab, { title: string; body: string; records: string[] }>
+> = {
+  opening: {
+    title: "Opening record",
+    body: "This page brings the closing-date record, bid receipt register, supplier-portal applications, reconciliation and certification evidence together.",
+    records: ["Closing date and recorded basis", "Bidder, receipt time and price read", "Portal reconciliation, minutes and certification"],
+  },
+  evaluation: {
+    title: "Evaluation file",
+    body: "Keep the committee’s declarations, published criteria, individual scoring sheets and consensus evidence with the tender.",
+    records: ["Present-member conflict declarations", "Criteria, weights and bid scores", "Evaluator sheets, divergences and consensus"],
+  },
+  award: {
+    title: "Award decision file",
+    body: "This page gathers the evidence an accountable officer needs to review the recommendation and record the award decision.",
+    records: ["Open findings and their dispositions", "Procurement method and supplier assurance", "Award report, debriefs and clarifications"],
+  },
+  standstill: {
+    title: "Award notice and review window",
+    body: "Track notice publication, the review-window dates and any complaint that affects whether the contract can proceed.",
+    records: ["Published notice and destination", "Window start, end and current status", "Complaints and contract holds"],
+  },
+  contract: {
+    title: "Contract administration file",
+    body: "Follow the signed contract from budget commitment and supplier acceptance through delivery, variations and verified payments.",
+    records: ["Budget line, contract pack and acceptance", "Security, insurance, milestones and variations", "Invoice, receipt and milestone-matched payments"],
+  },
+  closure: {
+    title: "Completion and close-out",
+    body: "Preserve the final acceptance record and the evidence that shows how the procurement contract was completed.",
+    records: ["Acceptance certificate and defects period", "Performance rating and completion date", "Award, standstill and contract close-out checks"],
+  },
+  complaints: {
+    title: "Complaint and review record",
+    body: "Keep the original grounds, response, escalation and independent-review outcome visible alongside the standstill context.",
+    records: ["Complainant, grounds and receipt timestamp", "Response and approval-gate record", "Escalation, independent review and outcome"],
+  },
 };
 
 /* ── formatting helpers ─────────────────────────────────────────────────────── */
@@ -2742,7 +2813,7 @@ export function CycleView({
           <Field label="CLOSING DATE">
             <input className={inputCls} type="date" value={d.closing ?? ""} onChange={(e) => set("closing", e.target.value)} />
           </Field>
-          <Btn onClick={setClosing} disabled={busy || !d.closing}>
+          <Btn onClick={setClosing} disabled={busy || !ref || !d.closing}>
             <Check className="h-3.5 w-3.5" aria-hidden="true" /> Set
           </Btn>
         </div>
@@ -2754,19 +2825,34 @@ export function CycleView({
       <Card title="Record the public bid opening" sub="LATE BIDS ARE REJECTED UNOPENED — THE REGISTER GOES TO THE PROCUREMENT UNIT'S GATE" workflow busy={busy} actionLabel="Record bid opening">
         {cycle?.opening?.certifiedAt ? (
           <div className="space-y-2">
-            <Chip tone="ok">REGISTER CERTIFIED {cycle.opening.certifiedBy ? `BY ${cycle.opening.certifiedBy.toUpperCase()}` : ""}</Chip>
-            <div className="overflow-hidden rounded-lg border border-ink-100">
-              <table className="w-full text-[12px]">
+            <div className="flex flex-wrap items-center gap-2">
+              <Chip tone="ok">REGISTER CERTIFIED{cycle.opening.certifiedBy ? ` · ${cycle.opening.certifiedBy}` : ""}</Chip>
+              {cycle.opening.certifiedAt ? <span className="font-code text-[8px] tracking-[0.1em] text-ink-400">{fmtDateTime(cycle.opening.certifiedAt)}</span> : null}
+              {cycle.opening.gateId ? <span className="font-code text-[8px] tracking-[0.1em] text-ink-400">GATE {cycle.opening.gateId}</span> : null}
+            </div>
+            <div className="overflow-x-auto rounded-lg border border-ink-100">
+              <table className="w-full min-w-[480px] text-[12px]">
+                <thead>
+                  <tr className="border-b border-ink-100 bg-ink-50/70 text-left font-code text-[8px] tracking-[0.12em] text-ink-500">
+                    <th className="px-2.5 py-2">BIDDER</th>
+                    <th className="px-2.5 py-2">RECEIVED</th>
+                    <th className="px-2.5 py-2">PRICE READ</th>
+                    <th className="px-2.5 py-2 text-right">DISPOSITION</th>
+                  </tr>
+                </thead>
                 <tbody>
-                  {cycle.opening.rows.map((r) => (
+                  {cycle.opening.rows.length ? cycle.opening.rows.map((r) => (
                     <tr key={r.id ?? r.bidder} className="border-b border-ink-100 last:border-0">
                       <td className="px-2.5 py-1.5 font-semibold text-ink-900">{r.bidder}</td>
                       <td className="px-2.5 py-1.5 text-ink-500">{fmtDateTime(r.receivedAt)}</td>
+                      <td className="px-2.5 py-1.5 tabular text-ink-700">{r.priceRead || "—"}</td>
                       <td className="px-2.5 py-1.5 text-right">
                         {r.late ? <span className="font-bold text-brand-700 dark:text-brand-300">LATE</span> : <span className="text-emerald-700 dark:text-emerald-300">admitted</span>}
                       </td>
                     </tr>
-                  ))}
+                  )) : (
+                    <tr><td colSpan={4} className="px-2.5 py-4 text-center text-[11px] text-ink-400">No bid rows are included in this opening record.</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -2786,37 +2872,71 @@ export function CycleView({
                 </span>
               </div>
             ) : null}
+            {cycle.opening.reconciliation &&
+            ((cycle.opening.reconciliation.missingFromRegister?.length ?? 0) > 0 || (cycle.opening.reconciliation.extraInRegister?.length ?? 0) > 0) ? (
+              <div className="grid gap-2 rounded-lg border border-amber-500/20 bg-amber-500/[0.04] p-3 sm:grid-cols-2">
+                {(cycle.opening.reconciliation.missingFromRegister?.length ?? 0) > 0 ? (
+                  <div>
+                    <p className="font-code text-[8px] font-bold tracking-[0.12em] text-amber-800 dark:text-amber-300">MISSING FROM REGISTER</p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-ink-700 dark:text-ink-200">{cycle.opening.reconciliation.missingFromRegister?.join(" · ")}</p>
+                  </div>
+                ) : null}
+                {(cycle.opening.reconciliation.extraInRegister?.length ?? 0) > 0 ? (
+                  <div>
+                    <p className="font-code text-[8px] font-bold tracking-[0.12em] text-amber-800 dark:text-amber-300">REGISTER ENTRIES WITHOUT A PORTAL RECEIPT</p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-ink-700 dark:text-ink-200">{cycle.opening.reconciliation.extraInRegister?.join(" · ")}</p>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            {cycle.opening.minutesMd ? (
+              <details className="rounded-lg border border-ink-100 bg-paper px-3 py-2">
+                <summary className="cursor-pointer font-code text-[8px] font-bold tracking-[0.12em] text-ink-500">READ THE OPENING MINUTES</summary>
+                <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap text-[11px] leading-relaxed text-ink-700">{cycle.opening.minutesMd}</pre>
+              </details>
+            ) : null}
             {cycle.opening.sha ? <p className="font-code text-[8px] tracking-[0.14em] text-ink-400">SHA-256 {cycle.opening.sha}</p> : null}
           </div>
         ) : (
           <div className="space-y-3">
-            {openRows.map((row, i) => (
-              <div key={i} className="grid grid-cols-[1.4fr_1.2fr_1fr] gap-2">
-                <input
-                  className={inputCls}
-                  placeholder="Bidder"
-                  value={row.bidder}
-                  onChange={(e) => setOpenRows((p) => p.map((r, j) => (j === i ? { ...r, bidder: e.target.value } : r)))}
-                />
-                <input
-                  className={inputCls}
-                  type="datetime-local"
-                  value={row.receivedAt}
-                  onChange={(e) => setOpenRows((p) => p.map((r, j) => (j === i ? { ...r, receivedAt: e.target.value } : r)))}
-                />
-                <input
-                  className={inputCls}
-                  placeholder="Price read"
-                  value={row.priceRead}
-                  onChange={(e) => setOpenRows((p) => p.map((r, j) => (j === i ? { ...r, priceRead: e.target.value } : r)))}
-                />
+            <p className="text-[11px] leading-relaxed text-ink-500">Enter each bid as it was received. The submitted register is reconciled with portal receipts and routed for certification.</p>
+            <div className="overflow-x-auto">
+              <div className="min-w-[560px] space-y-2">
+                <div className="grid grid-cols-[1.4fr_1.2fr_1fr] gap-2 px-1 font-code text-[8px] font-bold tracking-[0.12em] text-ink-400">
+                  <span>BIDDER</span><span>RECEIVED AT</span><span>PRICE READ</span>
+                </div>
+                {openRows.map((row, i) => (
+                  <div key={i} className="grid grid-cols-[1.4fr_1.2fr_1fr] gap-2">
+                    <input
+                      className={inputCls}
+                      aria-label={`Bidder, row ${i + 1}`}
+                      placeholder="Bidder"
+                      value={row.bidder}
+                      onChange={(e) => setOpenRows((p) => p.map((r, j) => (j === i ? { ...r, bidder: e.target.value } : r)))}
+                    />
+                    <input
+                      className={inputCls}
+                      type="datetime-local"
+                      aria-label={`Receipt date and time, row ${i + 1}`}
+                      value={row.receivedAt}
+                      onChange={(e) => setOpenRows((p) => p.map((r, j) => (j === i ? { ...r, receivedAt: e.target.value } : r)))}
+                    />
+                    <input
+                      className={inputCls}
+                      aria-label={`Price read at opening, row ${i + 1}`}
+                      placeholder="Price read"
+                      value={row.priceRead}
+                      onChange={(e) => setOpenRows((p) => p.map((r, j) => (j === i ? { ...r, priceRead: e.target.value } : r)))}
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
             <div className="flex items-center gap-2">
               <Btn variant="ghost" onClick={() => setOpenRows((p) => [...p, { bidder: "", receivedAt: "", priceRead: "" }])}>
                 <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Row
               </Btn>
-              <Btn onClick={recordOpening} disabled={busy || !ref}>
+              <Btn onClick={recordOpening} disabled={busy || !ref || !openRows.some((row) => row.bidder.trim() && row.receivedAt)}>
                 <Stamp className="h-3.5 w-3.5" aria-hidden="true" /> Record opening
               </Btn>
             </div>
@@ -2845,24 +2965,34 @@ export function CycleView({
           return (
             <div className="space-y-2">
               <Chip tone="ok">{apps.length} ELECTRONIC {apps.length === 1 ? "APPLICATION" : "APPLICATIONS"} ON RECORD</Chip>
-              <div className="overflow-hidden rounded-lg border border-ink-100">
-                <table className="w-full text-[12px]">
+              <div className="overflow-x-auto rounded-lg border border-ink-100">
+                <table className="w-full min-w-[620px] text-[12px]">
+                  <thead>
+                    <tr className="border-b border-ink-100 bg-ink-50/70 text-left font-code text-[8px] tracking-[0.12em] text-ink-500">
+                      <th className="px-2.5 py-2">ORGANIZATION</th>
+                      <th className="px-2.5 py-2">OFFER</th>
+                      <th className="px-2.5 py-2">RECEIVED</th>
+                      <th className="px-2.5 py-2">RECEIPT</th>
+                      <th className="px-2.5 py-2">STATUS</th>
+                    </tr>
+                  </thead>
                   <tbody>
                     {apps.map((a) => (
                       <tr key={a.id} className="border-b border-ink-100 last:border-0">
                         <td className="px-2.5 py-1.5 font-semibold text-ink-900">{a.orgName}</td>
                         <td className="px-2.5 py-1.5 text-ink-500">
                           {a.sealed ? (
-                            <span className="font-code text-[9px] tracking-[0.1em] text-brand-700 dark:text-brand-300">SEALED</span>
+                            <span className="font-code text-[9px] font-bold tracking-[0.1em] text-brand-700 dark:text-brand-300">SEALED</span>
                           ) : (
                             <>
                               {a.currency ? `${a.currency} ` : ""}
-                              {(a.amount ?? 0).toLocaleString()}
+                              {typeof a.amount === "number" && Number.isFinite(a.amount) ? fmtMoney(a.amount) : "—"}
                             </>
                           )}
                         </td>
                         <td className="px-2.5 py-1.5 text-ink-500">{fmtDateTime(a.receivedAt)}</td>
-                        <td className="px-2.5 py-1.5 text-right font-code text-[9px] tracking-[0.1em] text-ink-400">{a.id}</td>
+                        <td className="px-2.5 py-1.5 font-code text-[8px] tracking-[0.06em] text-ink-400">{a.receiptId ?? a.id}</td>
+                        <td className="px-2.5 py-1.5 font-code text-[8px] font-bold tracking-[0.08em] text-ink-500">{a.status.replace(/_/g, " ")}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -2920,7 +3050,8 @@ export function CycleView({
     });
   };
 
-  const assignedEvaluators = members.filter((m) => m.office === "EVALUATION_COMMITTEE");
+  const presentMembers = members.filter((m) => m.status === "PRESENT");
+  const assignedEvaluators = presentMembers.filter((m) => m.office === "EVALUATION_COMMITTEE");
   const sheetEvaluator = d.sheetEvaluator || assignedEvaluators[0]?.name || "";
 
   const submitSheet = () => {
@@ -3027,7 +3158,7 @@ export function CycleView({
 
   /* Same rule the sidecar enforces on signing: every PRESENT member must have a COI record. */
   const outstandingCoi = cycle
-    ? members.filter((m) => !cycle.coi.some((x) => x.member.toLowerCase() === m.name.toLowerCase()))
+    ? presentMembers.filter((m) => !cycle.coi.some((x) => x.member.toLowerCase() === m.name.toLowerCase()))
     : [];
   const sheets = cycle?.matrix?.sheets ?? [];
   const divergences = cycle?.matrix ? sheetDivergences(cycle.matrix.sheets ?? []) : [];
@@ -3035,15 +3166,21 @@ export function CycleView({
   const EvaluationTab = cycle ? (
     <div className="grid gap-4">
       <Card title="Conflict-of-interest declarations" sub="EVERY PRESENT MEMBER DECLARES BEFORE THE MATRIX IS CERTIFIED — THE GATE ENFORCES IT" workflow busy={busy} actionLabel="Manage declarations">
-        <ul className="grid gap-2 sm:grid-cols-2">
-          {members.map((m) => {
+        {presentMembers.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-ink-200 px-4 py-6 text-center">
+            <p className="text-[12px] font-semibold text-ink-700">No present committee members on record</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-ink-500">Add members or update attendance in Committee. Declarations are collected from the members recorded as present.</p>
+          </div>
+        ) : (
+          <ul className="grid gap-2 sm:grid-cols-2">
+          {presentMembers.map((m) => {
             const decl = cycle.coi.find((x) => x.member.toLowerCase() === m.name.toLowerCase());
             return (
               <li key={m.name} className="rounded-xl border border-ink-100 bg-paper px-3 py-2.5">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <p className="truncate text-[13px] font-semibold text-ink-900">{m.name}</p>
-                    <p className="font-code text-[8px] tracking-[0.14em] text-ink-400">{m.office ? OFFICE_LABELS[m.office] : "OFFICE NOT SET"}</p>
+                    <p className="font-code text-[8px] tracking-[0.14em] text-ink-400">PRESENT · {m.office ? OFFICE_LABELS[m.office] ?? m.office.replace(/_/g, " ") : "OFFICE NOT SET"}</p>
                   </div>
                   {decl ? (
                     decl.declaration === "NO_CONFLICT" ? <Chip tone="ok">NO CONFLICT</Chip> : <Chip tone="warn">CONFLICT DECLARED</Chip>
@@ -3091,7 +3228,8 @@ export function CycleView({
               </li>
             );
           })}
-        </ul>
+          </ul>
+        )}
       </Card>
 
       {cycle.matrix ? (
@@ -4324,19 +4462,48 @@ export function CycleView({
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
                     {c.duringStandstill ? <Chip tone="brand">STANDSTILL</Chip> : null}
-                    {c.status === "ANSWERED" ? (
-                      <Chip tone="ok">ANSWERED</Chip>
-                    ) : c.status === "CLOSED" ? (
-                      <Chip tone="muted">CLOSED</Chip>
-                    ) : c.status === "ESCALATED" ? (
-                      <Chip tone="warn">ESCALATED</Chip>
-                    ) : c.status === "WITHDRAWN" ? (
-                      <Chip tone="muted">WITHDRAWN</Chip>
-                    ) : (
-                      <Chip tone="warn">OPEN · 14 WD</Chip>
-                    )}
+                    <Chip tone={c.status === "ANSWERED" ? "ok" : c.status === "OPEN" || c.status === "ESCALATED" ? "warn" : "muted"}>
+                      {c.status.replace(/_/g, " ")}
+                    </Chip>
                   </div>
                 </div>
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-code text-[8px] tracking-[0.08em] text-ink-400">
+                  <span>RECEIVED {fmtDateTime(c.receivedAt)}</span>
+                  {c.acknowledgedAt ? <span>ACKNOWLEDGED {fmtDateTime(c.acknowledgedAt)}</span> : null}
+                  <span className="break-all">REF {c.id}</span>
+                </div>
+                <div className="mt-3 rounded-lg border border-ink-100 bg-paper/75 px-3 py-2.5 dark:border-white/[0.08] dark:bg-white/[0.02]">
+                  <p className="font-code text-[8px] font-bold tracking-[0.12em] text-ink-400">GROUNDS AS FILED</p>
+                  <p className="mt-1.5 whitespace-pre-wrap break-words text-[11.5px] leading-relaxed text-ink-700 dark:text-ink-200">{c.body || "No grounds were included in the record."}</p>
+                </div>
+                {c.response ? (
+                  <div className="mt-2 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.035] px-3 py-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5">
+                      <p className="font-code text-[8px] font-bold tracking-[0.12em] text-emerald-800 dark:text-emerald-300">ISSUED RESPONSE</p>
+                      <span className="font-code text-[8px] tracking-[0.06em] text-ink-400">{c.response.by} · {fmtDateTime(c.response.at)}</span>
+                    </div>
+                    <p className="mt-1.5 whitespace-pre-wrap break-words text-[11.5px] leading-relaxed text-ink-700 dark:text-ink-200">{c.response.md}</p>
+                    {c.response.gateId ? <p className="mt-1.5 font-code text-[8px] tracking-[0.08em] text-ink-400">APPROVAL GATE · {c.response.gateId}</p> : null}
+                  </div>
+                ) : null}
+                {c.escalationReason ? (
+                  <div className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/[0.035] px-3 py-2.5">
+                    <p className="font-code text-[8px] font-bold tracking-[0.12em] text-amber-800 dark:text-amber-300">INDEPENDENT REVIEW REQUESTED{c.escalatedAt ? ` · ${fmtDateTime(c.escalatedAt)}` : ""}</p>
+                    <p className="mt-1.5 whitespace-pre-wrap break-words text-[11.5px] leading-relaxed text-ink-700 dark:text-ink-200">{c.escalationReason}</p>
+                  </div>
+                ) : null}
+                {c.independentReview ? (
+                  <div className="mt-2 rounded-lg border border-ink-100 px-3 py-2.5 dark:border-white/[0.08]">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5">
+                      <p className="font-code text-[8px] font-bold tracking-[0.12em] text-ink-500">INDEPENDENT REVIEW · {c.independentReview.outcome}</p>
+                      <span className="font-code text-[8px] tracking-[0.06em] text-ink-400">{c.independentReview.reviewer} · {fmtDateTime(c.independentReview.at)}</span>
+                    </div>
+                    <p className="mt-1.5 whitespace-pre-wrap break-words text-[11.5px] leading-relaxed text-ink-700 dark:text-ink-200">{c.independentReview.note}</p>
+                  </div>
+                ) : null}
+                {c.closedAt || c.closedBy ? (
+                  <p className="mt-2 font-code text-[8px] tracking-[0.08em] text-ink-400">CLOSED{c.closedBy ? ` BY ${c.closedBy}` : ""}{c.closedAt ? ` · ${fmtDateTime(c.closedAt)}` : ""}</p>
+                ) : null}
                 {c.status === "OPEN" ? (
                   <div className="mt-2 space-y-1.5">
                     <div className="flex gap-1.5">
@@ -4644,6 +4811,7 @@ export function CycleView({
   const activeStageRecord = activeStage && cycle ? deriveStages(cycle).stages[stageIndex] : null;
   const previousStage = stageIndex > 0 ? STAGE_TABS[stageIndex - 1] : null;
   const nextStage = stageIndex >= 0 && stageIndex < STAGE_TABS.length - 1 ? STAGE_TABS[stageIndex + 1] : null;
+  const emptyGuide = CYCLE_PAGE_EMPTY_GUIDES[tab];
   return (
     <section id="mc-cycle" aria-labelledby="mc-cycle-h" className="scroll-mt-24">
       <motion.div
@@ -4749,51 +4917,56 @@ export function CycleView({
               {tab === "closure" ? ClosureTab : null}
               {tab === "complaints" ? ComplaintsTab : null}
               {tab === "analytics" ? AnalyticsTab : null}
-              {tab !== "solicitation" && tab !== "deadlines" && !cycle ? (
-                /* No cycle record — the one empty state that asks for a hand.
-                   The action is real: it opens the pipeline tab where the pack
-                   is actually staged. No decorative buttons. */
-                <div className="panel flex flex-col items-center rounded-[12px] px-6 py-12 text-center">
-                  <span className="grid h-12 w-12 place-items-center rounded-full border border-dashed border-ink-300 text-ink-400 dark:border-white/[0.18]">
-                    <Workflow className="h-5 w-5" aria-hidden="true" />
-                  </span>
-                  <p className="mt-4 text-[14px] font-semibold text-ink-800">
-                    {ref ? "No tender cycle has been initiated" : "No tender selected"}
-                  </p>
-                  <p className="mt-2 max-w-[48ch] text-[12.5px] leading-relaxed text-ink-500">
-                    {ref
-                      ? "This dossier has no cycle record — the pack has not been staged or advertised yet. Plan it in the pipeline below; from the first entry, opening, evaluation, award and contract each keep their own file."
-                      : "Pick a tender from the working dossier above, or plan a new pack in the pipeline. Its stage, vitals and file appear here the moment the record exists."}
-                  </p>
-                  <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        selectTab("solicitation");
-                      }}
-                      className="focus-brand inline-flex h-10 items-center gap-2 rounded-lg bg-brand-600 px-4 text-[12.5px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_22px_-14px_rgba(217,38,22,0.9)] transition-[background-color,transform] duration-150 hover:bg-brand-500 active:scale-[0.985]"
-                    >
-                      <Plus className="h-4 w-4" aria-hidden="true" />
-                      {ref ? "Stage the tender pack" : "Plan a tender in the pipeline"}
-                    </button>
-                    {tenders.length > 0 ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const next = tenders.find((t) => cycles.some((c) => c.tenderId === t.ref))?.ref ?? tenders[0]?.ref;
-                          if (next) setRef(next);
-                        }}
-                        className="focus-brand inline-flex h-10 items-center gap-2 rounded-lg border border-ink-200/90 bg-[#fffdfb] px-4 text-[12.5px] font-semibold text-ink-700 transition-colors hover:border-ink-400 hover:text-ink-950 dark:border-white/[0.12] dark:bg-white/[0.04] dark:text-ink-300 dark:hover:border-white/25 dark:hover:text-white"
-                      >
-                        <Search className="h-3.5 w-3.5" aria-hidden="true" />
-                        Show a tender with a record
-                      </button>
-                    ) : null}
+              {tab !== "solicitation" && tab !== "deadlines" && !cycle && emptyGuide ? (
+                <section className="panel overflow-hidden rounded-[12px]" aria-labelledby="cycle-empty-guide-title">
+                  <div className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_minmax(250px,0.72fr)] lg:gap-8">
+                    <div>
+                      <p className="font-code text-[8px] font-bold tracking-[0.16em] text-brand-600 dark:text-brand-300">
+                        {ref ? `NO CYCLE RECORD · ${ref}` : "SELECT A TENDER TO VIEW ITS RECORD"}
+                      </p>
+                      <h3 id="cycle-empty-guide-title" className="mt-2 font-display text-[19px] font-bold tracking-[-0.025em] text-ink-950 dark:text-white">
+                        {emptyGuide.title}
+                      </h3>
+                      <p className="mt-2 max-w-[58ch] text-[12px] leading-relaxed text-ink-600 dark:text-ink-300">{emptyGuide.body}</p>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => selectTab("solicitation")}
+                          className="focus-brand inline-flex h-9 items-center gap-2 rounded-lg bg-brand-600 px-3.5 text-[11.5px] font-semibold text-white transition-colors hover:bg-brand-500"
+                        >
+                          <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                          {ref ? "Open Solicitation" : "Plan a tender"}
+                        </button>
+                        {tenders.length > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = tenders.find((t) => cycles.some((c) => c.tenderId === t.ref))?.ref ?? tenders[0]?.ref;
+                              if (next) setRef(next);
+                            }}
+                            className="focus-brand inline-flex h-9 items-center gap-2 rounded-lg border border-ink-200 bg-paper px-3.5 text-[11.5px] font-semibold text-ink-700 transition-colors hover:border-ink-400 dark:border-white/[0.12] dark:bg-white/[0.04] dark:text-ink-300 dark:hover:border-white/25 dark:hover:text-white"
+                          >
+                            <Search className="h-3.5 w-3.5" aria-hidden="true" />
+                            View a recorded tender
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-ink-100 bg-paper/80 p-3.5 dark:border-white/[0.08] dark:bg-white/[0.025]">
+                      <p className="font-code text-[8px] font-bold tracking-[0.14em] text-ink-400">THIS PAGE BRINGS TOGETHER</p>
+                      <ul className="mt-2.5 space-y-2">
+                        {emptyGuide.records.map((record, index) => (
+                          <li key={record} className="flex items-start gap-2.5 text-[11px] leading-relaxed text-ink-700 dark:text-ink-300">
+                            <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border border-ink-200 font-code text-[8px] text-ink-500 dark:border-white/[0.12] dark:text-ink-400">
+                              {String(index + 1).padStart(2, "0")}
+                            </span>
+                            {record}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
-                  <p className="mt-4 font-code text-[8px] font-bold tracking-[0.16em] text-ink-400">
-                    7 STAGES · EVERY IRREVERSIBLE STEP STOPS AT A NAMED HUMAN
-                  </p>
-                </div>
+                </section>
               ) : null}
               {activeStage ? (
                 <nav className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-ink-200/70 pt-4 dark:border-white/[0.08]" aria-label="Stage page navigation">
