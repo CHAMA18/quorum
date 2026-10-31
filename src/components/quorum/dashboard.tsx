@@ -2152,7 +2152,7 @@ function SidebarContent({
                     {!item.href && item.subpages?.length ? (
                       <ul
                         id="mc-cycle-subpages"
-                        className={cn("ml-[18px] mt-1 space-y-0.5 border-l border-white/[0.09] pl-2.5", !isActive && "hidden")}
+                        className={cn("ml-[18px] mt-1.5 space-y-1 border-l border-white/[0.14] pl-2.5", !isActive && "hidden")}
                         aria-label="Tender Cycle pages"
                       >
                         {item.subpages.map((page, pageIndex) => {
@@ -2164,8 +2164,9 @@ function SidebarContent({
                           return (
                             <li key={page.id}>
                               {groupStartsHere ? (
-                                <p className="px-2 pb-1 pt-2 font-code text-[7px] font-bold tracking-[0.16em] text-ink-600">
-                                  {page.group}
+                                <p className="flex items-center gap-2 px-2 pb-1.5 pt-3 font-code text-[8px] font-bold tracking-[0.18em] text-ink-400">
+                                  <span>{page.group}</span>
+                                  <span className="h-px flex-1 bg-white/[0.1]" aria-hidden="true" />
                                 </p>
                               ) : null}
                               <button
@@ -2173,23 +2174,29 @@ function SidebarContent({
                                 onClick={() => onNavigateCyclePage(page.id)}
                                 aria-current={pageActive ? "page" : undefined}
                                 className={cn(
-                                  "focus-brand group flex min-h-8 w-full items-center gap-2 rounded-md px-2 text-left transition-colors duration-150",
+                                  "focus-brand group relative flex min-h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left transition-[background-color,color,box-shadow] duration-200",
                                   pageActive
-                                    ? "bg-brand-500/[0.12] text-white"
-                                    : "text-ink-500 hover:bg-white/[0.04] hover:text-ink-200",
+                                    ? "bg-gradient-to-r from-brand-500/[0.18] to-brand-500/[0.07] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] ring-1 ring-inset ring-brand-400/20"
+                                    : "text-ink-300 hover:bg-white/[0.055] hover:text-white",
                                 )}
                               >
+                                {pageActive ? (
+                                  <span
+                                    className="absolute -left-[11px] top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-brand-400 shadow-[0_0_10px_rgba(240,107,92,0.65)]"
+                                    aria-hidden="true"
+                                  />
+                                ) : null}
                                 <span
                                   className={cn(
-                                    "w-4 shrink-0 font-code text-[7.5px] font-bold tabular",
-                                    pageActive ? "text-brand-400" : "text-ink-600 group-hover:text-ink-400",
+                                    "w-5 shrink-0 font-code text-[8.5px] font-bold tabular",
+                                    pageActive ? "text-brand-300" : "text-ink-400 group-hover:text-ink-200",
                                   )}
                                   aria-hidden="true"
                                 >
                                   {String(pageOrdinal).padStart(2, "0")}
                                 </span>
-                                <span className="truncate text-[11px] font-medium">{page.label}</span>
-                                {pageActive ? <span className="ml-auto h-1 w-1 shrink-0 rounded-full bg-brand-400" aria-hidden="true" /> : null}
+                                <span className="truncate text-[12px] font-medium tracking-[-0.01em]">{page.label}</span>
+                                {pageActive ? <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-brand-400 shadow-[0_0_8px_rgba(240,107,92,0.6)]" aria-hidden="true" /> : null}
                               </button>
                             </li>
                           );
