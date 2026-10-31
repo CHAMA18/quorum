@@ -36,7 +36,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Image from "next/image";
-import { Ban, BrainCircuit, Check, CircleHelp, Mic, MessageSquare, Send, ShieldAlert, Sparkles, Square, Volume2, VolumeX, X } from "lucide-react";
+import { Ban, Check, CircleHelp, Mic, MessageSquare, Send, ShieldAlert, Sparkles, Square, Volume2, VolumeX, X } from "lucide-react";
 import { requestStepUp, StepUpHost } from "@/components/quorum/step-up";
 import type { Proposal } from "@/lib/muse-actions";
 import { cn } from "@/lib/utils";
@@ -50,7 +50,6 @@ type Turn = {
   text: string;
   heard?: string;
   tools?: string[];
-  model?: string;
   proposal?: Proposal;
   proposalState?: ProposalState;
 };
@@ -63,9 +62,7 @@ const SUGGESTIONS = [
 ];
 
 const VOICE_KEY = "quorum.muse.voice";
-const MODEL_KEY = "quorum.barry.model";
-type ModelPreference = "automatic" | "meta";
-type AssistantSection = "chat" | "model" | "support";
+type AssistantSection = "chat" | "support";
 
 /** Cloudflare Workers AI speakers; "browser" skips the edge and uses the device. */
 const VOICE_PRESETS = [
@@ -350,9 +347,6 @@ export function MuseAssistant({ name }: { name?: string }) {
   const reduce = useReducedMotion();
   const [open, setOpen] = useState(false);
   const [section, setSection] = useState<AssistantSection>("chat");
-  const [modelPreference, setModelPreference] = useState<ModelPreference>("automatic");
-  const [metaModel, setMetaModel] = useState<string | null>(null);
-  const [metaAvailable, setMetaAvailable] = useState(false);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -392,16 +386,6 @@ export function MuseAssistant({ name }: { name?: string }) {
   useEffect(() => {
     if (open) {
       window.setTimeout(() => inputRef.current?.focus(), 220);
-      fetch("/api/muse/chat", { cache: "no-store" })
-        .then((response) => response.json())
-        .then((data: { metaAvailable?: boolean; metaModel?: string | null }) => {
-          setMetaAvailable(data.metaAvailable === true);
-          setMetaModel(typeof data.metaModel === "string" ? data.metaModel : null);
-        })
-        .catch(() => {
-          setMetaAvailable(false);
-          setMetaModel(null);
-        });
       /* One probe decides the mic's path before the officer presses it —
          the answer never names a key or a setup step, it only picks ears. */
       let alive = true;
@@ -453,14 +437,12 @@ export function MuseAssistant({ name }: { name?: string }) {
           body: JSON.stringify({
             message: text,
             history,
-            modelPreference,
             ...(name ? { who: name } : {}),
           }),
         });
         const data = (await res.json().catch(() => ({}))) as {
           reply?: string;
           toolsRead?: string[];
-          model?: string;
           proposal?: Proposal;
           error?: string;
         };
@@ -472,7 +454,6 @@ export function MuseAssistant({ name }: { name?: string }) {
             role: "assistant",
             text: reply,
             ...(data.toolsRead && data.toolsRead.length ? { tools: data.toolsRead } : {}),
-            ...(data.model ? { model: data.model } : {}),
             ...(data.proposal ? { proposal: data.proposal, proposalState: "pending" as const } : {}),
           },
         ]);
@@ -485,7 +466,7 @@ export function MuseAssistant({ name }: { name?: string }) {
         setBusy(false);
       }
     },
-    [busy, modelPreference, name, speak, turns]
+    [busy, name, speak, turns]
   );
 
   /* ── Acting: consent first, always ───────────────────────────────────── */
@@ -796,10 +777,6 @@ export function MuseAssistant({ name }: { name?: string }) {
           if (open) {
             shut();
           } else {
-            const savedModel = window.localStorage.getItem(MODEL_KEY);
-            if (savedModel === "automatic" || savedModel === "meta") {
-              setModelPreference(savedModel);
-            }
             setSection("chat");
             prime();
             setOpen(true);
@@ -884,10 +861,9 @@ export function MuseAssistant({ name }: { name?: string }) {
               </div>
             </header>
 
-            <nav className="relative grid grid-cols-3 gap-1 border-b border-white/10 px-3 py-2" aria-label="Barry assistant sections">
+            <nav className="relative grid grid-cols-2 gap-1 border-b border-white/10 px-3 py-2" aria-label="Barry assistant sections">
               {([
                 { id: "chat", label: "Chat", Icon: MessageSquare },
-                { id: "model", label: "Model", Icon: BrainCircuit },
                 { id: "support", label: "Support", Icon: CircleHelp },
               ] as const).map(({ id, label, Icon }) => (
                 <button
@@ -1033,22 +1009,17 @@ export function MuseAssistant({ name }: { name?: string }) {
                       </div>
                     )}
 
-                    {(t.tools?.length || t.model) && (
+                    {t.tools?.length ? (
                       <p className="mt-2 flex flex-wrap items-center gap-1 font-code text-[7px] tracking-[0.14em] text-ink-400">
-                        {t.tools && t.tools.length > 0 && <>DESK:
+                        <>DESK:
                           {t.tools.map((tool, i) => (
                             <span key={`${tool}-${i}`} className="rounded bg-white/[0.07] px-1.5 py-0.5 text-ink-300">
                               {tool.toUpperCase()}
                             </span>
                           ))}
-                        </>}
-                        {t.model && (
-                          <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-brand-300">
-                            MODEL · {t.model.toUpperCase()}
-                          </span>
-                        )}
+                        </>
                       </p>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               ))}
@@ -1076,61 +1047,6 @@ export function MuseAssistant({ name }: { name?: string }) {
                 </p>
               )}
                 </div>
-              ) : null}
-              {section === "model" ? (
-                <section id="barry-panel-model" role="tabpanel" aria-labelledby="barry-tab-model" className="space-y-4">
-                  <div>
-                    <p className="font-code text-[8px] font-bold tracking-[0.18em] text-brand-300">MODEL PREFERENCES</p>
-                    <h3 className="mt-1 text-[17px] font-bold text-white">Choose Barry&apos;s model</h3>
-                    <p className="mt-1 text-[11.5px] leading-relaxed text-ink-300">
-                      This choice applies to your next message and is saved on this device.
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    {([
-                      {
-                        id: "automatic",
-                        title: "Automatic · recommended",
-                        detail: `Use the workspace default${metaAvailable ? ` (${metaModel ?? "Meta model"})` : " and fall back when needed"}.`,
-                        disabled: false,
-                      },
-                      {
-                        id: "meta",
-                        title: "Meta Muse",
-                        detail: metaAvailable
-                          ? `Use ${metaModel ?? "the configured Meta model"} for chat.`
-                          : "Unavailable: Meta access is not configured for this workspace.",
-                        disabled: !metaAvailable,
-                      },
-                    ] as const).map((option) => (
-                      <button
-                        key={option.id}
-                        type="button"
-                        disabled={option.disabled}
-                        aria-pressed={modelPreference === option.id}
-                        onClick={() => {
-                          setModelPreference(option.id);
-                          window.localStorage.setItem(MODEL_KEY, option.id);
-                        }}
-                        className={cn(
-                          "w-full rounded-xl border px-3.5 py-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-45",
-                          modelPreference === option.id
-                            ? "border-brand-400/70 bg-brand-500/10"
-                            : "border-white/10 bg-white/[0.025] hover:border-white/25",
-                        )}
-                      >
-                        <span className="flex items-center justify-between gap-2">
-                          <span className="text-[12px] font-semibold text-ink-100">{option.title}</span>
-                          {modelPreference === option.id ? <Check className="h-4 w-4 text-brand-300" aria-hidden="true" /> : null}
-                        </span>
-                        <span className="mt-1 block text-[10.5px] leading-relaxed text-ink-400">{option.detail}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <p className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[10px] leading-relaxed text-ink-400">
-                    Barry shows the model that actually answered beneath each reply. Provider availability can depend on workspace configuration.
-                  </p>
-                </section>
               ) : null}
               {section === "support" ? (
                 <section id="barry-panel-support" role="tabpanel" aria-labelledby="barry-tab-support" className="space-y-4">
