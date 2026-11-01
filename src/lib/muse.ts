@@ -96,6 +96,8 @@ export interface MuseGenerationOptions {
   reasoningEffort?: "minimal" | "low" | "medium" | "high";
   maxOutputTokens?: number;
   safetyIdentifier?: string;
+  /** Use stateless Chat Completions for simple single-turn calls. */
+  useChatCompletions?: boolean;
 }
 
 export function museUsesResponses(cfg: MuseConfig): boolean {
@@ -127,7 +129,7 @@ export async function museChat(
   continuationInput?: unknown[],
   generation: MuseGenerationOptions = {},
 ): Promise<MuseChatReply> {
-  if (museUsesResponses(cfg)) {
+  if (museUsesResponses(cfg) && !generation.useChatCompletions) {
     const res = await fetch(`${cfg.baseUrl}/responses`, {
       method: "POST",
       headers: { authorization: `Bearer ${cfg.apiKey}`, "content-type": "application/json" },
@@ -194,9 +196,14 @@ export async function museChat(
     body: JSON.stringify({
       model: cfg.model,
       messages,
-      tools: tools.map((tool) => ({ type: "function", function: { name: tool.name, description: tool.description, parameters: tool.parameters } })),
-      tool_choice: tools.length ? "auto" : "none",
-      temperature: 0.2,
+      ...(tools.length ? {
+        tools: tools.map((tool) => ({ type: "function", function: { name: tool.name, description: tool.description, parameters: tool.parameters } })),
+        tool_choice: "auto",
+      } : {}),
+      ...(generation.maxOutputTokens ? { max_completion_tokens: generation.maxOutputTokens } : {}),
+      ...(generation.reasoningEffort ? { reasoning_effort: generation.reasoningEffort } : {}),
+      ...(generation.safetyIdentifier ? { safety_identifier: generation.safetyIdentifier } : {}),
+      store: false,
       ...(generation.responseSchema ? { response_format: { type: "json_schema", json_schema: { name: generation.responseSchema.name, schema: generation.responseSchema.schema, strict: true } } } : {}),
     }),
     cache: "no-store",

@@ -1,10 +1,12 @@
 # Quorum edge worker
 
-`quorum-edge` is the Cloudflare Worker in front of the Quorum EC2 origin.
+`quorum-edge` is the Cloudflare Worker in front of the Quorum app origin. The
+current production origin is `https://quorum-api-tgw2.onrender.com`; Wrangler's
+`ORIGIN_URL` must match the live Render service before deploying the Worker.
 
 ## What it does
 
-- **HTTPS front door** for the EC2 app. Every request is proxied to
+- **HTTPS front door** for the Quorum app. Every request is proxied to
   `ORIGIN_URL`; cookies, redirects, static assets and streaming bodies are
   preserved. The public landing is served separately at
   `quorum-solutions.com`; this Worker is the app/R2/TTS edge.
@@ -24,10 +26,11 @@
   `x-quorum-edge-key`; `/api/muse/speak` calls it server-to-server.
 - **Health** at `/__edge/health`.
 
-The Bun sidecar, JSON/Postgres state and filesystem MCP server stay on EC2.
-Workers are not a replacement for that persistent process. The Worker always
-proxies whatever build is running on EC2; redeploy the web/sidecar to pick up
-source changes (see [`docs/EC2_REDEPLOY.md`](../../docs/EC2_REDEPLOY.md)).
+The Bun sidecar, JSON/Postgres state and filesystem MCP server remain separate
+from this edge Worker. The Worker is a proxy; it does not host the Next.js app
+or make a missing app route available. Deploy web app source changes to the
+origin in `ORIGIN_URL`, and deploy sidecar changes through the sidecar's own
+deployment process.
 
 ## Live
 
@@ -37,8 +40,9 @@ https://quorum-edge.chungu424.workers.dev                 # app proxy — depend
 ```
 
 The root URL is only a working demo when `ORIGIN_URL` points at a live origin.
-`wrangler.toml` targets the EC2 origin in `af-south-1`; redeploy the Worker
-after changing it (`bash scripts/deploy-edge.sh`).
+`wrangler.toml` targets the Render app origin; redeploy the Worker after
+changing it (`bash scripts/deploy-edge.sh`). The Worker only proxies API paths:
+the Next.js app route must also be present in the Render deployment.
 
 ## Test
 

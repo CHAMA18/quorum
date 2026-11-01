@@ -42,6 +42,7 @@ import {
   Plus,
   Scale,
   Search,
+  Sparkles,
   Stamp,
   Upload,
   Workflow,
@@ -49,12 +50,100 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StoredDocsBrowser } from "@/components/quorum/stored-docs-browser";
+import { Switch } from "@/components/ui/switch";
 
 const SVC = "?XTransformPort=3031";
 const EASE = [0.22, 1, 0.36, 1] as const;
 
 const OFFICES = ["PROCUREMENT_UNIT", "EVALUATION_COMMITTEE", "ACCOUNTING_OFFICER", "OVERSIGHT"] as const;
 const CURRENCIES = ["ZMW", "KES", "USD", "RWF"] as const;
+const MAX_REQUIRED_DOCUMENTS = 100;
+const REQUIRED_DOCUMENT_GROUPS = [
+  {
+    label: "BUSINESS AND LEGAL ELIGIBILITY",
+    documents: [
+      "Certificate of incorporation / business registration",
+      "Tax compliance / clearance certificate",
+      "Tax identification number (TIN / PIN)",
+      "Social security / pension clearance certificate",
+      "Workers' compensation / employer liability certificate",
+      "Valid professional or sector licence",
+      "Beneficial ownership declaration",
+      "Power of attorney / authorised signatory evidence",
+    ],
+  },
+  {
+    label: "INTEGRITY AND BID SECURITY",
+    documents: [
+      "Bidder eligibility and non-debarment declaration",
+      "Conflict of interest declaration",
+      "Anti-bribery and integrity declaration",
+      "Bid securing declaration",
+      "Bid security / tender bond",
+    ],
+  },
+  {
+    label: "FINANCIAL AND PRICING",
+    documents: [
+      "Audited financial statements",
+      "Annual turnover evidence",
+      "Bank reference / proof of access to credit",
+      "Signed bid / tender submission form",
+      "Priced bill of quantities / price schedule",
+      "Financial proposal and cost breakdown",
+      "Cash-flow forecast",
+    ],
+  },
+  {
+    label: "TECHNICAL CAPABILITY AND DELIVERY",
+    documents: [
+      "Technical proposal and compliance schedule",
+      "Statement of compliance with specifications",
+      "Methodology / work plan",
+      "Delivery / implementation schedule",
+      "Key personnel CVs and qualifications",
+      "Similar contracts / client references",
+      "Equipment and resource schedule",
+      "Product brochures / technical data sheets",
+      "Samples, demonstration or inspection evidence",
+      "Manufacturer authorisation / dealership proof",
+      "Joint venture / consortium agreement",
+    ],
+  },
+  {
+    label: "QUALITY, SAFETY AND REGULATORY",
+    documents: [
+      "Quality management certificate (e.g. ISO 9001)",
+      "Environmental and social management plan",
+      "Health and safety plan / certificate",
+      "Environmental permit / regulatory approval",
+      "Import / export permit for regulated goods",
+      "Data protection / information security plan",
+      "Product conformity / standards certificate",
+    ],
+  },
+  {
+    label: "WARRANTY, SUPPORT AND LOCAL PARTICIPATION",
+    documents: [
+      "Warranty and after-sales support commitment",
+      "Service and maintenance support plan",
+      "Local content / citizen participation plan",
+      "Subcontractor and key supplier disclosures",
+      "Manufacturer warranty / product guarantee",
+    ],
+  },
+] as const;
+const STANDARD_REQUIRED_DOCUMENTS = new Set(
+  REQUIRED_DOCUMENT_GROUPS.flatMap((group) => group.documents).map((document) => document.toLocaleLowerCase()),
+);
+
+function requiredDocumentsFromNotice(md?: string): string[] {
+  if (!md) return [];
+  return [...md.matchAll(/^- \[REQUIRED\]\s*(.+)$/gm)]
+    .map((match) => match[1].trim())
+    .filter((document) => document && !document.startsWith("(none listed"));
+}
+
 const OFFICE_LABELS: Record<string, string> = {
   PROCUREMENT_UNIT: "Procurement unit",
   EVALUATION_COMMITTEE: "Evaluation committee",
@@ -943,6 +1032,80 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
       </span>
       {children}
     </label>
+  );
+}
+
+type NoticeFieldKey =
+  | "noticeRef"
+  | "noticeBuyer"
+  | "noticeSubject"
+  | "noticeMethod"
+  | "noticeTechWeight"
+  | "noticeFxBasis"
+  | "noticeCdfConstituency"
+  | "noticeCdfExceptionRef"
+  | "noticeCdfExceptionBasis"
+  | "noticeCeiling"
+  | "noticeClosing"
+  | "noticeContact"
+  | "noticeCustomDocument";
+
+type NoticeConsultation = {
+  field: { key: NoticeFieldKey; label: string; format: "text" | "number" | "date" };
+  status: "loading" | "ready" | "error";
+  suggestion: string | null;
+  rationale: string;
+  missingContext: string[];
+  evidenceBasis: string[];
+  model?: string;
+  error?: string;
+};
+
+function NoticeAiField({
+  id,
+  label,
+  hint,
+  loading,
+  disabled,
+  control,
+  onAsk,
+  children,
+}: {
+  id: string;
+  label: string;
+  hint?: string;
+  loading: boolean;
+  disabled?: boolean;
+  control?: "number" | "date";
+  onAsk: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="block min-w-0">
+      <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
+        <label htmlFor={id} className="eyebrow text-[9px]">{label}</label>
+        {hint ? <span className="min-w-0 font-code text-[8.5px] leading-[1.5] tracking-[0.1em] text-ink-400">{hint}</span> : null}
+      </div>
+      <div className="relative">
+        {children}
+        <button
+          type="button"
+          onClick={onAsk}
+          disabled={disabled || loading}
+          title={`Ask Meta AI to suggest ${label.toLocaleLowerCase()}`}
+          aria-label={`Ask Meta AI to suggest ${label.toLocaleLowerCase()}`}
+          aria-busy={loading}
+          className={cn(
+            "absolute top-1/2 inline-flex h-7 -translate-y-1/2 items-center gap-1 rounded-md border border-brand-500/25 bg-paper/95 px-2 text-[9px] font-semibold text-brand-700 shadow-sm transition-colors hover:border-brand-500/50 hover:bg-brand-50 disabled:cursor-wait disabled:opacity-55 dark:border-transparent dark:bg-[#171923] dark:text-brand-300 dark:hover:border-transparent dark:hover:bg-brand-400/[0.09]",
+            control === "date" ? "right-10" : control === "number" ? "right-7" : "right-1.5",
+            loading && "cursor-wait",
+          )}
+        >
+          {loading ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Sparkles className="h-3 w-3" aria-hidden="true" />}
+          <span>AI</span>
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -2499,7 +2662,12 @@ export function CycleView({
   const [busy, setBusy] = useState(false);
   /* Draft inputs, one record shared across the tab forms. */
   const [d, setD] = useState<Record<string, string>>({});
+  const requiredDocsId = useId();
+  const [customDocumentDraft, setCustomDocumentDraft] = useState("");
+  const [customDocumentError, setCustomDocumentError] = useState("");
   const [noticeAnalysis, setNoticeAnalysis] = useState<NoticeAnalysisState>({ status: "idle", conflicts: [] });
+  const [noticeConsultation, setNoticeConsultation] = useState<NoticeConsultation | null>(null);
+  const noticeConsultationPanelRef = useRef<HTMLElement | null>(null);
   const [noticeFile, setNoticeFile] = useState<File | null>(null);
   const [pendingUploadRef, setPendingUploadRef] = useState("");
   const [noticeUploadMessage, setNoticeUploadMessage] = useState("");
@@ -2838,12 +3006,164 @@ export function CycleView({
   const tenderTitle = tenders.find((t) => t.ref === ref)?.title ?? "";
   const notices = cycle?.notices ?? [];
   const currentNotice = notices.length ? notices[notices.length - 1] : null;
+  const selectedRequiredDocs = useMemo(() => {
+    const documents = d.noticeDocs === undefined
+      ? requiredDocumentsFromNotice(currentNotice?.md)
+      : d.noticeDocs.split("\n").map((document) => document.trim()).filter(Boolean);
+    return new Set(documents);
+  }, [currentNotice?.id, currentNotice?.md, d.noticeDocs]);
+  const customRequiredDocs = useMemo(() => {
+    const fromDraft = (d.noticeCustomDocs ?? "").split("\n").map((document) => document.trim()).filter(Boolean);
+    const fromNotice = requiredDocumentsFromNotice(currentNotice?.md)
+      .filter((document) => !STANDARD_REQUIRED_DOCUMENTS.has(document.toLocaleLowerCase()));
+    return [...new Map([...fromNotice, ...fromDraft].map((document) => [document.toLocaleLowerCase(), document] as const)).values()];
+  }, [currentNotice?.id, currentNotice?.md, d.noticeCustomDocs]);
+  const setRequiredDocument = (document: string, required: boolean) => {
+    const next = new Set(selectedRequiredDocs);
+    if (required) {
+      if (next.size >= MAX_REQUIRED_DOCUMENTS) return;
+      next.add(document);
+    } else {
+      next.delete(document);
+    }
+    set("noticeDocs", [...next].join("\n"));
+  };
+  const addCustomRequiredDocument = () => {
+    const document = customDocumentDraft.trim().replace(/\s+/g, " ");
+    setCustomDocumentError("");
+    if (!document) {
+      setCustomDocumentError("Enter the name of the document first.");
+      return;
+    }
+    if (document.length > 180) {
+      setCustomDocumentError("Document names must be 180 characters or fewer.");
+      return;
+    }
+    if (selectedRequiredDocs.size >= MAX_REQUIRED_DOCUMENTS) {
+      setCustomDocumentError(`A notice can list up to ${MAX_REQUIRED_DOCUMENTS} required documents.`);
+      return;
+    }
+    const standardMatch = REQUIRED_DOCUMENT_GROUPS.flatMap((group) => group.documents)
+      .find((option) => option.toLocaleLowerCase() === document.toLocaleLowerCase());
+    if (standardMatch) {
+      setRequiredDocument(standardMatch, true);
+      setCustomDocumentDraft("");
+      return;
+    }
+    const existingCustom = customRequiredDocs.find((option) => option.toLocaleLowerCase() === document.toLocaleLowerCase());
+    if (existingCustom) {
+      setRequiredDocument(existingCustom, true);
+      setCustomDocumentDraft("");
+      return;
+    }
+    set("noticeCustomDocs", [...customRequiredDocs, document].join("\n"));
+    setRequiredDocument(document, true);
+    setCustomDocumentDraft("");
+  };
   const noticeMissing = (currentNotice?.fieldCheck ?? []).filter((f) => !f.present);
   const currentSpec = cycle?.specs.length ? cycle.specs[cycle.specs.length - 1] : null;
   const noticeCriteria = currentNotice?.evaluationCriteria ?? [];
   const noticeCriteriaWeight = noticeCriteria.reduce((sum, criterion) => sum + criterion.weight, 0);
   const noticeCriteriaValid = noticeCriteria.length > 0 && Math.abs(noticeCriteriaWeight - 100) <= 0.0001 &&
     noticeCriteria.every((criterion) => !!criterion.title.trim() && criterion.weight > 0);
+
+  const consultNoticeField = async (field: NoticeConsultation["field"], currentValue: string) => {
+    setNoticeConsultation({ field, status: "loading", suggestion: null, rationale: "", missingContext: [], evidenceBasis: [] });
+    onToast(`CONSULTING META MUSE · ${field.label}`);
+    const draft = {
+      noticeRef: d.noticeRef ?? "",
+      noticeBuyer: d.noticeBuyer ?? "",
+      noticeSubject: d.noticeSubject ?? "",
+      noticeMethod: d.noticeMethod ?? "",
+      noticeTechWeight: d.noticeTechWeight ?? "80",
+      noticeEvaluationCurrency: d.noticeEvaluationCurrency ?? cycle?.methodCurrency ?? "ZMW",
+      noticeScope: d.noticeScope ?? "National",
+      noticeFxBasis: d.noticeFxBasis ?? "",
+      noticePreference: d.noticePreference ?? "None",
+      noticeCdfConstituency: d.noticeCdfConstituency ?? "",
+      noticeCdfExceptionRef: d.noticeCdfExceptionRef ?? "",
+      noticeCdfExceptionBasis: d.noticeCdfExceptionBasis ?? "",
+      noticeCeiling: d.noticeCeiling ?? "",
+      noticeClosing: d.noticeClosing ?? d.closing ?? "",
+      noticeContact: d.noticeContact ?? "",
+      foreignBiddersPermitted: d.foreignBiddersPermitted ?? "false",
+      customDocumentDraft: customDocumentDraft,
+    };
+
+    try {
+      const response = await fetch("/api/cycle/consult-notice-field", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          target: { ...field, currentValue },
+          context: {
+            tenderReference: ref,
+            tenderTitle,
+            procurementMethod: cycle?.methodId ?? "",
+            evaluationCurrency: cycle?.methodCurrency ?? "ZMW",
+            closingDate: cycle?.closingDate ?? "",
+            scope: d.noticeScope ?? "National",
+            draft,
+            requiredDocuments: [...selectedRequiredDocs],
+            researchNotice: currentNotice?.md?.slice(0, 8_000) ?? "",
+            researchSpecification: currentSpec?.md?.slice(0, 8_000) ?? "",
+            extractedNotice: noticeAnalysis.fields ?? null,
+          },
+        }),
+      });
+      const result = await response.json().catch(() => ({})) as {
+        error?: string;
+        suggestion?: string | null;
+        rationale?: string;
+        missingContext?: string[];
+        evidenceBasis?: string[];
+        model?: string;
+      };
+      if (!response.ok) throw new Error(result.error ?? `Meta AI consultation failed (HTTP ${response.status}).`);
+      setNoticeConsultation({
+        field,
+        status: "ready",
+        suggestion: result.suggestion ?? null,
+        rationale: result.rationale ?? "Review the evidence before deciding what to enter.",
+        missingContext: result.missingContext ?? [],
+        evidenceBasis: result.evidenceBasis ?? [],
+        model: result.model,
+      });
+      onToast("META MUSE SUGGESTION READY · REVIEW IT BEFORE USE");
+      window.requestAnimationFrame(() => noticeConsultationPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Meta AI could not complete this consultation.";
+      setNoticeConsultation({
+        field,
+        status: "error",
+        suggestion: null,
+        rationale: "",
+        missingContext: [],
+        evidenceBasis: [],
+        error: message,
+      });
+      onToast(message.toLocaleUpperCase());
+      window.requestAnimationFrame(() => noticeConsultationPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }));
+    }
+  };
+
+  const suggestionValue = noticeConsultation?.suggestion?.trim() ?? "";
+  const suggestionCanApply = !!noticeConsultation && noticeConsultation.status === "ready" && !!suggestionValue && (
+    noticeConsultation.field.format === "text" ||
+    (noticeConsultation.field.format === "number" && Number.isFinite(Number(suggestionValue)) &&
+      (noticeConsultation.field.key !== "noticeTechWeight" || (Number(suggestionValue) >= 0 && Number(suggestionValue) <= 100))) ||
+    (noticeConsultation.field.format === "date" && /^\d{4}-\d{2}-\d{2}$/.test(suggestionValue))
+  );
+
+  const applyNoticeSuggestion = () => {
+    if (!noticeConsultation || !suggestionCanApply) return;
+    if (noticeConsultation.field.key === "noticeCustomDocument") {
+      setCustomDocumentDraft(suggestionValue);
+    } else {
+      set(noticeConsultation.field.key, suggestionValue);
+    }
+    setNoticeConsultation(null);
+  };
 
   const draftTenderNotice = () =>
     act(
@@ -2856,7 +3176,7 @@ export function CycleView({
         closingDate: d.noticeClosing || d.closing || undefined,
         ceiling: d.noticeCeiling,
         contact: d.noticeContact,
-        requiredDocs: (d.noticeDocs ?? "").split("\n").map((line) => line.trim()).filter(Boolean),
+        requiredDocs: [...selectedRequiredDocs],
         technicalWeightPct: d.noticeTechWeight ? Number(d.noticeTechWeight) : 80,
         fxBasis: d.noticeFxBasis,
         preferenceScheme: d.noticePreference || "None",
@@ -2916,22 +3236,25 @@ export function CycleView({
         }
       >
         <div className="grid gap-3">
+          <p className="rounded-lg bg-brand-500/[0.045] px-3 py-2 text-[10px] leading-relaxed text-ink-600 dark:bg-brand-400/[0.045] dark:text-ink-300">
+            Meta AI uses the current tender draft and available notice/specification excerpts only when you ask for help. Suggestions are advisory and are never applied until you choose to use one.
+          </p>
           <div className="grid gap-2.5 sm:grid-cols-2">
-            <Field label="REFERENCE" hint={ref ? `on record: ${ref}` : "select a tender first"}>
-              <input className={inputCls} placeholder={ref || "Tender reference"} value={d.noticeRef ?? ""} onChange={(e) => set("noticeRef", e.target.value)} />
-            </Field>
-            <Field label="BUYER — THE PROCURING ENTITY">
-              <input className={inputCls} placeholder="e.g. Ministry of Health" value={d.noticeBuyer ?? ""} onChange={(e) => set("noticeBuyer", e.target.value)} />
-            </Field>
-            <Field label="SUBJECT OF THE PROCUREMENT" hint={tenderTitle ? "defaults to the tender title" : undefined}>
-              <input className={inputCls} placeholder={tenderTitle || "What is being bought"} value={d.noticeSubject ?? ""} onChange={(e) => set("noticeSubject", e.target.value)} />
-            </Field>
-            <Field label="PROCUREMENT METHOD" hint="recorded on the award file too">
-              <input className={inputCls} placeholder={cycle?.methodId || "Open competitive bidding"} value={d.noticeMethod ?? ""} onChange={(e) => set("noticeMethod", e.target.value)} />
-            </Field>
-            <Field label="TECHNICAL WEIGHT (%) — BALANCE IS FINANCIAL">
-              <input className={inputCls} type="number" min={0} max={100} value={d.noticeTechWeight ?? "80"} onChange={(e) => set("noticeTechWeight", e.target.value)} />
-            </Field>
+            <NoticeAiField id="notice-reference" label="REFERENCE" hint={ref ? `on record: ${ref}` : "select a tender first"} loading={noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeRef"} disabled={!ref || noticeConsultation?.status === "loading"} onAsk={() => void consultNoticeField({ key: "noticeRef", label: "REFERENCE", format: "text" }, d.noticeRef ?? "")}>
+              <input id="notice-reference" className={cn(inputCls, "pr-16")} placeholder={ref || "Tender reference"} value={d.noticeRef ?? ""} onChange={(e) => set("noticeRef", e.target.value)} />
+            </NoticeAiField>
+            <NoticeAiField id="notice-buyer" label="BUYER — THE PROCURING ENTITY" loading={noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeBuyer"} disabled={!ref || noticeConsultation?.status === "loading"} onAsk={() => void consultNoticeField({ key: "noticeBuyer", label: "BUYER — THE PROCURING ENTITY", format: "text" }, d.noticeBuyer ?? "")}>
+              <input id="notice-buyer" className={cn(inputCls, "pr-16")} placeholder="e.g. Ministry of Health" value={d.noticeBuyer ?? ""} onChange={(e) => set("noticeBuyer", e.target.value)} />
+            </NoticeAiField>
+            <NoticeAiField id="notice-subject" label="SUBJECT OF THE PROCUREMENT" hint={tenderTitle ? "defaults to the tender title" : undefined} loading={noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeSubject"} disabled={!ref || noticeConsultation?.status === "loading"} onAsk={() => void consultNoticeField({ key: "noticeSubject", label: "SUBJECT OF THE PROCUREMENT", format: "text" }, d.noticeSubject ?? "")}>
+              <input id="notice-subject" className={cn(inputCls, "pr-16")} placeholder={tenderTitle || "What is being bought"} value={d.noticeSubject ?? ""} onChange={(e) => set("noticeSubject", e.target.value)} />
+            </NoticeAiField>
+            <NoticeAiField id="notice-method" label="PROCUREMENT METHOD" hint="recorded on the award file too" loading={noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeMethod"} disabled={!ref || noticeConsultation?.status === "loading"} onAsk={() => void consultNoticeField({ key: "noticeMethod", label: "PROCUREMENT METHOD", format: "text" }, d.noticeMethod ?? "")}>
+              <input id="notice-method" className={cn(inputCls, "pr-16")} placeholder={cycle?.methodId || "Open competitive bidding"} value={d.noticeMethod ?? ""} onChange={(e) => set("noticeMethod", e.target.value)} />
+            </NoticeAiField>
+            <NoticeAiField id="notice-technical-weight" label="TECHNICAL WEIGHT (%) — BALANCE IS FINANCIAL" control="number" loading={noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeTechWeight"} disabled={!ref || noticeConsultation?.status === "loading"} onAsk={() => void consultNoticeField({ key: "noticeTechWeight", label: "TECHNICAL WEIGHT (%)", format: "number" }, d.noticeTechWeight ?? "80")}>
+              <input id="notice-technical-weight" className={cn(inputCls, "pr-16")} type="number" min={0} max={100} value={d.noticeTechWeight ?? "80"} onChange={(e) => set("noticeTechWeight", e.target.value)} />
+            </NoticeAiField>
             <Field label="EVALUATION CURRENCY">
               <select className={inputCls} value={d.noticeEvaluationCurrency ?? cycle?.methodCurrency ?? "ZMW"} onChange={(e) => set("noticeEvaluationCurrency", e.target.value)}>
                 {CURRENCIES.map((currency) => <option key={currency} value={currency}>{currency}</option>)}
@@ -2943,9 +3266,9 @@ export function CycleView({
                 <option value="International">International</option>
               </select>
             </Field>
-            <Field label="FX BASIS — SOURCE AND OBSERVATION DATE" hint="State the source and date/method the issued document requires bidders and evaluators to use.">
-              <input className={inputCls} placeholder="Bank of Zambia published rate, dated YYYY-MM-DD" value={d.noticeFxBasis ?? ""} onChange={(e) => set("noticeFxBasis", e.target.value)} />
-            </Field>
+            <NoticeAiField id="notice-fx-basis" label="FX BASIS — SOURCE AND OBSERVATION DATE" hint="State the source and date/method the issued document requires bidders and evaluators to use." loading={noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeFxBasis"} disabled={!ref || noticeConsultation?.status === "loading"} onAsk={() => void consultNoticeField({ key: "noticeFxBasis", label: "FX BASIS — SOURCE AND OBSERVATION DATE", format: "text" }, d.noticeFxBasis ?? "")}>
+              <input id="notice-fx-basis" className={cn(inputCls, "pr-16")} placeholder="Bank of Zambia published rate, dated YYYY-MM-DD" value={d.noticeFxBasis ?? ""} onChange={(e) => set("noticeFxBasis", e.target.value)} />
+            </NoticeAiField>
             <div className="rounded-xl border border-ink-100 bg-paper/60 px-3 py-2.5 text-[11px] leading-relaxed text-ink-600 dark:border-white/[0.07] dark:bg-white/[0.025] dark:text-ink-400">
               <span className="font-semibold">Financial formula fixed for this release:</span> Lowest evaluated price / bidder evaluated price × 100, after documented arithmetic corrections, unconditional discounts and published preference.
             </div>
@@ -2958,42 +3281,223 @@ export function CycleView({
             </Field>
             {d.noticePreference === "CDF_RESERVATION" ? (
               <div className="grid gap-2 rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3 sm:col-span-2 sm:grid-cols-2">
-                <Field label="FUNDED CONSTITUENCY">
-                  <input className={inputCls} value={d.noticeCdfConstituency ?? ""} onChange={(e) => set("noticeCdfConstituency", e.target.value)} maxLength={120} placeholder="Name the constituency funding this procurement" />
-                </Field>
+                <NoticeAiField id="notice-cdf-constituency" label="FUNDED CONSTITUENCY" loading={noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeCdfConstituency"} disabled={!ref || noticeConsultation?.status === "loading"} onAsk={() => void consultNoticeField({ key: "noticeCdfConstituency", label: "FUNDED CONSTITUENCY", format: "text" }, d.noticeCdfConstituency ?? "")}>
+                  <input id="notice-cdf-constituency" className={cn(inputCls, "pr-16")} value={d.noticeCdfConstituency ?? ""} onChange={(e) => set("noticeCdfConstituency", e.target.value)} maxLength={120} placeholder="Name the constituency funding this procurement" />
+                </NoticeAiField>
                 <p className="sm:col-span-2 text-[10.5px] leading-relaxed text-amber-900 dark:text-amber-200">
                   Optional locality exception under SI 45/2025 regulation 8(2): record it only where procurement requirements cannot be satisfied by a citizen bidder domiciled in the funded constituency. This evidence is part of the published solicitation.
                 </p>
-                <Field label="LOCALITY ASSESSMENT EVIDENCE REFERENCE">
-                  <input className={inputCls} value={d.noticeCdfExceptionRef ?? ""} onChange={(e) => set("noticeCdfExceptionRef", e.target.value)} maxLength={200} placeholder="Market assessment / local capacity record" />
-                </Field>
-                <Field label="WHY CONSTITUENCY REQUIREMENTS CANNOT BE MET" hint="At least 20 characters when an evidence reference is supplied.">
-                  <input className={inputCls} value={d.noticeCdfExceptionBasis ?? ""} onChange={(e) => set("noticeCdfExceptionBasis", e.target.value)} maxLength={500} placeholder="Describe the unmet requirement and local market check" />
-                </Field>
+                <NoticeAiField id="notice-cdf-evidence" label="LOCALITY ASSESSMENT EVIDENCE REFERENCE" loading={noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeCdfExceptionRef"} disabled={!ref || noticeConsultation?.status === "loading"} onAsk={() => void consultNoticeField({ key: "noticeCdfExceptionRef", label: "LOCALITY ASSESSMENT EVIDENCE REFERENCE", format: "text" }, d.noticeCdfExceptionRef ?? "")}>
+                  <input id="notice-cdf-evidence" className={cn(inputCls, "pr-16")} value={d.noticeCdfExceptionRef ?? ""} onChange={(e) => set("noticeCdfExceptionRef", e.target.value)} maxLength={200} placeholder="Market assessment / local capacity record" />
+                </NoticeAiField>
+                <NoticeAiField id="notice-cdf-basis" label="WHY CONSTITUENCY REQUIREMENTS CANNOT BE MET" hint="At least 20 characters when an evidence reference is supplied." loading={noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeCdfExceptionBasis"} disabled={!ref || noticeConsultation?.status === "loading"} onAsk={() => void consultNoticeField({ key: "noticeCdfExceptionBasis", label: "WHY CONSTITUENCY REQUIREMENTS CANNOT BE MET", format: "text" }, d.noticeCdfExceptionBasis ?? "")}>
+                  <input id="notice-cdf-basis" className={cn(inputCls, "pr-16")} value={d.noticeCdfExceptionBasis ?? ""} onChange={(e) => set("noticeCdfExceptionBasis", e.target.value)} maxLength={500} placeholder="Describe the unmet requirement and local market check" />
+                </NoticeAiField>
               </div>
             ) : null}
             <label className="flex items-center gap-2 rounded-lg border border-ink-100 px-3 py-2 text-[11.5px] text-ink-700">
               <input type="checkbox" checked={d.foreignBiddersPermitted === "true"} onChange={(e) => set("foreignBiddersPermitted", e.target.checked ? "true" : "false")} />
               Foreign bidders may participate (required for the local supplier 5% margin)
             </label>
-            <Field label="BUDGET CEILING">
-              <input className={inputCls} placeholder={`${cycle?.methodCurrency ?? ""} 48,000,000`.trim()} value={d.noticeCeiling ?? ""} onChange={(e) => set("noticeCeiling", e.target.value)} />
-            </Field>
-            <Field label="CLOSING DATE" hint={cycle?.closingDate ? `on record: ${fmtDate(cycle.closingDate)}` : "moves with the notice"}>
-              <input className={inputCls} type="date" value={d.noticeClosing ?? ""} onChange={(e) => set("noticeClosing", e.target.value)} />
-            </Field>
-            <Field label="CONTACT FOR CLARIFICATIONS">
-              <input className={inputCls} placeholder="Office, officer and email" value={d.noticeContact ?? ""} onChange={(e) => set("noticeContact", e.target.value)} />
-            </Field>
-            <Field label="REQUIRED DOCUMENTS — ONE PER LINE" hint="each becomes a [REQUIRED] line">
-              <textarea
-                className={cn(inputCls, "h-20 py-2 text-[12px]")}
-                placeholder={"Tax compliance certificate\nBusiness registration\nManufacturer authorisation"}
-                value={d.noticeDocs ?? ""}
-                onChange={(e) => set("noticeDocs", e.target.value)}
-              />
-            </Field>
+            <NoticeAiField id="notice-budget-ceiling" label="BUDGET CEILING" loading={noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeCeiling"} disabled={!ref || noticeConsultation?.status === "loading"} onAsk={() => void consultNoticeField({ key: "noticeCeiling", label: "BUDGET CEILING", format: "text" }, d.noticeCeiling ?? "")}>
+              <input id="notice-budget-ceiling" className={cn(inputCls, "pr-16")} placeholder={`${cycle?.methodCurrency ?? ""} 48,000,000`.trim()} value={d.noticeCeiling ?? ""} onChange={(e) => set("noticeCeiling", e.target.value)} />
+            </NoticeAiField>
+            <NoticeAiField id="notice-closing-date" label="CLOSING DATE" hint={cycle?.closingDate ? `on record: ${fmtDate(cycle.closingDate)}` : "moves with the notice"} control="date" loading={noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeClosing"} disabled={!ref || noticeConsultation?.status === "loading"} onAsk={() => void consultNoticeField({ key: "noticeClosing", label: "CLOSING DATE", format: "date" }, d.noticeClosing ?? "")}>
+              <input id="notice-closing-date" className={cn(inputCls, "pr-20")} type="date" value={d.noticeClosing ?? ""} onChange={(e) => set("noticeClosing", e.target.value)} />
+            </NoticeAiField>
+            <NoticeAiField id="notice-clarification-contact" label="CONTACT FOR CLARIFICATIONS" loading={noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeContact"} disabled={!ref || noticeConsultation?.status === "loading"} onAsk={() => void consultNoticeField({ key: "noticeContact", label: "CONTACT FOR CLARIFICATIONS", format: "text" }, d.noticeContact ?? "")}>
+              <input id="notice-clarification-contact" className={cn(inputCls, "pr-16")} placeholder="Office, officer and email" value={d.noticeContact ?? ""} onChange={(e) => set("noticeContact", e.target.value)} />
+            </NoticeAiField>
+            <div className="min-w-0 sm:col-span-2">
+              <div className="mb-1.5 flex flex-wrap items-end justify-between gap-2">
+                <div>
+                  <p className="eyebrow text-[9px]">REQUIRED BID DOCUMENTS</p>
+                  <p className="mt-1 text-[10.5px] leading-relaxed text-ink-500 dark:text-ink-400">
+                    Choose the documents required for this tender. Only enabled items are published in the notice and checked during bid review.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span aria-live="polite" className="rounded-full bg-ink-100 px-2.5 py-1 font-code text-[9px] font-semibold text-ink-600 dark:bg-white/[0.07] dark:text-ink-300">
+                    {selectedRequiredDocs.size} SELECTED
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => set("noticeDocs", "")}
+                    disabled={selectedRequiredDocs.size === 0}
+                    className="rounded-md px-2 py-1 text-[10px] font-semibold text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-900 disabled:cursor-not-allowed disabled:opacity-40 dark:text-ink-400 dark:hover:bg-white/[0.07] dark:hover:text-white"
+                  >
+                    Clear selection
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-ink-200/80 bg-paper/70 p-3 dark:border-white/[0.1] dark:bg-[#0b0d12] sm:p-4">
+                <div className="grid max-h-[520px] gap-3 overflow-y-auto pr-1 lg:grid-cols-2">
+                  {REQUIRED_DOCUMENT_GROUPS.map((group) => (
+                    <fieldset key={group.label} className="min-w-0 rounded-lg border border-ink-100 bg-white/70 p-2.5 dark:border-white/[0.07] dark:bg-white/[0.02]">
+                      <legend className="px-1 font-code text-[8px] font-bold tracking-[0.14em] text-ink-400">{group.label}</legend>
+                      <div className="grid gap-1">
+                        {group.documents.map((document, documentIndex) => {
+                          const switchId = `${requiredDocsId}-standard-${group.label.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-")}-${documentIndex}`;
+                          const checked = selectedRequiredDocs.has(document);
+                          return (
+                            <div key={document} className={cn("flex min-h-9 items-center justify-between gap-3 rounded-md px-2 py-1.5 transition-colors", checked ? "bg-emerald-500/[0.07] dark:bg-emerald-400/[0.07]" : "hover:bg-ink-50 dark:hover:bg-white/[0.035]")}>
+                              <span id={`${switchId}-label`} className="text-[10.5px] leading-snug text-ink-700 dark:text-ink-300">{document}</span>
+                              <Switch
+                                id={switchId}
+                                aria-labelledby={`${switchId}-label`}
+                                aria-label={`Require ${document}`}
+                                checked={checked}
+                                disabled={!checked && selectedRequiredDocs.size >= MAX_REQUIRED_DOCUMENTS}
+                                onCheckedChange={(on) => setRequiredDocument(document, on)}
+                                className="data-[state=checked]:bg-emerald-600 dark:data-[state=checked]:bg-emerald-500"
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </fieldset>
+                  ))}
+
+                  {customRequiredDocs.length ? (
+                    <fieldset className="min-w-0 rounded-lg border border-brand-500/20 bg-brand-500/[0.025] p-2.5 dark:border-brand-400/15 dark:bg-brand-400/[0.025] lg:col-span-2">
+                      <legend className="px-1 font-code text-[8px] font-bold tracking-[0.14em] text-ink-400">CUSTOM / TENDER-SPECIFIC DOCUMENTS</legend>
+                      <div className="grid gap-1 sm:grid-cols-2">
+                        {customRequiredDocs.map((document, documentIndex) => {
+                          const switchId = `${requiredDocsId}-custom-${documentIndex}`;
+                          const checked = selectedRequiredDocs.has(document);
+                          return (
+                            <div key={document} className={cn("flex min-h-9 items-center justify-between gap-3 rounded-md px-2 py-1.5 transition-colors", checked ? "bg-emerald-500/[0.07] dark:bg-emerald-400/[0.07]" : "hover:bg-ink-50 dark:hover:bg-white/[0.035]")}>
+                              <span id={`${switchId}-label`} className="text-[10.5px] leading-snug text-ink-700 dark:text-ink-300">{document}</span>
+                              <Switch
+                                id={switchId}
+                                aria-labelledby={`${switchId}-label`}
+                                aria-label={`Require ${document}`}
+                                checked={checked}
+                                disabled={!checked && selectedRequiredDocs.size >= MAX_REQUIRED_DOCUMENTS}
+                                onCheckedChange={(on) => setRequiredDocument(document, on)}
+                                className="data-[state=checked]:bg-emerald-600 dark:data-[state=checked]:bg-emerald-500"
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </fieldset>
+                  ) : null}
+                </div>
+
+                <div className="mt-3 flex flex-col gap-2 border-t border-ink-100 pt-3 dark:border-white/[0.07] sm:flex-row">
+                  <div className="relative min-w-0 flex-1">
+                    <input
+                      id={`${requiredDocsId}-custom-document`}
+                      className={cn(inputCls, "h-9 pr-16")}
+                      value={customDocumentDraft}
+                      onChange={(event) => {
+                        setCustomDocumentDraft(event.target.value);
+                        setCustomDocumentError("");
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          addCustomRequiredDocument();
+                        }
+                      }}
+                      maxLength={180}
+                      placeholder="Add a tender-specific document requirement"
+                      aria-label="Custom required document"
+                      aria-describedby={customDocumentError ? `${requiredDocsId}-custom-error` : undefined}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void consultNoticeField({ key: "noticeCustomDocument", label: "CUSTOM BID DOCUMENT REQUIREMENT", format: "text" }, customDocumentDraft)}
+                      disabled={!ref || noticeConsultation?.status === "loading"}
+                      aria-label="Ask Meta AI to suggest a tender-specific document requirement"
+                      title="Ask Meta AI to suggest a tender-specific document requirement"
+                      className="absolute right-1.5 top-1/2 inline-flex h-7 -translate-y-1/2 items-center gap-1 rounded-md bg-paper/95 px-2 text-[9px] font-semibold text-brand-700 transition-colors hover:bg-brand-50 disabled:cursor-wait disabled:opacity-55 dark:bg-[#171923] dark:text-brand-300 dark:hover:bg-brand-400/[0.09]"
+                    >
+                      {noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeCustomDocument"
+                        ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+                        : <Sparkles className="h-3 w-3" aria-hidden="true" />}
+                      <span>AI</span>
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addCustomRequiredDocument}
+                    disabled={!customDocumentDraft.trim() || selectedRequiredDocs.size >= MAX_REQUIRED_DOCUMENTS}
+                    className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-ink-200 px-3 text-[10px] font-semibold text-ink-700 transition-colors hover:border-ink-400 hover:bg-ink-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/[0.12] dark:text-ink-200 dark:hover:border-white/30 dark:hover:bg-white/[0.05]"
+                  >
+                    <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Add and require
+                  </button>
+                </div>
+                {customDocumentError ? <p id={`${requiredDocsId}-custom-error`} role="alert" className="mt-1.5 text-[10px] text-rose-600 dark:text-rose-300">{customDocumentError}</p> : null}
+                {selectedRequiredDocs.size === 0 ? (
+                  <p role="status" className="mt-2 text-[10px] leading-relaxed text-amber-700 dark:text-amber-300">No documents are selected. The notice will explicitly state that no eligibility documents were listed.</p>
+                ) : (
+                  <p className="mt-2 text-[9px] leading-relaxed text-ink-400">The tender creator owns this checklist. You can select up to {MAX_REQUIRED_DOCUMENTS} items; the selected list is carried into the published notice and bid-compliance review.</p>
+                )}
+              </div>
+            </div>
           </div>
+
+          {noticeConsultation ? (
+            <section ref={noticeConsultationPanelRef} aria-live="polite" aria-busy={noticeConsultation.status === "loading"} className="rounded-xl border border-brand-500/20 bg-brand-500/[0.035] p-3.5 dark:border-0 dark:bg-brand-400/[0.055] sm:p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-start gap-2.5">
+                  <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-500/[0.11] text-brand-700 dark:bg-brand-400/[0.12] dark:text-brand-300">
+                    {noticeConsultation.status === "loading"
+                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                      : <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="eyebrow text-[9px] text-brand-700 dark:text-brand-300">META AI FIELD CONSULTANT · {noticeConsultation.field.label}</p>
+                    {noticeConsultation.status === "loading" ? (
+                      <p className="mt-1.5 text-[11px] text-ink-600 dark:text-ink-300">Reviewing the tender context and checking what evidence supports this field…</p>
+                    ) : noticeConsultation.status === "error" ? (
+                      <p role="alert" className="mt-1.5 text-[11px] leading-relaxed text-rose-700 dark:text-rose-300">{noticeConsultation.error}</p>
+                    ) : (
+                      <>
+                        <p className="mt-1.5 text-[11px] leading-relaxed text-ink-700 dark:text-ink-200">{noticeConsultation.rationale}</p>
+                        {noticeConsultation.suggestion ? (
+                          <div className="mt-2.5 rounded-lg bg-white/80 px-3 py-2.5 text-[12px] leading-relaxed text-ink-900 dark:bg-white/[0.055] dark:text-white">
+                            <p className="mb-1 font-code text-[8px] font-bold tracking-[0.13em] text-ink-400">SUGGESTED INPUT · REVIEW BEFORE USE</p>
+                            <p className="whitespace-pre-wrap break-words">{noticeConsultation.suggestion}</p>
+                          </div>
+                        ) : null}
+                        {noticeConsultation.evidenceBasis.length ? (
+                          <p className="mt-2 text-[10px] leading-relaxed text-ink-500 dark:text-ink-400">
+                            <span className="font-semibold text-ink-600 dark:text-ink-300">Context used: </span>{noticeConsultation.evidenceBasis.join(" · ")}
+                          </p>
+                        ) : null}
+                        {noticeConsultation.missingContext.length ? (
+                          <div className="mt-2 rounded-lg bg-amber-500/[0.07] px-3 py-2 text-[10px] leading-relaxed text-amber-800 dark:bg-amber-400/[0.08] dark:text-amber-200">
+                            <p className="mb-1 font-semibold">Confirm or add this context</p>
+                            <ul className="list-disc space-y-0.5 pl-4">
+                              {noticeConsultation.missingContext.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}
+                            </ul>
+                          </div>
+                        ) : null}
+                        {noticeConsultation.model ? <p className="mt-2 font-code text-[8px] tracking-[0.12em] text-ink-400">{noticeConsultation.model}</p> : null}
+                      </>
+                    )}
+                  </div>
+                </div>
+                <button type="button" onClick={() => setNoticeConsultation(null)} aria-label="Close Meta AI suggestion" className="shrink-0 rounded-md p-1.5 text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-800 dark:hover:bg-white/[0.08] dark:hover:text-white">
+                  <X className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </div>
+              {noticeConsultation.status === "ready" ? (
+                <div className="mt-3 flex flex-wrap items-center gap-2 pl-9">
+                  {noticeConsultation.suggestion ? (
+                    <Btn onClick={applyNoticeSuggestion} disabled={!suggestionCanApply}>
+                      <Check className="h-3.5 w-3.5" aria-hidden="true" /> Use suggestion
+                    </Btn>
+                  ) : null}
+                  <span className="text-[9px] text-ink-400">The tender record changes only when you apply a suggestion.</span>
+                </div>
+              ) : null}
+            </section>
+          ) : null}
 
           <div className="flex flex-wrap items-center gap-2">
             <Btn onClick={() => void draftTenderNotice()} disabled={busy || !ref}>
