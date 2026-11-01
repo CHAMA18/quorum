@@ -9,6 +9,7 @@ import {
   findUserById,
   getSetting,
   listCommitteeMembers,
+  listUsers,
   listScheduledMeetings,
   listSittings,
   setSetting,
@@ -40,6 +41,7 @@ import type { AuthUser } from "@/lib/auth-types";
 
 export interface CommitteeMemberView {
   id: string;
+  userId?: string;
   name: string;
   role: string;
   isChair: boolean;
@@ -285,6 +287,7 @@ export async function getCommitteeState(user: AuthUser | null): Promise<Committe
 
   const members: CommitteeMemberView[] = rows.map((r) => ({
     id: r.id,
+    ...(r.userId ? { userId: r.userId } : {}),
     name: r.name,
     role: r.role,
     isChair: r.isChair,
@@ -626,7 +629,7 @@ function officeOf(v: unknown): MemberOffice | undefined {
 }
 
 export async function addCommitteeMember(
-  input: { name?: unknown; role?: unknown; isChair?: unknown; office?: unknown },
+  input: { name?: unknown; userId?: unknown; email?: unknown; role?: unknown; isChair?: unknown; office?: unknown },
   actor: AuthUser | null,
 ): Promise<MutationResult> {
   await ensureCommittee();
@@ -638,18 +641,25 @@ export async function addCommitteeMember(
   const role = String(input.role ?? "").trim().slice(0, 100) || "COMMITTEE MEMBER";
   const isChair = input.isChair === true;
   const office = officeOf(input.office);
+  const email = String(input.email ?? "").trim().toLowerCase();
+  const userId = String(input.userId ?? "").trim() || listUsers(actor?.workspaceId).find((user) => user.email.toLowerCase() === email)?.id || "";
+  if (!userId) return { ok: false, code: 422, error: "link this committee seat to an active account — name-only seats cannot submit declarations or evaluator sheets" };
+  const account = listUsers(actor?.workspaceId).find((user) => user.id === userId && user.status === "ACTIVE");
+  if (!account) return { ok: false, code: 422, error: "the linked account is not active in this workspace" };
+  if (listCommitteeMembers().some((member) => member.userId === userId)) return { ok: false, code: 409, error: "this account is already linked to a committee seat" };
+  if (name.toLowerCase() !== account.name.trim().toLowerCase()) return { ok: false, code: 422, error: "committee name must match the linked account's verified name" };
 
   if (isChair) {
     for (const m of listCommitteeMembers()) if (m.isChair) dbUpdateMember(m.id, { isChair: false });
   }
-  dbCreateMember({ name, role, isChair, ...(office ? { office } : {}) });
+  dbCreateMember({ name, userId, role, isChair, ...(office ? { office } : {}) });
 
   return { ok: true, state: await getCommitteeState(actor) };
 }
 
 export async function updateCommitteeMemberById(
   id: string,
-  patch: { status?: unknown; isChair?: unknown; role?: unknown; office?: unknown },
+  patch: { status?: unknown; userId?: unknown; isChair?: unknown; role?: unknown; office?: unknown },
   actor: AuthUser | null,
 ): Promise<MutationResult> {
   await ensureCommittee();
@@ -657,11 +667,19 @@ export async function updateCommitteeMemberById(
   const row = listCommitteeMembers().find((m) => m.id === id);
   if (!row) return { ok: false, code: 404, error: "member not found" };
 
-  const next: Partial<Pick<CommitteeMemberRow, "role" | "isChair" | "status" | "office">> = {};
+  const next: Partial<Pick<CommitteeMemberRow, "role" | "userId" | "isChair" | "status" | "office">> = {};
   if (patch.status === "PRESENT" || patch.status === "EXCUSED") next.status = patch.status;
   if (typeof patch.role === "string" && patch.role.trim()) next.role = patch.role.trim().slice(0, 100);
   const office = officeOf(patch.office);
   if (office) next.office = office;
+  if (typeof patch.userId === "string") {
+    const userId = patch.userId.trim();
+    const account = listUsers(actor?.workspaceId).find((user) => user.id === userId && user.status === "ACTIVE");
+    if (!account) return { ok: false, code: 422, error: "the linked account is not active in this workspace" };
+    if (account.name.trim().toLowerCase() !== row.name.trim().toLowerCase()) return { ok: false, code: 422, error: "committee name must match the linked account's verified name" };
+    if (listCommitteeMembers().some((member) => member.id !== id && member.userId === userId)) return { ok: false, code: 409, error: "this account is already linked to a committee seat" };
+    next.userId = userId;
+  }
   if (typeof patch.isChair === "boolean") {
     next.isChair = patch.isChair;
     if (patch.isChair) {

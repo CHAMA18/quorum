@@ -105,10 +105,17 @@
     <div class="badges">
       <span class="badge red">Theme · Build for Your World</span>
       <span class="badge">Track · Indie developer</span>
-      <span class="badge">Live · quorum-edge.chungu424.workers.dev</span>
+      <span class="badge">Live · CloudFront → EC2</span>
     </div>
-    <a class="cta" href="https://quorum-edge.chungu424.workers.dev">Open the live product</a>
+    <a class="cta" href="https://d1n7mv5t5hn4xe.cloudfront.net">Open the live product</a>
     <a class="cta ghost" href="#models">How Meta's models are used</a>
+    <p class="lead" style="margin-top:18px;font-size:14px">
+      <b>Judge's 5-minute path:</b> open the live app → sign in with the seeded judge account<br>
+      <code>judge@quorum.test</code> / <code>Gatekeeper#2026</code> (verified, no email needed) → run the KEMSA pack
+      → read the sourced report → watch the agent halt at the gate; signing without a fresh step-up is refused
+      <b>403</b>. Prefer a local run? <code>bash scripts/judge-demo.sh</code> seeds the same officer, launches a real
+      run, and replays the unsigned-mutation refusal.
+    </p>
   </div>
 </header>
 
@@ -198,7 +205,7 @@
           named approver on the committee roster signs and the roll is quorate. Only then is the bundle sealed with
           sha-256, filed to the e-GP portal, and a receipt written. The demo's most interesting moment is the refusal.</p>
         <div class="stats">
-          <div class="stat"><div class="v">486</div><div class="k">tests · 0 fail</div></div>
+          <div class="stat"><div class="v">510</div><div class="k">tests · 0 fail</div></div>
           <div class="stat"><div class="v">5<i>+13</i></div><div class="k">MCP tools</div></div>
           <div class="stat"><div class="v">sha-256</div><div class="k">sealed filings</div></div>
           <div class="stat"><div class="v">100%</div><div class="k">findings cited</div></div>
@@ -234,9 +241,9 @@
     <div class="kicker">Why it holds up</div>
     <h2>Proof, not promises</h2>
     <div class="grid g2" style="margin-top:22px">
-      <div class="card"><h3>Deployed, not mocked</h3><p><b>quorum-edge.chungu424.workers.dev</b> is a Cloudflare Worker HTTPS front door to the EC2 <b>af-south-1</b> origin (nginx, systemd) — reproducible from the repo.</p></div>
+      <div class="card"><h3>Deployed, not mocked</h3><p><b>d1n7mv5t5hn4xe.cloudfront.net</b> is the live HTTPS front door; the workspace runs on the EC2 <b>af-south-1</b> origin (nginx, systemd) — reproducible from the repo.</p></div>
       <div class="card"><h3>Measured model path</h3><p>Both paths are <b>measured in-repo</b>: a live Muse Spark run on the KEMSA pack (22.8 s, 2 model drafts, 4 redactions) and the in-region Llama fallback (token counts, cost formula, Ollama setup). The report prints the model string the endpoint actually returned.</p></div>
-      <div class="card"><h3>Safety as tests</h3><p><b>486 tests, 0 fail</b> enforce the rules: no citation, no finding; the halt-at-the-gate guarantee lives in the graph topology.</p></div>
+      <div class="card"><h3>Safety as tests</h3><p><b>510 tests, 0 fail</b> enforce the rules: no citation, no finding; the halt-at-the-gate guarantee lives in the graph topology.</p></div>
       <div class="card"><h3>Tamper-evident record</h3><p><b>Append-only audit JSONL</b> captures every tool call — oversight bodies see who decided what, forever.</p></div>
       <div class="card"><h3>Eval harness</h3><p>Held-out tender packs and a pre-registered baseline protocol (<code>SUBMISSION/09-fit.md</code>) — findings are checked, not vibes.</p></div>
       <div class="card"><h3>Sovereign by design</h3><p>Hosted calls are <b>redacted</b> (supplier names and amounts replaced), the in-region Llama fallback keeps the full evidence on the desk, and the residency policy refuses any endpoint the operator has not approved.</p></div>
@@ -249,7 +256,7 @@
     <div style="font-weight:800;color:var(--ink);font-size:16px">QUORUM<span style="color:var(--red)">.</span></div>
     <div>The agent prepares the file. The committee awards the tender.</div>
     <div class="footlinks">
-      <a href="https://quorum-edge.chungu424.workers.dev">Live product</a>
+      <a href="https://d1n7mv5t5hn4xe.cloudfront.net">Live product</a>
       <a href="https://github.com/CHAMA18">GitHub · CHAMA18</a>
       <a href="../META_HACKATHON.md">Submission brief (META_HACKATHON.md)</a>
       <a href="../README.md">Repository README</a>

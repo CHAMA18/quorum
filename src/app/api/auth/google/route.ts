@@ -1,5 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createUser, findUserByEmail, markUserVerified } from "@/lib/db";
+import {
+  createUser,
+  findClaimedWorkspaceMembership,
+  findInviteByCode,
+  findUserByEmail,
+  markUserVerified,
+  updateInvite,
+} from "@/lib/db";
+import { isAssignableRole, type AssignableRole } from "@/lib/permissions";
+import { validateRegistrationInvite } from "@/lib/role-assignment";
 import {
   clientKey,
   createSession,
@@ -20,7 +29,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Too many attempts. Wait a few minutes." }, { status: 429 });
   }
 
-  const body = (await req.json().catch(() => null)) as { idToken?: unknown } | null;
+  const body = (await req.json().catch(() => null)) as { idToken?: unknown; inviteCode?: unknown } | null;
   const idToken = typeof body?.idToken === "string" ? body.idToken : "";
   const identity = await verifyFirebaseIdToken(idToken);
   if (!identity) {
@@ -32,17 +41,45 @@ export async function POST(req: NextRequest) {
   if (!identity.providers.includes("google.com") || !identity.emailVerified) {
     return NextResponse.json({ error: "This sign-in is not a verified Google account." }, { status: 403 });
   }
+  const email = identity.email.trim().toLowerCase();
+  const inviteCode = typeof body?.inviteCode === "string" ? body.inviteCode.trim().toUpperCase() : "";
+  const invite = inviteCode ? findInviteByCode(inviteCode) : null;
+  const inviteCheck = validateRegistrationInvite(inviteCode, invite, email);
+  if (!inviteCheck.ok) return NextResponse.json({ error: inviteCheck.error }, { status: inviteCheck.status });
+  let inviteRole: AssignableRole | null = null;
+  if (inviteCode && (!invite || !isAssignableRole(invite.role))) {
+    return NextResponse.json({ error: "This invitation does not contain a valid workspace role." }, { status: 409 });
+  }
+  if (invite && isAssignableRole(invite.role)) inviteRole = invite.role;
 
   /* Google has verified the address, so the account is verified too. Existing
    * password accounts with the same email are linked, not duplicated. */
-  let user = findUserByEmail(identity.email);
+  let user = findUserByEmail(email);
+  if (user && inviteCode) {
+    return NextResponse.json(
+      { error: "This email already has a Quorum account. Sign in with that account or ask the workspace owner to review the invitation." },
+      { status: 409 },
+    );
+  }
   if (!user) {
+    const membership = invite && inviteRole
+      ? { workspaceId: invite.workspaceId, role: inviteRole }
+      : findClaimedWorkspaceMembership(email);
     user = createUser({
-      name: identity.name.trim() || identity.email.split("@")[0],
-      email: identity.email,
+      name: identity.name.trim() || email.split("@")[0],
+      email,
       password: "oauth:google",
       emailVerified: true,
+      ...(membership ?? {}),
     });
+    if (invite) {
+      updateInvite(invite.id, {
+        status: "CLAIMED",
+        claimedBy: user.id,
+        claimedByEmail: user.email,
+        claimedAt: new Date(),
+      }, invite.workspaceId);
+    }
   } else if (!user.emailVerified) {
     user = markUserVerified(user.id) ?? user;
   }

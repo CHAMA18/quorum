@@ -4,9 +4,10 @@
 
 ## What it does
 
-- **HTTPS front door** for the EC2 app while the custom domain has no public
-  DNS/TLS record. Every request is proxied to `ORIGIN_URL`; cookies, redirects,
-  static assets and streaming bodies are preserved.
+- **HTTPS front door** for the EC2 app. Every request is proxied to
+  `ORIGIN_URL`; cookies, redirects, static assets and streaming bodies are
+  preserved. The public landing is served separately at
+  `quorum-solutions.com`; this Worker is the app/R2/TTS edge.
 - **R2 upload gate** at `/__edge/upload` and `/__edge/object`. Both require
   `x-quorum-edge-key`; the browser never receives that secret. If R2 is not
   enabled or the `TENDERS` binding is absent, the worker answers `503` rather
@@ -23,7 +24,7 @@
   `x-quorum-edge-key`; `/api/muse/speak` calls it server-to-server.
 - **Health** at `/__edge/health`.
 
-The Bun sidecar, JSON/SQLite state and filesystem MCP server stay on EC2.
+The Bun sidecar, JSON/Postgres state and filesystem MCP server stay on EC2.
 Workers are not a replacement for that persistent process. The Worker always
 proxies whatever build is running on EC2; redeploy the web/sidecar to pick up
 source changes (see [`docs/EC2_REDEPLOY.md`](../../docs/EC2_REDEPLOY.md)).
@@ -31,9 +32,13 @@ source changes (see [`docs/EC2_REDEPLOY.md`](../../docs/EC2_REDEPLOY.md)).
 ## Live
 
 ```text
-https://quorum-edge.chungu424.workers.dev
-https://quorum-edge.chungu424.workers.dev/__edge/health
+https://quorum-edge.chungu424.workers.dev/__edge/health   # edge is up
+https://quorum-edge.chungu424.workers.dev                 # app proxy — depends on ORIGIN_URL
 ```
+
+The root URL is only a working demo when `ORIGIN_URL` points at a live origin.
+`wrangler.toml` targets the EC2 origin in `af-south-1`; redeploy the Worker
+after changing it (`bash scripts/deploy-edge.sh`).
 
 ## Test
 

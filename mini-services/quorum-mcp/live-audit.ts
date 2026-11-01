@@ -40,21 +40,48 @@ interface StateRun {
 const state = JSON.parse(await readFile(join(DATA, "state.json"), "utf8")) as { runs: StateRun[] };
 const llmRuns = state.runs.filter((r) => r.plan?.source === "llm");
 
-/* Tool-log durations for the model-node tool calls (plan_review / draft_redline). */
-const durations: Record<string, { tool: string; ms: number; ts: string }[]> = {};
+/* Per-call provenance covers planning, evidence reading, repair and drafting. */
+interface ModelCallAudit {
+  purpose: string;
+  ms: number;
+  ts: string;
+  promptTokens: number;
+  completionTokens: number;
+  outcome: string;
+  model: string;
+  api: string;
+  reasoningEffort: string;
+  redactions: number;
+}
+const modelCallsByRun: Record<string, ModelCallAudit[]> = {};
+const legacyDurations: Record<string, { tool: string; ms: number; ts: string }[]> = {};
 const logLines = (await readFile(join(DATA, "tool-log.jsonl"), "utf8")).split("\n").filter(Boolean);
 for (const line of logLines) {
-  let e: Record<string, unknown>;
-  try { e = JSON.parse(line); } catch { continue; }
-  const runId = e.runId as string | undefined;
-  const tool = e.tool as string | undefined;
-  if (!runId || (tool !== "plan_review" && tool !== "draft_redline")) continue;
-  const ms = e.durationMs;
-  (durations[runId] ??= []).push({
-    tool: tool as string,
-    ms: typeof ms === "number" ? ms : Number(ms ?? 0),
-    ts: e.ts as string,
-  });
+  let entry: Record<string, unknown>;
+  try { entry = JSON.parse(line); } catch { continue; }
+  const runId = entry.runId as string | undefined;
+  const tool = entry.tool as string | undefined;
+  if (!runId || !tool) continue;
+  const ms = typeof entry.durationMs === "number" ? entry.durationMs : Number(entry.durationMs ?? 0);
+  if (tool === "model_call" && entry.inputs && typeof entry.inputs === "object") {
+    const inputs = entry.inputs as Record<string, unknown>;
+    const outputs = entry.outputs && typeof entry.outputs === "object" ? entry.outputs as Record<string, unknown> : {};
+    modelCallsByRun[runId] ??= [];
+    modelCallsByRun[runId].push({
+      purpose: String(inputs.purpose ?? "unknown"),
+      ms,
+      ts: String(entry.ts ?? ""),
+      promptTokens: Number(outputs.promptTokens) || 0,
+      completionTokens: Number(outputs.completionTokens) || 0,
+      outcome: String(outputs.outcome ?? entry.status ?? "unknown"),
+      model: String(inputs.model ?? "unknown"),
+      api: String(inputs.api ?? "unknown"),
+      reasoningEffort: String(inputs.reasoningEffort ?? "unknown"),
+      redactions: Number(outputs.redactions) || 0,
+    });
+  } else if (tool === "plan_review" || tool === "draft_redline") {
+    (legacyDurations[runId] ??= []).push({ tool, ms, ts: String(entry.ts ?? "") });
+  }
 }
 
 const hash8 = (s: string) => createHash("sha1").update(s.slice(0, 120)).digest("hex").slice(0, 8);
@@ -65,7 +92,12 @@ const median = (xs: number[]) => {
 };
 
 const runs = llmRuns.map((r) => {
-  const tool = durations[r.id] ?? [];
+  const calls = modelCallsByRun[r.id] ?? [];
+  const legacy = calls.length ? [] : legacyDurations[r.id] ?? [];
+  const tokenUsage = calls.length
+    ? { promptTokens: calls.reduce((sum, call) => sum + call.promptTokens, 0), completionTokens: calls.reduce((sum, call) => sum + call.completionTokens, 0) }
+    : r.usage ? { promptTokens: r.usage.promptTokens, completionTokens: r.usage.completionTokens } : null;
+  const latencies = calls.length ? calls.map((call) => call.ms) : legacy.map((call) => call.ms);
   return {
     runId: r.id,
     tenderId: r.tenderId,
@@ -74,10 +106,11 @@ const runs = llmRuns.map((r) => {
     plan: { source: r.plan?.source, parseMarkdownValues: r.plan?.parseMarkdownValues, maxDrafts: r.plan?.maxDrafts, model: r.plan?.model, floorNote: /parse floor/.test(r.plan?.note ?? "") },
     findingsSignature: [...new Set((r.findings ?? []).map((f) => f.rule))].sort(),
     findingCount: (r.findings ?? []).length,
-    usage: r.usage ?? null,
+    usage: tokenUsage,
+    modelCalls: calls.map((call) => ({ purpose: call.purpose, model: call.model, api: call.api, reasoningEffort: call.reasoningEffort, outcome: call.outcome, ms: call.ms, promptTokens: call.promptTokens, completionTokens: call.completionTokens, redactions: call.redactions })),
     draftTextHashes: (r.drafts ?? []).map((d) => hash8(d.proposed ?? "")),
-    llmToolCalls: tool.length,
-    llmToolMs: { min: Math.min(...tool.map((t) => t.ms)), max: Math.max(...tool.map((t) => t.ms)) },
+    llmToolCalls: calls.length || legacy.length,
+    llmToolMs: latencies.length ? { min: Math.min(...latencies), max: Math.max(...latencies) } : null,
   };
 });
 
@@ -91,7 +124,7 @@ const sigNames = Object.entries(sigCounts).map(([sig, n]) => ({ findings: sig.sp
 const stableSig = sigNames.find((s) => s.runs === Math.max(...sigNames.map((x) => x.runs)))?.findings ?? [];
 const sameFindings = sigNames.length === 1;
 const draftSets = new Set(runs.map((r) => r.draftTextHashes.join(",")));
-const allMs = llmRuns.flatMap((r) => (durations[r.id] ?? []).map((t) => t.ms));
+const allMs = llmRuns.flatMap((r) => (modelCallsByRun[r.id] ?? []).map((call) => call.ms));
 
 const summary = {
   runsAudited: runs.length,
@@ -101,7 +134,7 @@ const summary = {
   tokensPromptTotal: tokenised.reduce((n, r) => n + (r.usage?.promptTokens ?? 0), 0),
   tokensCompletionTotal: tokenised.reduce((n, r) => n + (r.usage?.completionTokens ?? 0), 0),
   llmCallsTotal: allMs.length,
-  llmCallMs: { median: median(allMs), min: Math.min(...allMs), max: Math.max(...allMs) },
+  llmCallMs: allMs.length ? { median: median(allMs), min: Math.min(...allMs), max: Math.max(...allMs) } : null,
   costNote: "Local, in-region endpoint (Ollama): 0 USD marginal cost. Hosted endpoint: multiply run tokens by the published per-token price — the per-run figures above are the auditable input.",
 };
 

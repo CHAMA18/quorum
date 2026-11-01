@@ -228,13 +228,32 @@ export type EvaluatedPrice =
 /** The price the financial formula should score for one bid. */
 export function evaluatedPrice(
   matrix: Pick<EvalMatrix, "evaluationCurrency" | "fxRates">,
-  financial: { amount: number; currency?: string } | undefined,
+  financial: {
+    amount: number;
+    currency?: string;
+    adjustments?: {
+      arithmeticCorrection?: number;
+      unconditionalDiscount?: number;
+      otherAdjustment?: number;
+      preferencePct?: number;
+    };
+  } | undefined,
 ): EvaluatedPrice {
   if (!financial || !Number.isFinite(financial.amount) || financial.amount <= 0) return { state: "NONE" };
+  const correction = financial.adjustments?.arithmeticCorrection ?? 0;
+  const discount = financial.adjustments?.unconditionalDiscount ?? 0;
+  const other = financial.adjustments?.otherAdjustment ?? 0;
+  const preferencePct = financial.adjustments?.preferencePct ?? 0;
+  if (![correction, discount, other, preferencePct].every(Number.isFinite) || discount < 0 || preferencePct < 0 || preferencePct > 15) {
+    return { state: "UNCONVERTIBLE", reason: "the arithmetic correction, unconditional discount or preference adjustment is invalid" };
+  }
+  const corrected = round2(financial.amount + correction - discount + other);
+  if (corrected <= 0) return { state: "UNCONVERTIBLE", reason: "the corrected evaluated price is not positive" };
+  const adjusted = round2(corrected * (1 - preferencePct / 100));
   const evaluation = normalizeCurrency(matrix.evaluationCurrency);
   const base = normalizeCurrency(financial.currency);
-  if (!evaluation) return { state: "LEGACY", amount: financial.amount };
-  if (!base || base === evaluation) return { state: "SAME", amount: financial.amount };
+  if (!evaluation) return { state: "LEGACY", amount: adjusted };
+  if (!base || base === evaluation) return { state: "SAME", amount: adjusted };
   const quote = (matrix.fxRates ?? []).find(
     (rate) => normalizeCurrency(rate.base) === base && normalizeCurrency(rate.quote) === evaluation,
   );
@@ -253,7 +272,7 @@ export function evaluatedPrice(
   }
   return {
     state: "CONVERTED",
-    amount: round2(financial.amount * quote.rate),
+      amount: round2(adjusted * quote.rate),
     baseCurrency: base,
     currency: evaluation,
     rate: quote.rate,

@@ -11,6 +11,7 @@ export async function GET(req: NextRequest) {
   try {
     const token = req.cookies.get(SESSION_COOKIE)?.value;
     const user = await getUserFromToken(token).catch(() => null);
+    if (!user) return NextResponse.json({ error: "Sign in to read the committee register." }, { status: 401 });
     const state = await getCommitteeState(user);
     return NextResponse.json(state);
   } catch (err) {

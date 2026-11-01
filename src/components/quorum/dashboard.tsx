@@ -7,6 +7,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   BookOpen,
+  Braces,
   Building2,
   Cable,
   CalendarDays,
@@ -62,6 +63,7 @@ import { OversightView } from "@/components/quorum/oversight-view";
 import { TeamInviteDeliveryActions } from "@/components/quorum/team-invite-delivery-actions";
 import { CalendarView } from "@/components/quorum/calendar-view";
 import { IntegrationsView } from "@/components/quorum/integrations-view";
+import { ApiView } from "@/components/quorum/api-view";
 import { CYCLE_PAGE_PAGES, CycleView, type CyclePageTab } from "@/components/quorum/cycle-view";
 import { GovernanceView } from "@/components/quorum/governance-view";
 import { ComplianceView } from "@/components/quorum/compliance-view";
@@ -81,7 +83,9 @@ import {
 } from "@/components/quorum/award-signature";
 import {
   ASSIGNABLE_ROLES,
+  CAPABILITY_DETAILS,
   ROLE_LABELS,
+  ROLE_DESCRIPTIONS,
   can as canDo,
   type AssignableRole,
   type Capability,
@@ -494,6 +498,7 @@ type SectionId =
   | "mc-calendar"
   | "mc-suppliers"
   | "mc-integrations"
+  | "mc-api"
   | "mc-rules"
   | "mc-stack"
   | "mc-audit"
@@ -560,6 +565,7 @@ const NAV_GROUPS: {
     items: [
       { id: "mc-stack", label: "Developer", icon: Terminal },
       { id: "mc-integrations", label: "Integrations", icon: Cable },
+      { id: "mc-api", label: "API", icon: Braces },
     ],
   },
   {
@@ -2081,6 +2087,8 @@ function SidebarContent({
                 const Icon = item.icon;
                 const isActive = active === item.id;
                 const badge = item.badge ? counts[item.badge] : null;
+                /* Bound once so the nested render callbacks keep the narrowing. */
+                const subpages = item.subpages;
                 const itemClass = cn(
                   "focus-brand group relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-[background-color,color] duration-200",
                   isActive
@@ -2149,18 +2157,18 @@ function SidebarContent({
                         ) : null}
                       </button>
                     )}
-                    {!item.href && item.subpages?.length ? (
+                    {!item.href && subpages?.length ? (
                       <ul
                         id="mc-cycle-subpages"
                         className={cn("ml-[18px] mt-1.5 space-y-1 border-l border-white/[0.14] pl-2.5", !isActive && "hidden")}
                         aria-label="Tender Cycle pages"
                       >
-                        {item.subpages.map((page, pageIndex) => {
+                        {subpages.map((page, pageIndex) => {
                           const pageActive = activeCyclePage === page.id;
                           const pageOrdinal = page.group
-                            ? item.subpages.slice(0, pageIndex).filter((candidate) => candidate.group === page.group).length + 1
+                            ? subpages.slice(0, pageIndex).filter((candidate) => candidate.group === page.group).length + 1
                             : pageIndex + 1;
-                          const groupStartsHere = page.group && item.subpages[pageIndex - 1]?.group !== page.group;
+                          const groupStartsHere = page.group && subpages[pageIndex - 1]?.group !== page.group;
                           return (
                             <li key={page.id}>
                               {groupStartsHere ? (
@@ -5696,7 +5704,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
   const [copied, setCopied] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const [memberOpen, setMemberOpen] = useState(false);
-  const [memberDraft, setMemberDraft] = useState({ name: "", role: "", isChair: false });
+  const [memberDraft, setMemberDraft] = useState({ name: "", email: "", role: "", isChair: false });
   const [memberBusy, setMemberBusy] = useState(false);
   const [memberErr, setMemberErr] = useState<string | null>(null);
   const [armRemove, setArmRemove] = useState<string | null>(null);
@@ -5889,13 +5897,13 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
       const res = await fetch("/api/committee/members", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name, role: memberDraft.role.trim() || undefined, isChair: memberDraft.isChair }),
+        body: JSON.stringify({ name, email: memberDraft.email.trim(), role: memberDraft.role.trim() || undefined, isChair: memberDraft.isChair }),
       });
       const d = (await res.json()) as CommitteeData | { error: string };
       if (!res.ok || "error" in d) throw new Error("error" in d ? d.error : "failed");
       setData(d);
       setMemberOpen(false);
-      setMemberDraft({ name: "", role: "", isChair: false });
+      setMemberDraft({ name: "", email: "", role: "", isChair: false });
       onToast("MEMBER REGISTERED — THE DOOR LIST READS THE REGISTER");
     } catch (err) {
       setMemberErr(
@@ -6813,6 +6821,17 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                   />
                 </label>
                 <label className="block">
+                  <span className="font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-400">ACTIVE WORKSPACE ACCOUNT EMAIL</span>
+                  <input
+                    type="email"
+                    value={memberDraft.email}
+                    onChange={(e) => setMemberDraft((d) => ({ ...d, email: e.target.value }))}
+                    placeholder="member@organisation.gov.zm"
+                    className="mt-1.5 h-10 w-full rounded-xl border border-ink-200 bg-white px-3.5 text-[13px] text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950"
+                  />
+                  <span className="mt-1 block text-[11px] text-ink-500">This links their signed-in account to their committee seat for declarations and evaluation records.</span>
+                </label>
+                <label className="block">
                   <span className="font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-400">ROLE ON THE COMMITTEE</span>
                   <input
                     value={memberDraft.role}
@@ -6889,6 +6908,66 @@ type TeamData = {
   actorRole: WorkspaceRole;
   emailDeliveryConfigured: boolean;
 };
+
+const WORKSPACE_ROLE_ORDER: WorkspaceRole[] = ["OWNER", "ADMIN", "OFFICER", "COMMITTEE", "AUDITOR"];
+
+function WorkspaceRoleMatrix() {
+  return (
+    <section className="overflow-hidden rounded-xl border border-ink-100 bg-paper/60" aria-labelledby="workspace-role-matrix-heading">
+      <div className="border-b border-ink-100 px-4 py-3">
+        <p className="font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400">ACCESS BY ROLE</p>
+        <h4 id="workspace-role-matrix-heading" className="mt-1 text-[13px] font-bold text-ink-950">Workspace permission matrix</h4>
+        <p className="mt-1 text-[11px] leading-relaxed text-ink-500">
+          These permissions are enforced by the server for the role on the authenticated account. Gate signatures also
+          require the right statutory office, roster status and any required step-up authentication.
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[980px] border-collapse text-left">
+          <thead>
+            <tr className="border-b border-ink-100 bg-paper/80">
+              <th scope="col" className="sticky left-0 z-10 min-w-[280px] bg-paper px-4 py-3 font-code text-[8px] font-bold tracking-[0.14em] text-ink-400">CAPABILITY</th>
+              {WORKSPACE_ROLE_ORDER.map((role) => (
+                <th key={role} scope="col" className="min-w-[120px] px-3 py-3 text-center">
+                  <span className="block font-code text-[8px] font-bold tracking-[0.13em] text-ink-700">{ROLE_LABELS[role].toUpperCase()}</span>
+                  <span className="mt-1 block max-w-[155px] text-[9px] font-normal leading-snug text-ink-400">{ROLE_DESCRIPTIONS[role]}</span>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {CAPABILITY_DETAILS.map((capability) => (
+              <tr key={capability.key} className="border-b border-ink-100 last:border-0">
+                <th scope="row" className="sticky left-0 z-10 bg-paper px-4 py-2.5 align-top">
+                  <span className="block text-[10.5px] font-semibold text-ink-800">{capability.label}</span>
+                  <span className="mt-0.5 block max-w-[340px] text-[9.5px] font-normal leading-snug text-ink-400">{capability.description}</span>
+                </th>
+                {WORKSPACE_ROLE_ORDER.map((role) => {
+                  const granted = canDo(role, capability.key);
+                  return (
+                    <td key={role} className="px-3 py-2.5 text-center">
+                      <span
+                        aria-label={`${ROLE_LABELS[role]} ${granted ? "can" : "cannot"} ${capability.label}`}
+                        className={cn(
+                          "inline-grid h-5 min-w-5 place-items-center rounded-full border px-1 font-code text-[9px] font-bold",
+                          granted
+                            ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/[0.08] dark:text-emerald-300"
+                            : "border-ink-100 bg-paper text-ink-300 dark:border-white/8 dark:bg-white/[0.02] dark:text-ink-500",
+                        )}
+                      >
+                        {granted ? "✓" : "—"}
+                      </span>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
 
 function TeamMembersSection({
   user,
@@ -7012,6 +7091,18 @@ function TeamMembersSection({
               OPEN OVERSIGHT
             </button>
           )}
+          {canDo(user?.role, "view_oversight") && (
+            /* The control room is a page of its own, not a workspace tab: it
+               aggregates the whole desk and must stay outside the worker's
+               daily flow. */
+            <a
+              href="/admin"
+              className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-paper px-3 py-1.5 font-code text-[8px] font-bold tracking-[0.14em] text-ink-600 transition-colors hover:border-ink-400 hover:text-ink-950"
+            >
+              <Gauge className="h-3 w-3" aria-hidden="true" />
+              CONTROL ROOM
+            </a>
+          )}
         </div>
       </div>
 
@@ -7092,6 +7183,10 @@ function TeamMembersSection({
             {data.emailDeliveryConfigured
               ? "Enter a work email to send the invitation through Resend. The recipient link opens registration with the code filled in; the code can also be shared manually."
               : "Email delivery is not configured on this deployment. Quorum will create a shareable code; enter an email when Resend is configured to send the invite directly."}
+          </p>
+          <p className="mt-2 text-[11px] leading-relaxed text-ink-500">
+            {ROLE_DESCRIPTIONS[inviteRole]}{" "}
+            {data.actorRole === "ADMIN" ? "Admins may grant Officer, Committee or Auditor access, but cannot grant Admin." : ""}
           </p>
           {freshCode && (
             <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2.5">
@@ -7234,7 +7329,7 @@ function SettingsView({
       <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
         <div data-tour="settings-account" className={cardClass}>
           <p className={labelClass}>ACCOUNT</p>
-          <h3 className={titleClass}>Signed-in officer</h3>
+          <h3 className={titleClass}>Signed-in account</h3>
           <div className="mt-5 flex items-center gap-4">
             <span
               className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-brand-600 font-code text-[12px] font-bold text-white"
@@ -7247,8 +7342,14 @@ function SettingsView({
               <p className="truncate font-code text-[9px] tracking-[0.14em] text-ink-500">
                 {(user?.email ?? "NOT SIGNED IN").toUpperCase()}
               </p>
+              {user?.role ? (
+                <span className="mt-2 inline-flex rounded-full border border-brand-200 bg-brand-50 px-2.5 py-1 font-code text-[8px] font-bold tracking-[0.14em] text-brand-800 dark:border-brand-400/25 dark:bg-brand-400/[0.08] dark:text-brand-300">
+                  {ROLE_LABELS[user.role].toUpperCase()}
+                </span>
+              ) : null}
             </div>
           </div>
+          {user?.role ? <p className="mt-4 text-[11.5px] leading-relaxed text-ink-500">{ROLE_DESCRIPTIONS[user.role]}</p> : null}
         </div>
 
         <div data-tour="settings-signout" className={cardClass}>
@@ -7270,6 +7371,10 @@ function SettingsView({
         {canDo(user?.role, "view_oversight") && (
           <TeamMembersSection user={user} onToast={onToast} onOpenOversight={onOpenOversight} />
         )}
+
+        <div className="lg:col-span-2">
+          <WorkspaceRoleMatrix />
+        </div>
 
         <div data-tour="settings-agent" className={`${cardClass} lg:col-span-2`}>
           <p className={labelClass}>AGENT CONNECTION</p>
@@ -10423,6 +10528,8 @@ export function Dashboard({
         return <SuppliersView firstName={firstName} onToast={onToast} />;
       case "mc-integrations":
         return <IntegrationsView />;
+      case "mc-api":
+        return <ApiView />;
       default:
         return null;
     }

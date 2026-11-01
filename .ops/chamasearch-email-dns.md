@@ -53,8 +53,8 @@ nothing serves the records even if they existed.
 
 ## Reference state (other domains on the Resend key)
 
-- `chungu-chama.com` id `79a72ba1-…` — `not_started` (records parked in
-  the earlier runbook; chungu-chama.com **is** registered on this AWS
+- `quorum-solutions.com` id `79a72ba1-…` — `not_started` (records parked in
+  the earlier runbook; quorum-solutions.com **is** registered on this AWS
   account, so its Route 53 path can finish the moment its records are
   allowed through the same boundary).
 - `notification.casper-dental.com` id `205b3f61-…` — already `verified`.

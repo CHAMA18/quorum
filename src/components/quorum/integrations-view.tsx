@@ -41,6 +41,15 @@ const MCP_CLIENT_GUIDES: Record<McpClient, { setup: string; href?: string }> = {
   "Other MCP client": { setup: "Use the client’s local stdio server configuration format. Most clients accept a command, arguments, and environment variables.", href: "https://modelcontextprotocol.io/docs/develop/connect-local-servers" },
 };
 
+/** The Cursor wordmark, shown on a white chip so its light background stays hidden in dark mode. */
+function CursorLogo() {
+  return (
+    <span className="inline-flex w-fit items-center rounded-lg bg-white px-3 py-2 ring-1 ring-ink-200">
+      <img src="/images/cursor-logo.jpeg" alt="Cursor" className="h-7 w-auto" />
+    </span>
+  );
+}
+
 function clientConfig(client: McpClient, projectPath: string) {
   const server = {
     command: "node",
@@ -178,6 +187,7 @@ export function IntegrationsView() {
   const [projectPath, setProjectPath] = useState("");
   const [remoteToken, setRemoteToken] = useState("");
   const [remoteState, setRemoteState] = useState<"idle" | "checking" | "connected" | "unavailable">("idle");
+  const [addedClient, setAddedClient] = useState<McpClient | null>(null);
   const localRuntime = mcpEndpoint.startsWith("http://127.0.0.1:3031");
 
   const checkMcp = useCallback(async () => {
@@ -231,6 +241,16 @@ export function IntegrationsView() {
     }
   };
 
+  const copyRemoteUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(REMOTE_MCP_ENDPOINT);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setCopied(false);
+    }
+  };
+
   const copyRemoteConfig = async () => {
     try {
       await navigator.clipboard.writeText(remoteClientConfig(client, remoteToken));
@@ -262,23 +282,35 @@ export function IntegrationsView() {
             <div className="space-y-3">
               <label className="block">
                 <span className="mb-1.5 block font-code text-[8px] font-bold tracking-[0.13em] text-ink-500 dark:text-ink-400">AI CLIENT</span>
-                <select value={client} onChange={(event) => setClient(event.target.value as McpClient)} className="min-h-10 w-full rounded-lg border border-ink-200 bg-white px-3 text-[11px] text-ink-900 outline-none focus:border-brand-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-white">
-                  {MCP_CLIENTS.map((name) => <option key={name} value={name}>{name}</option>)}
-                </select>
+                <div role="tablist" aria-label="AI client" className="flex flex-wrap gap-1.5">
+                  {MCP_CLIENTS.map((name) => (
+                    <button key={name} type="button" role="tab" aria-selected={client === name} onClick={() => setClient(name)} className={cn("rounded-lg px-3 py-2 text-[11px] font-semibold transition-colors", client === name ? "bg-ink-100 text-ink-950 dark:bg-white/[0.1] dark:text-white" : "text-ink-600 hover:bg-ink-50 dark:text-ink-300 dark:hover:bg-white/[0.05]")}>
+                      {name}
+                    </button>
+                  ))}
+                </div>
               </label>
               <label className="block">
                 <span className="mb-1.5 block font-code text-[8px] font-bold tracking-[0.13em] text-ink-500 dark:text-ink-400">LOCAL QUORUM CHECKOUT PATH</span>
                 <input value={projectPath} onChange={(event) => setProjectPath(event.target.value.trim())} placeholder="/Users/you/projects/quorum" className="min-h-10 w-full rounded-lg border border-ink-200 bg-white px-3 font-mono text-[10px] text-ink-900 outline-none placeholder:text-ink-400 focus:border-brand-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-white" />
               </label>
               <p className="text-[10px] leading-relaxed text-ink-500 dark:text-ink-400">Install the bridge once with <code>npm install --prefix vscode-extension</code>, then run Quorum locally with <code>bun run dev</code>. Replace the sample path with your repository’s absolute path.</p>
-              <p className="text-[10px] leading-relaxed text-ink-500 dark:text-ink-400">{MCP_CLIENT_GUIDES[client].setup}</p>
+              <p className="text-[11px] leading-relaxed text-ink-700 dark:text-ink-200">{MCP_CLIENT_GUIDES[client].setup}</p>
+              {client === "Cursor" ? <CursorLogo /> : null}
               <a href={MCP_CLIENT_GUIDES[client].href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-code text-[8px] font-bold tracking-[0.1em] text-brand-700 hover:text-brand-600 dark:text-brand-300">
                 {client} MCP SETUP GUIDE <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
               </a>
-              <button type="button" onClick={() => void copyMcpConfig()} className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-ink-950 px-3 text-[10px] font-semibold text-white transition hover:bg-ink-800 dark:bg-white dark:text-ink-950 dark:hover:bg-ink-100">
-                {copied ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
-                {copied ? "Configuration copied" : `Copy ${client} configuration`}
+              <div className="flex items-start justify-between gap-3 rounded-lg border border-ink-200 bg-white px-3 py-2.5 dark:border-white/10 dark:bg-white/[0.04]">
+                <code className="break-all text-[11px] text-ink-900 dark:text-white">{REMOTE_MCP_ENDPOINT}</code>
+                <button type="button" aria-label="Copy server URL" onClick={() => void copyRemoteUrl()} className="shrink-0 text-ink-500 hover:text-ink-900 dark:hover:text-white">
+                  {copied ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
+                </button>
+              </div>
+              <button type="button" onClick={() => setAddedClient(client)} className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-ink-950 px-3 text-[10px] font-semibold text-white transition hover:bg-ink-800 dark:bg-white dark:text-ink-950 dark:hover:bg-ink-100">
+                <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                I’ve added the server
               </button>
+              {addedClient === client ? <p role="status" className="text-[10px] text-emerald-700 dark:text-emerald-300">Marked as added for {client}. Check the connection from the local server card below.</p> : null}
             </div>
             <div className="min-w-0 overflow-hidden rounded-xl border border-ink-200 bg-ink-950 dark:border-white/10">
               <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">

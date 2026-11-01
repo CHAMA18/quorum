@@ -34,7 +34,7 @@ A judge will do most of this in order:
 
 ### 2.1 The live URL is the first failure
 
-At the time of this audit, `quorum.chungu-chama.com` returned **no public A/CNAME record** and no HTTPS response. The README itself says HTTPS is not up yet. The submission page and `META_HACKATHON.md` both point at this URL.
+At the time of this audit, the `quorum.` subdomain returned **no public A/CNAME record** and no HTTPS response; the root domain `quorum-solutions.com` is the working demo. The README itself says HTTPS is not up yet. The submission page and `META_HACKATHON.md` both point at this URL.
 
 **Fix:** deploy to a working HTTPS host (or repair Route 53 + TLS), then test from an incognito browser and a phone. If the EC2 route is blocked, move the web app to a host with managed TLS and run the Bun sidecar on a small VM or container platform. A stable, working URL is worth more than any feature added this week.
 

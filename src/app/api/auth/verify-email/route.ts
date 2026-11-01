@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createUser, findUserByEmail, markUserVerified } from "@/lib/db";
+import { createUser, findClaimedWorkspaceMembership, findUserByEmail, markUserVerified } from "@/lib/db";
 import {
   clientKey,
   createSession,
@@ -43,17 +43,20 @@ export async function POST(req: NextRequest) {
       { status: 403 }
     );
   }
+  const email = identity.email.trim().toLowerCase();
 
-  let user = findUserByEmail(identity.email);
+  let user = findUserByEmail(email);
   if (!user) {
     /* Verified at Firebase but missing locally (store rebuild): restore.
      * The password placeholder is intentionally NOT a valid scrypt hash —
      * the real passphrase is re-synced by the login fallback. */
+    const membership = findClaimedWorkspaceMembership(email);
     user = createUser({
-      name: identity.name.trim() || identity.email.split("@")[0],
-      email: identity.email,
+      name: identity.name.trim() || email.split("@")[0],
+      email,
       password: "firebase:verified",
       emailVerified: true,
+      ...(membership ?? {}),
     });
   }
   if (!user.emailVerified) {

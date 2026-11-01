@@ -1,6 +1,6 @@
 const { app, BrowserWindow, shell } = require("electron");
 
-const APP_URL = "https://quorum-static.onrender.com";
+const APP_URL = "https://d1n7mv5t5hn4xe.cloudfront.net";
 const APP_HOST = new URL(APP_URL).host;
 
 function openExternal(rawUrl) {

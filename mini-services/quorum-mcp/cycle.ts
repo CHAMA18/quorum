@@ -35,13 +35,14 @@ import type {
 
 /* ── Tunable constants — the regime's numbers, stated once ─────────────────── */
 
-export const STANDSTILL_DAYS = 10; /* working days to lodge a complaint after award publication */
+export const STANDSTILL_DAYS = 5; /* Zambia: working days to lodge a complaint after award publication */
 export const ALB_RESPONSE_DAYS = 5; /* working days for an abnormally-low-bid justification */
 export const ADDENDUM_MIN_NOTICE_DAYS = 7; /* an addendum inside this window must extend closing */
 export const BID_SECURITY_MIN_PCT = 2; /* of bid value, unless the notice states more */
 export const BID_SECURITY_VALIDITY_MARGIN_DAYS = 28; /* calendar days beyond the closing date */
 export const VARIATION_GATE_PCT = 10; /* a variation at or above this share of the contract needs the gate */
 export const DEFAULT_TECH_WEIGHT_PCT = 80; /* technical 80 / financial 20, the standard methods default */
+export const DEFAULT_FINANCIAL_FORMULA = "Lowest evaluated price / bidder evaluated price × 100; arithmetic corrections, unconditional discounts and published preference applied before ranking.";
 export const COMPLAINT_RESPONSE_DAYS = 14; /* working days to answer a standstill complaint */
 
 /* ── Dates: working-day arithmetic, no library, no timezone drift ──────────── */
@@ -318,9 +319,16 @@ export const NOTICE_MANDATORY_FIELDS: { field: string; test: RegExp }[] = [
   { field: "Reference", test: /^\*\*Reference:\*\*\s*\S/m },
   { field: "Buyer", test: /^\*\*Buyer:\*\*\s*\S/m },
   { field: "Method", test: /^\*\*Method:\*\*\s*\S/m },
+  { field: "Procurement scope", test: /^\*\*Procurement scope:\*\*\s*(National|International)$/m },
+  { field: "Evaluation currency", test: /^\*\*Evaluation currency:\*\*\s*[A-Z]{3}$/m },
   { field: "Closing date", test: /\*\*(?:Closing(?: date)?|Deadline|Submission deadline)(?: for submissions)?:?\*\*\s*\S/i },
   { field: "Budget ceiling", test: /^\*\*Budget ceiling:\*\*\s*\S/m },
   { field: "Required documents", test: /^- \[REQUIRED\]/m },
+  { field: "Technical/financial weighting", test: /^\*\*Technical\/financial split:\*\*\s*\d+\/\d+$/m },
+  { field: "Financial evaluation formula", test: /^\*\*Financial formula:\*\*\s*.+$/m },
+  { field: "FX basis and source", test: /^\*\*FX basis:\*\*\s*(?!NOT STATED).+$/im },
+  { field: "Preference/reservation scheme", test: /^\*\*Preference\/reservation scheme:\*\*\s*.+$/m },
+  { field: "Foreign bidder eligibility", test: /^\*\*Foreign bidders permitted:\*\*\s*(Yes|No)$/m },
   { field: "Contact", test: /^\*\*Contact:\*\*\s*\S/m },
 ];
 
@@ -338,7 +346,23 @@ export function draftNoticeMd(input: {
   requiredDocs?: string[];
   contact: string;
   subject: string;
+  evaluationCriteria?: { title: string; weight: number }[];
+  technicalWeightPct?: number;
+  financialFormula?: string;
+  fxBasis?: string;
+  preferenceScheme?: string;
+  foreignBiddersPermitted?: boolean;
+  cdfReservationConstituency?: string;
+  cdfReservationExceptionRef?: string;
+  cdfReservationExceptionBasis?: string;
+  procurementScope?: "National" | "International";
+  evaluationCurrency?: string;
 }): string {
+  const criteria = input.evaluationCriteria ?? [];
+  const requestedWeight = Number(input.technicalWeightPct);
+  const technicalWeight = Number.isInteger(requestedWeight) && requestedWeight >= 0 && requestedWeight <= 100
+    ? requestedWeight
+    : DEFAULT_TECH_WEIGHT_PCT;
   const lines = [
     "# TENDER NOTICE",
     "",
@@ -348,9 +372,36 @@ export function draftNoticeMd(input: {
     `**Method:** ${input.method}`,
     ...(input.ceiling ? [`**Budget ceiling:** ${input.ceiling}`] : []),
     ...(input.closingDate ? [`**Closing date:** ${input.closingDate}`] : []),
+    `**Technical/financial split:** ${technicalWeight}/${100 - technicalWeight}`,
+    `**Financial formula:** ${input.financialFormula?.trim() || DEFAULT_FINANCIAL_FORMULA}`,
+    `**FX basis:** ${input.fxBasis?.trim() || "NOT STATED — complete with currency source and date before publication"}`,
+    `**Preference/reservation scheme:** ${input.preferenceScheme?.trim() || "None"}`,
+    ...(input.preferenceScheme?.trim() === "CDF_RESERVATION" && input.cdfReservationConstituency?.trim()
+      ? [`**CDF funded constituency:** ${input.cdfReservationConstituency.trim()}`]
+      : []),
+    ...(input.cdfReservationExceptionRef?.trim()
+      ? [
+          `**CDF locality exception evidence:** ${input.cdfReservationExceptionRef.trim()}`,
+          `**CDF locality exception basis:** ${input.cdfReservationExceptionBasis?.trim() ?? ""}`,
+        ]
+      : []),
+    `**Foreign bidders permitted:** ${input.foreignBiddersPermitted === true ? "Yes" : "No"}`,
+    `**Evaluation currency:** ${(input.evaluationCurrency?.trim().toUpperCase() || "ZMW")}`,
+    `**Procurement scope:** ${input.procurementScope ?? "National"}`,
     "",
     "Eligibility — the following documents are REQUIRED with the bid:",
     ...(input.requiredDocs?.length ? input.requiredDocs.map((d) => `- [REQUIRED] ${d}`) : ["- [REQUIRED] (none listed — complete before publication)"]),
+    ...(criteria.length
+      ? [
+          "",
+          "## Evaluation criteria (published with this notice)",
+          "| Criterion | Weight (%) |",
+          "| --- | ---: |",
+          ...criteria.map((criterion) => `| ${criterion.title.replace(/\|/g, " / ")} | ${criterion.weight} |`),
+          "",
+          "The evaluation matrix must use these criteria and weights exactly; weights must sum to 100.",
+        ]
+      : []),
     "",
     `**Contact:** ${input.contact}`,
     "",
@@ -403,8 +454,38 @@ export function validateCriteria(criteria: EvalCriterion[]): string | null {
     if (!Number.isFinite(c.weight) || c.weight <= 0 || c.weight > 100) return `criterion "${c.title}" weight must be 1-100`;
   }
   const sum = weightsSum(criteria);
-  if (Math.round(sum) !== 100) return `criterion weights must sum to 100 — they sum to ${Math.round(sum)}`;
+  if (Math.abs(sum - 100) > 0.0001) return `criterion weights must sum to exactly 100 — they sum to ${sum.toFixed(1)}`;
   return null;
+}
+
+/** Read the evaluation table published in a tender notice or specification. */
+export function parseEvaluationCriteria(markdown: string): EvalCriterion[] {
+  const lines = markdown.split(/\r?\n/);
+  const heading = lines.findIndex((line) => /^#{1,6}\s+(?:\d+\.?\s*)?evaluation criteria\b/i.test(line.trim()));
+  if (heading < 0) return [];
+  const criteria: EvalCriterion[] = [];
+  let criterionColumn = 0;
+  let weightColumn = 1;
+  for (const line of lines.slice(heading + 1)) {
+    const trimmed = line.trim();
+    if (/^#{1,6}\s/.test(trimmed)) break;
+    if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) {
+      if (criteria.length) break;
+      continue;
+    }
+    const cells = trimmed.slice(1, -1).split("|").map((cell) => cell.trim());
+    if (cells.length < 2 || cells.every((cell) => /^:?-{2,}:?$/.test(cell))) continue;
+    if (cells.some((cell) => /criterion|criteria|title/i.test(cell)) && cells.some((cell) => /weight|percentage/i.test(cell))) {
+      criterionColumn = Math.max(0, cells.findIndex((cell) => /criterion|criteria|title/i.test(cell)));
+      weightColumn = cells.findIndex((cell) => /weight|percentage/i.test(cell));
+      continue;
+    }
+    const title = cells[criterionColumn] ?? "";
+    const weight = cells[weightColumn]?.match(/^(\d+(?:\.\d+)?)\s*%?$/);
+    if (!title || !weight) continue;
+    criteria.push({ id: `C-${String(criteria.length + 1).padStart(2, "0")}`, title: title.slice(0, 120), weight: Number(weight[1]) });
+  }
+  return criteria;
 }
 
 export function validateScores(criteria: EvalCriterion[], scores: EvalScoreInput[]): string | null {
@@ -452,9 +533,16 @@ export function scoreMatrix(matrix: EvalMatrix): EvalMatrix {
     const price = evaluated[i];
     let financial: EvalBidResult["financial"];
     if (b.financial?.amount !== undefined) {
+      const adjustments = b.financial.adjustments;
+      const correctedAmount = b.financial.amount + (adjustments?.arithmeticCorrection ?? 0) - (adjustments?.unconditionalDiscount ?? 0) + (adjustments?.otherAdjustment ?? 0);
       financial = {
         amount: b.financial.amount,
         ...(b.financial.currency ? { currency: b.financial.currency } : {}),
+        ...(adjustments ? { adjustments: { ...adjustments } } : {}),
+        correctedAmount: Math.round(correctedAmount * 100) / 100,
+        preferenceAdjustedAmount: Math.round(correctedAmount * (1 - (adjustments?.preferencePct ?? 0) / 100) * 100) / 100,
+        evaluatedAmount: price.state === "LEGACY" || price.state === "SAME" || price.state === "CONVERTED" ? price.amount : undefined,
+        ...(matrix.evaluationCurrency ? { evaluatedCurrency: matrix.evaluationCurrency } : {}),
         formulaScore: scored[i],
       };
       if (price.state === "CONVERTED") {
@@ -474,8 +562,11 @@ export function scoreMatrix(matrix: EvalMatrix): EvalMatrix {
       financial?.formulaScore !== undefined
         ? Math.round((tech * (matrix.technicalWeightPct / 100) + (financial.formulaScore ?? 0) * (1 - matrix.technicalWeightPct / 100)) * 10) / 10
         : tech;
-    const verdict: EvalBidResult["verdict"] =
-      b.responsiveness === "RESPONSIVE" ? (total >= 50 ? "RECOMMENDED" : "NOT_RECOMMENDED") : "DISQUALIFIED";
+    const verdict: EvalBidResult["verdict"] = b.albOpen
+      ? "NOT_RECOMMENDED"
+      : b.responsiveness === "RESPONSIVE"
+        ? (total >= 50 ? "RECOMMENDED" : "NOT_RECOMMENDED")
+        : "DISQUALIFIED";
     return { ...b, technicalTotal: tech, financial, total, verdict };
   });
   return { ...matrix, bids };
@@ -686,6 +777,8 @@ export function composeAwardNotice(input: {
   publicationMode?: "SIMULATED" | "CONNECTED";
   receiptId?: string;
   standstillEndsAt?: string;
+  standstillDays?: number;
+  dispatchedTo?: string[];
 }): string {
   const connected = input.publicationMode === "CONNECTED";
   return [
@@ -701,8 +794,11 @@ export function composeAwardNotice(input: {
         : "SIMULATED — no transmission. This is not a publication receipt."
     }`,
     ...(input.standstillEndsAt
-      ? [`**Standstill:** unsuccessful bidders may lodge a complaint until ${input.standstillEndsAt.slice(0, 10)} (working days 10).`]
+      ? [`**Standstill:** unsuccessful bidders may lodge a complaint until ${input.standstillEndsAt.slice(0, 10)} (working days ${input.standstillDays ?? STANDSTILL_DAYS}).`]
+      : input.standstillDays
+        ? [`**Standstill:** unsuccessful bidders may lodge a complaint for ${input.standstillDays} working days from dispatch of this notice.`]
       : []),
+    ...(input.dispatchedTo?.length ? [`**Recipients:** ${input.dispatchedTo.join("; ")}`] : []),
     "",
     ...(connected
       ? ["_This notice records a verified transmission to the external portal. The standstill period runs from publication._"]
@@ -964,7 +1060,7 @@ export function composeProcurementFile(input: {
           ...(c.matrix.med ? [`- MED recorded ${c.matrix.med.recordedAt.slice(0, 10)} with ${c.matrix.med.attendees.length} attendee(s)`] : []),
         ]
       : ["- No evaluation matrix on record."]),
-    ...(c?.alb.length
+    ...(c?.alb?.length
       ? c.alb.map((a) => `- ALB dossier ${a.bidder}: due ${a.responseDueAt.slice(0, 10)}${a.resolution ? ` · ${a.resolution.outcome} — ${a.resolution.note}` : " · open"}`)
       : []),
     "",
@@ -1083,7 +1179,7 @@ export function cycleAnalytics(input: {
   const bidsOpened = cycles.reduce((n, c) => n + (c.opening?.rows.length ?? 0), 0);
   const lateBids = cycles.reduce((n, c) => n + (c.opening?.rows.filter((r) => r.late).length ?? 0), 0);
   const certifiedMatrices = cycles.filter((c) => c.matrix?.status === "CERTIFIED").length;
-  const albOpen = cycles.reduce((n, c) => n + (c.alb.filter((a) => !a.resolution).length ?? 0), 0);
+  const albOpen = cycles.reduce((n, c) => n + ((c.alb ?? []).filter((a) => !a.resolution).length ?? 0), 0);
   const complaints = cycles.reduce((n, c) => n + c.complaints.length, 0);
   const openComplaints = cycles.reduce((n, c) => n + c.complaints.filter((x) => x.status === "OPEN" || x.status === "ESCALATED").length, 0);
   const findingsTotal = input.runs.reduce((n, r) => n + r.findings.length, 0);

@@ -133,8 +133,11 @@ export async function POST(req: NextRequest) {
   }
 
   const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
-  const requested = typeof body?.role === "string" ? body.role.toUpperCase() : "OFFICER";
-  const role: WorkspaceRole = isAssignableRole(requested) ? requested : "OFFICER";
+  const requested = body.role === undefined ? "OFFICER" : typeof body.role === "string" ? body.role.trim().toUpperCase() : "";
+  if (!isAssignableRole(requested)) {
+    return NextResponse.json({ error: "Choose a valid assignable workspace role." }, { status: 422 });
+  }
+  const role: WorkspaceRole = requested;
   if (!canAssignRole(actor.role, role)) {
     return NextResponse.json({ error: `An ${actor.role.toLowerCase()} cannot grant the ${role.toLowerCase()} role.` }, { status: 403 });
   }

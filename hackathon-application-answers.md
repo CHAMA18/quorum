@@ -1,7 +1,7 @@
 # Hackathon Application Answers
 
 **Projects identified via GitHub API (CHAMA18):**
-- **Q1 anchor** — `the-bid-box-challenge` (public) + `quorum` (private code): **Quorum**, agentic tender review for public procurement. Deployed at `quorum.chungu-chama.com`; this folder is its submission/documentation kit.
+- **Q1 anchor** — `the-bid-box-challenge` (public) + `quorum` (private code): **Quorum**, agentic tender review for public procurement. Deployed at `quorum-solutions.com`; this folder is its submission/documentation kit.
 - **Q2 anchor** — `CHAMA18/UlimaAI`: offline multilingual agricultural advisor (open-weights LLM, RAG, NLLB-200).
 
 ---

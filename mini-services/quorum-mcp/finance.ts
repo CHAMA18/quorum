@@ -67,14 +67,14 @@ export function effectiveContractValue(contract: ContractFile): number {
 }
 
 export function cumulativeVariationPct(contract: ContractFile, extraDelta = 0, excludeVariationId?: string): number {
-  const base = contract.value;
+  const base = contract.originalValue ?? contract.value;
   if (!Number.isFinite(base) || base <= 0) return extraDelta === 0 ? 0 : 100;
   /* Pending variations count against the cap too: two variations below the
      gate threshold must not stack past it while nobody is looking. */
   const committed = contract.variations
     .filter((v) => v.id !== excludeVariationId && (v.status === "APPROVED" || v.status === "PENDING"))
     .reduce((sum, v) => sum + v.valueDelta, 0);
-  return Math.round((Math.abs(committed + extraDelta) / base) * 1000) / 10;
+  return Math.round((Math.max(0, committed + extraDelta) / base) * 1000) / 10;
 }
 
 export function cumulativePaymentNet(contract: ContractFile, excludeId?: string): number {
@@ -170,7 +170,7 @@ export function paymentBlockReason(input: {
   return null;
 }
 
-/** A variation above the cumulative cap needs a recorded override, not a shrug. */
+/** Statutory maximum cumulative increase; no override path exists. */
 export function variationBlockReason(input: {
   contract: ContractFile | undefined;
   valueDelta: number;

@@ -107,22 +107,23 @@ function mimeFor(filename: string): string | null {
 export async function pageForVision(
   bytes: Uint8Array,
   filename: string,
-  options: { dpi?: number; timeoutMs?: number } = {},
+  options: { dpi?: number; timeoutMs?: number; page?: number } = {},
 ): Promise<{ bytes: Uint8Array; mime: string; page?: number } | { error: string }> {
   const direct = mimeFor(filename);
-  if (direct) return { bytes, mime: direct };
+  if (direct) return options.page && options.page > 1 ? { error: "Image uploads contain one page." } : { bytes, mime: direct, page: 1 };
 
   const ext = filename.toLowerCase().split(".").pop() ?? "";
   if (ext !== "pdf") return { error: `SAM can inspect PDF or image pages; .${ext || "?"} is not one.` };
 
   const workDir = await mkdtemp(join(tmpdir(), "quorum-sam-"));
   try {
+    const pageNo = Math.max(1, Math.min(9999, Math.floor(options.page ?? 1)));
     const pdfPath = join(workDir, "page.pdf");
     await writeFile(pdfPath, bytes);
     const prefix = join(workDir, "page");
     await execFileAsync(
       "pdftoppm",
-      ["-f", "1", "-l", "1", "-r", String(options.dpi ?? 150), "-png", pdfPath, prefix],
+      ["-f", String(pageNo), "-l", String(pageNo), "-r", String(options.dpi ?? 150), "-png", pdfPath, prefix],
       { timeout: options.timeoutMs ?? 60_000, maxBuffer: 1024 * 1024 },
     );
     /* Poppler pads the page number to the document's digit width (page-1.png,
@@ -131,7 +132,7 @@ export async function pageForVision(
     const pngName = (await readdir(workDir)).filter((n) => n.endsWith(".png")).sort()[0];
     if (!pngName) return { error: "SAM could not render the PDF page (Poppler wrote no image)." };
     const png = await readFile(join(workDir, pngName));
-    return { bytes: new Uint8Array(png), mime: "image/png", page: 1 };
+    return { bytes: new Uint8Array(png), mime: "image/png", page: pageNo };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return { error: "SAM needs pdftoppm (Poppler) to render a PDF page on this server." };

@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   if (!can(user.role, "view_oversight")) return NextResponse.json({ error: "Oversight access required." }, { status: 403 });
   const enabled = getSetting("require_mfa_admins") === "1";
-  const privileged = listUsers().filter((u) => u.role === "OWNER" || u.role === "ADMIN");
+  const privileged = listUsers(user.workspaceId).filter((u) => u.role === "OWNER" || u.role === "ADMIN");
   return NextResponse.json({
     enabled,
     privilegedCount: privileged.length,

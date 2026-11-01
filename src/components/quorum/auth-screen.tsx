@@ -513,10 +513,11 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
   /* Exchange a Google identity (popup or redirect) for a product session. */
   async function exchangeGoogleIdentity(idToken: string): Promise<boolean> {
     try {
+      const inviteCode = mode === "register" ? (inviteCodeDraft ?? linkedInviteCode).trim() : "";
       const res = await fetch("/api/auth/google", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken }),
+        body: JSON.stringify({ idToken, ...(inviteCode ? { inviteCode } : {}) }),
       });
       const data = (await res.json().catch(() => null)) as
         | { user?: AuthUser; error?: string }

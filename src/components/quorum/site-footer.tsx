@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Fingerprint, ShieldCheck } from "lucide-react";
 import { QuorumLogo } from "@/components/quorum/logo";
 import { Aurora } from "@/components/quorum/motion-kit";
 import { Reveal } from "@/components/quorum/reveal";
@@ -16,120 +16,250 @@ const PRODUCT_LINKS = [
 /* The four national OCDS portals the data programme reads — linked at the
    publisher's own address, as published on the OCP registry. */
 const DATA_LINKS = [
-  { label: "NOCOPO — Nigeria", href: "http://nocopo.bpp.gov.ng/OpenData.aspx" },
-  { label: "GPP — Uganda", href: "https://gpp.ppda.go.ug/public/open-data/ocds/ocds-datasets" },
-  { label: "PPIP — Kenya", href: "https://tenders.go.ke/ocds" },
-  { label: "Umucyo — Rwanda", href: "https://ocds.umucyo.gov.rw/OpenData" },
+  { label: "NOCOPO", country: "Nigeria", href: "http://nocopo.bpp.gov.ng/OpenData.aspx" },
+  { label: "GPP", country: "Uganda", href: "https://gpp.ppda.go.ug/public/open-data/ocds/ocds-datasets" },
+  { label: "PPIP", country: "Kenya", href: "https://tenders.go.ke/ocds" },
+  { label: "Umucyo", country: "Rwanda", href: "https://ocds.umucyo.gov.rw/OpenData" },
 ];
 
 const STANDARDS = ["MCP", "OCDS", "Open weights", "Human-in-the-loop"];
 
+const PROCESS_STEPS = [
+  { number: "01", title: "Notice", detail: "The published source", mark: "PUBLIC" },
+  { number: "02", title: "Evidence", detail: "Every claim cited", mark: "SOURCED" },
+  { number: "03", title: "Evaluation", detail: "Rules applied in view", mark: "BOUNDED" },
+  { number: "04", title: "Decision", detail: "A named committee", mark: "HUMAN" },
+];
+
 export function SiteFooter() {
   return (
-    <footer className="relative mt-auto overflow-hidden bg-ink-950 text-ink-300">
-      <Aurora tone="red" slow className="-left-52 -top-72 h-[620px] w-[620px] opacity-[0.14]" />
-      <div className="relative mx-auto w-full max-w-7xl px-4 pb-10 pt-16 sm:px-6 lg:px-8 lg:pt-20">
-        <div className="grid gap-12 lg:grid-cols-12">
-          {/* Brand */}
-          <Reveal delay={0.02} className="lg:col-span-5">
-            <div>
-              <Link href="/" aria-label="Quorum home">
-                <QuorumLogo variant="light" />
-              </Link>
-              <p className="mt-5 max-w-sm text-[14.5px] leading-relaxed text-ink-400">
-                Quorum is agentic procurement software — it reads public tenders end to end, cites
-                every finding, and stops exactly where the law says a human decides.
-              </p>
-              <p className="mt-6 inline-flex items-center gap-2.5 rounded-full border border-white/12 px-4 py-2 text-[13px] font-semibold text-ink-200">
-                Open weights · on-prem ready · audit-grade logs
-              </p>
+    <footer
+      aria-labelledby="site-footer-title"
+      className="relative isolate mt-auto overflow-hidden bg-[#090a0d] text-white"
+    >
+      {/* Fine drafting grid and a quiet red light make the close feel like the
+          inside of a well-kept record, without competing with the headline. */}
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-grid-dark opacity-[0.24]" aria-hidden="true" />
+      <div
+        className="pointer-events-none absolute inset-0 -z-10"
+        style={{
+          background:
+            "radial-gradient(920px 560px at 2% 0%, rgba(217,38,22,.18), transparent 62%), radial-gradient(620px 440px at 100% 48%, rgba(67,77,103,.14), transparent 67%), linear-gradient(180deg, #0c0d11 0%, #090a0d 58%, #07080a 100%)",
+        }}
+        aria-hidden="true"
+      />
+      <Aurora tone="red" slow className="-left-72 -top-96 h-[740px] w-[740px] opacity-[0.09]" />
+
+      <div className="relative mx-auto w-full max-w-[1440px] px-5 pb-6 pt-12 sm:px-8 sm:pt-16 lg:px-12 lg:pt-[76px]">
+        {/* The closing statement */}
+        <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-3 border-y border-white/[0.09] py-3.5">
+          <p className="flex items-center gap-2.5 font-code text-[8px] font-bold tracking-[0.2em] text-ink-300 sm:text-[9px]">
+            <span className="relative flex h-2 w-2" aria-hidden="true">
+              <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-brand-500/60" />
+              <span className="relative h-2 w-2 rounded-full bg-brand-500" />
+            </span>
+            QUORUM · PROCUREMENT WITH A TRACE
+          </p>
+          <p className="font-code text-[8px] font-semibold tracking-[0.16em] text-ink-400 sm:text-[9px]">
+            NOTICE <span className="mx-1.5 text-brand-500">/</span> EVIDENCE <span className="mx-1.5 text-brand-500">/</span> HUMAN DECISION
+          </p>
+        </div>
+
+        <div className="grid gap-10 py-12 sm:py-16 lg:grid-cols-12 lg:items-center lg:gap-12 lg:py-[76px]">
+          <Reveal delay={0.02} className="min-w-0 lg:col-span-7">
+            <p className="font-code text-[8px] font-bold tracking-[0.24em] text-brand-300 sm:text-[9px]">
+              FROM PUBLIC NOTICE TO SIGNED DECISION
+            </p>
+            <h2
+              id="site-footer-title"
+              className="mt-5 max-w-[820px] font-display text-[clamp(48px,8.2vw,104px)] font-black leading-[0.91] tracking-[-0.075em] text-white"
+            >
+              The file closes.
+              <br />
+              <span className="relative inline-block text-white">
+                The trail <span className="text-brand-400">doesn&apos;t.</span>
+                <span className="absolute -bottom-2 left-0 h-[3px] w-[73%] rounded-full bg-gradient-to-r from-brand-500 via-brand-500/60 to-transparent" aria-hidden="true" />
+              </span>
+            </h2>
+            <p className="mt-7 max-w-[620px] text-[14px] leading-[1.75] text-ink-300 sm:text-[16px]">
+              Quorum turns the tender record into cited evidence, then leaves the decision where it belongs: with the people entrusted to make it.
+            </p>
+
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <a
+                href="#/register"
+                className="group inline-flex min-h-12 items-center gap-3 rounded-full bg-brand-500 px-5 py-3 text-[12.5px] font-bold text-white shadow-[0_12px_34px_rgba(217,38,22,0.22)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-brand-400 hover:shadow-[0_16px_44px_rgba(217,38,22,0.32)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#090a0d]"
+              >
+                Build your workspace
+                <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true" />
+              </a>
+              <a
+                href="#inside"
+                className="group inline-flex min-h-12 items-center gap-2 rounded-full border border-white/[0.15] px-5 py-3 text-[12px] font-semibold text-ink-200 transition-colors hover:border-white/30 hover:bg-white/[0.04] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+              >
+                See how it works
+                <ArrowUpRight className="h-3.5 w-3.5 text-ink-500 transition-colors group-hover:text-white" aria-hidden="true" />
+              </a>
             </div>
           </Reveal>
 
-          {/* Link columns */}
-          <Reveal delay={0.08} className="lg:col-span-3">
-            <nav aria-label="Product">
-              <p className="font-code text-[10px] font-semibold tracking-[0.24em] text-ink-500">
-                PRODUCT
-              </p>
-              <ul className="mt-4 space-y-2.5">
-                {PRODUCT_LINKS.map((l) => (
-                  <li key={l.label}>
-                    <a
-                      href={l.href}
-                      className="group inline-flex items-center gap-1.5 text-[14px] text-ink-300 transition-colors hover:text-white"
-                    >
-                      {l.label}
-                      <ArrowUpRight
-                        className="h-3 w-3 -translate-x-1 opacity-0 transition-[transform,opacity] group-hover:translate-x-0 group-hover:opacity-100"
-                        aria-hidden="true"
-                      />
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          </Reveal>
+          {/* A compact visual of the product promise: the record advances;
+              authority does not move from the committee to the machine. */}
+          <Reveal delay={0.1} y={18} className="min-w-0 lg:col-span-5">
+            <div className="relative overflow-hidden rounded-[22px] border border-white/[0.12] bg-[#111318]/85 p-5 shadow-[0_30px_100px_rgba(0,0,0,0.32)] backdrop-blur-sm sm:p-6">
+              <div
+                className="pointer-events-none absolute -right-28 -top-36 h-[330px] w-[330px] rounded-full border border-white/[0.04]"
+                aria-hidden="true"
+              >
+                <span className="absolute inset-7 rounded-full border border-white/[0.04]" />
+                <span className="absolute inset-14 rounded-full border border-white/[0.04]" />
+                <span className="absolute inset-[84px] rounded-full border border-brand-500/10" />
+              </div>
+              <div className="relative flex items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
+                <div className="flex items-center gap-2.5">
+                  <span className="grid h-8 w-8 place-items-center rounded-lg border border-brand-400/20 bg-brand-500/10 text-brand-300">
+                    <Fingerprint className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                  <div>
+                    <p className="font-code text-[8px] font-bold tracking-[0.15em] text-white">THE PROCUREMENT RECORD</p>
+                    <p className="mt-0.5 font-code text-[8px] tracking-[0.1em] text-ink-400">ONE TRACE · FOUR CHECKPOINTS</p>
+                  </div>
+                </div>
+                <span className="rounded-full border border-white/[0.1] px-2.5 py-1 font-code text-[8px] font-bold tracking-[0.12em] text-ink-400">END TO END</span>
+              </div>
 
-          <Reveal delay={0.14} className="lg:col-span-2">
-            <nav aria-label="Open data">
-              <p className="font-code text-[10px] font-semibold tracking-[0.24em] text-ink-500">
-                OCDS PORTALS
-              </p>
-              <ul className="mt-4 space-y-2.5">
-                {DATA_LINKS.map((l) => (
-                  <li key={l.label}>
-                    <a
-                      href={l.href}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[14px] text-ink-300 transition-colors hover:text-white"
-                    >
-                      {l.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          </Reveal>
+              <div className="relative mt-5">
+                <span className="pointer-events-none absolute bottom-[26px] left-[15px] top-[20px] w-px bg-gradient-to-b from-white/15 via-white/15 to-brand-500/70" aria-hidden="true" />
+                <ol className="relative space-y-1">
+                  {PROCESS_STEPS.map((step, index) => {
+                    const finalStep = index === PROCESS_STEPS.length - 1;
+                    return (
+                      <li key={step.number} className="relative grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl px-1.5 py-2.5">
+                        <span
+                          className={`relative z-10 grid h-[31px] w-[31px] place-items-center rounded-full border font-code text-[8px] font-bold ${
+                            finalStep
+                              ? "border-brand-400/55 bg-[#2a1516] text-brand-300 shadow-[0_0_22px_rgba(217,38,22,0.18)]"
+                              : "border-white/[0.12] bg-[#15171c] text-ink-400"
+                          }`}
+                        >
+                          {step.number}
+                        </span>
+                        <div className="min-w-0">
+                          <p className={`text-[12.5px] font-semibold ${finalStep ? "text-white" : "text-ink-200"}`}>{step.title}</p>
+                          <p className="mt-0.5 truncate text-[10.5px] text-ink-400">{step.detail}</p>
+                        </div>
+                        <span className={`font-code text-[8px] font-bold tracking-[0.12em] ${finalStep ? "text-brand-300" : "text-ink-400"}`}>
+                          {step.mark}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
 
-          <Reveal delay={0.2} className="lg:col-span-2">
-            <div>
-              <p className="font-code text-[10px] font-semibold tracking-[0.24em] text-ink-500">
-                STANDARDS
-              </p>
-              <ul className="mt-4 flex flex-wrap gap-2">
-                {STANDARDS.map((o) => (
-                  <li
-                    key={o}
-                    className="rounded-full border border-white/10 px-3 py-1 font-code text-[10.5px] text-ink-400"
-                  >
-                    {o}
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-5 text-[12.5px] leading-relaxed text-ink-500">
-                Open standards end to end. Your data stays in-country.
-              </p>
+              <div className="relative mt-4 flex items-center gap-2.5 rounded-xl border border-brand-400/15 bg-brand-500/[0.06] px-3.5 py-3">
+                <ShieldCheck className="h-4 w-4 shrink-0 text-brand-300" aria-hidden="true" />
+                <p className="text-[10.5px] leading-relaxed text-ink-300">
+                  The system prepares the record. <span className="font-semibold text-white">A person signs the decision.</span>
+                </p>
+              </div>
             </div>
           </Reveal>
         </div>
 
-        {/* Bottom bar */}
-        <Reveal delay={0.16} y={14}>
-          <div className="mt-14 flex flex-col items-start justify-between gap-4 border-t border-white/8 pt-7 sm:flex-row sm:items-center">
-            <p className="text-[12.5px] text-ink-500">
-              © 2026 Quorum · Agentic procurement for Africa
+        {/* Link directory — intentionally calmer after the statement above. */}
+        <div className="grid gap-10 border-t border-white/[0.09] py-10 sm:grid-cols-2 sm:gap-8 lg:grid-cols-12 lg:gap-10 lg:py-12">
+          <Reveal delay={0.02} className="min-w-0 sm:col-span-2 lg:col-span-4">
+            <Link href="/" aria-label="Quorum home" className="inline-flex rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300">
+              <QuorumLogo variant="light" />
+            </Link>
+            <p className="mt-5 max-w-[370px] text-[12.5px] leading-[1.8] text-ink-400">
+              Agentic procurement software for public institutions. Open standards, in-country control, and a record that holds up after the meeting ends.
             </p>
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-              <span className="font-code text-[10px] tracking-[0.18em] text-ink-600">
-                AGENTS PREPARE · COMMITTEES DECIDE
-              </span>
-              <span className="font-code text-[10px] tracking-[0.18em] text-ink-600">
-                BUILT WITH LLAMA
-              </span>
-              <span className="font-code text-[10px] tracking-[0.18em] text-ink-600">NAIROBI · EAT</span>
+            <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/[0.1] bg-white/[0.025] px-3.5 py-2 font-code text-[8px] font-semibold tracking-[0.12em] text-ink-300 sm:text-[9px]">
+              OPEN WEIGHTS <span className="text-brand-400">·</span> ON-PREM READY <span className="text-brand-400">·</span> AUDIT-GRADE LOGS
+            </p>
+          </Reveal>
+
+          <Reveal delay={0.08} className="lg:col-span-2">
+            <nav aria-label="Product">
+              <p className="font-code text-[9px] font-bold tracking-[0.2em] text-ink-400">PRODUCT</p>
+              <ul className="mt-4 space-y-3">
+                {PRODUCT_LINKS.map((link) => (
+                  <li key={link.label}>
+                    <a href={link.href} className="group inline-flex items-center gap-1.5 text-[12px] text-ink-300 transition-colors hover:text-white focus-visible:outline-none focus-visible:text-white">
+                      {link.label}
+                      <ArrowUpRight className="h-3 w-3 -translate-x-1 opacity-0 transition-[transform,opacity] group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100" aria-hidden="true" />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </Reveal>
+
+          <Reveal delay={0.13} className="lg:col-span-3">
+            <nav aria-label="Open data portals">
+              <p className="font-code text-[9px] font-bold tracking-[0.2em] text-ink-400">OPEN DATA · AFRICA</p>
+              <ul className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
+                {DATA_LINKS.map((link) => (
+                  <li key={link.label}>
+                    <a
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group inline-flex items-baseline gap-1.5 text-[11.5px] text-ink-300 transition-colors hover:text-white focus-visible:outline-none focus-visible:text-white"
+                    >
+                      <span>{link.label}</span>
+                      <span className="text-[9px] text-ink-400">{link.country}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-7 flex flex-wrap gap-1.5">
+                {STANDARDS.map((standard) => (
+                  <span key={standard} className="rounded-full border border-white/[0.1] px-2.5 py-1 font-code text-[7.5px] text-ink-400">
+                    {standard}
+                  </span>
+                ))}
+              </div>
+            </nav>
+          </Reveal>
+
+          <Reveal delay={0.18} className="lg:col-span-3">
+            <nav aria-label="Resources">
+              <p className="font-code text-[9px] font-bold tracking-[0.2em] text-ink-400">GO DEEPER</p>
+              <ul className="mt-4 space-y-3">
+                <li>
+                  <Link href="/docs" className="group inline-flex items-center gap-1.5 text-[12px] text-ink-300 transition-colors hover:text-white focus-visible:outline-none focus-visible:text-white">
+                    Documentation
+                    <ArrowUpRight className="h-3 w-3 -translate-x-1 opacity-0 transition-[transform,opacity] group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100" aria-hidden="true" />
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/api" className="group inline-flex items-center gap-1.5 text-[12px] text-ink-300 transition-colors hover:text-white focus-visible:outline-none focus-visible:text-white">
+                    API directory
+                    <ArrowUpRight className="h-3 w-3 -translate-x-1 opacity-0 transition-[transform,opacity] group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100" aria-hidden="true" />
+                  </Link>
+                </li>
+              </ul>
+              <p className="mt-7 max-w-[270px] text-[11px] leading-[1.7] text-ink-400">
+                Open standards end to end. Your data stays in-country.
+              </p>
+            </nav>
+          </Reveal>
+        </div>
+
+        {/* A restrained colophon gives the page a deliberate final note. */}
+        <Reveal delay={0.12} y={12}>
+          <div className="flex flex-col gap-4 border-t border-white/[0.09] pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <p className="text-[11px] text-ink-400">© 2026 Quorum · Agentic procurement for Africa</p>
+              <span className="hidden h-3 w-px bg-white/10 sm:block" aria-hidden="true" />
+              <span className="font-code text-[8px] font-semibold tracking-[0.14em] text-ink-400">NAIROBI · EAT</span>
             </div>
+            <p className="font-code text-[8px] font-bold tracking-[0.14em] text-ink-400">
+              AGENTS PREPARE <span className="mx-1 text-brand-500">·</span> COMMITTEES DECIDE
+            </p>
           </div>
         </Reveal>
       </div>

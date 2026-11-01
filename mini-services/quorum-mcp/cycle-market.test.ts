@@ -3,7 +3,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { criterionEvidenceSuggestions, evaluatePackSignals, TENDERS_DIR, type BidDoc } from "./engine";
 import { handleCycleRoutes } from "./cycle-routes";
-import { state } from "./store";
+import { state, withWorkspace, type TenderCycle } from "./store";
 
 describe("criterion evidence suggestions", () => {
   test("returns ranked verbatim passages with source locators, without scoring", () => {
@@ -86,6 +86,49 @@ describe("evaluation matrix route persists evidence and market signals", () => {
     await rm(tenderDir, { recursive: true, force: true });
     await mkdir(tenderDir, { recursive: true });
     state.cycle = state.cycle.filter((cycle) => cycle.tenderId !== tenderId);
+    state.cycle.push({
+      tenderId,
+      coi: [],
+      alb: [],
+      debriefs: [],
+      complaints: [],
+      clarifications: [],
+      addenda: [],
+      opening: {
+        id: "opening-market-test",
+        tenderId,
+        createdAt: new Date().toISOString(),
+        rows: [
+          { bidder: "ALPHA", receivedAt: new Date().toISOString(), late: false },
+          { bidder: "BETA", receivedAt: new Date().toISOString(), late: false },
+        ],
+        minutesMd: "Public opening fixture",
+        reconciliation: { sealed: 0, manual: 2, derived: 0, withdrawn: 0, amended: 0, missingFromRegister: [], extraInRegister: [], matches: true, note: "fixture reconciles" },
+        certifiedAt: new Date().toISOString(),
+      },
+      notices: [{
+        id: "issued-market-test-notice",
+        tenderId,
+        md: [
+          "# TENDER NOTICE",
+          "**Technical/financial split:** 80/20",
+          "**Financial formula:** Lowest evaluated price / bidder evaluated price × 100; arithmetic corrections, unconditional discounts and published preference applied before ranking.",
+          "**Preference/reservation scheme:** None",
+          "**Foreign bidders permitted:** No",
+          "**Evaluation currency:** KES",
+          "## Evaluation criteria (published with this notice)",
+          "| Criterion | Weight (%) |",
+          "| --- | ---: |",
+          "| solar battery storage | 100 |",
+        ].join("\n"),
+        fieldCheck: [],
+        createdAt: new Date().toISOString(),
+        issuedAt: new Date().toISOString(),
+      }],
+      specs: [],
+      dissents: [],
+      createdAt: new Date().toISOString(),
+    } as TenderCycle);
     await writeFile(join(tenderDir, "91-bid-alpha.md"), [
       "**Company registration:** PACRA-123456",
       "**Email:** bids@example.test",
@@ -115,6 +158,29 @@ describe("evaluation matrix route persists evidence and market signals", () => {
       });
       expect(alpha.priceSignals?.[0]).toMatchObject({ item: "Solar tablet", peerMedian: 150 });
       expect(builtBody.matrix.marketSignals?.sharedIdentifiers).toHaveLength(2);
+      const matrixRecord = state.cycle.find((cycle) => cycle.tenderId === tenderId)?.matrix;
+      matrixRecord!.financialAdjustmentsCertifiedAt = new Date().toISOString();
+      matrixRecord!.financialAdjustmentsCertifiedBy = "Procurement Unit";
+
+      const fx = await handleCycleRoutes(`/api/tenders/${tenderId}/matrix/fx`, "POST", {
+        evaluationCurrency: "KES",
+        rates: [],
+      });
+      expect(fx?.status).toBe(201);
+
+      const earlyScore = await handleCycleRoutes(`/api/tenders/${tenderId}/matrix/scores`, "POST", {
+        bidder: "ALPHA",
+        scores: [{ criterionId: "C-01", score: 80 }],
+      }, "Test Officer");
+      expect(earlyScore?.status).toBe(422);
+      expect(await earlyScore!.json()).toMatchObject({ error: expect.stringContaining("MED adjustment") });
+
+      const med = await handleCycleRoutes(`/api/tenders/${tenderId}/matrix/med`, "POST", {
+        attendees: ["Evaluation Committee"],
+        adjustments: {},
+        notes: "No margin-of-error adjustment is required for this test pack.",
+      });
+      expect(med?.status).toBe(200);
 
       const scored = await handleCycleRoutes(`/api/tenders/${tenderId}/matrix/scores`, "POST", {
         bidder: "ALPHA",
@@ -125,9 +191,94 @@ describe("evaluation matrix route persists evidence and market signals", () => {
       const scoredAlpha = scoredBody.matrix.bids.find((bid) => bid.bidder === "ALPHA")!;
       expect(scoredAlpha.technicalScores[0].evidence?.[0]).toMatchObject({ decision: "CONFIRMED", decidedBy: "Test Officer" });
       expect(state.cycle.find((cycle) => cycle.tenderId === tenderId)?.matrix?.marketSignals?.sharedIdentifiers).toHaveLength(2);
+
+      const fxAfterScoring = await handleCycleRoutes(`/api/tenders/${tenderId}/matrix/fx`, "POST", {
+        evaluationCurrency: "KES",
+        rates: [],
+      });
+      expect(fxAfterScoring?.status).toBe(422);
+      expect(await fxAfterScoring!.json()).toMatchObject({ error: expect.stringContaining("locked after scoring") });
+
+      const opened = await handleCycleRoutes(`/api/tenders/${tenderId}/alb`, "POST", {
+        bidder: "ALPHA",
+        basis: "Unit price is materially below comparable bids for the same solar tablet scope.",
+      });
+      expect(opened?.status).toBe(201);
+      const dossierBody = await opened!.json() as { dossier: { id: string; openedAt: string; responseDueAt: string } };
+      expect(dossierBody.dossier.responseDueAt > dossierBody.dossier.openedAt).toBe(true);
+      const openedBid = state.cycle.find((cycle) => cycle.tenderId === tenderId)?.matrix?.bids.find((bid) => bid.bidder === "ALPHA");
+      expect(openedBid).toMatchObject({ albOpen: true, verdict: "NOT_RECOMMENDED" });
+
+      const certifyWithOpenAlb = await handleCycleRoutes(`/api/tenders/${tenderId}/matrix/certify`, "POST", {});
+      expect(certifyWithOpenAlb?.status).toBe(422);
+      expect(await certifyWithOpenAlb!.json()).toMatchObject({ error: expect.stringContaining("open five-working-day ALB dossier") });
     } finally {
       state.cycle = state.cycle.filter((cycle) => cycle.tenderId !== tenderId);
       await rm(tenderDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("authenticated workspace owns its tender-cycle writes", () => {
+  test("pipeline, requisition and solicitation records stay in the request workspace", async () => {
+    const workspaceId = "workspace-cycle-e2e";
+    let pipelineId = "";
+    let tenderId = "";
+
+    try {
+      await withWorkspace(workspaceId, async () => {
+        const created = await handleCycleRoutes(
+          "/api/pipeline",
+          "POST",
+          { title: "Workspace-scoped cycle test", currency: "ZMW" },
+          "Audit Officer",
+          workspaceId,
+        );
+        expect(created?.status).toBe(201);
+        const createdBody = await created!.json() as { entry: { id: string; ref: string; workspaceId?: string } };
+        pipelineId = createdBody.entry.id;
+        tenderId = createdBody.entry.ref;
+        expect(createdBody.entry.workspaceId).toBe(workspaceId);
+
+        const requisition = await handleCycleRoutes(
+          `/api/pipeline/${pipelineId}/requisition`,
+          "POST",
+          { budgetValidated: true, budgetReference: "FY2026/VOTE-03", actor: "spoofed actor" },
+          "Attested Officer",
+          workspaceId,
+        );
+        expect(requisition?.status).toBe(200);
+        const requisitionBody = await requisition!.json() as { entry: { requisition: { budgetValidated: boolean; validatedBy: string } } };
+        expect(requisitionBody.entry.requisition).toMatchObject({ budgetValidated: true, validatedBy: "Attested Officer" });
+
+        const closing = await handleCycleRoutes(
+          `/api/tenders/${tenderId}/closing`,
+          "POST",
+          { closingDate: "2026-12-15", actor: "Attested Officer" },
+          "Attested Officer",
+          workspaceId,
+        );
+        expect(closing?.status).toBe(200);
+
+        const visible = await handleCycleRoutes("/api/cycle", "GET", {}, "Attested Officer", workspaceId);
+        const visibleBody = await visible!.json() as { cycles: { tenderId: string }[]; pipeline: { id: string }[] };
+        expect(visibleBody.pipeline.map((entry) => entry.id)).toContain(pipelineId);
+        expect(visibleBody.cycles.map((cycle) => cycle.tenderId)).toContain(tenderId);
+      });
+
+      const otherWorkspaceRequisition = await withWorkspace("other-cycle-workspace", () =>
+        handleCycleRoutes(
+          `/api/pipeline/${pipelineId}/requisition`,
+          "POST",
+          { budgetValidated: true, budgetReference: "OTHER/WORKSPACE" },
+          "Other Officer",
+          "other-cycle-workspace",
+        ),
+      );
+      expect(otherWorkspaceRequisition?.status).toBe(404);
+    } finally {
+      state.pipeline = state.pipeline.filter((entry) => entry.id !== pipelineId);
+      state.cycle = state.cycle.filter((cycle) => cycle.tenderId !== tenderId);
     }
   });
 });

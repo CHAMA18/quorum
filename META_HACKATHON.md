@@ -4,7 +4,9 @@
 **Builder:** CHAMA18 (indie developer track)
 **Theme:** Build for Your World
 **Edition:** Meta Global AI Developer Hackathon 2026 (Oct 26 – Nov 4, 2026)
-**Live product:** [`quorum-edge.chungu424.workers.dev`](https://quorum-edge.chungu424.workers.dev) (Cloudflare Worker HTTPS front door; EC2 `af-south-1` origin) · **Repo:** this repository
+**Live product:** [`d1n7mv5t5hn4xe.cloudfront.net`](https://d1n7mv5t5hn4xe.cloudfront.net) (CloudFront → EC2) · **Landing:** [`quorum-solutions.com`](https://quorum-solutions.com) · **Workspace origin:** AWS `af-south-1` (EC2) · **Repo:** this repository
+
+**Judge access:** `judge@quorum.test` / `Gatekeeper#2026` — a verified demo officer seeded on the live workspace (no email verification needed).
 
 ---
 
@@ -77,7 +79,7 @@ prints a **Model attribution** table.
   whose cells state a different currency from their header). No citation, no finding —
   enforced by the test suite.
 - **Append-only audit log** for every tool call; tamper-evident by construction.
-- **Tests:** 486 across the repo, 0 failing (450 pass, 36 environment-gated skips; Bun runner).
+- **Tests:** 510 across the repo, 0 failing (474 pass, 36 environment-gated skips; Bun runner).
 - **Evaluation harness** with held-out tender packs and a pre-registered baseline
   protocol (`SUBMISSION/09-fit.md`).
 
@@ -94,7 +96,7 @@ prints a **Model attribution** table.
 
 ## Submission checklist (due Nov 4, 9:00 PM ET)
 
-1. Deploy or refresh the live demo (`quorum.chungu-chama.com`) with the Meta edition framing.
+1. Verify the live demo at `https://d1n7mv5t5hn4xe.cloudfront.net` (CloudFront → EC2) and the landing at `quorum-solutions.com`.
 2. Record the 3-minute demo per `SUBMISSION/DEMO.md` — the gate refusal is the centerpiece;
    the real KEMSA pack and the SAM scan are the two new beats.
 3. Optional bonus: run `SUBMISSION/muse-film-kit/` with Muse Image credits and drop the
@@ -110,6 +112,6 @@ prints a **Model attribution** table.
 | Muse Spark chat completion | HTTP 200; `muse-spark-1.3`; reasoning tokens visible; `max_tokens: 4096` required |
 | Real KEMSA pack, model-led | `AWAITING_GATE`, 5 cited value-outlier findings, 2 Muse Spark drafts, 4 redactions, 22.8 s |
 | SAM 3.1 on a real scanned page | HTTP 200; 1 table box on Nyamira price schedule p58; 0 boxes for `signature` on the CA certificate (reported as no match) |
-| `bun test` | 450 pass, 36 skip, 0 fail |
+| `bun test` | 474 pass, 36 skip, 0 fail |
 | `bun run build` | Compiled successfully; 44 pages generated |
 | `bun run lint` | Changed files clean; repo-wide lint still reports pre-existing generated-file errors |

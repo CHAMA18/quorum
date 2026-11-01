@@ -4,9 +4,9 @@ import { NextRequest, NextResponse } from "next/server";
  * Same-origin gateway.
  *
  * The frontend calls the quorum-mcp sidecar as `/api/*?XTransformPort=3031`,
- * relying on the Caddy gateway (:81) to rewrite the port. When that gateway
- * is not running the request lands here on the Next.js server — so we do the
- * forwarding ourselves instead of 404ing.
+ * relying on the Caddy gateway (:81) to send the request through this Next.js
+ * authorization layer. Next.js forwards to the loopback sidecar only after
+ * checking the verified session's role.
  *
  * Only requests that carry an explicit `XTransformPort` are proxied, and only
  * to the sidecar port — anything else falls through with a 404, exactly as
@@ -24,7 +24,7 @@ import { NextRequest, NextResponse } from "next/server";
  *   3. every mutating forward carries an HMAC seal (x-quorum-attest over
  *      method|path|actor|ts) that the sidecar verifies — see
  *      src/lib/sidecar-attest.ts and mini-services store.attestVerify.
- * GET/HEAD stay open, except the applications list (officer session only).
+ * Reads require a session and a role permission for the requested surface.
  */
 
 import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
@@ -87,9 +87,7 @@ async function proxy(req: NextRequest) {
 
   try {
     /* Forward the content type, and the attested identity + HMAC seal the
-       sidecar checks on every mutation. Caddy passes these through
-       untouched, and this fallback gateway keeps the same contract so the
-       audit trail reads the same either way. */
+       sidecar checks on every mutation. */
     const forward: Record<string, string> = {};
     const contentType = req.headers.get("content-type");
     if (contentType) forward["content-type"] = contentType;

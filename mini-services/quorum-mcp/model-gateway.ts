@@ -110,13 +110,15 @@ export function redactForModel(
 export interface ModelProvenance {
   provider: string;
   model: string;
-  purpose: "plan_review" | "draft_redline" | "repair" | "muse_chat" | "transcribe";
+  purpose: "plan_review" | "evidence_review" | "draft_redline" | "repair" | "muse_chat" | "transcribe";
   runId: string | null;
   endpoint: string | null;
   residency: Residency;
   redactions: number;
   promptTokens: number;
   completionTokens: number;
+  api: "responses" | "chat_completions";
+  reasoningEffort?: "minimal" | "low" | "medium" | "high";
   latencyMs: number;
   outcome: "OK" | "REFUSED" | "ERROR";
 }
@@ -133,12 +135,14 @@ export function logModelProvenance(p: ModelProvenance): void {
     tool: "model_call",
     kind: "READ",
     runId: p.runId ?? undefined,
-    inputs: { purpose: p.purpose, provider: p.provider, model: p.model, endpoint: p.endpoint, residency: p.residency },
+    inputs: { purpose: p.purpose, provider: p.provider, model: p.model, endpoint: p.endpoint, residency: p.residency, api: p.api, reasoningEffort: p.reasoningEffort },
     outputs: {
       outcome: p.outcome,
       redactions: p.redactions,
       promptTokens: p.promptTokens,
       completionTokens: p.completionTokens,
+      api: p.api,
+      reasoningEffort: p.reasoningEffort,
       latencyMs: p.latencyMs,
     },
     status: p.outcome === "REFUSED" ? "ERROR" : "OK",
@@ -162,10 +166,24 @@ export async function callModel(
     purpose: ModelProvenance["purpose"];
     runId: string | null;
     policy?: ResidencyPolicy;
+    responseSchema?: { name: string; schema: Record<string, unknown> };
+    reasoningEffort?: "minimal" | "low" | "medium" | "high";
+    maxOutputTokens?: number;
+    redactSupplierNames?: string[];
   },
-): Promise<{ model: string; content: string; usage: { promptTokens: number; completionTokens: number }; redactions: number }> {
+): Promise<{
+  model: string;
+  content: string;
+  usage: { promptTokens: number; completionTokens: number };
+  redactions: number;
+  api: "responses" | "chat_completions";
+  reasoningEffort?: "minimal" | "low" | "medium" | "high";
+}> {
   const policy = options.policy ?? residencyFromEnv();
   const started = performance.now();
+  const useResponses = cfg.provider === "meta-model-api";
+  const api: "responses" | "chat_completions" = useResponses ? "responses" : "chat_completions";
+  const reasoningEffort = useResponses ? options.reasoningEffort ?? configuredReasoningEffort(options.purpose) : undefined;
   const refusal = residencyRefusal(policy, cfg.baseUrl);
   if (refusal) {
     logModelProvenance({
@@ -178,6 +196,8 @@ export async function callModel(
       redactions: 0,
       promptTokens: 0,
       completionTokens: 0,
+      api,
+      reasoningEffort,
       latencyMs: Math.round(performance.now() - started),
       outcome: "REFUSED",
     });
@@ -189,7 +209,7 @@ export async function callModel(
   let outgoing = messages;
   let redactions = 0;
   if (redact) {
-    const names = supplierNamesForRedaction();
+    const names = [...new Set([...supplierNamesForRedaction(), ...(options.redactSupplierNames ?? [])])];
     outgoing = messages.map((m) => {
       const { text, redacted } = redactForModel(m.content, names);
       redactions += redacted;
@@ -198,32 +218,65 @@ export async function callModel(
   }
 
   try {
-    const res = await fetchImpl(`${cfg.baseUrl.replace(/\/+$/, "")}/chat/completions`, {
+    const root = cfg.baseUrl.endsWith("/") ? cfg.baseUrl.slice(0, -1) : cfg.baseUrl;
+    const schema = options.responseSchema;
+    const body = useResponses
+      ? {
+          model: cfg.model,
+          input: outgoing.map((m) => ({ role: m.role, content: m.content })),
+          store: false,
+          max_output_tokens: options.maxOutputTokens ?? outputLimit(options.purpose),
+          reasoning: { effort: reasoningEffort },
+          ...(schema
+            ? { text: { format: { type: "json_schema", name: schema.name, schema: schema.schema, strict: true } } }
+            : {}),
+        }
+      : {
+          model: cfg.model,
+          messages: outgoing,
+          temperature: 0.2,
+          max_tokens: options.maxOutputTokens ?? outputLimit(options.purpose),
+          ...(schema
+            ? { response_format: { type: "json_schema", json_schema: { name: schema.name, schema: schema.schema, strict: true } } }
+            : {}),
+        };
+    const res = await fetchImpl(root + (useResponses ? "/responses" : "/chat/completions"), {
       method: "POST",
       headers: {
         "content-type": "application/json",
         ...(cfg.apiKey ? { authorization: `Bearer ${cfg.apiKey}` } : {}),
       },
-      /* Muse Spark is a reasoning model: the answer arrives after a reasoning
-         pass, so the cap must leave room for both. 4k is a ceiling, not a
-         charge — only tokens actually generated are billed. */
-      body: JSON.stringify({ model: cfg.model, messages: outgoing, temperature: 0.2, max_tokens: 4096 }),
+      /* Meta Responses keeps reasoning in the provider protocol without
+         server-side conversation storage. Private reasoning is never logged. */
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(60_000),
     });
     if (!res.ok) throw new Error(`llm endpoint answered ${res.status}`);
     const data = (await res.json()) as {
       model?: string;
       choices?: { message?: { content?: string } }[];
-      usage?: { prompt_tokens?: number; completion_tokens?: number };
+      usage?: { prompt_tokens?: number; completion_tokens?: number; input_tokens?: number; output_tokens?: number };
+      output_text?: string;
+      output?: { type?: string; content?: { type?: string; text?: string }[] }[];
+      input_tokens?: number;
+      output_tokens?: number;
     };
+    const content = useResponses
+      ? data.output_text ?? data.output?.flatMap((item) => item.content ?? []).filter((part) => part.type === "output_text" || part.type === "text").map((part) => part.text ?? "").join("") ?? ""
+      : data.choices?.[0]?.message?.content ?? "";
     const latent = {
       model: data.model ?? cfg.model,
-      content: data.choices?.[0]?.message?.content ?? "",
+      content,
+      /* Chat completions count prompt/completion_tokens; the Responses API
+         counts input/output_tokens inside `usage`. Both are read so the
+         provenance line never reports a hosted call as costing nothing. */
       usage: {
-        promptTokens: data.usage?.prompt_tokens ?? 0,
-        completionTokens: data.usage?.completion_tokens ?? 0,
+        promptTokens: data.usage?.prompt_tokens ?? data.usage?.input_tokens ?? data.input_tokens ?? 0,
+        completionTokens: data.usage?.completion_tokens ?? data.usage?.output_tokens ?? data.output_tokens ?? 0,
       },
       redactions,
+      api,
+      reasoningEffort,
     };
     logModelProvenance({
       provider: cfg.provider,
@@ -235,6 +288,8 @@ export async function callModel(
       redactions,
       promptTokens: latent.usage.promptTokens,
       completionTokens: latent.usage.completionTokens,
+      api,
+      reasoningEffort,
       latencyMs: Math.round(performance.now() - started),
       outcome: "OK",
     });
@@ -250,9 +305,28 @@ export async function callModel(
       redactions,
       promptTokens: 0,
       completionTokens: 0,
+      api,
+      reasoningEffort,
       latencyMs: Math.round(performance.now() - started),
       outcome: "ERROR",
     });
     throw err;
   }
+}
+
+function outputLimit(purpose: ModelProvenance["purpose"]): number {
+  if (purpose === "evidence_review") return 5000;
+  if (purpose === "plan_review") return 1600;
+  if (purpose === "draft_redline") return 1400;
+  if (purpose === "repair") return 800;
+  return 2400;
+}
+
+function configuredReasoningEffort(purpose: ModelProvenance["purpose"]): "minimal" | "low" | "medium" | "high" {
+  const purposeKey = `MODEL_REASONING_${purpose.toUpperCase()}`;
+  const raw = process.env[purposeKey]?.trim().toLowerCase() || process.env.MODEL_REASONING_EFFORT?.trim().toLowerCase();
+  if (raw === "minimal" || raw === "low" || raw === "medium" || raw === "high") return raw;
+  if (purpose === "evidence_review") return "high";
+  if (purpose === "plan_review") return "medium";
+  return "low";
 }

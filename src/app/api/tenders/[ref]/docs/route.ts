@@ -7,8 +7,9 @@ import {
   isTenderKeyFor,
   tenderDownloadFilename,
 } from "@/lib/tender-access";
-import { extractTenderText } from "@/lib/tender-extract";
+import { classifyTenderDocument, extractTenderText } from "@/lib/tender-extract";
 import { samEnabled, segmentTenderScan, type SamResult } from "@/lib/sam";
+import { museScanEnabled, transcribeTenderScan } from "@/lib/muse-scan";
 import {
   deleteLocalObject,
   hasLocalObject,
@@ -40,11 +41,10 @@ import {
  * example), the file is still stored and the response says `staged: false`
  * with a reason — OCR is not claimed.
  *
- * Scanned pages and image uploads are additionally handed to SAM 3.1 when
- * `SAM_ENABLED=true`: the model locates the table region and returns boxes for
- * a human to inspect. It does not read the table, and the upload is marked
- * `humanReviewRequired` whether SAM matched or not. With SAM off or
- * unreachable, nothing about the upload fails; the flag simply stays true.
+ * Scanned pages and image uploads may be handed to SAM 3.1 for table regions.
+ * Muse Spark transcription is a separate opt-in requiring an explicit hosted
+ * raw-image acknowledgement. Its text can be staged for search, but the upload
+ * remains `humanReviewRequired`; model output is never treated as verified.
  *
  * GET /api/tenders/:ref/docs — list every stored object under this tender's
  * prefix, from the edge and from this deployment's own store. Requires
@@ -314,7 +314,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ref
      even though its bytes are stored. The size is captured before the PUT:
      a consumed body may leave the ArrayBuffer detached (byteLength 0). */
   const size = bytes.byteLength;
-  const extracted = await extractTenderText(bytes, file.name || "document").catch(() => null);
+  let extracted = await extractTenderText(bytes, file.name || "document").catch(() => null);
 
   /* A page with no embedded text (or an image upload) cannot be read by the
      graph. SAM 3.1 can still point a human at the table region. The call is
@@ -351,6 +351,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ref
           : vision.error,
       }
     : null;
+  const museVision = isVisionDoc && museScanEnabled()
+    ? await transcribeTenderScan(new Uint8Array(bytes), file.name || "document", extracted?.pages ?? 1)
+    : null;
+  if (museVision?.ok && !extracted?.text.trim()) {
+    extracted = {
+      text: museVision.text,
+      kind: classifyTenderDocument(file.name || "document", museVision.text),
+      pages: extracted?.pages ?? museVision.pages.length,
+      note: `${museVision.note} Verify the original scan before relying on extracted text or citations.`,
+    };
+  }
   const humanReviewRequired = isVisionDoc || /OCR|scan/i.test(extracted?.note ?? "");
 
   const key = `tenders/${ref}/${Date.now()}-${parsed.stem}${parsed.ext}`;
@@ -467,6 +478,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ref
               note: visionSummary.note,
             }
           : undefined,
+        museVision: museVision
+          ? { model: museVision.model, ok: museVision.ok, pages: museVision.pages, latencyMs: museVision.latencyMs, usage: museVision.usage, note: museVision.note, error: museVision.error }
+          : undefined,
         durationMs: Date.now() - startedAt,
       },
     },
@@ -508,6 +522,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ref
       files,
       humanReviewRequired,
       vision: visionSummary ?? undefined,
+      museVision: museVision ? { model: museVision.model, ok: museVision.ok, pages: museVision.pages, latencyMs: museVision.latencyMs, usage: museVision.usage, note: museVision.note, error: museVision.error } : undefined,
       audited,
       audit: audited && auditSeq !== undefined && auditId && auditSelf
         ? { seq: auditSeq, id: auditId, self: auditSelf }

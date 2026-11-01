@@ -15,6 +15,7 @@ import {
   appendLog,
   shaOf,
   currentWorkspaceId,
+  normalizeCycle,
   saveState,
   state,
   type Addendum,
@@ -25,6 +26,7 @@ import {
   type ContractFile,
   type ContractPayment,
   type ContractVariation,
+  type CoiDeclaration,
   type CoiEntity,
   type EvalConsensus,
   type EvalMatrix,
@@ -35,12 +37,14 @@ import {
   type Gate,
   type Office,
   type OpenBidInput,
+  type QuarterlyProcurementReport,
   type RosterMemberForGate,
   type TenderCycle,
 } from "./store";
 import { criterionEvidenceSuggestions, evaluatePackSignals, loadPack, parseMarkdownBidValue } from "./engine";
 import {
   DEFAULT_TECH_WEIGHT_PCT,
+  DEFAULT_FINANCIAL_FORMULA,
   applyMedAdjustments,
   bidSecurityFindings,
   buildOpeningRows,
@@ -58,10 +62,10 @@ import {
   draftNoticeMd,
   noticeFieldCheck,
   parseClosingDate,
+  parseEvaluationCriteria,
   scoreMatrix,
   validateCriteria,
   validateScores,
-  variationNeedsGate,
   variationPctOfContract,
   responsivenessLadder,
   weightsSum,
@@ -74,8 +78,10 @@ import {
   evaluationBlockReason,
   fxBlockReason,
   jurisdictionCurrency,
+  normalizeCurrency,
   normalizeFxRates,
   sheetValidationError,
+  sameEntity,
 } from "./evaluation";
 import { DEBARMENT_LIST } from "./debarment";
 import { addendumNoticeState, addWorkingDaysIn, jurisdictionPack } from "./jurisdiction";
@@ -119,13 +125,12 @@ import { listDocuments } from "./documents";
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 const SAFE_REF = TENDER_REF_RE;
 
-function cycleFor(tenderId: string, workspaceId = "demo"): TenderCycle {
+function cycleFor(tenderId: string, workspaceId = currentWorkspaceId()): TenderCycle {
   const existing = state.cycle.find((c) => c.tenderId === tenderId && (c.workspaceId ?? "demo") === workspaceId);
   if (existing) {
-    /* Cycles written before dissents existed keep working — the field is
-       backfilled on read rather than migrated on boot. */
-    if (!existing.dissents) existing.dissents = [];
-    return existing;
+    /* A cycle written before a field existed keeps working: its required
+       arrays are backfilled on read, in one place, not per caller. */
+    return normalizeCycle(existing);
   }
   const fresh: TenderCycle = {
     tenderId,
@@ -206,6 +211,134 @@ function raiseCycleGate(input: {
   return gate;
 }
 
+type QuarterlyReportEntry = QuarterlyProcurementReport["entries"][number];
+
+function quarterBounds(year: number, quarter: number): { start: Date; end: Date } {
+  return {
+    start: new Date(Date.UTC(year, (quarter - 1) * 3, 1)),
+    end: new Date(Date.UTC(year, quarter * 3, 0, 23, 59, 59, 999)),
+  };
+}
+
+function entriesForQuarter(workspaceId: string, year: number, quarter: number): QuarterlyReportEntry[] {
+  const { start, end } = quarterBounds(year, quarter);
+  const inside = (raw: string | undefined) => {
+    if (!raw) return false;
+    const at = new Date(raw).getTime();
+    return Number.isFinite(at) && at >= start.getTime() && at <= end.getTime();
+  };
+  const entries: QuarterlyReportEntry[] = [];
+  for (const cycle of state.cycle) {
+    if ((cycle.workspaceId ?? "demo") !== workspaceId) continue;
+    for (const variation of cycle.contract?.variations ?? []) {
+      const date = variation.approvedAt ?? (variation.status === "APPROVED" ? variation.at : undefined);
+      if (variation.status !== "APPROVED" || !inside(date)) continue;
+      entries.push({
+        tenderId: cycle.tenderId,
+        type: "VARIATION",
+        reference: variation.id,
+        date: date!,
+        amount: variation.valueDelta,
+        currency: cycle.contract?.currency,
+      });
+    }
+    const notice = cycle.awardNotice;
+    if (!notice?.publishedAt || !inside(notice.publishedAt) || !cycle.matrix) continue;
+    const winner = cycle.matrix.bids.find((bid) => bid.bidder === cycle.awardReport?.recommendation);
+    const adjustment = winner?.financial?.adjustments;
+    const hasPreference = Number(adjustment?.preferencePct ?? 0) > 0 ||
+      (cycle.matrix.preferenceScheme === "CDF_RESERVATION" &&
+        adjustment?.reservationCitizenSupplier === true &&
+        (adjustment.reservationEligible === true || adjustment.reservationExceptionRef === cycle.matrix.cdfReservationExceptionRef));
+    if (!winner || !hasPreference) continue;
+    entries.push({
+      tenderId: cycle.tenderId,
+      type: "PREFERENCE_AWARD",
+      reference: notice.sha,
+      date: notice.publishedAt,
+      supplier: winner.bidder,
+      amount: Number(winner.financial?.correctedAmount ?? winner.financial?.amount ?? 0),
+      currency: winner.financial?.currency ?? cycle.matrix.evaluationCurrency,
+      scheme: adjustment?.preferenceScheme ?? cycle.matrix.preferenceScheme,
+    });
+  }
+  return entries.sort((a, b) => a.date.localeCompare(b.date) || a.tenderId.localeCompare(b.tenderId) || a.reference.localeCompare(b.reference));
+}
+
+function quarterlyReportSnapshot(report: QuarterlyProcurementReport): QuarterlyReportEntry[] {
+  return entriesForQuarter(report.workspaceId, report.year, report.quarter);
+}
+
+function quarterlyReportBlockReason(gate: Gate, approvingActorId?: string): string | null {
+  const input = (gate.inputs && typeof gate.inputs === "object" ? gate.inputs : {}) as { reportId?: string; digest?: string };
+  const report = state.quarterlyReports.find((row) =>
+    row.id === input.reportId && row.workspaceId === (gate.workspaceId ?? "demo"),
+  );
+  if (!report || report.status !== "PENDING_GATE") return "The quarterly report is missing or no longer awaiting approval.";
+  if (!report.submissionReference.trim() || !report.evidenceReference.trim()) return "The external submission and evidence references are required.";
+  const digest = shaOf(quarterlyReportSnapshot(report));
+  if (!input.digest || report.digest !== input.digest || digest !== input.digest) {
+    return "The report period changed after it was staged — regenerate the report and raise a new approval gate.";
+  }
+  if (report.requestedBy && approvingActorId && report.requestedBy === approvingActorId) {
+    return "A different officer must approve the quarterly report than the officer who prepared it.";
+  }
+  return null;
+}
+
+function quarterlyPeriodIsClosed(year: number, quarter: number): boolean {
+  return quarterBounds(year, quarter).end.getTime() < Date.now();
+}
+
+function coreStageQuarterlyReport(
+  workspaceId: string,
+  year: number,
+  quarter: number,
+  submissionReference: string,
+  evidenceReference: string,
+  actorId: string,
+) {
+  const currentYear = new Date().getUTCFullYear();
+  if (!Number.isInteger(year) || year < 2020 || year > currentYear || !Number.isInteger(quarter) || quarter < 1 || quarter > 4) {
+    throw new Error("Choose a valid completed reporting quarter.");
+  }
+  if (!quarterlyPeriodIsClosed(year, quarter)) throw new Error("A quarterly return can be submitted only after the reporting quarter has closed.");
+  if (!actorId) throw new Error("The report preparer must be a signed-in workspace user.");
+  const reference = submissionReference.trim().slice(0, 200);
+  const evidence = evidenceReference.trim().slice(0, 240);
+  if (!reference || !evidence) throw new Error("Record both the authority submission reference and the supporting evidence reference.");
+  if (state.quarterlyReports.some((report) => report.workspaceId === workspaceId && report.year === year && report.quarter === quarter)) {
+    throw new Error("A report for this quarter is already staged or submitted; use its recorded status instead of creating a duplicate.");
+  }
+  const entries = entriesForQuarter(workspaceId, year, quarter);
+  const digest = shaOf(entries);
+  const report: QuarterlyProcurementReport = {
+    id: `qpr_${year}_q${quarter}_${randomUUID().slice(0, 8)}`,
+    workspaceId,
+    year,
+    quarter: quarter as 1 | 2 | 3 | 4,
+    status: "PENDING_GATE",
+    entries,
+    digest,
+    submissionReference: reference,
+    evidenceReference: evidence,
+    requestedBy: actorId,
+    requestedAt: new Date().toISOString(),
+  };
+  state.quarterlyReports.push(report);
+  const gate = raiseCycleGate({
+    tenderId: `qpr_${year}_q${quarter}`,
+    workspaceId,
+    tool: "submit_quarterly_report",
+    requiredOffice: "ACCOUNTING_OFFICER",
+    inputs: { reportId: report.id, digest, entryCount: entries.length },
+    note: `Submit the Q${quarter} ${year} variation and preference-award return`,
+  });
+  report.gateId = gate.id;
+  saveState();
+  return { report, gate: gate.id };
+}
+
 /* ── Deployment truth — one refusal shared by every money/contract path ──── */
 
 /** What the notice or receipt can honestly call itself. */
@@ -218,12 +351,16 @@ export function publicationLabel(): string {
 }
 
 /** A contract follows a real notice, not a rehearsal notice. */
-function awardPublicationReason(cycle: { awardNotice?: { publishedAt?: string; publication?: { mode?: string } } } | undefined): string | null {
+function awardPublicationReason(cycle: Pick<TenderCycle, "awardNotice" | "matrix"> | undefined): string | null {
   if (!cycle?.awardNotice?.publishedAt) {
     return "The notice of award has not been published — a contract follows publication and standstill, not the award report alone.";
   }
   if (cycle.awardNotice.publication?.mode !== "CONNECTED") {
     return "The award notice on record is SIMULATED — a contract cannot follow a rehearsal publication. Re-publish the notice through the connected portal first.";
+  }
+  const expected = (cycle.matrix?.bids ?? []).map((bid) => bid.bidder).sort((a, b) => a.localeCompare(b));
+  if (!cycle.awardNotice.dispatchedAt || !cycle.awardNotice.dispatchEvidenceRef?.trim() || JSON.stringify([...(cycle.awardNotice.dispatchedTo ?? [])].sort()) !== JSON.stringify(expected)) {
+    return "The award notice has no complete dispatch record for every bidder — the contract path remains closed.";
   }
   return null;
 }
@@ -240,6 +377,28 @@ function stagedPublicationReason(gate: Gate): string | null {
   return null;
 }
 
+/* Act 8/2020 s.71(3), as amended: simplified bidding and direct bidding are
+   exempt; limited bidding is exempt only where the approved method record
+   establishes insufficient time. Other ZM methods keep the five-day clock. */
+function standstillApplies(cycle: TenderCycle | undefined): boolean {
+  if (state.jurisdictionId !== "ZM") return true;
+  if (cycle?.methodId === "simplified-bidding" || cycle?.methodId === "direct-bidding") return false;
+  if (cycle?.methodId === "limited-bidding" && /insufficient\s+time/i.test(cycle.methodJustification ?? "")) return false;
+  return true;
+}
+
+function standstillBlockReason(cycle: TenderCycle | undefined): string | null {
+  if (!cycle) return "The tender record is unavailable.";
+  if (!standstillApplies(cycle)) return null;
+  if (!cycle.awardNotice?.publishedAt || !cycle.standstill?.endsAt) return "The applicable standstill clock has not been started by a published award notice.";
+  const endsAt = new Date(cycle.standstill.endsAt).getTime();
+  if (!Number.isFinite(endsAt)) return "The standstill end date is invalid — contract signing is blocked until corrected.";
+  if (Date.now() < endsAt) return `The standstill window is still running until ${cycle.standstill.endsAt.slice(0, 10)}.`;
+  const open = (cycle.complaints ?? []).filter((complaint) => complaint.status === "OPEN" || complaint.status === "ESCALATED");
+  if (open.length) return `The standstill time has elapsed, but complaint(s) ${open.map((complaint) => complaint.id).join(", ")} remain open.`;
+  return null;
+}
+
 /* ── Award legality — the shared refusals for WS4 ──────────────────────────── */
 
 function tenderFindings(tenderId: string): Finding[] {
@@ -253,7 +412,7 @@ function awardValue(cycle: TenderCycle | undefined): { value?: number; currency?
   const row = winner
     ? cycle.matrix?.bids.find((b) => b.bidder.toLowerCase() === winner.trim().toLowerCase())
     : undefined;
-  if (row?.financial) return { value: row.financial.amount, currency: row.financial.currency };
+  if (row?.financial) return { value: row.financial.correctedAmount ?? row.financial.amount, currency: row.financial.currency };
   const pipeline = state.pipeline.find((p) => p.ref === cycle.tenderId || p.linkedTenderId === cycle.tenderId);
   return pipeline?.budgetEstimate !== undefined
     ? { value: pipeline.budgetEstimate, ...(pipeline.currency ? { currency: pipeline.currency } : {}) }
@@ -291,6 +450,24 @@ function methodControlReason(cycle: TenderCycle | undefined): string | null {
     ...(currency ? { currency } : {}),
     jurisdictionId: state.jurisdictionId,
   });
+}
+
+function floatPeriodBlockReason(cycle: TenderCycle | undefined, noticeMd: string, issuedAt: string): string | null {
+  const method = cycle?.methodId ? findMethod(state.jurisdictionId, cycle.methodId) : undefined;
+  if (!method?.floatPeriod) return null;
+  const minimums = method.floatPeriod.match(/(\d+)\s+weeks?\s+national.*?(\d+)\s+weeks?\s+international/i);
+  if (!minimums) return `The method register's float period for ${method.name} cannot be checked — update the method rule before publication.`;
+  const international = /^\*\*Procurement scope:\*\*\s*International$/m.test(noticeMd);
+  const requiredDays = Number(international ? minimums[2] : minimums[1]) * 7;
+  const clock = jurisdictionPack(state.jurisdictionId);
+  const closing = cycle?.closingDate ?? parseClosingDate(noticeMd, clock.utcOffsetHours);
+  if (!closing) return "The solicitation closing date is missing — the statutory float period cannot be checked.";
+  const openedAt = new Date(issuedAt).getTime();
+  const closesAt = new Date(closing).getTime();
+  if (!Number.isFinite(openedAt) || !Number.isFinite(closesAt)) return "The solicitation publication or closing date is invalid — the float period cannot be checked.";
+  const days = Math.floor((closesAt - openedAt) / 86_400_000);
+  if (days < requiredDays) return `${method.name} requires at least ${requiredDays} calendar days for this ${international ? "international" : "national"} solicitation; the current publication-to-closing period is ${Math.max(0, days)} days.`;
+  return null;
 }
 
 /** The award-revalidation: matrix, bidder, register, debarment, open findings. */
@@ -331,7 +508,7 @@ export function awardBlockers(cycle: TenderCycle): string[] {
 
 /** The contract as the execution gate's instruments would leave it. */
 function contractAtExecution(contract: ContractFile, gate: Gate): ContractFile {
-  const input = gate.inputs as {
+  const input = (gate.inputs && typeof gate.inputs === "object" ? gate.inputs : {}) as {
     performanceSecurity?: { amount?: number; issuer?: string; validUntil?: string; documentId?: string };
     insurance?: { policyNo?: string; issuer?: string; validUntil?: string; cover?: string };
     retentionPct?: number;
@@ -343,7 +520,7 @@ function contractAtExecution(contract: ContractFile, gate: Gate): ContractFile {
     ...contract,
     ...(security && typeof security.amount === "number" && security.amount > 0
       ? {
-          performanceSecurity: {
+          security: {
             amount: roundMoney(security.amount),
             issuer: String(security.issuer ?? "").trim(),
             validUntil: String(security.validUntil ?? ""),
@@ -393,6 +570,23 @@ export function contractAuthorityReason(): string | null {
 
 /* ── Pre-approval checks — refused BEFORE anything changes ─────────────────── */
 
+/* Tools whose gate cannot be decided without the inputs it staged. A gate that
+   lacks them is a record defect, not an empty case list. */
+const GATE_TOOLS_WITH_INPUTS = new Set([
+  "submit_quarterly_report",
+  "record_financial_adjustments",
+  "publish_notice",
+  "publish_award_notice",
+  "resolve_alb",
+  "approve_procurement_method",
+  "issue_debrief",
+  "sign_contract_pack",
+  "certify_payment",
+  "approve_variation",
+  "record_contract_completion",
+  "respond_complaint",
+]);
+
 export function preApprovalCheck(
   gate: Gate,
   approver: string,
@@ -400,6 +594,10 @@ export function preApprovalCheck(
   signedInAs?: string,
   attestedActorId?: string,
 ): string | null {
+  /* A roster row written before the committee register carried a name cannot
+     be matched to an actor or a score sheet — it is an absent member, not a
+     crash. Every roster question below reads this list. */
+  const named = roster.filter((m) => typeof m?.name === "string" && m.name.trim().length > 0);
   /* Office-aware gates: a roster member must HOLD the required office. The
      signed-in officer is the gavel — the accounting officer's seat — and may
      always sign. FAIL CLOSED: a name that matches nobody on the register is
@@ -409,10 +607,10 @@ export function preApprovalCheck(
     const who = approver.trim().toLowerCase();
     const isOfficer = !!signedInAs?.trim() && signedInAs.trim().toLowerCase() === who;
     if (!isOfficer) {
-      const member = roster.find((m) => m.name.trim().toLowerCase() === who);
+      const member = named.find((m) => m.name.trim().toLowerCase() === who);
       if (!member)
         return `${approver.trim()} is not on the committee register — this gate must be signed by the ${gate.requiredOffice.replace(/_/g, " ").toLowerCase()} (or the signed-in officer acting as the gavel).`;
-      if (attestedActorId && member.id !== attestedActorId) {
+      if (attestedActorId && (member.userId ?? member.id) !== attestedActorId) {
         return `${member.name}'s office is bound to a different signed-in user — a typed name cannot borrow another officer's authority. Sign in as the office holder.`;
       }
       if (!member.office) return `${member.name} has no office on the committee register — set the member's office before they sign this gate.`;
@@ -420,16 +618,45 @@ export function preApprovalCheck(
         return `${member.name} holds the ${member.office.replace(/_/g, " ").toLowerCase()} office — this gate must be signed by the ${gate.requiredOffice.replace(/_/g, " ").toLowerCase()}.`;
     }
   }
-  const cycle = state.cycle.find((c) => c.tenderId === gate.tenderId);
+  /* Gates read the record straight from the store, so the same backfill the
+     routes get is applied here: a record written before a field existed must
+     answer the gate with a refusal, never with a crash. */
+  const found = state.cycle.find((c) => c.tenderId === gate.tenderId);
+  const cycle = found ? normalizeCycle(found) : undefined;
+  /* A gate persisted before it carried inputs must answer, not throw: the
+     cases below read their staged fields off this one object. Where the tool
+     cannot be decided without them, the answer is a refusal naming the record
+     — an empty object would let a signable gate through to an executor that
+     then throws halfway through the decision. */
+  const carriesInputs = !!gate.inputs && typeof gate.inputs === "object";
+  const inputs = (carriesInputs ? gate.inputs : {}) as Record<string, unknown>;
+  if (!carriesInputs && GATE_TOOLS_WITH_INPUTS.has(gate.tool)) {
+    return "This gate was raised without its staged inputs on record — raise a fresh gate so the officer signs a decision that names what was staged.";
+  }
   switch (gate.tool) {
+    case "submit_quarterly_report":
+      return quarterlyReportBlockReason(gate, attestedActorId);
+    case "record_financial_adjustments": {
+      const input = inputs as { matrixId?: string; digest?: string; submittedBy?: string };
+      if (!cycle?.matrix || cycle.matrix.id !== input.matrixId) return "The evaluation matrix changed after the price adjustments were staged.";
+      const staged = (cycle.matrix.bids ?? []).map((bid) => ({ bidder: bid.bidder, adjustments: bid.financial?.adjustments ?? null }));
+      if (!input.digest || shaOf(staged) !== input.digest || cycle.matrix.financialAdjustmentsDigest !== input.digest) {
+        return "The financial adjustment record changed after it was staged — submit it again for certification.";
+      }
+      if (input.submittedBy && attestedActorId && input.submittedBy === attestedActorId) return "A different procurement-unit member must certify the submitted financial adjustments.";
+      if ((cycle.matrix.bids ?? []).some((bid) => !bid.financial?.adjustments?.evidenceRef?.trim() || !bid.financial.adjustments.verifiedBy)) return "Every bidder needs a sourced financial adjustment record before certification.";
+      return null;
+    }
     case "certify_evaluation": {
       if (!cycle) return null;
       /* Every PRESENT member must have declared conflicts before the matrix is certified. */
-      const missing = roster
+      const missing = named
         .filter((m) => m.status === "PRESENT")
         .filter((m) => !cycle.coi.some((d) => d.member.toLowerCase() === m.name.toLowerCase()));
       if (missing.length)
         return `Conflict-of-interest declarations are outstanding for: ${missing.map((m) => m.name).join(", ")} — every PRESENT member must declare before the matrix is certified.`;
+      const albBlock = openAlbBlockReason(cycle);
+      if (albBlock) return albBlock;
       /* WS7 — sheets, consensus, screened conflicts and the FX basis. Checked
          here so a short panel is refused before the token is burned, and again
          in the executor so a direct call cannot certify around the gate. */
@@ -438,12 +665,28 @@ export function preApprovalCheck(
           matrix: cycle.matrix,
           coi: cycle.coi,
           suppliers: state.suppliers,
-          roster,
+          roster: named,
           divergencePoints: state.guards.scoreDivergencePoints,
           fxStalenessDays: state.guards.fxStalenessDays,
         });
         if (integrity) return integrity;
       }
+      const cdfBlock = cdfReservationBlockReason(cycle);
+      if (cdfBlock) return cdfBlock;
+      return null;
+    }
+    case "publish_notice": {
+      const pipeline = state.pipeline.find((entry) => entry.linkedTenderId === gate.tenderId && (entry.workspaceId ?? "demo") === currentWorkspaceId());
+      if (!pipeline?.requisition?.budgetValidated || !pipeline.requisition.budgetReference) {
+        return "The linked procurement-plan entry has no validated requisition and budget reference — validate available funding before publishing the solicitation.";
+      }
+      const noticeId = (inputs as { noticeId?: string }).noticeId;
+      const notice = cycle?.notices.find((entry) => entry.id === noticeId);
+      /* A notice written before the field check existed carries no checklist —
+         that is an incomplete notice, not a publishable one. */
+      if (!notice || !Array.isArray(notice.fieldCheck) || notice.fieldCheck.some((field) => !field.present)) return "The solicitation notice is incomplete and cannot be published.";
+      const floatBlock = floatPeriodBlockReason(cycle, notice.md, gate.decidedAt ?? new Date().toISOString());
+      if (floatBlock) return floatBlock;
       return null;
     }
     case "sign_award_report": {
@@ -468,11 +711,25 @@ export function preApprovalCheck(
       if (method) return method;
       const assurance = supplierAssuranceReason(cycle);
       if (assurance) return assurance;
+      const input = inputs as { dispatchedTo?: string[]; dispatchEvidenceRef?: string };
+      const expected = (cycle.matrix?.bids ?? []).map((bid) => bid.bidder).sort((a, b) => a.localeCompare(b));
+      if (!input.dispatchEvidenceRef?.trim() || JSON.stringify([...(input.dispatchedTo ?? [])].sort()) !== JSON.stringify(expected)) {
+        return "The award notice needs a delivery evidence reference and a recipient entry for every bidder.";
+      }
+      return null;
+    }
+    case "resolve_alb": {
+      const input = inputs as { dossierId?: string; outcome?: string; note?: string };
+      const dossier = cycle?.alb.find((entry) => entry.id === input.dossierId);
+      if (!dossier) return "The ALB dossier is missing from this tender.";
+      if (!dossier.response && !dossier.noResponseRecordedAt) return "The bidder response or the expired-deadline no-response record is missing.";
+      if (dossier.noResponseRecordedAt && input.outcome === "JUSTIFIED") return "A bidder with no response on record cannot be marked JUSTIFIED.";
+      if (str(input.note).trim().length < 12) return "Record the committee's reasoned assessment before resolving the ALB dossier.";
       return null;
     }
     case "approve_procurement_method": {
       if (!cycle?.methodId) return "No procurement method is recorded — set the method before it can be approved.";
-      const input = gate.inputs as { methodId?: string; justification?: string; approvalRef?: string; value?: unknown; currency?: unknown };
+      const input = inputs as { methodId?: string; justification?: string; approvalRef?: string; value?: unknown; currency?: unknown };
       if (input.methodId && input.methodId !== cycle.methodId) {
         return "The method changed after this gate was raised — raise a fresh method gate for the method now on record.";
       }
@@ -503,9 +760,8 @@ export function preApprovalCheck(
       if (authority) return authority;
       const publication = awardPublicationReason(cycle);
       if (publication) return publication;
-      if (cycle?.standstill && cycle.standstill.status === "ACTIVE") {
-        return `The standstill window is ACTIVE until ${cycle.standstill.endsAt.slice(0, 10)} — the contract pack may be signed only after it lapses.`;
-      }
+      const standstillBlock = standstillBlockReason(cycle);
+      if (standstillBlock) return standstillBlock;
       if (!cycle?.awardReport?.signedAt) return "The award report has not been signed — the contract pack follows the award.";
       const legality = awardLegalityReason(cycle, gate.tenderId);
       if (legality) return legality;
@@ -517,15 +773,15 @@ export function preApprovalCheck(
       if (suspension) return suspension;
       /* A contract without a value is not a contract. The pack carries the
          winning bid's value; refuse to sign if it does not. */
-      const contractValue = contractValueCheck((gate.inputs as { value?: unknown })?.value);
+      const contractValue = contractValueCheck((inputs as { value?: unknown }).value);
       if (!contractValue.ok) return contractValue.reason;
       if (state.features.paymentCaps) {
-        const lineId = (gate.inputs as { budgetLineId?: string })?.budgetLineId;
+        const lineId = (inputs as { budgetLineId?: string }).budgetLineId;
         if (!lineId) return "A contract commits budget — select a budget line before the pack is signed.";
-        const line = state.budgetLines.find((l) => l.id === lineId);
+        const line = state.budgetLines.find((l) => l.id === lineId && (l.workspaceId ?? "demo") === currentWorkspaceId());
         if (!line) return "The selected budget line is not on the register — choose a live line before the pack is signed.";
         const commitBlock = commitmentBlockReason(line, contractValue.value);
-        const override = (gate.inputs as { budgetOverride?: { reason?: string; secondedBy?: string } })?.budgetOverride;
+        const override = (inputs as { budgetOverride?: { reason?: string; secondedBy?: string } }).budgetOverride;
         if (commitBlock) {
           if (!override?.reason?.trim() || !override?.secondedBy?.trim()) return commitBlock;
           if (override.secondedBy.trim().toLowerCase() === approver.trim().toLowerCase()) {
@@ -542,7 +798,7 @@ export function preApprovalCheck(
       const suspension = complaintSuspensionReason(cycle);
       if (suspension) return suspension;
       if (state.features.paymentCaps) {
-        const paymentId = (gate.inputs as { paymentId?: string })?.paymentId;
+        const paymentId = (inputs as { paymentId?: string }).paymentId;
         const payment = cycle.contract.payments.find((p) => p.id === paymentId);
         const block = paymentBlockReason({ contract: cycle.contract, payment });
         if (block) return block;
@@ -570,7 +826,7 @@ export function preApprovalCheck(
     case "approve_variation": {
       if (!cycle?.contract) return "No contract is open on this tender — there is nothing to vary.";
       if (state.features.paymentCaps) {
-        const variationId = (gate.inputs as { variationId?: string })?.variationId;
+        const variationId = (inputs as { variationId?: string }).variationId;
         const variation = cycle.contract.variations.find((v) => v.id === variationId);
         if (!variation) return "The variation this gate refers to is not on the contract register.";
         const block = variationBlockReason({
@@ -578,20 +834,28 @@ export function preApprovalCheck(
           valueDelta: variation.valueDelta,
           excludeVariationId: variation.id,
         });
-        if (block && !variation.override) return block;
+        if (block) return block;
+        if (!variation.legalAdviceRef?.trim() || !variation.approvalReference?.trim()) return "The variation needs an Attorney-General legal advice reference and an approval reference.";
       }
+      return null;
+    }
+    case "lift_standstill": {
+      if (!cycle?.standstill) return "No standstill is running on this tender.";
+      if (!standstillApplies(cycle)) return "This procurement method is exempt from the section 71 standstill clock.";
+      if (Date.now() < new Date(cycle.standstill.endsAt).getTime()) return `The standstill cannot be marked lapsed before ${cycle.standstill.endsAt}.`;
+      if ((cycle.complaints ?? []).some((complaint) => complaint.status === "OPEN" || complaint.status === "ESCALATED")) return "An open or escalated complaint keeps the award suspended after the standstill period.";
       return null;
     }
     case "record_contract_completion": {
       if (!cycle?.contract) return "No contract is open on this tender — there is nothing to complete.";
       if (state.features.paymentCaps) {
-        const block = completionBlockReason(cycle.contract, gate.inputs as Record<string, unknown>);
+        const block = completionBlockReason(cycle.contract, inputs);
         if (block) return block;
       }
       return null;
     }
     case "respond_complaint": {
-      const id = (gate.inputs as { complaintId?: string })?.complaintId;
+      const id = (inputs as { complaintId?: string }).complaintId;
       const complaint = cycle?.complaints.find((c) => c.id === id);
       if (!complaint) return "The complaint this response belongs to is not open on this tender.";
       if (complaint.status !== "OPEN") return `The complaint is already ${complaint.status}.`;
@@ -609,6 +873,33 @@ export async function executeCycleGateAction(gate: Gate): Promise<Record<string,
      exception (no tender) must not mint an empty TenderCycle row. */
   if (gate.tool === "approve_exception") {
     return executeExceptionApproval(gate);
+  }
+  if (gate.tool === "submit_quarterly_report") {
+    const blocked = quarterlyReportBlockReason(gate);
+    if (blocked) throw new Error(blocked);
+    const input = gate.inputs as { reportId?: string; digest?: string };
+    const report = state.quarterlyReports.find((row) => row.id === input.reportId && row.workspaceId === (gate.workspaceId ?? "demo"));
+    if (!report) throw new Error("the quarterly report is missing from the record");
+    const submittedAt = gate.decidedAt ?? new Date().toISOString();
+    for (const entry of report.entries) {
+      const cycle = state.cycle.find((row) => row.tenderId === entry.tenderId && (row.workspaceId ?? "demo") === report.workspaceId);
+      if (!cycle) continue;
+      if (entry.type === "VARIATION") {
+        const variation = cycle.contract?.variations.find((row) => row.id === entry.reference);
+        if (variation) {
+          variation.quarterlyReportRef = report.submissionReference;
+          variation.reportedAt = submittedAt;
+        }
+      } else if (cycle.awardNotice?.sha === entry.reference) {
+        cycle.awardNotice.quarterlyReportRef = report.submissionReference;
+        cycle.awardNotice.reportedAt = submittedAt;
+      }
+    }
+    report.status = "SUBMITTED";
+    report.submittedAt = submittedAt;
+    report.submittedBy = gate.approver ?? "accounting officer";
+    saveState();
+    return { reportId: report.id, year: report.year, quarter: report.quarter, entryCount: report.entries.length, digest: report.digest, submittedAt };
   }
   const cycle = cycleFor(gate.tenderId);
   const who = gate.approver ?? "named human";
@@ -628,8 +919,20 @@ export async function executeCycleGateAction(gate: Gate): Promise<Record<string,
       }
       return undefined;
     }
+    case "record_financial_adjustments": {
+      const input = gate.inputs as { matrixId?: string; digest?: string };
+      if (!cycle.matrix || cycle.matrix.id !== input.matrixId) throw new Error("the evaluation matrix changed after the financial adjustments were staged");
+      const digest = shaOf(cycle.matrix.bids.map((bid) => ({ bidder: bid.bidder, adjustments: bid.financial?.adjustments ?? null })));
+      if (!input.digest || digest !== input.digest || digest !== cycle.matrix.financialAdjustmentsDigest) throw new Error("the financial adjustment digest no longer matches the staged record");
+      cycle.matrix.financialAdjustmentsCertifiedAt = gate.decidedAt ?? new Date().toISOString();
+      cycle.matrix.financialAdjustmentsCertifiedBy = who;
+      saveState();
+      return { matrixId: cycle.matrix.id, digest, certifiedAt: cycle.matrix.financialAdjustmentsCertifiedAt };
+    }
     case "certify_evaluation": {
       if (!cycle.matrix) return undefined;
+      const albBlock = openAlbBlockReason(cycle);
+      if (albBlock) throw new Error(albBlock);
       if (state.features.evaluationIntegrity) {
         const block = evaluationBlockReason({
           matrix: cycle.matrix,
@@ -655,6 +958,8 @@ export async function executeCycleGateAction(gate: Gate): Promise<Record<string,
         cycle.matrix = scoreMatrix(cycle.matrix);
         if (cycle.matrix.med) cycle.matrix = applyMedAdjustments(cycle.matrix, cycle.matrix.med.adjustments);
       }
+      const cdfBlock = cdfReservationBlockReason(cycle);
+      if (cdfBlock) throw new Error(cdfBlock);
       cycle.matrix.status = "CERTIFIED";
       cycle.matrix.certifiedAt = gate.decidedAt;
       cycle.matrix.certifiedBy = who;
@@ -665,6 +970,8 @@ export async function executeCycleGateAction(gate: Gate): Promise<Record<string,
       const input = gate.inputs as { dossierId?: string; outcome?: string; note?: string };
       const dossier = cycle.alb.find((a) => a.id === input.dossierId);
       if (!dossier) return undefined;
+      if (!dossier.response && !dossier.noResponseRecordedAt) throw new Error("the bidder response or expired-deadline no-response record is missing");
+      if (dossier.noResponseRecordedAt && input.outcome === "JUSTIFIED") throw new Error("a bidder with no response on record cannot be marked JUSTIFIED");
       const outcome = input.outcome === "REJECTED" || input.outcome === "WITHDRAWN" ? input.outcome : "JUSTIFIED";
       dossier.resolution = {
         outcome,
@@ -673,6 +980,22 @@ export async function executeCycleGateAction(gate: Gate): Promise<Record<string,
         by: who,
         gateId: gate.id,
       };
+      if (cycle.matrix) {
+        const bidder = cycle.matrix.bids.find((row) => row.bidder.toLowerCase() === dossier.bidder.toLowerCase());
+        if (bidder) {
+          bidder.albOpen = false;
+          const openReason = "abnormally low bid clarification is open";
+          bidder.reasons = (bidder.reasons ?? []).filter((reason) => reason !== openReason);
+          if (outcome !== "JUSTIFIED") {
+            bidder.responsiveness = "MATERIALLY_NONRESPONSIVE";
+            const reason = outcome === "REJECTED"
+              ? "abnormally low pricing was not justified by the bidder"
+              : "bidder withdrew after the abnormally low bid clarification request";
+            bidder.reasons = [...new Set([...bidder.reasons, reason])];
+          }
+          cycle.matrix = scoreMatrix(cycle.matrix);
+        }
+      }
       saveState();
       return { dossierId: dossier.id, outcome: dossier.resolution.outcome };
     }
@@ -699,24 +1022,48 @@ export async function executeCycleGateAction(gate: Gate): Promise<Record<string,
       if (method) throw new Error(method);
       const assurance = supplierAssuranceReason(cycle);
       if (assurance) throw new Error(assurance);
+      const gateInputs = gate.inputs as { dispatchedTo?: string[]; dispatchEvidenceRef?: string };
+      const expectedRecipients = (cycle.matrix?.bids ?? []).map((bid) => bid.bidder).sort((a, b) => a.localeCompare(b));
+      if (!gateInputs.dispatchEvidenceRef?.trim() || JSON.stringify([...(gateInputs.dispatchedTo ?? [])].sort()) !== JSON.stringify(expectedRecipients)) {
+        throw new Error("the award publication lacks the complete bidder dispatch list and delivery evidence reference");
+      }
       const startsAt = gate.decidedAt ?? new Date().toISOString();
       cycle.awardNotice.publishedAt = startsAt;
       cycle.awardNotice.publishedBy = who;
       cycle.awardNotice.publication = { ...state.deployment.publication, portal: cycle.awardNotice.portal };
-      const clock = jurisdictionPack(state.jurisdictionId);
-      cycle.standstill = {
-        tenderId: gate.tenderId,
-        startsAt,
-        endsAt: addWorkingDaysIn(startsAt, clock.standstillDays, clock),
-        days: clock.standstillDays,
-        status: "ACTIVE",
-      };
+      cycle.awardNotice.dispatchedTo = expectedRecipients;
+      cycle.awardNotice.dispatchedAt = startsAt;
+      cycle.awardNotice.dispatchEvidenceRef = gateInputs.dispatchEvidenceRef.trim().slice(0, 240);
+      if (standstillApplies(cycle)) {
+        const clock = jurisdictionPack(state.jurisdictionId);
+        cycle.standstill = {
+          tenderId: gate.tenderId,
+          startsAt,
+          endsAt: addWorkingDaysIn(startsAt, clock.standstillDays, clock),
+          days: clock.standstillDays,
+          status: "ACTIVE",
+        };
+      } else {
+        cycle.awardNotice.standstillExemptReason = `${cycle.methodId}${cycle.methodJustification ? ` — ${cycle.methodJustification}` : ""}`;
+      }
       saveState();
       return {
         portal: cycle.awardNotice.portal,
         publicationMode: cycle.awardNotice.publication?.mode ?? "SIMULATED",
-        standstillEndsAt: cycle.standstill.endsAt,
+        standstillEndsAt: cycle.standstill?.endsAt,
+        dispatchedTo: expectedRecipients,
+        dispatchEvidenceRef: cycle.awardNotice.dispatchEvidenceRef,
       };
+    }
+    case "lift_standstill": {
+      if (!cycle.standstill) return undefined;
+      const reason = standstillBlockReason(cycle);
+      if (reason) throw new Error(reason);
+      cycle.standstill.status = "LAPSED";
+      cycle.standstill.liftedAt = gate.decidedAt ?? new Date().toISOString();
+      cycle.standstill.liftedBy = who;
+      saveState();
+      return { status: "LAPSED", standstillEndsAt: cycle.standstill.endsAt };
     }
     case "issue_debrief": {
       const input = gate.inputs as { debriefId?: string };
@@ -733,6 +1080,8 @@ export async function executeCycleGateAction(gate: Gate): Promise<Record<string,
       if (authority) throw new Error(authority);
       const publication = awardPublicationReason(cycle);
       if (publication) throw new Error(publication);
+      const standstillBlock = standstillBlockReason(cycle);
+      if (standstillBlock) throw new Error(standstillBlock);
       const suspension = complaintSuspensionReason(cycle);
       if (suspension) throw new Error(suspension);
       const legality = awardLegalityReason(cycle, gate.tenderId);
@@ -760,9 +1109,7 @@ export async function executeCycleGateAction(gate: Gate): Promise<Record<string,
       };
       const contractValue = contractValueCheck(input.value);
       if (!contractValue.ok) throw new Error(contractValue.reason);
-      const line = state.features.paymentCaps
-        ? state.budgetLines.find((l) => l.id === input.budgetLineId)
-        : state.budgetLines.find((l) => l.id === input.budgetLineId);
+      const line = state.budgetLines.find((l) => l.id === input.budgetLineId && (l.workspaceId ?? "demo") === currentWorkspaceId());
       if (state.features.paymentCaps && !line) {
         throw new Error("A contract commits budget — the gate is not attached to a live budget line. Select one before signing.");
       }
@@ -783,6 +1130,7 @@ export async function executeCycleGateAction(gate: Gate): Promise<Record<string,
         tenderId: gate.tenderId,
         supplier: input.supplier ?? "—",
         value: contractValue.value,
+        originalValue: contractValue.value,
         currency: input.currency,
         openedAt: gate.decidedAt ?? new Date().toISOString(),
         openedFromGate: gate.id,
@@ -864,6 +1212,11 @@ export async function executeCycleGateAction(gate: Gate): Promise<Record<string,
       const input = gate.inputs as { variationId?: string };
       const variation = cycle.contract?.variations.find((v) => v.id === input.variationId);
       if (!variation) return undefined;
+      const block = variationBlockReason({ contract: cycle.contract, valueDelta: variation.valueDelta, excludeVariationId: variation.id });
+      if (block) throw new Error(block);
+      if (!variation.approvalReference?.trim() || (state.jurisdictionId === "ZM" && !variation.legalAdviceRef?.trim())) {
+        throw new Error("the required approval and Attorney-General legal advice references are missing");
+      }
       const cumulative = cumulativeVariationPct(cycle.contract!, variation.valueDelta, variation.id);
       variation.status = "APPROVED";
       variation.decidedBy = who;
@@ -893,7 +1246,7 @@ export async function executeCycleGateAction(gate: Gate): Promise<Record<string,
       const net = paymentNet(payment);
       const commitment = state.commitments.find((c) => c.tenderId === gate.tenderId && !c.releasedAt);
       if (commitment) {
-        const line = state.budgetLines.find((l) => l.id === commitment.budgetLineId);
+        const line = state.budgetLines.find((l) => l.id === commitment.budgetLineId && (l.workspaceId ?? "demo") === currentWorkspaceId());
         if (line) {
           line.spent = roundMoney(line.spent + net);
           line.updatedAt = new Date().toISOString();
@@ -934,7 +1287,7 @@ export async function executeCycleGateAction(gate: Gate): Promise<Record<string,
       });
       const commitment = state.commitments.find((c) => c.tenderId === gate.tenderId && !c.releasedAt);
       if (commitment) {
-        const line = state.budgetLines.find((l) => l.id === commitment.budgetLineId);
+        const line = state.budgetLines.find((l) => l.id === commitment.budgetLineId && (l.workspaceId ?? "demo") === currentWorkspaceId());
         if (line) {
           const spent = roundMoney(cycle.contract.payments.reduce((sum, p) => sum + paymentNet(p), 0));
           const release = Math.max(0, roundMoney(commitment.amount - spent));
@@ -997,6 +1350,10 @@ export async function executeCycleGateAction(gate: Gate): Promise<Record<string,
       const input = gate.inputs as { noticeId?: string };
       const notice = cycle.notices.find((n) => n.id === input.noticeId);
       if (!notice) return undefined;
+      const pipeline = state.pipeline.find((entry) => entry.linkedTenderId === gate.tenderId && (entry.workspaceId ?? "demo") === currentWorkspaceId());
+      if (!pipeline?.requisition?.budgetValidated || !pipeline.requisition.budgetReference) throw new Error("validated requisition and budget reference are required before solicitation publication");
+      const floatBlock = floatPeriodBlockReason(cycle, notice.md, gate.decidedAt ?? new Date().toISOString());
+      if (floatBlock) throw new Error(floatBlock);
       notice.issuedAt = gate.decidedAt;
       notice.issuedBy = who;
       saveState();
@@ -1020,8 +1377,40 @@ export function executeCycleGateRejection(gate: Gate): Record<string, unknown> |
 
 function rankedBidder(matrix: EvalMatrix): string | undefined {
   return [...matrix.bids]
-    .filter((b) => b.responsiveness === "RESPONSIVE")
+    .filter((b) => b.responsiveness === "RESPONSIVE" && !b.albOpen)
     .sort((a, b) => (b.total ?? 0) - (a.total ?? 0))[0]?.bidder;
+}
+
+function openAlbBlockReason(cycle: TenderCycle): string | null {
+  /* A record written before dossiers existed holds no list — an unreadable
+     field must not turn a gate into a crash. */
+  const open = (cycle.alb ?? []).filter((dossier) => !dossier.resolution);
+  if (!open.length) return null;
+  const bidders = [...new Set(open.map((dossier) => dossier.bidder))];
+  return `Resolve the open five-working-day ALB dossier${bidders.length === 1 ? "" : "s"} for ${bidders.join(", ")} before the evaluation matrix can be certified.`;
+}
+
+function cdfReservationBlockReason(cycle: TenderCycle): string | null {
+  const matrix = cycle.matrix;
+  if (!matrix || matrix.preferenceScheme !== "CDF_RESERVATION") return null;
+  const winnerName = rankedBidder(matrix);
+  if (!winnerName) return null;
+  const winner = matrix.bids.find((bid) => bid.bidder === winnerName);
+  const adjustment = winner?.financial?.adjustments;
+  if (!adjustment?.reservationCitizenSupplier) return "The recommended CDF supplier is not recorded as a citizen supplier.";
+  if (adjustment.reservationEligible) return null;
+  if (!matrix.cdfReservationExceptionRef || adjustment.reservationExceptionRef !== matrix.cdfReservationExceptionRef) {
+    return "An outside-constituency CDF supplier needs the locality exception evidence published in the solicitation.";
+  }
+  const localResponsive = matrix.bids.some((bid) =>
+    bid.responsiveness === "RESPONSIVE" &&
+    bid.financial?.adjustments?.reservationCitizenSupplier === true &&
+    bid.financial.adjustments.reservationEligible === true,
+  );
+  if (localResponsive) {
+    return "A responsive citizen bidder domiciled in the funded constituency is on the record; the statutory locality exception cannot be used to recommend an outside supplier.";
+  }
+  return null;
 }
 
 /* ── Cores — shared by the REST routes and the MCP tool calls ──────────────── */
@@ -1118,30 +1507,202 @@ async function coreRecordBidOpening(tenderId: string, bids: OpenBidInput[]) {
   return { register, gate: gate.id, lateCount: rows.filter((r) => r.late).length, reconciliation };
 }
 
+function evaluationScoringStarted(matrix: EvalMatrix): boolean {
+  if (matrix.scoringStartedAt || (matrix.sheets ?? []).length > 0) return true;
+  return matrix.bids.some((bid) => bid.technicalScores.some((score) =>
+    score.score !== 0 && matrix.med?.adjustments?.[`${bid.bidder}|${score.criterionId}`] === undefined,
+  ));
+}
+
+const PREFERENCE_MARGINS: Record<string, number> = {
+  LOCAL_SUPPLIER: 5,
+  CITIZEN_SUPPLIER: 7,
+  CITIZEN_WOMAN_OWNED: 9,
+  CITIZEN_YOUTH_OWNED: 9,
+  CITIZEN_PWD_OWNED: 10,
+  CITIZEN_SMALL_TURNOVER: 8,
+  CITIZEN_LOCAL_JV: 6,
+  LOCAL_CONTENT_CITIZEN: 15,
+  LOCAL_CONTENT_CITIZEN_LOCAL_JV: 12,
+  LOCAL_CONTENT_LOCAL: 10,
+};
+
+function coreRecordFinancialAdjustments(
+  tenderId: string,
+  rowsRaw: Record<string, unknown>[],
+  actorId: string,
+  roster: RosterMemberForGate[] | null,
+) {
+  const cycle = state.cycle.find((entry) => entry.tenderId === tenderId);
+  const matrix = cycle?.matrix;
+  if (!cycle || !matrix) throw new Error(`no evaluation matrix on record for "${tenderId}"`);
+  if (matrix.status === "CERTIFIED") throw new Error("the matrix is CERTIFIED — financial adjustments are sealed");
+  if (evaluationScoringStarted(matrix)) throw new Error("financial adjustments are locked after scoring starts");
+  if (matrix.financialAdjustmentsCertifiedAt) throw new Error("financial adjustments have already been certified and cannot be replaced");
+  const member = roster?.find((entry) => entry.status === "PRESENT" && entry.office === "PROCUREMENT_UNIT" && (entry.userId ?? entry.id) === actorId);
+  if (!actorId || !member) throw new Error("financial adjustments must be recorded by a signed-in PRESENT procurement-unit member");
+  if (rowsRaw.length !== matrix.bids.length) throw new Error(`record one financial adjustment row for each of the ${matrix.bids.length} bidders`);
+  const rows = new Map<string, Record<string, unknown>>();
+  for (const raw of rowsRaw) {
+    const bidder = str(raw.bidder).trim();
+    const key = bidder.toLowerCase();
+    if (!matrix.bids.some((bid) => bid.bidder.toLowerCase() === key)) throw new Error(`"${bidder}" is not on the evaluation matrix`);
+    if (rows.has(key)) throw new Error(`financial adjustments repeat bidder "${bidder}"`);
+    if (!str(raw.evidenceRef).trim()) throw new Error(`${bidder}: add the bid page or documentary evidence reference supporting the price check`);
+    const arithmeticCorrection = Number(raw.arithmeticCorrection ?? 0);
+    const unconditionalDiscount = Number(raw.unconditionalDiscount ?? 0);
+    const otherAdjustment = Number(raw.otherAdjustment ?? 0);
+    if (![arithmeticCorrection, unconditionalDiscount, otherAdjustment].every(Number.isFinite) || unconditionalDiscount < 0) {
+      throw new Error(`${bidder}: corrections and adjustments must be finite; discount cannot be negative`);
+    }
+    const preferenceCode = str(raw.preferenceScheme).trim().toUpperCase();
+    let preferencePct = 0;
+    if (matrix.preferenceScheme === "SI45-2025") {
+      if (preferenceCode && !Object.hasOwn(PREFERENCE_MARGINS, preferenceCode)) throw new Error(`${bidder}: unsupported SI 45/2025 preference category "${preferenceCode}"`);
+      if (preferenceCode === "LOCAL_SUPPLIER" && !matrix.foreignBiddersPermitted) throw new Error(`${bidder}: the local-supplier 5% preference applies only when foreign bidders were permitted`);
+      preferencePct = PREFERENCE_MARGINS[preferenceCode] ?? 0;
+      if (preferenceCode.startsWith("LOCAL_CONTENT_")) {
+        const localContentPct = Number(raw.localContentPct);
+        if (!Number.isFinite(localContentPct) || localContentPct < 35 || localContentPct > 100) {
+          throw new Error(`${bidder}: the published local-content preference requires verified local content of at least 35%`);
+        }
+      }
+    } else if (matrix.preferenceScheme !== "CDF_RESERVATION" && matrix.preferenceScheme !== "None") {
+      throw new Error(`the published preference scheme "${matrix.preferenceScheme}" is not supported; redraft the solicitation with a supported scheme`);
+    } else if (preferenceCode) {
+      throw new Error(`${bidder}: a preference margin was claimed but the published solicitation has no SI 45/2025 preference scheme`);
+    }
+    if (matrix.preferenceScheme === "CDF_RESERVATION" &&
+        (typeof raw.reservationEligible !== "boolean" || typeof raw.reservationCitizenSupplier !== "boolean")) {
+      throw new Error(`${bidder}: record whether the bidder is a citizen supplier and whether it is domiciled in the funded constituency`);
+    }
+    const cdfCitizen = matrix.preferenceScheme === "CDF_RESERVATION" && raw.reservationCitizenSupplier === true;
+    const cdfLocal = matrix.preferenceScheme === "CDF_RESERVATION" && raw.reservationEligible === true;
+    const cdfOutsideException = matrix.preferenceScheme === "CDF_RESERVATION" &&
+      !cdfLocal && cdfCitizen && !!matrix.cdfReservationExceptionRef;
+    rows.set(key, {
+      bidder,
+      arithmeticCorrection,
+      unconditionalDiscount,
+      otherAdjustment,
+      preferencePct,
+      ...(preferenceCode ? { preferenceScheme: preferenceCode } : {}),
+      ...(preferenceCode.startsWith("LOCAL_CONTENT_") ? { localContentPct: Number(raw.localContentPct) } : {}),
+      ...(matrix.preferenceScheme === "CDF_RESERVATION" ? {
+        reservationEligible: cdfLocal,
+        reservationCitizenSupplier: cdfCitizen,
+        ...(cdfOutsideException ? { reservationExceptionRef: matrix.cdfReservationExceptionRef } : {}),
+      } : {}),
+      evidenceRef: str(raw.evidenceRef).trim().slice(0, 240),
+      verifiedBy: actorId,
+      verifiedAt: new Date().toISOString(),
+    });
+  }
+  matrix.bids = matrix.bids.map((bid) => {
+    const adjustment = rows.get(bid.bidder.toLowerCase());
+    if (!adjustment) throw new Error(`${bid.bidder}: financial adjustment row is missing`);
+    const previous = bid.financial;
+    if (!previous?.amount || previous.amount <= 0) {
+      bid.responsiveness = "MATERIALLY_NONRESPONSIVE";
+      bid.reasons = [...new Set([...bid.reasons, "bid price is missing or invalid"])]
+    }
+    const cdfCitizen = adjustment.reservationCitizenSupplier === true;
+    const cdfLocal = adjustment.reservationEligible === true;
+    const cdfOutsidePermitted = !!matrix.cdfReservationExceptionRef && cdfCitizen && adjustment.reservationExceptionRef === matrix.cdfReservationExceptionRef;
+    if (matrix.preferenceScheme === "CDF_RESERVATION" && (!cdfCitizen || (!cdfLocal && !cdfOutsidePermitted))) {
+      bid.responsiveness = "ADMINISTRATIVELY_NONRESPONSIVE";
+      bid.reasons = [...new Set([...bid.reasons, "bidder is not a citizen supplier eligible under the published CDF constituency reservation or its documented locality exception"])]
+    }
+    return {
+      ...bid,
+      financial: {
+        ...(previous ?? { amount: 0 }),
+        adjustments: adjustment as NonNullable<NonNullable<EvalMatrix["bids"][number]["financial"]>["adjustments"]>,
+      },
+    };
+  });
+  const digest = shaOf(matrix.bids.map((bid) => ({ bidder: bid.bidder, adjustments: bid.financial?.adjustments ?? null })));
+  matrix.financialAdjustmentsDigest = digest;
+  const scoredMatrix = scoreMatrix(matrix);
+  cycle.matrix = scoredMatrix;
+  const gate = raiseCycleGate({
+    tenderId,
+    tool: "record_financial_adjustments",
+    requiredOffice: "PROCUREMENT_UNIT",
+    inputs: { matrixId: scoredMatrix.id, digest, bidders: scoredMatrix.bids.length, submittedBy: actorId },
+    note: "Certify the arithmetic corrections, discounts, evaluated-price adjustments and published preference claims",
+  });
+  scoredMatrix.financialAdjustmentsGateId = gate.id;
+  saveState();
+  return { matrix: scoredMatrix, gate: gate.id };
+}
+
+function scoringBasisBlockReason(matrix: EvalMatrix): string | null {
+  if (!matrix.evaluationCurrency?.trim()) return "Set an evaluation currency before scoring the bids.";
+  const fxBlock = fxBlockReason(matrix, state.guards.fxStalenessDays);
+  if (fxBlock) return `Set a sourced, current FX basis before scoring: ${fxBlock}`;
+  if (!matrix.med) return "Record the MED adjustment and its basis before any evaluator scores a bid.";
+  return null;
+}
+
 async function coreBuildMatrix(tenderId: string, criteriaRaw: { title: unknown; weight: unknown }[], techWeightRaw: unknown) {
   if (!SAFE_REF.test(tenderId)) throw new Error(`invalid tenderId: "${tenderId}"`);
-  const criteria = (Array.isArray(criteriaRaw) ? criteriaRaw : []).slice(0, 12).map((c, i) => ({
-    id: `C-${String(i + 1).padStart(2, "0")}`,
-    title: str(c?.title).trim().slice(0, 120),
-    weight: Math.round(Number(c?.weight) * 10) / 10,
-  }));
-  const criteriaError = validateCriteria(criteria);
-  if (criteriaError) throw new Error(criteriaError);
-  let techWeight = Number(techWeightRaw);
-  if (!Number.isFinite(techWeight)) techWeight = DEFAULT_TECH_WEIGHT_PCT;
-  techWeight = Math.min(100, Math.max(0, Math.round(techWeight)));
-
   const { pack } = await loadPack(tenderId);
   if (pack.bids.length === 0) throw new Error(`no bids staged for tender "${tenderId}" — stage the pack first`);
   const cycle = cycleFor(tenderId);
+  if (cycle.matrix) throw new Error(`an evaluation matrix already exists for ${tenderId}; its published basis is immutable and it cannot be replaced`);
+  if (!cycle.opening?.certifiedAt) throw new Error("a certified bid opening register is required before evaluation can begin");
+  if (cycle.opening.reconciliation && !cycle.opening.reconciliation.matches) throw new Error("the opening register does not reconcile with received bids; resolve the discrepancy before evaluation");
+  const openingNames = cycle.opening.rows.map((row) => row.bidder.trim().toLowerCase());
+  const stagedNames = pack.bids.map((bid) => bid.bidder.trim().toLowerCase());
+  if (new Set(openingNames).size !== openingNames.length || new Set(stagedNames).size !== stagedNames.length ||
+      openingNames.length !== stagedNames.length || openingNames.some((name) => !stagedNames.includes(name))) {
+    throw new Error("the certified opening register and staged bid pack must contain exactly the same bidder set");
+  }
+  const sourceNotice = [...(cycle.notices ?? [])].reverse().find((notice) => !!notice.issuedAt);
+  if (!sourceNotice) throw new Error("publish the tender notice, including its evaluation criteria, before building the matrix");
+  const criteria = parseEvaluationCriteria(sourceNotice.md).map((criterion) => ({
+    ...criterion,
+    weight: Math.round(criterion.weight * 10) / 10,
+  }));
+  const criteriaError = validateCriteria(criteria);
+  if (criteriaError) throw new Error(`the published notice has invalid evaluation criteria: ${criteriaError}`);
+  const submittedCriteria = (Array.isArray(criteriaRaw) ? criteriaRaw : []).slice(0, 12);
+  const criteriaMatch = submittedCriteria.length === criteria.length && criteria.every((criterion, index) => {
+    const submitted = submittedCriteria[index];
+    return str(submitted?.title).trim().toLowerCase() === criterion.title.toLowerCase() &&
+      Math.abs(Number(submitted?.weight) - criterion.weight) <= 0.0001;
+  });
+  if (!criteriaMatch) throw new Error("the evaluation matrix must use the criteria and weights published in the issued tender notice");
+  const split = sourceNotice.md.match(/^\*\*Technical\/financial split:\*\*\s*(\d+)\/(\d+)\s*$/m);
+  if (!split || Number(split[1]) + Number(split[2]) !== 100) throw new Error("the issued notice has no valid technical/financial weighting split");
+  const techWeight = Number(split[1]);
+  const requestedWeight = Number(techWeightRaw);
+  if (Number.isFinite(requestedWeight) && requestedWeight !== techWeight) throw new Error("the matrix weighting is fixed by the issued notice and cannot be changed during evaluation");
+  const financialFormula = sourceNotice.md.match(/^\*\*Financial formula:\*\*\s*(.+)$/m)?.[1]?.trim();
+  if (financialFormula !== DEFAULT_FINANCIAL_FORMULA) throw new Error("the issued notice states a financial formula this engine does not implement; use the supported published lowest-evaluated-price formula");
+  const preferenceScheme = sourceNotice.md.match(/^\*\*Preference\/reservation scheme:\*\*\s*(.+)$/m)?.[1]?.trim() ?? "None";
+  const cdfReservationConstituency = sourceNotice.md.match(/^\*\*CDF funded constituency:\*\*\s*(.+)$/m)?.[1]?.trim();
+  const cdfReservationExceptionRef = sourceNotice.md.match(/^\*\*CDF locality exception evidence:\*\*\s*(.+)$/m)?.[1]?.trim();
+  const cdfReservationExceptionBasis = sourceNotice.md.match(/^\*\*CDF locality exception basis:\*\*\s*(.+)$/m)?.[1]?.trim();
+  if (preferenceScheme === "CDF_RESERVATION" && (!cdfReservationConstituency || cdfReservationConstituency.length < 3)) {
+    throw new Error("the issued CDF reservation notice must name its funded constituency");
+  }
+  if (cdfReservationExceptionRef && (preferenceScheme !== "CDF_RESERVATION" || !cdfReservationExceptionBasis || cdfReservationExceptionBasis.length < 20)) {
+    throw new Error("the published CDF locality exception is incomplete or is attached to a different preference scheme");
+  }
+  const foreignBiddersPermitted = /^\*\*Foreign bidders permitted:\*\*\s*Yes$/m.test(sourceNotice.md);
+  const evaluationCurrency = normalizeCurrency(sourceNotice.md.match(/^\*\*Evaluation currency:\*\*\s*([A-Z]{3})$/m)?.[1]);
+  if (!evaluationCurrency) throw new Error("the issued notice has no valid evaluation currency");
   const run = state.runs.find((r) => r.tenderId === tenderId);
-  const lateBy = new Map<string, boolean>((cycle.opening?.rows ?? []).map((r) => [r.bidder.toLowerCase(), r.late]));
+  const lateBy = new Map<string, boolean>(cycle.opening.rows.map((r) => [r.bidder.toLowerCase(), r.late]));
 
   const bids: EvalMatrix["bids"] = pack.bids.map((raw) => {
     /* The pack carries OCDS values; markdown bids state theirs on the value line —
        the same deep parse flagPack runs, so the matrix's financial column reads
        exactly what the review rules read. */
     const b = raw.value === undefined ? (() => { const v = parseMarkdownBidValue(raw.text); return v ? { ...raw, value: v.amount, currency: v.currency } : raw; })() : raw;
+    if (!lateBy.has(b.bidder.toLowerCase())) throw new Error(`bidder "${b.bidder}" is missing from the certified opening register`);
     const highDocMissing = !!run?.findings.some(
       (f) => f.rule === "R-DOC-MISSING" && f.severity === "HIGH" && f.item.toLowerCase().startsWith(b.bidder.toLowerCase()),
     );
@@ -1185,14 +1746,18 @@ async function coreBuildMatrix(tenderId: string, criteriaRaw: { title: unknown; 
   const matrix: EvalMatrix = {
     id: `mtx_${Math.random().toString(36).slice(2, 8)}`,
     tenderId,
+    criteriaNoticeId: sourceNotice.id,
     marketSignals,
     ...(run ? { runId: run.id } : {}),
     criteria,
     technicalWeightPct: techWeight,
+    financialFormula,
+    preferenceScheme,
+    foreignBiddersPermitted,
+    ...(preferenceScheme === "CDF_RESERVATION" && cdfReservationConstituency ? { cdfReservationConstituency } : {}),
+    ...(preferenceScheme === "CDF_RESERVATION" && cdfReservationExceptionRef ? { cdfReservationExceptionRef } : {}),
     bids,
-    ...(bidCurrencies.length
-      ? { evaluationCurrency: bidCurrencies.length === 1 ? bidCurrencies[0] : jurisdictionCurrency(state.jurisdictionId) }
-      : {}),
+    evaluationCurrency,
     status: "DRAFT",
     createdAt: new Date().toISOString(),
   };
@@ -1216,6 +1781,9 @@ function coreScoreMatrix(tenderId: string, bidder: string, scores: { criterionId
   const cycle = state.cycle.find((c) => c.tenderId === tenderId);
   if (!cycle?.matrix) throw new Error(`no evaluation matrix on record for "${tenderId}" — build one first`);
   if (cycle.matrix.status === "CERTIFIED") throw new Error("the matrix is CERTIFIED — its scores are sealed; record a MED session instead");
+  if (!cycle.matrix.financialAdjustmentsCertifiedAt) throw new Error("the procurement unit must certify arithmetic corrections, discounts and preference eligibility before technical scoring starts");
+  const basisBlock = scoringBasisBlockReason(cycle.matrix);
+  if (basisBlock) throw new Error(basisBlock);
   const row = cycle.matrix.bids.find((b) => b.bidder.toLowerCase() === bidder.trim().toLowerCase());
   if (!row) throw new Error(`bidder "${bidder}" is not on the matrix`);
   const err = validateScores(cycle.matrix.criteria, scores);
@@ -1239,6 +1807,7 @@ function coreScoreMatrix(tenderId: string, bidder: string, scores: { criterionId
       ...(evidence.length ? { evidence } : {}),
     };
   });
+  cycle.matrix.scoringStartedAt ??= new Date().toISOString();
   /* A direct edit moves the technical column away from the sheets, so any
      recorded consensus no longer describes the matrix. Certification draws
      the column from the consensus, and a fresh one is required after this. */
@@ -1264,20 +1833,31 @@ function coreMed(tenderId: string, attendees: string[], adjustments: Record<stri
   const cycle = state.cycle.find((c) => c.tenderId === tenderId);
   if (!cycle?.matrix) throw new Error(`no evaluation matrix on record for "${tenderId}"`);
   if (cycle.matrix.status === "CERTIFIED") throw new Error("the matrix is CERTIFIED — a MED session precedes certification");
-  if (!Array.isArray(attendees) || attendees.length === 0) throw new Error("at least one attendee is required for a MED session");
+  if (!cycle.matrix.financialAdjustmentsCertifiedAt) throw new Error("certify financial adjustments before recording the MED session");
+  if (evaluationScoringStarted(cycle.matrix)) throw new Error("the FX basis and MED adjustment are locked after scoring starts — record them before any evaluator scores");
+  const cleanAttendees = (Array.isArray(attendees) ? attendees : []).map((attendee) => str(attendee).trim().slice(0, 80)).filter(Boolean).slice(0, 12);
+  if (!cleanAttendees.length) throw new Error("at least one named attendee is required for a MED session");
+  const cleanNotes = str(notes).trim();
+  if (cleanNotes.length < 12) throw new Error("record the margin-of-error basis or state why no adjustment is required (at least 12 characters)");
   const clean: Record<string, number> = {};
   for (const [key, value] of Object.entries(adjustments ?? {}).slice(0, 144)) {
     const n = Number(value);
     if (!Number.isFinite(n) || n < 0 || n > 100) throw new Error(`adjustment "${key}" must be a score 0-100`);
     const [bidder, criterionId] = key.split("|");
     if (!bidder || !criterionId) throw new Error(`adjustment key "${key}" must be "<bidder>|<criterionId>"`);
+    if (!cycle.matrix.bids.some((row) => row.bidder.toLowerCase() === bidder.trim().toLowerCase())) {
+      throw new Error(`adjustment key "${key}" names a bidder that is not on the matrix`);
+    }
+    if (!cycle.matrix.criteria.some((criterion) => criterion.id === criterionId)) {
+      throw new Error(`adjustment key "${key}" names a criterion that is not on the matrix`);
+    }
     clean[key] = Math.round(n * 10) / 10;
   }
   cycle.matrix.med = {
     recordedAt: new Date().toISOString(),
-    attendees: attendees.map((a) => str(a).trim().slice(0, 80)).filter(Boolean).slice(0, 12),
+    attendees: cleanAttendees,
     adjustments: clean,
-    ...(notes ? { notes: str(notes).slice(0, 400) } : {}),
+    notes: cleanNotes.slice(0, 400),
   };
   const med = cycle.matrix.med;
   cycle.matrix = applyMedAdjustments(cycle.matrix, clean);
@@ -1304,13 +1884,21 @@ function coreRecordSheet(
   scoresRaw: { bidder: unknown; criterionId: unknown; score: unknown; note?: unknown }[],
   noteRaw: unknown,
   actor: string,
+  actorId: string,
+  roster: RosterMemberForGate[] | null,
 ) {
   const cycle = state.cycle.find((c) => c.tenderId === tenderId);
   if (!cycle?.matrix) throw new Error(`no evaluation matrix on record for "${tenderId}" — build one first`);
   if (cycle.matrix.status === "CERTIFIED") throw new Error("the matrix is CERTIFIED — its scores are sealed");
-  const evaluator = str(evaluatorRaw).trim().slice(0, 120);
-  if (!evaluator) throw new Error("evaluator (the committee member's name) is required");
-  const declaration = cycle.coi.find((entry) => entry.member.trim().toLowerCase() === evaluator.toLowerCase());
+  if (!cycle.matrix.financialAdjustmentsCertifiedAt) throw new Error("the procurement unit must certify financial adjustments before evaluator sheets are submitted");
+  const basisBlock = scoringBasisBlockReason(cycle.matrix);
+  if (basisBlock) throw new Error(basisBlock);
+  const member = roster?.find((entry) => entry.status === "PRESENT" && entry.office === "EVALUATION_COMMITTEE" && (entry.userId ?? entry.id) === actorId);
+  if (!actorId || !member) throw new Error("the signed-in account is not linked to a PRESENT evaluation-committee seat");
+  const evaluator = member.name.trim().slice(0, 120);
+  const requestedEvaluator = str(evaluatorRaw).trim();
+  if (requestedEvaluator && requestedEvaluator.toLowerCase() !== evaluator.toLowerCase()) throw new Error("the submitted evaluator name does not match the signed-in committee account");
+  const declaration = cycle.coi.find((entry) => entry.memberId === member.id && entry.signedByUserId === actorId);
   if (!declaration) {
     throw new Error(`${evaluator} has no conflict-of-interest declaration on this tender — every evaluator declares before scoring.`);
   }
@@ -1344,15 +1932,17 @@ function coreRecordSheet(
     matrixId: cycle.matrix.id,
     tenderId,
     evaluator,
-    ...(prior?.evaluatorId ? { evaluatorId: prior.evaluatorId } : {}),
+    evaluatorId: member.id,
     scores,
     ...(str(noteRaw) ? { note: str(noteRaw).slice(0, 400) } : {}),
     submittedBy: actor.slice(0, 120),
+    submittedByUserId: actorId,
     submittedAt,
     version,
     ...(prior ? { supersedes: prior.id } : {}),
     signature: digest,
   };
+  cycle.matrix.scoringStartedAt ??= submittedAt;
   cycle.matrix.sheets = [...(cycle.matrix.sheets ?? []).filter((entry) => entry.id !== prior?.id), sheet];
   /* New evidence moves the agreed scores: the committee has to meet again. */
   const consensusCleared = !!cycle.matrix.consensus;
@@ -1372,10 +1962,14 @@ function coreRecordSheet(
   return { sheet, sheets: cycle.matrix.sheets.length };
 }
 
-function coreRecordConsensus(tenderId: string, attendeesRaw: string[], notesRaw: string, actor: string) {
+function coreRecordConsensus(tenderId: string, attendeesRaw: string[], notesRaw: string, actor: string, actorId: string, roster: RosterMemberForGate[] | null) {
   const cycle = state.cycle.find((c) => c.tenderId === tenderId);
   if (!cycle?.matrix) throw new Error(`no evaluation matrix on record for "${tenderId}"`);
   if (cycle.matrix.status === "CERTIFIED") throw new Error("the matrix is CERTIFIED — its consensus is sealed");
+  const recorder = roster?.find((entry) => entry.status === "PRESENT" && entry.office === "EVALUATION_COMMITTEE" && (entry.userId ?? entry.id) === actorId);
+  if (!actorId || !recorder) throw new Error("the signed-in account is not linked to a PRESENT evaluation-committee seat");
+  const allowedNames = new Set((roster ?? []).filter((entry) => entry.status === "PRESENT" && entry.office === "EVALUATION_COMMITTEE").map((entry) => entry.name.trim().toLowerCase()));
+  if (attendeesRaw.some((name) => !allowedNames.has(str(name).trim().toLowerCase()))) throw new Error("every consensus attendee must be a PRESENT evaluation-committee member on the roster");
   const error = consensusValidationError(
     cycle.matrix,
     attendeesRaw,
@@ -1394,7 +1988,8 @@ function coreRecordConsensus(tenderId: string, attendeesRaw: string[], notesRaw:
     attendees,
     notes,
     divergences: computeDivergences(sheets).filter((cell) => cell.spread > state.guards.scoreDivergencePoints),
-    recordedBy: actor.slice(0, 120),
+    recordedBy: recorder.name.slice(0, 120),
+    recordedByUserId: actorId,
     recordedAt,
     signature: shaOf({ matrixId: cycle.matrix.id, scores: agreed, attendees, notes, recordedAt }),
   };
@@ -1435,6 +2030,7 @@ function coreSetFx(tenderId: string, evaluationCurrencyRaw: unknown, ratesRaw: u
   const cycle = state.cycle.find((c) => c.tenderId === tenderId);
   if (!cycle?.matrix) throw new Error(`no evaluation matrix on record for "${tenderId}"`);
   if (cycle.matrix.status === "CERTIFIED") throw new Error("the matrix is CERTIFIED — its evaluated-price basis is sealed");
+  if (evaluationScoringStarted(cycle.matrix)) throw new Error("the FX basis is locked after scoring starts — set it before any evaluator scores");
   const evaluationCurrency = str(evaluationCurrencyRaw).toUpperCase();
   const rates: FxRate[] = normalizeFxRates(ratesRaw, evaluationCurrency);
   cycle.matrix.evaluationCurrency = evaluationCurrency;
@@ -1460,6 +2056,8 @@ async function coreCertifyMatrix(tenderId: string) {
   const cycle = state.cycle.find((c) => c.tenderId === tenderId);
   if (!cycle?.matrix) throw new Error(`no evaluation matrix on record for "${tenderId}"`);
   if (cycle.matrix.status === "CERTIFIED") throw new Error("the matrix is already certified");
+  const albBlock = openAlbBlockReason(cycle);
+  if (albBlock) throw new Error(albBlock);
   const gate = raiseCycleGate({
     tenderId,
     tool: "certify_evaluation",
@@ -1472,37 +2070,52 @@ async function coreCertifyMatrix(tenderId: string) {
   return { gate: gate.id };
 }
 
-async function coreOpenAlb(tenderId: string, bidder: string, findingId?: string) {
+async function coreOpenAlb(tenderId: string, bidder: string, findingId?: string, basisRaw?: string) {
   if (!SAFE_REF.test(tenderId)) throw new Error(`invalid tenderId: "${tenderId}"`);
   const cycle = cycleFor(tenderId);
+  if (cycle.matrix?.status === "CERTIFIED") throw new Error("an ALB dossier must be opened and resolved before the evaluation matrix is certified");
+  const bidderName = bidder.trim().slice(0, 160);
+  const bid = cycle.matrix?.bids.find((row) => row.bidder.trim().toLowerCase() === bidderName.toLowerCase());
+  if (!bid) throw new Error(`"${bidderName || "(blank)"}" is not a bidder on this evaluation matrix`);
   const run = state.runs.find((r) => r.tenderId === tenderId);
-  const finding = run?.findings.find((f) => (findingId ? f.id === findingId : (f.rule === "R-PRICE-OUTLIER" || f.rule === "R-VALUE-OUTLIER") && f.item.toLowerCase().includes(bidder.trim().toLowerCase())));
-  if (cycle.alb.some((a) => a.bidder.toLowerCase() === bidder.trim().toLowerCase() && !a.resolution))
-    throw new Error(`an ALB dossier is already open for ${bidder}`);
+  const finding = run?.findings.find((f) =>
+    (findingId ? f.id === findingId : (f.rule === "R-PRICE-OUTLIER" || f.rule === "R-VALUE-OUTLIER")) &&
+    f.item.toLowerCase().includes(bidderName.toLowerCase()),
+  );
+  if (findingId && !finding) throw new Error("the selected pricing finding does not belong to this bidder");
+  const openingBasis = str(basisRaw).trim().slice(0, 800);
+  if (openingBasis.length < 12 && !finding?.evidence)
+    throw new Error("record the pricing evidence that warrants a five-working-day clarification request");
+  if (cycle.alb.some((a) => a.bidder.toLowerCase() === bidderName.toLowerCase() && !a.resolution))
+    throw new Error(`an ALB dossier is already open for ${bidderName}`);
   const clock = jurisdictionPack(state.jurisdictionId);
   const dueAt = addWorkingDaysIn(new Date().toISOString(), clock.albResponseDays, clock);
   const dossier: AlbDossier = {
     id: `alb_${Math.random().toString(36).slice(2, 8)}`,
     tenderId,
-    bidder: bidder.trim(),
+    bidder: bidderName,
+    openingBasis: openingBasis || finding?.evidence || "Pricing flagged for committee review.",
     ...(finding ? { findingId: finding.id } : {}),
     openedAt: new Date().toISOString(),
     letterMd: composeAlbLetter({
       tenderId,
-      bidder: bidder.trim(),
-      finding: finding?.evidence ?? "the bid's pricing sits outside the peer range the guards accept",
+      bidder: bidderName,
+      finding: openingBasis || finding?.evidence || "the bid's pricing sits outside the peer range the guards accept",
       dueAt,
     }),
     responseDueAt: dueAt,
   };
   cycle.alb.push(dossier);
+  bid.albOpen = true;
+  bid.reasons = [...new Set([...(bid.reasons ?? []), "abnormally low bid clarification is open"])];
+  if (cycle.matrix) cycle.matrix = scoreMatrix(cycle.matrix);
   appendLog({
     actor: "quorum-agent",
     server: "quorum-mcp",
     tool: "open_alb_dossier",
     kind: "WRITES",
     runId: "cycle",
-    inputs: { tenderId, bidder, findingId: finding?.id },
+    inputs: { tenderId, bidder: bidderName, findingId: finding?.id, basisLength: openingBasis.length },
     outputs: { dossierId: dossier.id, responseDueAt: dueAt },
     status: "OK",
     durationMs: 0,
@@ -1517,14 +2130,57 @@ async function coreResolveAlb(tenderId: string, dossierId: string, outcome: stri
   if (!dossier) throw new Error(`no ALB dossier "${dossierId}" on tender "${tenderId}"`);
   if (dossier.resolution) throw new Error("the dossier is already resolved");
   if (!["JUSTIFIED", "REJECTED", "WITHDRAWN"].includes(outcome)) throw new Error('outcome must be "JUSTIFIED", "REJECTED" or "WITHDRAWN"');
+  if (!dossier.response && !dossier.noResponseRecordedAt) throw new Error("the bidder response must be recorded, or a no-response record entered after the five-working-day deadline");
+  if (dossier.noResponseRecordedAt && outcome === "JUSTIFIED") throw new Error("a bidder with no response on record cannot be marked JUSTIFIED");
+  if (str(note).trim().length < 12) throw new Error("record the committee's reasoned assessment of the bidder response (at least 12 characters)");
   const gate = raiseCycleGate({
     tenderId,
     tool: "resolve_alb",
     requiredOffice: "EVALUATION_COMMITTEE",
-    inputs: { dossierId, outcome, note: note.slice(0, 300) },
+    inputs: { dossierId, outcome, note: note.slice(0, 300), responseEvidenceRef: dossier.response?.evidenceRef ?? "NO_RESPONSE_RECORDED" },
     note: "Record the abnormally-low-bid resolution",
   });
   return { gate: gate.id };
+}
+
+function coreRecordAlbResponse(tenderId: string, dossierId: string, actor: string, text: string, evidenceRef: string) {
+  const cycle = state.cycle.find((entry) => entry.tenderId === tenderId);
+  const dossier = cycle?.alb.find((entry) => entry.id === dossierId);
+  if (!dossier) throw new Error(`no ALB dossier "${dossierId}" on this tender`);
+  if (dossier.resolution) throw new Error("the ALB dossier is already resolved");
+  if (dossier.response || dossier.noResponseRecordedAt) throw new Error("a response or no-response record already exists for this dossier");
+  const organization = actor.startsWith("org:") ? actor.slice(4).trim() : "";
+  if (!organization) throw new Error("only an authenticated supplier organization may submit an ALB response");
+  if (!sameEntity(organization, dossier.bidder)) throw new Error("the signed-in supplier organization does not match the bidder named in this ALB dossier");
+  const responseText = text.trim().slice(0, 8_000);
+  const evidence = evidenceRef.trim().slice(0, 240);
+  if (responseText.length < 20 || !evidence) throw new Error("the response needs a reasoned explanation and a supporting evidence reference");
+  const receivedAt = new Date().toISOString();
+  if (receivedAt > dossier.responseDueAt) throw new Error("the five-working-day response deadline has passed; the buyer must record the no-response outcome");
+  dossier.response = {
+    text: responseText,
+    evidenceRef: evidence,
+    receivedAt,
+    submittedBy: actor.slice(0, 120),
+    submittedByOrg: organization,
+    receiptHash: shaOf({ tenderId, dossierId, organization, responseText, evidence, receivedAt }),
+  };
+  saveState();
+  return { dossierId, receivedAt, receiptHash: dossier.response.receiptHash };
+}
+
+function coreRecordAlbNoResponse(tenderId: string, dossierId: string, actorId: string, actor: string, roster: RosterMemberForGate[] | null) {
+  const cycle = state.cycle.find((entry) => entry.tenderId === tenderId);
+  const dossier = cycle?.alb.find((entry) => entry.id === dossierId);
+  if (!dossier) throw new Error(`no ALB dossier "${dossierId}" on this tender`);
+  if (dossier.resolution || dossier.response || dossier.noResponseRecordedAt) throw new Error("this ALB dossier is already responded to, closed or has a no-response record");
+  if (Date.now() <= new Date(dossier.responseDueAt).getTime()) throw new Error(`the bidder response deadline is ${dossier.responseDueAt}; record no response only after it expires`);
+  const member = roster?.find((entry) => entry.status === "PRESENT" && entry.office === "EVALUATION_COMMITTEE" && (entry.userId ?? entry.id) === actorId);
+  if (!actorId || !member) throw new Error("the signed-in account is not linked to a PRESENT evaluation-committee seat");
+  dossier.noResponseRecordedAt = new Date().toISOString();
+  dossier.noResponseRecordedBy = actor;
+  saveState();
+  return { dossierId, noResponseRecordedAt: dossier.noResponseRecordedAt, recordedBy: member.name };
 }
 
 async function coreAwardReport(tenderId: string) {
@@ -1570,7 +2226,7 @@ async function coreAwardReport(tenderId: string) {
           }`,
         }
       : {}),
-    ...(winnerRow?.financial ? { value: `${winnerRow.financial.currency ?? ""} ${winnerRow.financial.amount.toLocaleString()}`.trim() } : {}),
+    ...(winnerRow?.financial ? { value: `${winnerRow.financial.currency ?? ""} ${Number(winnerRow.financial.correctedAmount ?? winnerRow.financial.amount).toLocaleString()}`.trim() } : {}),
   });
   cycle.awardReport = {
     tenderId,
@@ -1602,27 +2258,35 @@ async function coreAwardReport(tenderId: string) {
   return { awardReport: cycle.awardReport, gate: gate.id };
 }
 
-async function corePublishAwardNotice(tenderId: string) {
+async function corePublishAwardNotice(tenderId: string, dispatchEvidenceRef: string) {
   const cycle = state.cycle.find((c) => c.tenderId === tenderId);
   if (!cycle?.awardReport?.signedAt) throw new Error("the award report must be signed before the notice is drafted");
+  const evidenceRef = dispatchEvidenceRef.trim();
+  if (!evidenceRef) throw new Error("record the portal or messaging delivery evidence reference for dispatch to all bidders");
   const meta = await tenderMeta(tenderId);
   const winner = cycle.awardReport.recommendation;
+  const winnerRow = cycle.matrix?.bids.find((bid) => bid.bidder === winner);
+  const recipients = (cycle.matrix?.bids ?? []).map((bid) => bid.bidder).sort((a, b) => a.localeCompare(b));
+  if (!recipients.length) throw new Error("the evaluation matrix has no bidder recipients for the award notice");
   const portal = publicationLabel();
   const publication = { ...state.deployment.publication, portal };
   const md = composeAwardNotice({
     tenderId,
     ...(meta.buyer ? { buyer: meta.buyer } : {}),
     ...(winner ? { supplier: winner } : {}),
+    ...(winnerRow?.financial ? { value: `${winnerRow.financial.currency ?? cycle.matrix?.evaluationCurrency ?? ""} ${Number(winnerRow.financial.correctedAmount ?? winnerRow.financial.amount).toLocaleString()}`.trim() } : {}),
     portal,
     publicationMode: publication.mode,
+    ...(standstillApplies(cycle) ? { standstillDays: jurisdictionPack(state.jurisdictionId).standstillDays } : {}),
+    dispatchedTo: recipients,
     ...(publication.receiptId ? { receiptId: publication.receiptId } : {}),
   });
-  cycle.awardNotice = { tenderId, md, sha: shaOf(md), portal, publication };
+  cycle.awardNotice = { tenderId, md, sha: shaOf(md), portal, publication, dispatchedTo: recipients, dispatchEvidenceRef: evidenceRef };
   const gate = raiseCycleGate({
     tenderId,
     tool: "publish_award_notice",
     requiredOffice: "ACCOUNTING_OFFICER",
-    inputs: { sha: cycle.awardNotice.sha, portal, publicationMode: publication.mode },
+    inputs: { sha: cycle.awardNotice.sha, portal, publicationMode: publication.mode, dispatchedTo: recipients, dispatchEvidenceRef: evidenceRef },
     note: "Publish the notice of award — starts the standstill clock",
   });
   cycle.awardNotice.gateId = gate.id;
@@ -1743,7 +2407,10 @@ function coreBudgetLine(input: Record<string, unknown>) {
   if (!Number.isInteger(fiscalYear) || fiscalYear < 2000 || fiscalYear > 2100) throw new Error("fiscalYear must be a four-digit year");
   if (!code) throw new Error("a budget line needs a code");
   if (!Number.isFinite(approved) || approved <= 0) throw new Error("approved must be a positive amount");
-  const existing = state.budgetLines.find((l) => l.code.toLowerCase() === code.toLowerCase() && l.fiscalYear === fiscalYear);
+  const workspaceId = currentWorkspaceId();
+  const existing = state.budgetLines.find(
+    (l) => l.code.toLowerCase() === code.toLowerCase() && l.fiscalYear === fiscalYear && (l.workspaceId ?? "demo") === workspaceId,
+  );
   if (existing) {
     existing.approved = roundMoney(approved);
     existing.currency = currency;
@@ -1753,7 +2420,7 @@ function coreBudgetLine(input: Record<string, unknown>) {
   }
   const line: BudgetLine = {
     id: `bud_${randomUUID().slice(0, 8)}`,
-    workspaceId: currentWorkspaceId(),
+    workspaceId,
     fiscalYear,
     code,
     currency,
@@ -1872,14 +2539,14 @@ async function coreContractPack(tenderId: string, budgetLineId?: string, retenti
   if (cycle?.contract) throw new Error(`a contract is already on the register for ${tenderId} — one tender, one contract`);
   if (state.features.paymentCaps && !budgetLineId)
     throw new Error("A contract commits budget — select a budget line before the pack is prepared.");
-  if (cycle?.standstill && cycle.standstill.status === "ACTIVE")
-    throw new Error(`the standstill window is ACTIVE until ${cycle.standstill.endsAt.slice(0, 10)} — the contract pack follows the window, not the middle of it`);
+  const standstillBlock = standstillBlockReason(cycle);
+  if (standstillBlock) throw new Error(standstillBlock);
   if (!cycle?.awardReport?.signedAt) throw new Error("the award report must be signed before a contract pack is prepared");
   const winner = cycle.awardReport.recommendation;
   const winnerRow = cycle.matrix?.bids.find((b) => b.bidder === winner);
   /* The contract is opened from the winner's evaluated price. No price, no
      contract pack — a contract always has a contract value. */
-  const contractValue = contractValueCheck(winnerRow?.financial?.amount);
+  const contractValue = contractValueCheck(winnerRow?.financial?.correctedAmount ?? winnerRow?.financial?.amount);
   if (!contractValue.ok)
     throw new Error(
       `the recommended bid for ${tenderId} states no value — a contract cannot be prepared without a contract value. Record the winner's financial value on the evaluation matrix first.`,
@@ -2102,25 +2769,17 @@ function coreVariation(
   tenderId: string,
   description: string,
   valueDelta: number,
-  options?: { overrideReason?: string; secondedBy?: string; by?: string },
+  options?: { legalAdviceRef?: string; approvalReference?: string; by?: string },
 ) {
   const cycle = state.cycle.find((c) => c.tenderId === tenderId);
   if (!cycle?.contract) throw new Error(`no contract is open on "${tenderId}" — sign the contract pack first`);
   if (!Number.isFinite(valueDelta) || valueDelta === 0) throw new Error("valueDelta must be a non-zero number (negative for a downward variation)");
-  let override: ContractVariation["override"];
-  if (state.features.paymentCaps) {
-    const capBlock = variationBlockReason({ contract: cycle.contract, valueDelta });
-    if (capBlock) {
-      const reason = options?.overrideReason?.trim() ?? "";
-      const secondedBy = options?.secondedBy?.trim() ?? "";
-      const by = options?.by?.trim() || "officer";
-      if (!reason || !secondedBy) throw new Error(capBlock);
-      if (secondedBy.toLowerCase() === by.toLowerCase()) {
-        throw new Error(`${capBlock} The second approver must be a different officer.`);
-      }
-      override = { reason: reason.slice(0, 400), secondedBy: secondedBy.slice(0, 120), by: by.slice(0, 120), at: new Date().toISOString() };
-    }
-  }
+  const capBlock = variationBlockReason({ contract: cycle.contract, valueDelta });
+  if (capBlock) throw new Error(capBlock);
+  const legalAdviceRef = options?.legalAdviceRef?.trim() ?? "";
+  const approvalReference = options?.approvalReference?.trim() ?? "";
+  if (!approvalReference) throw new Error("an approval authority reference is required for every contract variation");
+  if (state.jurisdictionId === "ZM" && !legalAdviceRef) throw new Error("the Zambia contract variation needs an Attorney-General legal advice reference");
   const pct = variationPctOfContract(cycle.contract.value, valueDelta);
   const cumulativePct = cumulativeVariationPct(cycle.contract, valueDelta);
   const variation: ContractVariation = {
@@ -2131,38 +2790,18 @@ function coreVariation(
     cumulativePct,
     status: "PENDING",
     at: new Date().toISOString(),
-    ...(override ? { override } : {}),
+    approvalReference: approvalReference.slice(0, 200),
+    ...(legalAdviceRef ? { legalAdviceRef: legalAdviceRef.slice(0, 200) } : {}),
   };
   cycle.contract.variations.push(variation);
-  let gate: string | undefined;
-  if (variationNeedsGate(pct) || !!override) {
-    gate = raiseCycleGate({
-      tenderId,
-      tool: "approve_variation",
-      requiredOffice: "ACCOUNTING_OFFICER",
-      inputs: { variationId: variation.id, description: variation.description, pctOfContract: pct, valueDelta, cumulativePct, overrideReason: override?.reason },
-      note: override
-        ? `Variation would pass the cumulative cap — a recorded override is attached; the accounting officer must still sign`
-        : `Variation is ${pct}% of the contract value — accounting officer's signature required`,
-    }).id;
-    variation.gateId = gate;
-  } else {
-    variation.status = "APPROVED";
-    variation.decidedBy = "within the procurement unit's variation authority (below the gate threshold)";
-    variation.approvedAt = new Date().toISOString();
-    cycle.contract.value = roundMoney(cycle.contract.value + valueDelta);
-    appendLog({
-      actor: "web-app",
-      server: "quorum-mcp",
-      tool: "request_variation",
-      kind: "WRITES",
-      runId: "cycle",
-      inputs: { tenderId, description: variation.description },
-      outputs: { variationId: variation.id, pctOfContract: pct, cumulativePct, status: "APPROVED within authority" },
-      status: "OK",
-      durationMs: 0,
-    });
-  }
+  const gate = raiseCycleGate({
+    tenderId,
+    tool: "approve_variation",
+    requiredOffice: "ACCOUNTING_OFFICER",
+    inputs: { variationId: variation.id, description: variation.description, pctOfContract: pct, valueDelta, cumulativePct, approvalReference, ...(legalAdviceRef ? { legalAdviceRef } : {}) },
+    note: `Variation is ${pct}% of the contract value — prior approval and legal advice must be verified before signature`,
+  }).id;
+  variation.gateId = gate;
   saveState();
   return { variation, gate };
 }
@@ -2538,8 +3177,54 @@ function coreDraftNotice(tenderId: string, fields: Record<string, unknown>) {
   const contact = str(fields.contact).trim() || "—";
   const closingDate = str(fields.closingDate).trim() || undefined;
   const ceiling = str(fields.ceiling).trim() || undefined;
+  const requestedTechnicalWeight = fields.technicalWeightPct === undefined ? DEFAULT_TECH_WEIGHT_PCT : Number(fields.technicalWeightPct);
+  if (!Number.isInteger(requestedTechnicalWeight) || requestedTechnicalWeight < 0 || requestedTechnicalWeight > 100) throw new Error("technicalWeightPct must be a whole number from 0 to 100");
+  const requestedFormula = str(fields.financialFormula).trim();
+  if (requestedFormula && requestedFormula !== DEFAULT_FINANCIAL_FORMULA) throw new Error("this release supports the lowest-evaluated-price formula; publish that exact formula so scoring matches the solicitation");
+  const financialFormula = DEFAULT_FINANCIAL_FORMULA;
+  const fxBasis = str(fields.fxBasis).trim() || undefined;
+  const preferenceScheme = str(fields.preferenceScheme).trim() || "None";
+  const cdfConstituency = str(fields.cdfReservationConstituency).trim();
+  const cdfExceptionRef = str(fields.cdfReservationExceptionRef).trim();
+  const cdfExceptionBasis = str(fields.cdfReservationExceptionBasis).trim();
+  if (preferenceScheme === "CDF_RESERVATION" && cdfConstituency.length < 3) {
+    throw new Error("name the funded constituency in the notice before using the CDF reservation scheme");
+  }
+  if (preferenceScheme !== "CDF_RESERVATION" && cdfConstituency) {
+    throw new Error("a funded constituency can only be recorded with the CDF reservation scheme");
+  }
+  if (preferenceScheme === "CDF_RESERVATION" && (cdfExceptionRef || cdfExceptionBasis) && (!cdfExceptionRef || cdfExceptionBasis.length < 20)) {
+    throw new Error("the CDF locality exception needs both a supporting evidence reference and a reasoned finding (at least 20 characters)");
+  }
+  if (preferenceScheme !== "CDF_RESERVATION" && (cdfExceptionRef || cdfExceptionBasis)) {
+    throw new Error("a CDF locality exception can only be recorded with the published CDF reservation scheme");
+  }
+  const foreignBiddersPermitted = fields.foreignBiddersPermitted === true;
+  const evaluationCurrency = normalizeCurrency(fields.evaluationCurrency) ?? jurisdictionCurrency(state.jurisdictionId);
+  const procurementScope = fields.procurementScope === "International" ? "International" : "National";
   const requiredDocs = Array.isArray(fields.requiredDocs) ? fields.requiredDocs.map((d) => str(d)).filter(Boolean).slice(0, 12) : undefined;
-  const md = draftNoticeMd({ reference, buyer, method, subject, contact, ...(closingDate ? { closingDate } : {}), ...(ceiling ? { ceiling } : {}), ...(requiredDocs ? { requiredDocs } : {}) });
+  const sourceCriteria = parseEvaluationCriteria(cycle.specs?.at(-1)?.md ?? "");
+  const evaluationCriteria = sourceCriteria.length && !validateCriteria(sourceCriteria) ? sourceCriteria : undefined;
+  const md = draftNoticeMd({
+    reference,
+    buyer,
+    method,
+    subject,
+    contact,
+    ...(closingDate ? { closingDate } : {}),
+    ...(ceiling ? { ceiling } : {}),
+    ...(requiredDocs ? { requiredDocs } : {}),
+    ...(evaluationCriteria ? { evaluationCriteria } : {}),
+    technicalWeightPct: requestedTechnicalWeight,
+    ...(financialFormula ? { financialFormula } : {}),
+    ...(fxBasis ? { fxBasis } : {}),
+    preferenceScheme,
+    ...(cdfConstituency ? { cdfReservationConstituency: cdfConstituency } : {}),
+    ...(cdfExceptionRef ? { cdfReservationExceptionRef: cdfExceptionRef, cdfReservationExceptionBasis: cdfExceptionBasis } : {}),
+    foreignBiddersPermitted,
+    evaluationCurrency,
+    procurementScope,
+  });
   const draft = {
     id: `ntc_${randomUUID().slice(0, 8)}`,
     tenderId,
@@ -2581,6 +3266,7 @@ function corePipelineEntry(input: Record<string, unknown>) {
   if (exists) throw new Error(`reference "${ref}" is already on record — wait for the system to issue the next one`);
   const entry = {
     id: `pip_${randomUUID().slice(0, 8)}`,
+    workspaceId: currentWorkspaceId(),
     ref,
     title,
     ...(input.office ? { office: str(input.office).trim().slice(0, 80) } : {}),
@@ -2638,8 +3324,8 @@ export function nextPipelineRef(input: Record<string, unknown>): string {
 }
 
 
-function corePipelineLink(pipelineId: string, tenderId: string) {
-  const entry = state.pipeline.find((p) => p.id === pipelineId);
+function corePipelineLink(pipelineId: string, tenderId: string, workspaceId = currentWorkspaceId()) {
+  const entry = state.pipeline.find((p) => p.id === pipelineId && (p.workspaceId ?? "demo") === workspaceId);
   if (!entry) throw new Error(`no pipeline entry "${pipelineId}"`);
   if (!SAFE_REF.test(tenderId)) throw new Error(`invalid tenderId: "${tenderId}"`);
   entry.status = "LINKED";
@@ -2678,11 +3364,11 @@ export async function cycleToolCall(name: string, args: Record<string, unknown>)
       return coreBuildMatrix(str(args.tenderId).trim(), criteria, args.technicalWeightPct);
     }
     case "open_alb_dossier":
-      return coreOpenAlb(str(args.tenderId).trim(), str(args.bidder).trim(), str(args.findingId).trim() || undefined);
+      return coreOpenAlb(str(args.tenderId).trim(), str(args.bidder).trim(), str(args.findingId).trim() || undefined, str(args.basis));
     case "draft_award_report":
       return coreAwardReport(str(args.tenderId).trim());
     case "publish_award_notice":
-      return corePublishAwardNotice(str(args.tenderId).trim());
+      return corePublishAwardNotice(str(args.tenderId).trim(), str(args.dispatchEvidenceRef));
     case "prepare_contract_pack":
       return coreContractPack(
         str(args.tenderId).trim(),
@@ -2723,8 +3409,8 @@ export async function cycleToolCall(name: string, args: Record<string, unknown>)
       });
     case "request_variation":
       return coreVariation(str(args.tenderId).trim(), str(args.description), Number(args.valueDelta), {
-        overrideReason: str(args.overrideReason) || undefined,
-        secondedBy: str(args.secondedBy) || undefined,
+        legalAdviceRef: str(args.legalAdviceRef) || undefined,
+        approvalReference: str(args.approvalReference) || undefined,
         by: str(args.by) || "mcp-client",
       });
     case "log_complaint":
@@ -2923,7 +3609,15 @@ export const json = (data: unknown, code = 200) =>
     },
   });
 
-export async function handleCycleRoutes(path: string, method: string, body: Record<string, unknown>, attestedActor = "", workspaceId = "demo"): Promise<Response | null> {
+export async function handleCycleRoutes(
+  path: string,
+  method: string,
+  body: Record<string, unknown>,
+  attestedActor = "",
+  workspaceId = "demo",
+  attestedActorId = "",
+  roster: RosterMemberForGate[] | null = null,
+): Promise<Response | null> {
   const mustPost = () => method === "POST";
   const cycles = () => state.cycle.filter((cycle) => (cycle.workspaceId ?? "demo") === workspaceId);
   const pipelineRows = () => state.pipeline.filter((entry) => (entry.workspaceId ?? "demo") === workspaceId);
@@ -2935,6 +3629,13 @@ export async function handleCycleRoutes(path: string, method: string, body: Reco
     return json({
       cycles: [...cycles()].reverse().map((cycle) => ({
         ...cycle,
+        ...(cycle.matrix
+          ? { matrix: { ...cycle.matrix, scoringBasisBlockReason: scoringBasisBlockReason(cycle.matrix) } }
+          : {}),
+        notices: (cycle.notices ?? []).map((notice) => ({
+          ...notice,
+          evaluationCriteria: parseEvaluationCriteria(notice.md),
+        })),
         findings: runs()
           .filter((run) => run.tenderId === cycle.tenderId)
           .flatMap((run) => run.findings),
@@ -2963,6 +3664,58 @@ export async function handleCycleRoutes(path: string, method: string, body: Reco
   }
   if (path === "/api/cycle/deadlines" && method === "GET") {
     return json({ deadlines: collectDeadlines(cycles(), undefined, jurisdictionPack(state.jurisdictionId)) });
+  }
+  if (path === "/api/cycle/quarterly-reports" && method === "GET") {
+    const now = new Date();
+    const periods = [] as Record<string, unknown>[];
+    for (let offset = 0; offset < 12; offset++) {
+      const point = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - offset * 3, 1));
+      const periodYear = point.getUTCFullYear();
+      const periodQuarter = Math.floor(point.getUTCMonth() / 3) + 1;
+      const entries = entriesForQuarter(workspaceId, periodYear, periodQuarter);
+      const report = state.quarterlyReports.find((row) => row.workspaceId === workspaceId && row.year === periodYear && row.quarter === periodQuarter);
+      const bounds = quarterBounds(periodYear, periodQuarter);
+      periods.push({
+        year: periodYear,
+        quarter: periodQuarter,
+        startsAt: bounds.start.toISOString(),
+        endsAt: bounds.end.toISOString(),
+        entries,
+        digest: shaOf(entries),
+        status: report?.status ?? (quarterlyPeriodIsClosed(periodYear, periodQuarter) ? "READY" : "OPEN"),
+        ...(report ? { report } : {}),
+      });
+    }
+    for (const report of state.quarterlyReports.filter((row) => row.workspaceId === workspaceId)) {
+      if (!periods.some((period) => period.year === report.year && period.quarter === report.quarter)) {
+        const bounds = quarterBounds(report.year, report.quarter);
+        periods.push({
+          year: report.year,
+          quarter: report.quarter,
+          startsAt: bounds.start.toISOString(),
+          endsAt: bounds.end.toISOString(),
+          entries: report.entries,
+          digest: report.digest,
+          status: report.status,
+          report,
+        });
+      }
+    }
+    return json({ periods });
+  }
+  if (path === "/api/cycle/quarterly-reports" && mustPost()) {
+    try {
+      return json(coreStageQuarterlyReport(
+        workspaceId,
+        Number(body.year),
+        Number(body.quarter),
+        str(body.submissionReference),
+        str(body.evidenceReference),
+        attestedActorId,
+      ), 201);
+    } catch (err) {
+      return json({ error: (err as Error).message }, 422);
+    }
   }
   const tenderGet = path.match(/^\/api\/tenders\/([A-Za-z0-9._-]+)$/);
   if (tenderGet && method === "GET") {
@@ -3018,7 +3771,7 @@ export async function handleCycleRoutes(path: string, method: string, body: Reco
   }
   if (/^\/api\/pipeline\/[A-Za-z0-9._-]+\/link$/.test(path) && mustPost()) {
     try {
-      return json(corePipelineLink(path.split("/")[3] ?? "", str(body.tenderId).trim()));
+      return json(corePipelineLink(path.split("/")[3] ?? "", str(body.tenderId).trim(), workspaceId));
     } catch (err) {
       return json({ error: (err as Error).message }, 422);
     }
@@ -3028,10 +3781,10 @@ export async function handleCycleRoutes(path: string, method: string, body: Reco
      on the record. The confirmation is a named act, logged like every write. */
   if (/^\/api\/pipeline\/[A-Za-z0-9._-]+\/requisition$/.test(path) && mustPost()) {
     const id = path.split("/")[3] ?? "";
-    const entry = state.pipeline.find((p) => p.id === id);
+    const entry = pipelineRows().find((p) => p.id === id);
     if (!entry) return json({ error: "pipeline entry not found" }, 404);
-    const actor = str(body.actor).trim().slice(0, 80) || "officer";
-    const validated = body.budgetValidated !== false;
+    const actor = attestedActor || "officer";
+    const validated = body.budgetValidated === true;
     const budgetReference = str(body.budgetReference).trim().slice(0, 120) || undefined;
     if (validated && !budgetReference) {
       return json({ error: "budgetReference is required when validating the budget — the record must point at the vote book line" }, 422);
@@ -3214,11 +3967,13 @@ export async function handleCycleRoutes(path: string, method: string, body: Reco
   }
   if (/^\/api\/tenders\/[A-Za-z0-9._-]+\/coi$/.test(path) && mustPost()) {
     const ref = tenderRef(/^\/api\/tenders\/([A-Za-z0-9._-]+)\/coi$/);
-    const member = str(body.member).trim().slice(0, 80);
-    if (!member) return json({ error: "member (the declaring committee member's name) is required" }, 422);
+    const rosterMember = roster?.find((entry) => entry.status === "PRESENT" && (entry.userId ?? entry.id) === attestedActorId);
+    if (!attestedActorId || !rosterMember) return json({ error: "the signed-in account is not linked to a PRESENT committee seat" }, 403);
+    const member = rosterMember.name.trim().slice(0, 80);
+    if (body.member && str(body.member).trim().toLowerCase() !== member.toLowerCase()) return json({ error: "the declaration member must match the signed-in committee account" }, 403);
     const declaration = str(body.declaration) === "CONFLICT_DECLARED" ? "CONFLICT_DECLARED" : "NO_CONFLICT";
     const cycle = cycleFor(ref);
-    const prior = cycle.coi.find((d) => d.member.toLowerCase() === member.toLowerCase());
+    const prior = cycle.coi.find((d) => d.memberId === rosterMember.id && d.signedByUserId === attestedActorId);
     /* Structured connections: names the screening can compare with the
        bidders and their beneficial owners. A blank row is not a disclosure. */
     const entitiesRaw = Array.isArray(body.entities) ? body.entities : [];
@@ -3238,16 +3993,19 @@ export async function handleCycleRoutes(path: string, method: string, body: Reco
       .filter((entity) => entity.name);
     if (entitiesRaw.length > 20) return json({ error: "At most 20 structured connections can be declared at once." }, 422);
     if (entitiesRaw.length > entities.length) return json({ error: "Every structured connection needs a name." }, 422);
-    const record = {
+    const record: CoiDeclaration = {
       id: prior?.id ?? `coi_${randomUUID().slice(0, 8)}`,
       tenderId: ref,
       member,
+      memberId: rosterMember.id,
+      signedByUserId: attestedActorId,
       declaration: declaration as "NO_CONFLICT" | "CONFLICT_DECLARED",
       ...(str(body.conflicts).trim() ? { conflicts: str(body.conflicts).trim().slice(0, 600) } : {}),
       ...(entities.length ? { entities } : {}),
       ...(body.recused === true ? { recused: true } : {}),
       declaredAt: new Date().toISOString(),
     };
+    record.signature = shaOf({ ...record, signature: undefined });
     if (prior) cycle.coi.splice(cycle.coi.indexOf(prior), 1, record);
     else cycle.coi.push(record);
     appendLog({
@@ -3311,6 +4069,15 @@ export async function handleCycleRoutes(path: string, method: string, body: Reco
       return json({ error: (err as Error).message }, 422);
     }
   }
+  if (/^\/api\/tenders\/[A-Za-z0-9._-]+\/matrix\/financial-adjustments$/.test(path) && mustPost()) {
+    const ref = tenderRef(/^\/api\/tenders\/([A-Za-z0-9._-]+)\/matrix\/financial-adjustments$/);
+    const rows = (Array.isArray(body.rows) ? body.rows : []).slice(0, 20).map((row) => row && typeof row === "object" ? row as Record<string, unknown> : {});
+    try {
+      return json(coreRecordFinancialAdjustments(ref, rows, attestedActorId, roster), 201);
+    } catch (err) {
+      return json({ error: (err as Error).message }, 422);
+    }
+  }
   if (/^\/api\/tenders\/[A-Za-z0-9._-]+\/matrix\/sheets$/.test(path) && mustPost()) {
     const ref = tenderRef(/^\/api\/tenders\/([A-Za-z0-9._-]+)\/matrix\/sheets$/);
     const scores = (Array.isArray(body.scores) ? body.scores : []).map((raw) => {
@@ -3318,7 +4085,7 @@ export async function handleCycleRoutes(path: string, method: string, body: Reco
       return { bidder: s.bidder, criterionId: s.criterionId, score: s.score, note: s.note };
     });
     try {
-      return json(coreRecordSheet(ref, str(body.evaluator), scores, body.note, attestedActor || "web-app"), 201);
+      return json(coreRecordSheet(ref, str(body.evaluator), scores, body.note, attestedActor || "web-app", attestedActorId, roster), 201);
     } catch (err) {
       return json({ error: (err as Error).message }, 422);
     }
@@ -3327,7 +4094,7 @@ export async function handleCycleRoutes(path: string, method: string, body: Reco
     const ref = tenderRef(/^\/api\/tenders\/([A-Za-z0-9._-]+)\/matrix\/consensus$/);
     const attendees = (Array.isArray(body.attendees) ? body.attendees : []).map((name) => str(name));
     try {
-      return json(coreRecordConsensus(ref, attendees, str(body.notes), attestedActor || "web-app"), 201);
+      return json(coreRecordConsensus(ref, attendees, str(body.notes), attestedActor || "web-app", attestedActorId, roster), 201);
     } catch (err) {
       return json({ error: (err as Error).message }, 422);
     }
@@ -3343,7 +4110,23 @@ export async function handleCycleRoutes(path: string, method: string, body: Reco
   if (/^\/api\/tenders\/[A-Za-z0-9._-]+\/alb$/.test(path) && mustPost()) {
     const ref = tenderRef(/^\/api\/tenders\/([A-Za-z0-9._-]+)\/alb$/);
     try {
-      return json(await coreOpenAlb(ref, str(body.bidder), str(body.findingId) || undefined), 201);
+      return json(await coreOpenAlb(ref, str(body.bidder), str(body.findingId) || undefined, str(body.basis)), 201);
+    } catch (err) {
+      return json({ error: (err as Error).message }, 422);
+    }
+  }
+  if (/^\/api\/tenders\/[A-Za-z0-9._-]+\/alb\/[A-Za-z0-9._-]+\/response$/.test(path) && mustPost()) {
+    const match = path.match(/^\/api\/tenders\/([A-Za-z0-9._-]+)\/alb\/([A-Za-z0-9._-]+)\/response$/)!;
+    try {
+      return json(coreRecordAlbResponse(decodeURIComponent(match[1]), decodeURIComponent(match[2]), attestedActor, str(body.response), str(body.evidenceRef)), 201);
+    } catch (err) {
+      return json({ error: (err as Error).message }, 422);
+    }
+  }
+  if (/^\/api\/tenders\/[A-Za-z0-9._-]+\/alb\/[A-Za-z0-9._-]+\/no-response$/.test(path) && mustPost()) {
+    const match = path.match(/^\/api\/tenders\/([A-Za-z0-9._-]+)\/alb\/([A-Za-z0-9._-]+)\/no-response$/)!;
+    try {
+      return json(coreRecordAlbNoResponse(decodeURIComponent(match[1]), decodeURIComponent(match[2]), attestedActorId, attestedActor, roster), 201);
     } catch (err) {
       return json({ error: (err as Error).message }, 422);
     }
@@ -3385,7 +4168,7 @@ export async function handleCycleRoutes(path: string, method: string, body: Reco
   if (/^\/api\/tenders\/[A-Za-z0-9._-]+\/award-notice\/publish$/.test(path) && mustPost()) {
     const ref = tenderRef(/^\/api\/tenders\/([A-Za-z0-9._-]+)\/award-notice\/publish$/);
     try {
-      return json(await corePublishAwardNotice(ref), 201);
+  return json(await corePublishAwardNotice(ref, str(body.dispatchEvidenceRef)), 201);
     } catch (err) {
       return json({ error: (err as Error).message }, 422);
     }
@@ -3395,21 +4178,18 @@ export async function handleCycleRoutes(path: string, method: string, body: Reco
     const cycle = state.cycle.find((c) => c.tenderId === ref);
     if (!cycle?.standstill) return json({ error: "no standstill is running on this tender" }, 422);
     if (cycle.standstill.status !== "ACTIVE") return json({ error: `the standstill is already ${cycle.standstill.status}` }, 422);
-    const actor = str(body.actor).trim().slice(0, 80) || "officer";
-    cycle.standstill.status = "LIFTED";
-    appendLog({
-      actor,
-      server: "quorum-mcp",
+    if (!standstillApplies(cycle)) return json({ error: "this procurement method is exempt from the section 71 standstill clock" }, 422);
+    const block = standstillBlockReason(cycle);
+    if (block) return json({ error: block }, 422);
+    const gate = raiseCycleGate({
+      tenderId: ref,
+      workspaceId,
       tool: "lift_standstill",
-      kind: "WRITES",
-      runId: "cycle",
-      inputs: { tenderId: ref },
-      outputs: { status: "LIFTED" },
-      status: "OK",
-      durationMs: 0,
+      requiredOffice: "ACCOUNTING_OFFICER",
+      inputs: { endsAt: cycle.standstill.endsAt, standstillStatus: cycle.standstill.status },
+      note: "Mark the standstill elapsed after the statutory window and complaint checks pass",
     });
-    saveState();
-    return json({ standstill: cycle.standstill });
+    return json({ gate: gate.id, standstill: cycle.standstill }, 202);
   }
   if (/^\/api\/tenders\/[A-Za-z0-9._-]+\/debrief$/.test(path) && mustPost()) {
     const ref = tenderRef(/^\/api\/tenders\/([A-Za-z0-9._-]+)\/debrief$/);
@@ -3527,8 +4307,8 @@ export async function handleCycleRoutes(path: string, method: string, body: Reco
     try {
       return json(
         coreVariation(ref, str(body.description), Number(body.valueDelta), {
-          overrideReason: str(body.overrideReason) || undefined,
-          secondedBy: str(body.secondedBy) || undefined,
+          legalAdviceRef: str(body.legalAdviceRef) || undefined,
+          approvalReference: str(body.approvalReference) || undefined,
           by: attestedActor || str(body.by) || "officer",
         }),
         201,
@@ -3647,6 +4427,13 @@ export async function handleCycleRoutes(path: string, method: string, body: Reco
     if (!notice) return json({ error: "notice draft not found" }, 404);
     if (notice.fieldCheck.some((f) => !f.present))
       return json({ error: `the notice is missing mandatory fields: ${notice.fieldCheck.filter((f) => !f.present).map((f) => f.field).join(", ")}`, code: "FIELDS_MISSING" }, 422);
+    const criteriaError = validateCriteria(parseEvaluationCriteria(notice.md));
+    if (criteriaError) {
+      return json({
+        error: `the notice cannot be published until its evaluation criteria are complete and sum to exactly 100: ${criteriaError}`,
+        code: "EVALUATION_CRITERIA_MISSING",
+      }, 422);
+    }
     const gate = raiseCycleGate({
       tenderId: ref,
       tool: "publish_notice",

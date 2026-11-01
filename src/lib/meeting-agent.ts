@@ -28,6 +28,28 @@ const MinutesSchema = z.object({
   quotes: z.array(z.string().trim().min(1).max(400)).max(12),
 });
 
+const MINUTES_JSON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    summary: { type: "string" },
+    decisions: { type: "array", items: { type: "string" }, maxItems: 20 },
+    actions: {
+      type: "array",
+      maxItems: 30,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: { owner: { type: "string" }, action: { type: "string" }, due: { type: ["string", "null"] } },
+        required: ["owner", "action", "due"],
+      },
+    },
+    attendees: { type: "array", items: { type: "string" }, maxItems: 40 },
+    quotes: { type: "array", items: { type: "string" }, maxItems: 12 },
+  },
+  required: ["summary", "decisions", "actions", "attendees", "quotes"],
+} as const;
+
 function parseModelJson(text: string): unknown {
   const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
   const start = cleaned.indexOf("{");
@@ -98,6 +120,8 @@ ${transcript.slice(0, 30_000)}`,
         },
       ],
       [],
+      undefined,
+      { responseSchema: { name: "quorum_meeting_minutes", schema: MINUTES_JSON_SCHEMA }, reasoningEffort: "medium", maxOutputTokens: 2800 },
     );
 
     const parsed = MinutesSchema.safeParse(parseModelJson(reply.text));

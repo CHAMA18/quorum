@@ -13,9 +13,9 @@
  *     of pretending an upload happened. Downloads support a single HTTP byte
  *     range, so a large tender document can be resumed or paged.
  *
- * This worker is stateless. The Quorum sidecar, JSON state and filesystem MCP
- * server run beside the Next.js API on Render's persistent disk; Workers are
- * not a replacement for that process.
+ * This worker is stateless. The Quorum sidecar, JSON/Postgres state and
+ * filesystem MCP server run beside the Next.js API on the persistent EC2
+ * origin; Workers are not a replacement for that process.
  */
 
 import { ifRangeAllows, parseByteRange } from "./http-range";

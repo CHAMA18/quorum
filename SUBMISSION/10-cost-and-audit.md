@@ -11,8 +11,10 @@ in a fresh clone.*
 
 ## 1. Rule-path cost, per tender pack (measured)
 
-The compliance path (pack → requirements → findings → verify) makes **zero model
-calls**, and the eval harness measures it repeatedly:
+The compliance rules (pack → requirements → findings → verify) remain deterministic
+and make **zero model calls**. An optional, separate model planning/evidence pass
+helps officers navigate the source pack; it cannot create or close a rule finding.
+The rule harness measures the deterministic path repeatedly:
 
 - **Cost: 0 USD per pack.** No tokens are consumed; nothing is billed.
 - **Latency:** median **0.53–1.14 ms** per pack across the seven staged packs
@@ -22,8 +24,9 @@ calls**, and the eval harness measures it repeatedly:
 - The harness config cost is one-time labelling; runtime cost is machine time only.
 
 For a **live LLM endpoint**, cost is not a mystery: the sidecar records
-`prompt_tokens` and `completion_tokens` on every draft (in `tool-log.jsonl` and on
-the run's `usage` block), so
+input/output tokens, API protocol, task-specific reasoning effort, redactions and
+latency for planning, evidence review, repair and drafting in the append-only
+`tool-log.jsonl`, so
 
 > `cost run = Σ (prompt_tokens + completion_tokens) × endpoint price/token`,
 
@@ -66,8 +69,31 @@ is measured, not claimed (`data/eval/report.json`, `identicalAcrossRuns`).
    own audit trail.
 3. **Sealed receipts** — sha-256, written at filing, only after the named human
    signs at the gate.
-4. **Cost recomputation** — `state.json` usage blocks × any published price list;
-   no hidden token accounting.
+4. **Cost recomputation** — each model call's input/output token counts in
+   `tool-log.jsonl` × the endpoint's published price list; no hidden token
+   accounting. Historical runs without per-call records use their stored draft
+   usage block and are identified as legacy in the report.
+
+5. **Model evidence map** — the Meta Responses pass reads bounded excerpts with
+   supplier names and amounts redacted, then proposes source-linked observations
+   and reviewer questions. A local verifier discards any quote that cannot be
+   matched against the original source (including the exact spans replaced by
+   redaction). These are reading aids, not findings. The sourced report prints
+   the accepted observations and the model call details.
+
+6. **Model quality audit** — `npm run eval:model` evaluates persisted outputs
+   without an LLM judge: quote validity, phrase overlap against the pre-written
+   covered labels, call success, latency and tokens. The overlap is explicitly a
+   heuristic because the current gold labels have one reviewer; it is not an
+   adjudicated quality score. `npm run eval:model:challenge` runs a canary-based
+   prompt-injection challenge against configured model endpoints and checks the
+   response with deterministic string and quote-validity rules.
+
+7. **Scanned documents** — Muse Spark image transcription is disabled by default.
+   It requires `MUSE_SCAN_ENABLED=true`, `MODEL_RESIDENCY=HOSTED` or `HYBRID`, and
+   `MUSE_SCAN_HOSTED_ACCEPT=I ACCEPT`, because raw page pixels cannot be redacted.
+   It processes at most five pages per upload, records the call summary in the
+   hash-chained tender upload event, and leaves `humanReviewRequired` set.
 
 ## 4. The live-model path, measured (2026-10-27)
 

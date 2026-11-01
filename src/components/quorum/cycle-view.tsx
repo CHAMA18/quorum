@@ -34,7 +34,9 @@ import {
   Copy,
   Download,
   FileSignature,
+  FileText,
   Flag,
+  Gavel,
   Loader2,
   Play,
   Plus,
@@ -129,14 +131,25 @@ type EvalConsensusDto = {
 type FxRateDto = { base: string; quote: string; rate: number; source: string; asOf: string };
 type MatrixDto = {
   id: string;
+  criteriaNoticeId?: string;
+  scoringStartedAt?: string;
+  scoringBasisBlockReason?: string | null;
   status: "DRAFT" | "CERTIFIED";
   criteria: { id: string; title: string; weight: number }[];
   technicalWeightPct: number;
+  financialFormula?: string;
+  preferenceScheme?: string;
+  foreignBiddersPermitted?: boolean;
+  cdfReservationExceptionRef?: string;
+  cdfReservationConstituency?: string;
+  financialAdjustmentsCertifiedAt?: string;
   bids: {
     bidder: string;
     late: boolean;
+    albOpen?: boolean;
     responsiveness: string;
     reasons: string[];
+    priceSignals?: { item: string; source: string; ratioToPeerMedian?: number; peerMedian?: number; currency?: string }[];
     technicalScores: { criterionId: string; score: number; note?: string }[];
     technicalTotal: number;
     financial?: {
@@ -145,6 +158,18 @@ type MatrixDto = {
       formulaScore?: number;
       evaluatedAmount?: number;
       evaluatedCurrency?: string;
+      correctedAmount?: number;
+      preferenceAdjustedAmount?: number;
+      adjustments?: {
+        arithmeticCorrection?: number;
+        unconditionalDiscount?: number;
+        otherAdjustment?: number;
+        preferencePct?: number;
+        preferenceScheme?: string;
+        reservationEligible?: boolean;
+        evidenceRef: string;
+        verifiedBy: string;
+      };
       fxRate?: number;
       fxSource?: string;
       fxAsOf?: string;
@@ -157,7 +182,7 @@ type MatrixDto = {
   fxRates?: FxRateDto[];
   sheets?: EvalSheetDto[];
   consensus?: EvalConsensusDto;
-  med?: { recordedAt: string; attendees: string[]; notes?: string };
+  med?: { recordedAt: string; attendees: string[]; adjustments?: Record<string, number>; notes?: string };
   certifiedBy?: string;
 };
 type FindingDto = {
@@ -175,6 +200,7 @@ type CycleDto = {
   blockers?: string[];
   methodId?: string;
   methodJustification?: string;
+  methodCurrency?: string;
   methodApprovalRef?: string;
   methodApprovedBy?: string;
   methodApprovedAt?: string;
@@ -193,9 +219,20 @@ type CycleDto = {
     declaredAt: string;
   }[];
   matrix?: MatrixDto;
-  alb: { id: string; bidder: string; responseDueAt: string; resolution?: { outcome: string; note: string } }[];
+  alb: {
+    id: string;
+    bidder: string;
+    openingBasis?: string;
+    openedAt?: string;
+    findingId?: string;
+    responseDueAt: string;
+    response?: { text?: string; evidenceRef: string; receivedAt: string; submittedByOrg?: string; receiptHash?: string };
+    noResponseRecordedAt?: string;
+    noResponseRecordedBy?: string;
+    resolution?: { outcome: string; note: string };
+  }[];
   awardReport?: { sha: string; recommendation?: string; signedAt?: string; signedBy?: string };
-  awardNotice?: { portal: string; publishedAt?: string };
+  awardNotice?: { portal: string; publishedAt?: string; dispatchedTo?: string[]; dispatchEvidenceRef?: string; dispatchedAt?: string; standstillExemptReason?: string };
   standstill?: { startsAt: string; endsAt: string; days: number; status: string };
   debriefs: { id: string; bidder: string; status: string }[];
   contract?: {
@@ -206,7 +243,21 @@ type CycleDto = {
     executedAt?: string;
     supplierAcceptedAt?: string;
     supplierSignatory?: string;
-    performanceSecurity?: { amount: number; issuer: string; validUntil: string };
+    /* The security declared at execution, and the instruments received against
+       the contract afterwards — two different records, both on the file. */
+    security?: { amount: number; issuer: string; validUntil: string; documentId?: string };
+    performanceSecurity?: {
+      id: string;
+      instrument: "BANK_GUARANTEE" | "INSURANCE_BOND" | "CASH_DEPOSIT" | "OTHER";
+      amount: number;
+      currency?: string;
+      provider?: string;
+      reference?: string;
+      validUntil?: string;
+      receivedAt: string;
+      verifiedBy?: string;
+      verifiedAt?: string;
+    }[];
     insurance?: { policyNo: string; issuer: string; validUntil: string };
     retentionPct?: number;
     warrantyDays?: number;
@@ -246,6 +297,26 @@ type CycleDto = {
   }[];
   clarifications: { id: string; question: string; askedBy: string; answer?: string }[];
   addenda: { id: string; number: number; summary: string; extendsClosingTo?: string; closingExtensionRequired?: boolean }[];
+  notices: {
+    id: string;
+    md: string;
+    fieldCheck: { field: string; present: boolean }[];
+    evaluationCriteria?: { id: string; title: string; weight: number }[];
+    createdAt: string;
+    gateId?: string;
+    issuedAt?: string;
+    issuedBy?: string;
+  }[];
+  specs: { id: string; md: string; source: "llm" | "template"; model?: string; createdAt: string }[];
+  dissents: {
+    id: string;
+    stage: "EVALUATION_CERTIFICATION" | "AWARD_REPORT" | "CONTRACT_PACK";
+    member: string;
+    position: "DISSENT" | "ABSTAIN" | "CONCUR_WITH_NOTES";
+    basis: string;
+    recordedAt: string;
+    recordedBy?: string;
+  }[];
 };
 type PipelineDto = {
   id: string;
@@ -257,8 +328,43 @@ type PipelineDto = {
   expectedPublication?: string;
   status: string;
   linkedTenderId?: string;
+  requisition?: {
+    budgetValidated: boolean;
+    budgetReference?: string;
+    validatedBy?: string;
+    validatedAt?: string;
+    note?: string;
+  };
 };
 type DeadlineDto = { tenderId: string; kind: string; dueAt: string; ref?: string; overdue?: boolean };
+type QuarterlyPeriodDto = {
+  year: number;
+  quarter: number;
+  startsAt: string;
+  endsAt: string;
+  digest: string;
+  status: "OPEN" | "READY" | "PENDING_GATE" | "SUBMITTED";
+  entries: {
+    tenderId: string;
+    type: "VARIATION" | "PREFERENCE_AWARD";
+    reference: string;
+    date: string;
+    supplier?: string;
+    amount?: number;
+    currency?: string;
+    scheme?: string;
+  }[];
+  report?: {
+    id: string;
+    status: "PENDING_GATE" | "SUBMITTED";
+    submissionReference: string;
+    evidenceReference: string;
+    requestedAt: string;
+    gateId?: string;
+    submittedAt?: string;
+    submittedBy?: string;
+  };
+};
 type BudgetLineDto = {
   id: string;
   fiscalYear: number;
@@ -394,6 +500,7 @@ function normalizeCycle(raw: CycleDto): CycleDto {
         milestones: Array.isArray(raw.contract.milestones) ? raw.contract.milestones : [],
         variations: Array.isArray(raw.contract.variations) ? raw.contract.variations : [],
         payments: Array.isArray(raw.contract.payments) ? raw.contract.payments : [],
+        performanceSecurity: Array.isArray(raw.contract.performanceSecurity) ? raw.contract.performanceSecurity : [],
       }
     : undefined;
   const findings = Array.isArray(raw.findings) ? raw.findings : [];
@@ -406,6 +513,9 @@ function normalizeCycle(raw: CycleDto): CycleDto {
     complaints: Array.isArray(raw.complaints) ? raw.complaints : [],
     clarifications: Array.isArray(raw.clarifications) ? raw.clarifications : [],
     addenda: Array.isArray(raw.addenda) ? raw.addenda : [],
+    notices: Array.isArray(raw.notices) ? raw.notices : [],
+    specs: Array.isArray(raw.specs) ? raw.specs : [],
+    dissents: Array.isArray(raw.dissents) ? raw.dissents : [],
     ...(opening ? { opening } : {}),
     ...(matrix ? { matrix } : {}),
     ...(contract ? { contract } : {}),
@@ -440,7 +550,7 @@ function sheetDivergences(sheets: EvalSheetDto[]): EvalDivergenceDto[] {
 }
 
 export type CycleStageTab = "solicitation" | "opening" | "evaluation" | "award" | "standstill" | "contract" | "closure";
-export type CyclePageTab = CycleStageTab | "deadlines" | "complaints" | "analytics";
+export type CyclePageTab = CycleStageTab | "deadlines" | "complaints" | "analytics" | "reporting";
 
 export const CYCLE_STAGE_PAGES: { id: CycleStageTab; label: string }[] = [
   { id: "solicitation", label: "Solicitation" },
@@ -458,6 +568,7 @@ const UTILITY_TABS: { id: CyclePageTab; label: string }[] = [
   { id: "deadlines", label: "Deadlines" },
   { id: "complaints", label: "Complaints" },
   { id: "analytics", label: "Analytics" },
+  { id: "reporting", label: "Quarterly returns" },
 ];
 
 export const CYCLE_PAGE_PAGES: { id: CyclePageTab; label: string; group?: string }[] = [
@@ -475,6 +586,169 @@ const STAGE_INTROS: Record<CycleStageTab, string> = {
   closure: "Record final acceptance and preserve the evidence that closes this procurement cycle.",
 };
 
+/* Every stage states what it must produce before it shows a control. The
+   same words serve the populated page and the page that has no record
+   yet — the record is missing, the obligation is not. */
+const STAGE_BRIEFS: Record<CycleStageTab, { label: string; lede: string; items: string[]; gate: string }> = {
+  solicitation: {
+    label: "SOLICITATION · WHAT THIS PAGE MUST PRODUCE",
+    lede:
+      "The tender exists on paper before it exists in the market. Publication is the moment the rules become binding on everyone — so the notice, the specification and every answer issued before closing are built here, checked here, and signed by a named office here.",
+    items: [
+      "A notice carrying buyer, subject, method, budget ceiling, closing date, required documents and contact — the seven fields the publication gate refuses to pass without.",
+      "A specification or terms of reference whose mandatory requirements are written as SHALL clauses, so the review desk can pin and test them verbatim.",
+      "Every bidder question answered on the record; the answer reaches all bidders at once, never one privately.",
+      "Any addendum inside seven days of closing moves the closing date — otherwise the record is flagged as an unfair change.",
+      "A closing date the register of bids can be measured against; the notice's date is only the fallback.",
+    ],
+    gate:
+      "The machine drafts and checks. Publishing the notice, issuing an addendum and moving a closing date are gates: a named procurement-unit officer decides, and the decision is recorded with its inputs.",
+  },
+  opening: {
+    label: "OPENING · WHAT THIS PAGE MUST PRODUCE",
+    lede:
+      "Nothing in the cycle is more contestable than the opening. This page fixes the moment the clock stopped and preserves, bid by bid, the order in which sealed envelopes were opened and the price that was read out.",
+    items: [
+      "A closing date on record before the first bid is opened — the officer's entry wins, the notice's date is only the fallback.",
+      "Every bid as it was received, with the bidder and the exact time; the register is the tender's attendance list.",
+      "Late bids recorded as received and rejected unopened — the desk refuses to treat a late price as a competitive one.",
+      "The price read from each envelope as announced, so the record can be compared with what the bidder later signs.",
+      "A reconciliation against bids filed through the supplier portal, so no electronic submission disappears between systems.",
+    ],
+    gate:
+      "Certifying the register is a procurement-unit gate: the officer confirms the register matches the envelopes opened. The bid opening is never signed by the machine that transcribed it.",
+  },
+  evaluation: {
+    label: "EVALUATION · WHAT THIS PAGE MUST PRODUCE",
+    lede:
+      "Evaluation is where a bid becomes a defensible recommendation. Every number on this page is traceable to a criterion published before closing, a sheet an evaluator signed, and a spread the committee reconciled in writing.",
+    items: [
+      "A conflict-of-interest declaration from every member recorded present — the certification gate refuses a partial set.",
+      "Criteria and weights summing to exactly 100, published with the notice; the validator refuses anything else.",
+      "An individual sheet per evaluator, the divergences across them, and the consensus minute that reconciles every spread.",
+      "The FX basis and the margin-of-error adjustment, written down before scoring, never after the winner is visible.",
+      "An abnormally-low-bid dossier with a justification clock of five working days for every bid it is opened against.",
+    ],
+    gate:
+      "Certifying the matrix is a committee gate that needs a quorum and a complete declaration set. ALB resolutions and score changes travel through the same gate — the desk cannot certify on the machine's say-so.",
+  },
+  award: {
+    label: "AWARD · WHAT THIS PAGE MUST PRODUCE",
+    lede:
+      "The award is the desk's recommendation, never its decision. This page assembles the evidence an accounting officer is asked to stand behind: who won and why, what the method allows, who the supplier really is, and which findings were closed before the report existed.",
+    items: [
+      "Every HIGH finding against the recommended bid disposed of by a named officer, optionally seconded — an open blocker has no award.",
+      "The procurement method on the file with its justification, and the approval reference wherever the law demands prior authority.",
+      "The supplier assurance check: ownership, registry, tax and sanctions status of the entity that would sign.",
+      "The award report composed from the certified matrix and the run's findings — the statutory document behind the recommendation.",
+      "A debrief for every unsuccessful bidder, drafted from their own record and issued at a gate.",
+    ],
+    gate:
+      "Drafting the report raises the accounting officer's gate. Nothing here publishes, notifies or awards until that signature exists — and a dissent recorded below travels with the file.",
+  },
+  standstill: {
+    label: "STANDSTILL · WHAT THIS PAGE MUST PRODUCE",
+    lede:
+      "The standstill is the window in which a disappointed bidder can still change the outcome. It is measured in working days, it starts at publication, and while it runs nothing is signed and no money moves.",
+    items: [
+      "A published award notice naming the winner, the price and the reasons — publication is what starts the clock, not the decision.",
+      "The review window counted in working days from publication, with the end date on the file rather than in someone's head.",
+      "Every complaint received inside the window marked as such; a live complaint holds the contract and the payment.",
+      "A lift only after the window has lapsed with no unresolved complaint — a lift is an accounting officer's decision, recorded.",
+    ],
+    gate:
+      "Publishing the notice and lifting the standstill are both gates with a named signatory. The desk will not let the contract open while the review clock is still running.",
+  },
+  contract: {
+    label: "CONTRACT · WHAT THIS PAGE MUST PRODUCE",
+    lede:
+      "The award is a decision; the contract is an obligation. This page turns one into the other and then administers it: the signed instrument, the security that backs it, the milestones that measure it, and every shilling that leaves against it.",
+    items: [
+      "A contract pack prepared only after the award report is signed and the standstill has lapsed, committing money to a named budget line.",
+      "Execution with the performance security and insurance on the record — an unexecuted contract cannot be paid.",
+      "Supplier acceptance recorded by the supplier themselves, not typed on their behalf.",
+      "Milestones completed against evidence, and variations priced against the contract value; a variation above ten percent goes to the gate.",
+      "Payments certified on the three-way match of contract, invoice and goods receipt, inside the contract ceiling and after retention.",
+      "Performance securities received, held and verified by a named officer, with their validity dates watched.",
+    ],
+    gate:
+      "Execution and every payment are gates. The desk assembles the file and tests it against the contract value, the cumulative variation cap and the retention rule; a named accounting officer signs each one.",
+  },
+  closure: {
+    label: "CLOSURE · WHAT THIS PAGE MUST PRODUCE",
+    lede:
+      "Closure is not the absence of activity; it is a certificate, a defects period and a supplier record that outlives the file. This page is what an auditor reads when they ask whether the money bought what the tender promised.",
+    items: [
+      "Final acceptance recorded against a certificate, never against a verbal handover.",
+      "The defects liability end date, so a failure discovered next year still has a route back to the supplier.",
+      "A performance rating carried into the supplier's register — the record that informs the next tender's assurance check.",
+      "A closure file that binds the notice, the register, the matrix, the award, the contract, the payments and the acceptance into one procurement file.",
+      "A retention decision on the money the desk has been holding since the first payment.",
+    ],
+    gate:
+      "Recording acceptance raises the completion gate. The cycle closes when a named officer signs it — and the closure file is then read-only evidence, not a working document.",
+  },
+};
+
+/* The desk tools are not stages, but they answer the same question a stage
+   answers: what does this page exist to produce, and where does the machine
+   stop? Deadlines is derived arithmetic over the other pages' records;
+   Complaints is the bidder's remedy; Analytics is the read side of the log. */
+const DESK_TOOL_BRIEFS: Record<"deadlines" | "complaints" | "analytics" | "reporting", { label: string; lede: string; items: string[]; gate: string }> = {
+  deadlines: {
+    label: "DEADLINES · WHAT THIS PAGE MUST PRODUCE",
+    lede:
+      "A deadline is not a diary entry; it is a consequence. Every item on this page is arithmetic over a record another page already holds — the closing date, the ALB clock, the standstill window, the milestone schedule, the complaint window. Nothing here is typed in a second time, so nothing here can quietly disagree with the file.",
+    items: [
+      "The closing date as the record holds it — the officer's entry, with the notice's date only as fallback.",
+      "Abnormally-low-bid justification clocks, counted from the query and never from the bid.",
+      "Standstill ends counted in working days from publication, not from the decision that preceded it.",
+      "Milestone due dates as signed, so a slipping schedule shows up before a payment is certified against it.",
+      "Complaint windows, so an unanswered one is visible on the day it matters rather than at the audit.",
+    ],
+    gate:
+      "The desk will not let a clock be reset by editing a date here. An overdue item stays on this page until the underlying record moves through its own gate.",
+  },
+  complaints: {
+    label: "COMPLAINTS · WHAT THIS PAGE MUST PRODUCE",
+    lede:
+      "A complaint is the bidder's only remedy, and the standstill is when they use it. This page preserves the grounds as filed, the response as issued, the escalation as requested and the independent review as decided — in that order, on one record, with the contract held while it is open.",
+    items: [
+      "The grounds as the complainant filed them, kept verbatim and never summarised into agreement.",
+      "A response drafted by the desk and issued only at a named officer's gate — not typed as if already decided.",
+      "An escalation that names the reason, with the contract and the payment held for as long as it is open.",
+      "An independent review recorded with its reviewer, outcome and note, so the file shows who decided and on what.",
+      "A closure that is an explicit act, never an expiry: a complaint does not go away because time passed.",
+    ],
+    gate:
+      "Responding and closing are gates. While a complaint is OPEN or ESCALATED the contract cannot be executed and no payment leaves the desk — the hold is the record, not a reminder.",
+  },
+  analytics: {
+    label: "ANALYTICS · WHAT THIS PAGE MUST PRODUCE",
+    lede:
+      "This page is the read side of the append-only log: counts computed from records the desk already wrote, with no new instrumentation and no estimate standing in for a fact. A zero here is a zero the log supports, and a blank is a record that does not exist yet.",
+    items: [
+      "Headline counts an oversight meeting opens with: tenders in cycle, bids opened, matrices certified, contracts closed.",
+      "Where every dossier stands, counted at the stage its own record has reached — closed cycles sit at closure.",
+      "A watchlist of exceptions only: late bids, open ALB queries, unanswered complaints, running standstills.",
+      "Findings per tender, so a desk that is finding more than it used to is visible before the audit says so.",
+    ],
+    gate:
+      "Nothing on this page is a decision, and nothing on it can be edited. When a number looks wrong, the fix is on the page that owns the record — this view follows it on the next poll.",
+  },
+  reporting: {
+    label: "QUARTERLY RETURNS · WHAT THIS PAGE MUST PRODUCE",
+    lede: "Build the statutory return from approved contract variations and preference awards recorded in this workspace. Each period is a dated snapshot; the officer approves its digest before the external submission is recorded.",
+    items: [
+      "Approved variations and preference awards that fall inside the quarter, with a tender, date, amount and record reference.",
+      "The external submission reference and supporting evidence needed to trace the return to its destination.",
+      "A digest check at approval time, so changes to the underlying records refuse a stale return.",
+      "An accounting officer gate and a different preparer/approver before the report is marked submitted.",
+    ],
+    gate: "Quarterly returns are not marked submitted until the accounting officer approves the period and the staged record still matches its digest.",
+  },
+};
+
 const CYCLE_PAGE_EMPTY_GUIDES: Partial<
   Record<CyclePageTab, { title: string; body: string; records: string[] }>
 > = {
@@ -485,8 +759,12 @@ const CYCLE_PAGE_EMPTY_GUIDES: Partial<
   },
   evaluation: {
     title: "Evaluation file",
-    body: "Keep the committee’s declarations, published criteria, individual scoring sheets and consensus evidence with the tender.",
-    records: ["Present-member conflict declarations", "Criteria, weights and bid scores", "Evaluator sheets, divergences and consensus"],
+    body: "Publish the criteria and exact 100-point weights with the notice, then establish the FX and margin-of-error basis before any evaluator scores.",
+    records: [
+      "Conflict declarations from every present committee member",
+      "Issued notice criteria, sourced FX basis and pre-score MED record",
+      "Signed evaluator sheets, divergences, consensus minute and five-day ALB dossiers",
+    ],
   },
   award: {
     title: "Award decision file",
@@ -520,6 +798,11 @@ const CYCLE_PAGE_EMPTY_GUIDES: Partial<
 const fmtDate = (iso?: string) => (iso ? new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—");
 const fmtDateTime = (iso?: string) => (iso ? new Date(iso).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—");
 const fmtMoney = (n: number) => new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
+
+/** One summary line a collapsed workflow card can stand on: "3 sheets". */
+function count(n: number, one: string, many = `${one}s`): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
 
 /** Whole days from now until the iso instant (negative = past). */
 function daysUntil(iso?: string): number | undefined {
@@ -652,10 +935,10 @@ function Chip({ tone, children }: { tone: "ok" | "warn" | "muted" | "brand"; chi
 function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
     <label className="block min-w-0">
-      <span className="mb-1.5 flex items-baseline justify-between gap-2">
+      <span className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
         <span className="eyebrow text-[9px]">{label}</span>
         {hint ? (
-          <span className="truncate font-code text-[8.5px] tracking-[0.1em] text-ink-400">{hint}</span>
+          <span className="min-w-0 font-code text-[8.5px] leading-[1.5] tracking-[0.1em] text-ink-400">{hint}</span>
         ) : null}
       </span>
       {children}
@@ -964,12 +1247,16 @@ function Card({
   workflow = false,
   busy = false,
   actionLabel = "Open workflow",
+  className,
 }: {
   title: string;
   sub?: string;
   right?: ReactNode;
   children: ReactNode | ((close: () => void) => ReactNode);
   teaser?: string;
+  /* A stage grid can widen one card across both columns (an odd last card
+     would otherwise leave half a row of empty panel space). */
+  className?: string;
   workflow?: boolean;
   busy?: boolean;
   actionLabel?: string;
@@ -1035,7 +1322,7 @@ function Card({
   if (workflow) {
     return (
       <>
-        <section className="panel flex min-w-0 flex-col overflow-hidden rounded-[12px]">
+        <section className={cn("@container panel flex min-w-0 flex-col overflow-hidden rounded-[12px]", className)}>
           <div className="flex flex-wrap items-start justify-between gap-3 px-5 pb-4 pt-[18px]">
             <div className="min-w-0">
               <h3 className="font-display text-[15px] font-bold tracking-[-0.015em] text-ink-950">{title}</h3>
@@ -1043,7 +1330,10 @@ function Card({
             </div>
             {right ? <div className="shrink-0">{right}</div> : null}
           </div>
-          <div className="flex flex-1 items-end justify-between gap-4 border-t border-ink-100/80 px-5 py-4 dark:border-white/[0.055]">
+          {/* The action moves under the teaser whenever the card itself is
+              narrow — a stage grid can halve a card at desktop width, so this
+              is a container query, not a viewport one. */}
+          <div className="flex flex-1 flex-col gap-3 border-t border-ink-100/80 px-5 py-4 @lg:flex-row @lg:items-end @lg:justify-between @lg:gap-4 dark:border-white/[0.055]">
             <p className="max-w-[46ch] text-[11.5px] leading-relaxed text-ink-500 dark:text-ink-400">
               {teaser ?? "Open the guided workflow to review details and complete this action."}
             </p>
@@ -1052,7 +1342,7 @@ function Card({
               type="button"
               onClick={() => setOpen(true)}
               disabled={busy}
-              className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg bg-ink-950 px-3.5 text-[11px] font-semibold text-white transition-colors hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-ink-950 dark:hover:bg-brand-400"
+              className="inline-flex h-9 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-ink-950 px-3.5 text-[11px] font-semibold text-white transition-colors hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 @lg:w-auto dark:bg-white dark:text-ink-950 dark:hover:bg-brand-400"
             >
               {actionLabel}
               <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1120,7 +1410,7 @@ function Card({
   }
 
   return (
-    <section className="panel flex min-w-0 flex-col overflow-hidden rounded-[12px]">
+    <section className={cn("panel flex min-w-0 flex-col overflow-hidden rounded-[12px]", className)}>
       <div className="flex flex-wrap items-start justify-between gap-3 px-5 pb-4 pt-[18px]">
         <div className="min-w-0">
           <h3 className="font-display text-[15px] font-bold tracking-[-0.015em] text-ink-950">{title}</h3>
@@ -1151,155 +1441,52 @@ function useOutside(ref: React.RefObject<HTMLElement | null>, onOutside: () => v
   }, [ref, onOutside, active]);
 }
 
-/* ── CycleRail — the live stage tracker ─────────────────────────────────────── */
+/* ── StageBrief — what a page must produce, stated before the buttons ────────
+   Every stage of the cycle is a decision someone can be asked about years
+   later. The brief names, in the officer's own vocabulary, the records the
+   page exists to create and the point at which the machine stops and a named
+   human signs. It is content, not decoration: each line maps to a real
+   control on the page below it. */
 
-function StageLegend() {
-  const items = [
-    { label: "Complete", dot: "bg-emerald-500" },
-    { label: "Current", dot: "bg-brand-500" },
-    { label: "At a gate", dot: "bg-brand-500/25 ring-2 ring-inset ring-brand-500/70" },
-    { label: "Upcoming", dot: "bg-ink-200 dark:bg-white/20" },
-  ];
+function StageBrief({
+  label,
+  lede,
+  items,
+  gate,
+  span = false,
+}: {
+  label: string;
+  lede: string;
+  items: string[];
+  gate?: string;
+  /* Inside a two-column stage grid, the brief reads across the full width. */
+  span?: boolean;
+}) {
   return (
-    <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5">
-      {items.map((i) => (
-        <span key={i.label} className="flex items-center gap-1.5 font-code text-[7.5px] font-bold tracking-[0.16em] text-ink-400">
-          <span className={cn("h-1.5 w-1.5 rounded-full", i.dot)} aria-hidden="true" />
-          {i.label.toUpperCase()}
+    <section className={cn("panel overflow-hidden rounded-[12px] px-4 py-3.5 sm:px-5", span && "col-span-full")} aria-label={`${label} brief`}>
+      <div className="flex items-start gap-3">
+        <span className="mt-[3px] grid h-6 w-6 shrink-0 place-items-center rounded-full border border-brand-500/30 bg-brand-500/[0.08] text-brand-600 dark:text-brand-300">
+          <Gavel className="h-3 w-3" aria-hidden="true" />
         </span>
-      ))}
-    </div>
-  );
-}
-
-function CycleRail({ cycle }: { cycle: CycleDto | null }) {
-  const { stages, doneCount, currentIndex } = useMemo(() => deriveStages(cycle), [cycle]);
-  const pct = Math.round((doneCount / stages.length) * 100);
-  const current = stages[currentIndex];
-
-  return (
-    <div className="px-5 pb-4 pt-4" role="group" aria-label="Tender cycle progress">
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1 eyebrow">
-          <span className="text-ink-400 dark:text-ink-500">Cycle</span>
-          {cycle ? (
-            <>
-              <span className="text-ink-800 dark:text-ink-700">
-                Stage {String(currentIndex + 1).padStart(2, "0")} / {String(stages.length).padStart(2, "0")}
-              </span>
-              <span className="h-1 w-1 rounded-full bg-brand-500" aria-hidden="true" />
-              <span className="text-brand-600 dark:text-brand-400">{current.label}</span>
-            </>
-          ) : (
-            <span>Solicitation → closure</span>
-          )}
-        </p>
-        <div className="flex items-center gap-2.5" aria-live="polite">
-          <span className="h-[3px] w-16 overflow-hidden rounded-full bg-ink-100 dark:bg-white/10" aria-hidden="true">
-            <motion.span
-              className="block h-full rounded-full bg-brand-500"
-              initial={false}
-              animate={{ width: `${pct}%` }}
-              transition={{ duration: 0.6, ease: EASE }}
-            />
-          </span>
-          {/* The measure the officer actually asks: how many of the seven are
-              behind the desk — spelled out, never a bare percentage. */}
-          <span className="tabular font-code text-[8.5px] font-bold tracking-[0.14em] text-ink-500">
-            {doneCount} OF {stages.length} STAGES COMPLETE
-            <span className="mx-1.5 text-ink-300 dark:text-ink-600">·</span>
-            {pct}%
-          </span>
+        <div className="min-w-0">
+          <p className="font-code text-[8px] font-bold tracking-[0.18em] text-brand-600 dark:text-brand-300">{label}</p>
+          <p className="mt-1.5 max-w-[86ch] text-[12.5px] leading-relaxed text-ink-600 dark:text-ink-300">{lede}</p>
         </div>
       </div>
-
-      <div className="-mx-1 mt-3.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <ol aria-label="Cycle stages" className="grid min-w-[660px] grid-cols-7 gap-1.5 sm:gap-2">
-        {stages.map((s, i) => {
-          /* With no cycle record there is no current stage — the rail stays
-             neutral rather than claiming a stage the desk has not reached. */
-          const done = cycle ? s.state === "done" : false;
-          const isCurrent = cycle ? s.state === "current" : false;
-          const atGate = cycle ? isCurrent && !!s.held : false;
-          return (
-            <li key={s.key} className="min-w-0">
-              <div
-                title={`${s.label} — ${s.caption ?? ""}`}
-                className="block w-full min-w-0 rounded-lg px-1.5 py-1.5 text-left"
-              >
-                {/* The meter: one segment per stage, so progress is read at a glance. */}
-                <span
-                  className={cn(
-                    "relative block h-[3px] w-full overflow-hidden rounded-full transition-colors",
-                    done && "bg-emerald-500/85",
-                    isCurrent && !atGate && "bg-brand-500/20",
-                    atGate && "bg-brand-500/20",
-                    !done && !isCurrent && "bg-ink-100 dark:bg-white/[0.09]",
-                  )}
-                  aria-hidden="true"
-                >
-                  {isCurrent ? (
-                    <motion.span
-                      className={cn(
-                        "absolute inset-y-0 left-0 rounded-full bg-brand-500",
-                        atGate ? "animate-pulse shadow-[0_0_12px_rgba(232,56,42,0.75)]" : "shadow-[0_0_12px_rgba(232,56,42,0.55)]",
-                      )}
-                      initial={false}
-                      animate={{ width: "100%" }}
-                      transition={{ duration: 0.6, ease: EASE }}
-                    />
-                  ) : null}
-                </span>
-                <span className="mt-2 flex min-w-0 items-center gap-1.5">
-                  <span
-                    className={cn(
-                      "grid h-[17px] w-[17px] shrink-0 place-items-center rounded-full border font-code text-[7.5px] font-black tabular transition-colors",
-                      done && "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:border-emerald-400/35 dark:text-emerald-300",
-                      isCurrent && !atGate && "animate-gate-breathe border-brand-600 bg-brand-600 text-white",
-                      /* Held at a gate: the gavel belongs to a human — the
-                         ring says so without claiming completion. */
-                      atGate && "border-brand-600/70 bg-brand-500/[0.12] text-brand-700 ring-2 ring-brand-500/25 dark:border-brand-400/70 dark:text-brand-300",
-                      !done && !isCurrent && "border-ink-200 text-ink-400 dark:border-white/[0.12] dark:text-ink-500",
-                    )}
-                    aria-hidden="true"
-                  >
-                    {done ? <Check className="h-2.5 w-2.5" /> : String(i + 1).padStart(2, "0")}
-                  </span>
-                  <span
-                    className={cn(
-                      "truncate font-code text-[7.5px] font-bold tracking-[0.1em] transition-colors",
-                      isCurrent && "text-brand-700 dark:text-brand-300",
-                      !isCurrent && "text-ink-500 dark:text-ink-400",
-                    )}
-                  >
-                    {s.label.toUpperCase()}
-                  </span>
-                </span>
-                <span
-                  className={cn(
-                    "mt-1 block truncate text-[9.5px] leading-tight transition-colors",
-                    atGate && "font-semibold text-brand-700 dark:text-brand-300",
-                    !atGate && (isCurrent ? "text-ink-600 dark:text-ink-500" : "text-ink-400 dark:text-ink-400"),
-                  )}
-                  title={s.caption}
-                >
-                  {s.caption}
-                </span>
-                {/* A stage parked at a human gate is the one state an officer
-                    scans for — name it, don't make them read the caption. */}
-                {atGate ? (
-                  <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-brand-500/[0.09] px-1.5 py-[2px] font-code text-[7px] font-black tracking-[0.12em] text-brand-700 dark:bg-brand-500/[0.14] dark:text-brand-300">
-                    <span className="h-1 w-1 animate-pulse rounded-full bg-brand-500" aria-hidden="true" />
-                    AT GATE
-                  </span>
-                ) : null}
-              </div>
-            </li>
-          );
-        })}
-        </ol>
-      </div>
-    </div>
+      <ul className="mt-3 grid gap-x-5 gap-y-1.5 sm:grid-cols-2">
+        {items.map((item) => (
+          <li key={item} className="flex items-start gap-2 text-[11.5px] leading-snug text-ink-500 dark:text-ink-400">
+            <span className="mt-[6px] h-1 w-1 shrink-0 rounded-full bg-brand-500/60" aria-hidden="true" />
+            <span className="min-w-0">{item}</span>
+          </li>
+        ))}
+      </ul>
+      {gate ? (
+        <p className="mt-3 border-t border-ink-100 pt-2.5 font-code text-[8.5px] leading-relaxed tracking-[0.1em] text-ink-400 dark:border-white/[0.06] dark:text-ink-500">
+          {gate}
+        </p>
+      ) : null}
+    </section>
   );
 }
 
@@ -1774,7 +1961,9 @@ function Vital({
       >
         {value}
       </p>
-      <p className="mt-1.5 truncate font-code text-[8px] tracking-[0.12em] text-ink-400">{meta}</p>
+      {/* The meaning line wraps rather than clipping: "1 late · rejected
+          unopened" is the point of the cell, not decoration. */}
+      <p className="mt-1.5 font-code text-[8px] leading-[1.6] tracking-[0.12em] text-ink-400">{meta}</p>
     </div>
   );
 }
@@ -1848,13 +2037,13 @@ function VitalStrip({ cycle }: { cycle: CycleDto | null }) {
 
   return (
     <div
-      className="grid grid-cols-2 gap-px border-t border-ink-100/80 bg-ink-100/70 sm:grid-cols-3 lg:grid-cols-5 dark:border-white/[0.055] dark:bg-white/[0.07]"
+      className="grid grid-cols-2 gap-px border-t border-ink-100/80 bg-ink-100/70 sm:grid-cols-3 xl:grid-cols-5 dark:border-white/[0.055] dark:bg-white/[0.07]"
       aria-label="Tender vitals"
     >
       {cells.map((c) => (
         <div
           key={c.label}
-          className="min-w-0 bg-[#fffefa] last:col-span-2 sm:last:col-span-2 lg:last:col-span-1 dark:bg-[#12141a] lg:bg-transparent dark:lg:bg-transparent"
+          className="min-w-0 bg-[#fffefa] last:col-span-2 sm:last:col-span-2 xl:last:col-span-1 dark:bg-[#12141a] lg:bg-transparent dark:lg:bg-transparent"
         >
           <Vital label={c.label} value={c.value} meta={c.meta} accent={c.accent} />
         </div>
@@ -2303,6 +2492,7 @@ export function CycleView({
   const [pipeline, setPipeline] = useState<PipelineDto[]>([]);
   const [deadlines, setDeadlines] = useState<DeadlineDto[]>([]);
   const [analytics, setAnalytics] = useState<Record<string, number | string> | null>(null);
+  const [quarterlyPeriods, setQuarterlyPeriods] = useState<QuarterlyPeriodDto[]>([]);
   const [members, setMembers] = useState<MemberDto[]>([]);
   const [budgetLines, setBudgetLines] = useState<BudgetLineDto[]>([]);
   const [methods, setMethods] = useState<MethodDto[]>([]);
@@ -2421,7 +2611,7 @@ export function CycleView({
 
   const pull = useCallback(async () => {
     try {
-      const [t, c, dl, an, cm, rn, ap, bl] = await Promise.all([
+      const [t, c, dl, an, cm, rn, ap, bl, qr] = await Promise.all([
         fetch(`/api/sample-tenders${SVC}`).then((x) => x.json()),
         fetch(`/api/cycle${SVC}`).then((x) => x.json()),
         fetch(`/api/cycle/deadlines${SVC}`).then((x) => x.json()),
@@ -2430,6 +2620,7 @@ export function CycleView({
         fetch(`/api/runs${SVC}`).then((x) => x.json()),
         fetch(`/api/applications${SVC}`).then((x) => x.json()),
         fetch(`/api/budget-lines${SVC}`).then((x) => x.json()),
+        fetch(`/api/cycle/quarterly-reports${SVC}`).then((x) => x.json()),
       ]);
       const samples = (t.samples ?? []) as { ref: string; title?: string }[];
       const cycleRows = ((c.cycles ?? []) as CycleDto[]).map(normalizeCycle);
@@ -2454,6 +2645,7 @@ export function CycleView({
           .filter((d) => typeof d.dueAt === "string" && !Number.isNaN(new Date(d.dueAt).getTime()))
       );
       setAnalytics(an ?? null);
+      setQuarterlyPeriods((qr.periods ?? []) as QuarterlyPeriodDto[]);
       setMembers(((cm.members ?? []) as MemberDto[]).filter((m) => m.status === "PRESENT"));
       setPortalApps(((ap.applications ?? []) as PortalAppRow[]).filter((a) => a.status === "RECEIVED"));
       setBudgetLines((bl.lines ?? []) as BudgetLineDto[]);
@@ -2507,10 +2699,10 @@ export function CycleView({
     void refreshNextRef();
   }, [refreshNextRef, pipeline.length, cycles.length, tenders.length]);
 
-  const act = async (path: string, body: unknown, okMsg: string): Promise<boolean> => {
+  const act = async (path: string, body: unknown, okMsg: string, firstParty = false): Promise<boolean> => {
     setBusy(true);
     try {
-      const res = await fetch(`${path}${SVC}`, {
+      const res = await fetch(`${path}${firstParty ? "" : SVC}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),
@@ -2637,8 +2829,343 @@ export function CycleView({
   const estimates = pipeline.filter((p) => p.budgetEstimate);
   const sameCur = estimates.length && estimates.every((p) => (p.currency ?? "") === (estimates[0].currency ?? ""));
   const combined = sameCur ? estimates.reduce((s, p) => s + (p.budgetEstimate ?? 0), 0) : 0;
+  /* ── Solicitation — the notice, the specification and the question log ──────
+     Everything a bidder reads before the closing is created here: the notice
+     (refused at publication unless every mandatory field is present), the
+     specification the review desk will pin SHALL clauses from, and the
+     clarifications and addenda that change the pack for every bidder at once. */
+
+  const tenderTitle = tenders.find((t) => t.ref === ref)?.title ?? "";
+  const notices = cycle?.notices ?? [];
+  const currentNotice = notices.length ? notices[notices.length - 1] : null;
+  const noticeMissing = (currentNotice?.fieldCheck ?? []).filter((f) => !f.present);
+  const currentSpec = cycle?.specs.length ? cycle.specs[cycle.specs.length - 1] : null;
+  const noticeCriteria = currentNotice?.evaluationCriteria ?? [];
+  const noticeCriteriaWeight = noticeCriteria.reduce((sum, criterion) => sum + criterion.weight, 0);
+  const noticeCriteriaValid = noticeCriteria.length > 0 && Math.abs(noticeCriteriaWeight - 100) <= 0.0001 &&
+    noticeCriteria.every((criterion) => !!criterion.title.trim() && criterion.weight > 0);
+
+  const draftTenderNotice = () =>
+    act(
+      `/api/tenders/${ref}/notices/draft`,
+      {
+        reference: d.noticeRef || ref,
+        buyer: d.noticeBuyer,
+        subject: d.noticeSubject || tenderTitle,
+        method: d.noticeMethod || cycle?.methodId || "Open competitive bidding",
+        closingDate: d.noticeClosing || d.closing || undefined,
+        ceiling: d.noticeCeiling,
+        contact: d.noticeContact,
+        requiredDocs: (d.noticeDocs ?? "").split("\n").map((line) => line.trim()).filter(Boolean),
+        technicalWeightPct: d.noticeTechWeight ? Number(d.noticeTechWeight) : 80,
+        fxBasis: d.noticeFxBasis,
+        preferenceScheme: d.noticePreference || "None",
+        cdfReservationConstituency: d.noticePreference === "CDF_RESERVATION" ? d.noticeCdfConstituency : undefined,
+        cdfReservationExceptionRef: d.noticePreference === "CDF_RESERVATION" ? d.noticeCdfExceptionRef : undefined,
+        cdfReservationExceptionBasis: d.noticePreference === "CDF_RESERVATION" ? d.noticeCdfExceptionBasis : undefined,
+        foreignBiddersPermitted: d.foreignBiddersPermitted === "true",
+        evaluationCurrency: d.noticeEvaluationCurrency || (cycle?.methodCurrency ?? "ZMW"),
+        procurementScope: d.noticeScope || "National",
+      },
+      "NOTICE DRAFTED — THE MANDATORY-FIELD CHECK DECIDES WHETHER IT CAN PUBLISH",
+    ).then((ok) => ok && refreshCycle());
+
+  const publishTenderNotice = (id: string) =>
+    act(
+      `/api/tenders/${ref}/notices/${id}/publish`,
+      {},
+      "PUBLICATION GATE RAISED — THE PROCUREMENT UNIT SIGNS THE NOTICE",
+    ).then((ok) => ok && refreshCycle());
+
+  const draftSpecDoc = () =>
+    act(
+      `/api/tenders/${ref}/specs/draft`,
+      { brief: d.specBrief },
+      "SPECIFICATION DRAFTED FROM THE BRIEF — SHALL CLAUSES ARE NOW PINNABLE",
+    ).then((ok) => ok && refreshCycle());
+
+  const logClarification = () =>
+    act(
+      `/api/tenders/${ref}/clarifications`,
+      { question: d.clarQuestion, askedBy: d.clarBy || undefined },
+      "QUESTION LOGGED — THE ANSWER GOES TO EVERY BIDDER",
+    ).then((ok) => {
+      if (ok) set("clarQuestion", "");
+      return ok;
+    });
+
   const PipelineTab = (
     <div className="grid gap-4 xl:gap-5">
+      <StageBrief {...STAGE_BRIEFS.solicitation} />
+
+      <Card
+        title="Tender notice"
+        sub="DRAFTED AND FIELD-CHECKED HERE — PUBLICATION IS A PROCUREMENT UNIT GATE"
+        right={
+          currentNotice ? (
+            currentNotice.issuedAt ? (
+              <Chip tone={noticeCriteriaValid ? "ok" : "warn"}>{noticeCriteriaValid ? "ISSUED" : "ISSUED · CRITERIA MISSING"}</Chip>
+            ) : noticeMissing.length || !noticeCriteriaValid ? (
+              <Chip tone="warn">{noticeMissing.length + (noticeCriteriaValid ? 0 : 1)} REQUIREMENT{noticeMissing.length + (noticeCriteriaValid ? 0 : 1) === 1 ? "" : "S"} MISSING</Chip>
+            ) : (
+              <Chip tone="brand">READY FOR THE GATE</Chip>
+            )
+          ) : (
+            <Chip tone="muted">NO DRAFT</Chip>
+          )
+        }
+      >
+        <div className="grid gap-3">
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            <Field label="REFERENCE" hint={ref ? `on record: ${ref}` : "select a tender first"}>
+              <input className={inputCls} placeholder={ref || "Tender reference"} value={d.noticeRef ?? ""} onChange={(e) => set("noticeRef", e.target.value)} />
+            </Field>
+            <Field label="BUYER — THE PROCURING ENTITY">
+              <input className={inputCls} placeholder="e.g. Ministry of Health" value={d.noticeBuyer ?? ""} onChange={(e) => set("noticeBuyer", e.target.value)} />
+            </Field>
+            <Field label="SUBJECT OF THE PROCUREMENT" hint={tenderTitle ? "defaults to the tender title" : undefined}>
+              <input className={inputCls} placeholder={tenderTitle || "What is being bought"} value={d.noticeSubject ?? ""} onChange={(e) => set("noticeSubject", e.target.value)} />
+            </Field>
+            <Field label="PROCUREMENT METHOD" hint="recorded on the award file too">
+              <input className={inputCls} placeholder={cycle?.methodId || "Open competitive bidding"} value={d.noticeMethod ?? ""} onChange={(e) => set("noticeMethod", e.target.value)} />
+            </Field>
+            <Field label="TECHNICAL WEIGHT (%) — BALANCE IS FINANCIAL">
+              <input className={inputCls} type="number" min={0} max={100} value={d.noticeTechWeight ?? "80"} onChange={(e) => set("noticeTechWeight", e.target.value)} />
+            </Field>
+            <Field label="EVALUATION CURRENCY">
+              <select className={inputCls} value={d.noticeEvaluationCurrency ?? cycle?.methodCurrency ?? "ZMW"} onChange={(e) => set("noticeEvaluationCurrency", e.target.value)}>
+                {CURRENCIES.map((currency) => <option key={currency} value={currency}>{currency}</option>)}
+              </select>
+            </Field>
+            <Field label="PROCUREMENT SCOPE">
+              <select className={inputCls} value={d.noticeScope ?? "National"} onChange={(e) => set("noticeScope", e.target.value)}>
+                <option value="National">National</option>
+                <option value="International">International</option>
+              </select>
+            </Field>
+            <Field label="FX BASIS — SOURCE AND OBSERVATION DATE" hint="State the source and date/method the issued document requires bidders and evaluators to use.">
+              <input className={inputCls} placeholder="Bank of Zambia published rate, dated YYYY-MM-DD" value={d.noticeFxBasis ?? ""} onChange={(e) => set("noticeFxBasis", e.target.value)} />
+            </Field>
+            <div className="rounded-xl border border-ink-100 bg-paper/60 px-3 py-2.5 text-[11px] leading-relaxed text-ink-600 dark:border-white/[0.07] dark:bg-white/[0.025] dark:text-ink-400">
+              <span className="font-semibold">Financial formula fixed for this release:</span> Lowest evaluated price / bidder evaluated price × 100, after documented arithmetic corrections, unconditional discounts and published preference.
+            </div>
+            <Field label="PREFERENCE / RESERVATION SCHEME">
+              <select className={inputCls} value={d.noticePreference ?? "None"} onChange={(e) => set("noticePreference", e.target.value)}>
+                <option value="None">None</option>
+                <option value="SI45-2025">Zambia SI 45/2025 preference margins</option>
+                <option value="CDF_RESERVATION">CDF constituency reservation</option>
+              </select>
+            </Field>
+            {d.noticePreference === "CDF_RESERVATION" ? (
+              <div className="grid gap-2 rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3 sm:col-span-2 sm:grid-cols-2">
+                <Field label="FUNDED CONSTITUENCY">
+                  <input className={inputCls} value={d.noticeCdfConstituency ?? ""} onChange={(e) => set("noticeCdfConstituency", e.target.value)} maxLength={120} placeholder="Name the constituency funding this procurement" />
+                </Field>
+                <p className="sm:col-span-2 text-[10.5px] leading-relaxed text-amber-900 dark:text-amber-200">
+                  Optional locality exception under SI 45/2025 regulation 8(2): record it only where procurement requirements cannot be satisfied by a citizen bidder domiciled in the funded constituency. This evidence is part of the published solicitation.
+                </p>
+                <Field label="LOCALITY ASSESSMENT EVIDENCE REFERENCE">
+                  <input className={inputCls} value={d.noticeCdfExceptionRef ?? ""} onChange={(e) => set("noticeCdfExceptionRef", e.target.value)} maxLength={200} placeholder="Market assessment / local capacity record" />
+                </Field>
+                <Field label="WHY CONSTITUENCY REQUIREMENTS CANNOT BE MET" hint="At least 20 characters when an evidence reference is supplied.">
+                  <input className={inputCls} value={d.noticeCdfExceptionBasis ?? ""} onChange={(e) => set("noticeCdfExceptionBasis", e.target.value)} maxLength={500} placeholder="Describe the unmet requirement and local market check" />
+                </Field>
+              </div>
+            ) : null}
+            <label className="flex items-center gap-2 rounded-lg border border-ink-100 px-3 py-2 text-[11.5px] text-ink-700">
+              <input type="checkbox" checked={d.foreignBiddersPermitted === "true"} onChange={(e) => set("foreignBiddersPermitted", e.target.checked ? "true" : "false")} />
+              Foreign bidders may participate (required for the local supplier 5% margin)
+            </label>
+            <Field label="BUDGET CEILING">
+              <input className={inputCls} placeholder={`${cycle?.methodCurrency ?? ""} 48,000,000`.trim()} value={d.noticeCeiling ?? ""} onChange={(e) => set("noticeCeiling", e.target.value)} />
+            </Field>
+            <Field label="CLOSING DATE" hint={cycle?.closingDate ? `on record: ${fmtDate(cycle.closingDate)}` : "moves with the notice"}>
+              <input className={inputCls} type="date" value={d.noticeClosing ?? ""} onChange={(e) => set("noticeClosing", e.target.value)} />
+            </Field>
+            <Field label="CONTACT FOR CLARIFICATIONS">
+              <input className={inputCls} placeholder="Office, officer and email" value={d.noticeContact ?? ""} onChange={(e) => set("noticeContact", e.target.value)} />
+            </Field>
+            <Field label="REQUIRED DOCUMENTS — ONE PER LINE" hint="each becomes a [REQUIRED] line">
+              <textarea
+                className={cn(inputCls, "h-20 py-2 text-[12px]")}
+                placeholder={"Tax compliance certificate\nBusiness registration\nManufacturer authorisation"}
+                value={d.noticeDocs ?? ""}
+                onChange={(e) => set("noticeDocs", e.target.value)}
+              />
+            </Field>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Btn onClick={() => void draftTenderNotice()} disabled={busy || !ref}>
+              <FileText className="h-3.5 w-3.5" aria-hidden="true" /> {currentNotice ? "Redraft the notice" : "Draft the notice"}
+            </Btn>
+            {currentNotice && !currentNotice.issuedAt ? (
+              <Btn
+                variant="ghost"
+                onClick={() => void publishTenderNotice(currentNotice.id)}
+                disabled={busy || noticeMissing.length > 0 || !noticeCriteriaValid}
+              >
+                <Stamp className="h-3.5 w-3.5" aria-hidden="true" /> Publish (procurement unit gate)
+              </Btn>
+            ) : null}
+            {currentNotice?.issuedAt ? (
+              <span className="font-code text-[8.5px] tracking-[0.12em] text-ink-400">
+                ISSUED {fmtDate(currentNotice.issuedAt)}
+                {currentNotice.issuedBy ? ` · ${currentNotice.issuedBy.toUpperCase()}` : ""}
+              </span>
+            ) : null}
+            {currentNotice?.gateId && !currentNotice.issuedAt ? (
+              <span className="font-code text-[8.5px] tracking-[0.12em] text-brand-600 dark:text-brand-300">
+                GATE {currentNotice.gateId} AWAITING A NAMED OFFICER
+              </span>
+            ) : null}
+          </div>
+
+          {currentNotice ? (
+            <div className="rounded-xl border border-ink-100 bg-paper px-3 py-2.5 dark:border-white/[0.08]">
+              <p className="font-code text-[8px] font-bold tracking-[0.16em] text-ink-400">MANDATORY FIELDS · {currentNotice.fieldCheck.filter((f) => f.present).length} OF {currentNotice.fieldCheck.length}</p>
+              <ul className="mt-2 flex flex-wrap gap-1.5">
+                {currentNotice.fieldCheck.map((f) => (
+                  <li
+                    key={f.field}
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-full px-2 py-[3px] font-code text-[8px] font-bold tracking-[0.1em]",
+                      f.present
+                        ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                        : "bg-brand-500/10 text-brand-700 dark:text-brand-300",
+                    )}
+                  >
+                    {f.present ? <Check className="h-2.5 w-2.5" aria-hidden="true" /> : <CircleAlert className="h-2.5 w-2.5" aria-hidden="true" />}
+                    {f.field.toUpperCase()}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-2 border-t border-ink-100 pt-2 dark:border-white/[0.06]">
+                <p className="font-code text-[8px] font-bold tracking-[0.14em] text-ink-400">
+                  EVALUATION CRITERIA · {noticeCriteriaValid ? `${noticeCriteria.length} PUBLISHED · ${noticeCriteriaWeight.toFixed(1)}% TOTAL` : "MISSING OR INVALID · MUST TOTAL EXACTLY 100%"}
+                </p>
+                {noticeCriteriaValid ? (
+                  <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                    {noticeCriteria.map((criterion) => <li key={criterion.id} className="rounded-md bg-ink-100/70 px-2 py-1 text-[9px] text-ink-700 dark:bg-white/[0.05] dark:text-ink-300">{criterion.title} · {criterion.weight}%</li>)}
+                  </ul>
+                ) : (
+                  <p className="mt-1 text-[10.5px] leading-relaxed text-amber-700 dark:text-amber-300">Draft the specification with an evaluation-criteria table whose weights sum to 100, then redraft the notice before publication.</p>
+                )}
+              </div>
+              <details className="mt-2.5">
+                <summary className="cursor-pointer font-code text-[8.5px] tracking-[0.12em] text-ink-500">READ THE DRAFT</summary>
+                <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-ink-50/80 p-2.5 text-[11px] leading-relaxed text-ink-700 dark:bg-white/[0.04] dark:text-ink-300">
+                  {currentNotice.md}
+                </pre>
+              </details>
+            </div>
+          ) : (
+            <p className="text-[11.5px] leading-relaxed text-ink-400">
+              No notice is on record for {ref || "this tender"}. The draft is refused at the gate, not here — every mandatory field is checked the moment it is drafted.
+            </p>
+          )}
+        </div>
+      </Card>
+
+      <Card
+        title="Specification / terms of reference"
+        sub="MANDATORY REQUIREMENTS AS SHALL CLAUSES — THE REVIEW DESK PINS THEM VERBATIM"
+        right={currentSpec ? <Chip tone={currentSpec.source === "llm" ? "brand" : "muted"}>{currentSpec.source === "llm" ? currentSpec.model ?? "MODEL" : "TEMPLATE"}</Chip> : undefined}
+      >
+        <div className="grid gap-3">
+          <Field label="BRIEF — THE NEED, THE OUTCOME, THE QUANTITIES" hint="one paragraph is enough to start">
+            <textarea
+              className={cn(inputCls, "h-24 py-2 text-[12px] leading-relaxed")}
+              placeholder="Supply and deliver 48 tracer medicines to 62 facilities in 12 counties, including installation of cold-chain monitoring and a 12-month warranty."
+              value={d.specBrief ?? ""}
+              onChange={(e) => set("specBrief", e.target.value)}
+            />
+          </Field>
+          <div className="flex flex-wrap items-center gap-2">
+            <Btn onClick={() => void draftSpecDoc()} disabled={busy || !ref || !(d.specBrief ?? "").trim()}>
+              <FileText className="h-3.5 w-3.5" aria-hidden="true" /> {currentSpec ? "Draft a fresh version" : "Draft the specification"}
+            </Btn>
+            <span className="font-code text-[8.5px] tracking-[0.12em] text-ink-400">
+              {currentSpec ? `${cycle?.specs.length} VERSION${(cycle?.specs.length ?? 0) === 1 ? "" : "S"} · LATEST ${fmtDate(currentSpec.createdAt)}` : "NO SPECIFICATION ON RECORD"}
+            </span>
+          </div>
+          {currentSpec ? (
+            <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-lg border border-ink-100 bg-paper p-3 text-[11px] leading-relaxed text-ink-700 dark:border-white/[0.08] dark:text-ink-300">
+              {currentSpec.md}
+            </pre>
+          ) : (
+            <p className="text-[11.5px] leading-relaxed text-ink-400">
+              A specification is the document every technical finding is measured against. Draft it before the notice publishes: a requirement the pack never states cannot be enforced against a bid.
+            </p>
+          )}
+        </div>
+      </Card>
+
+      <Card
+        title="Clarifications & addenda"
+        sub="EVERY ANSWER GOES TO EVERY BIDDER — AN ADDENDUM INSIDE 7 DAYS MUST MOVE THE CLOSING"
+        right={cycle?.addenda.some((a) => a.closingExtensionRequired) ? <Chip tone="warn">CLOSING EXTENSION OWED</Chip> : undefined}
+      >
+        <div className="flex flex-wrap items-end gap-1.5">
+          <Field label="BIDDER'S QUESTION">
+            <input className={inputCls} placeholder="What a bidder asked, in their words" value={d.clarQuestion ?? ""} onChange={(e) => set("clarQuestion", e.target.value)} />
+          </Field>
+          <Field label="ASKED BY">
+            <input className={cn(inputCls, "w-40")} placeholder="Bidder name" value={d.clarBy ?? ""} onChange={(e) => set("clarBy", e.target.value)} />
+          </Field>
+          <Btn variant="ghost" onClick={() => void logClarification()} disabled={busy || !ref || !(d.clarQuestion ?? "").trim()}>
+            <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Log
+          </Btn>
+        </div>
+        <ul className="mt-3 space-y-1.5">
+          {cycle?.clarifications.slice(0, 6).map((c) => (
+            <li key={c.id} className="rounded-lg border border-ink-100 bg-paper px-2.5 py-2 text-[12px] dark:border-white/[0.07]">
+              <span className="font-semibold text-ink-800">{c.askedBy}:</span> <span className="text-ink-600">{c.question}</span>
+              {c.answer ? (
+                <span className="mt-1 block text-emerald-800 dark:text-emerald-300">A: {c.answer}</span>
+              ) : (
+                <div className="mt-1 flex gap-1.5">
+                  <input className={inputCls} placeholder="Answer on behalf of the buyer — sent to every bidder" value={d[`ans-${c.id}`] ?? ""} onChange={(e) => set(`ans-${c.id}`, e.target.value)} />
+                  <Btn
+                    variant="ghost"
+                    onClick={() => act(`/api/tenders/${ref}/clarifications/${c.id}/answer`, { answer: d[`ans-${c.id}`] }, "ANSWER RECORDED — EVERY BIDDER IS TREATED THE SAME").then((ok) => ok && refreshCycle())}
+                    disabled={busy || !d[`ans-${c.id}`]}
+                  >
+                    Post
+                  </Btn>
+                </div>
+              )}
+            </li>
+          ))}
+          {!cycle?.clarifications.length ? <li className="py-2 text-[11.5px] text-ink-400">No clarifications logged on this tender yet.</li> : null}
+        </ul>
+        <div className="mt-3 flex flex-wrap items-end gap-1.5 border-t border-ink-100 pt-3 dark:border-white/[0.06]">
+          <Field label="ADDENDUM SUMMARY">
+            <input className={inputCls} placeholder="What changes for every bidder" value={d.addSummary ?? ""} onChange={(e) => set("addSummary", e.target.value)} />
+          </Field>
+          <Field label="EXTEND CLOSING TO" hint="inside 7 days it is required">
+            <input className={cn(inputCls, "w-40")} type="date" value={d.addExt ?? ""} onChange={(e) => set("addExt", e.target.value)} />
+          </Field>
+          <Btn
+            variant="ghost"
+            onClick={() => act(`/api/tenders/${ref}/addenda`, { summary: d.addSummary, extendsClosingTo: d.addExt || undefined }, "ADDENDUM ISSUED").then((ok) => ok && refreshCycle())}
+            disabled={busy || !ref || !(d.addSummary ?? "").trim()}
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Issue
+          </Btn>
+        </div>
+        {cycle?.addenda.length ? (
+          <ul className="mt-2 space-y-1">
+            {cycle.addenda.map((a) => (
+              <li key={a.id} className="text-[11.5px] text-ink-500">
+                Addendum {a.number}: {a.summary} {a.extendsClosingTo ? ` · closing moved to ${fmtDate(a.extendsClosingTo)}` : ""}{" "}
+                {a.closingExtensionRequired ? <Chip tone="warn">CLOSING EXTENSION REQUIRED</Chip> : null}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </Card>
+
       <Card
         title="Plan a tender"
         sub="ONE DETAIL AT A TIME — ONLY A TITLE IS REQUIRED"
@@ -2716,6 +3243,14 @@ export function CycleView({
                 tenders={tenders}
                 busy={busy}
                 onLink={(tenderId) => act(`/api/pipeline/${p.id}/link`, { tenderId }, "PIPELINE ENTRY LINKED")}
+                onValidateRequisition={(budgetReference, note) =>
+                  act(
+                    `/api/pipeline/${p.id}/requisition`,
+                    { budgetValidated: true, budgetReference, note },
+                    "REQUISITION AND BUDGET VALIDATION RECORDED",
+                    true,
+                  )
+                }
               />
             ))}
           </ul>
@@ -2732,7 +3267,9 @@ export function CycleView({
   const laterList = sorted.filter((x) => !x.overdue && (daysUntil(x.dueAt) ?? 99) > 7);
 
   const DeadlinesTab = (
-    <Card
+    <div className="grid gap-4">
+      <StageBrief {...DESK_TOOL_BRIEFS.deadlines} />
+      <Card
       title="Upcoming deadlines"
       sub="CLOSINGS · ALB RESPONSES · STANDSTILLS · MILESTONES · COMPLAINTS — DERIVED, NEVER STORED TWICE"
       right={
@@ -2743,6 +3280,25 @@ export function CycleView({
         ) : null
       }
     >
+      <dl className="mb-4 grid grid-cols-3 gap-px overflow-hidden rounded-[10px] border border-ink-100 bg-ink-100/70 dark:border-white/[0.07] dark:bg-white/[0.07]">
+        {[
+          { label: "OVERDUE", n: overdueList.length },
+          { label: "NEXT 7 DAYS", n: weekList.length },
+          { label: "LATER", n: laterList.length },
+        ].map((bucket) => (
+          <div key={bucket.label} className="bg-[#fffefa] px-3.5 py-3 dark:bg-[#12141a]">
+            <dt className="eyebrow text-[7.5px] tracking-[0.18em]">{bucket.label}</dt>
+            <dd
+              className={cn(
+                "mt-1.5 font-display text-[19px] font-bold leading-none tabular tracking-[-0.02em]",
+                bucket.label === "OVERDUE" && bucket.n > 0 ? "text-brand-600 dark:text-brand-400" : "text-ink-900 dark:text-white",
+              )}
+            >
+              {bucket.n}
+            </dd>
+          </div>
+        ))}
+      </dl>
       {deadlines.length === 0 ? (
         <div className="rounded-xl border border-dashed border-ink-200 px-4 py-8 text-center">
           <CalendarClock className="mx-auto h-5 w-5 text-ink-400" aria-hidden="true" />
@@ -2788,7 +3344,26 @@ export function CycleView({
             ))}
         </div>
       )}
-    </Card>
+      </Card>
+
+      <Card title="What the clock is reading" sub="EACH DEADLINE NAMES THE RECORD IT COMES FROM — NONE IS TYPED IN A SECOND TIME">
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {[
+            { k: "CLOSING", v: "The closing date on the cycle record; the notice's date is used only while that entry is empty." },
+            { k: "ALB RESPONSE", v: "Five working days from the query. An open dossier blocks the bid from being recommended." },
+            { k: "STANDSTILL", v: "Counted in working days from publication — the clock starts when the market can see the notice." },
+            { k: "MILESTONE", v: "The due date the contract was signed against, so slipping shows before a payment is certified." },
+            { k: "COMPLAINT", v: "The window inside which the desk acknowledges and answers; an open complaint holds the contract." },
+            { k: "OVERDUE", v: "Never dismissed by time alone — the item stays here until its record moves through its own gate." },
+          ].map((row) => (
+            <li key={row.k} className="rounded-xl border border-ink-100 bg-paper px-3 py-2.5 dark:border-white/[0.08]">
+              <p className="font-code text-[8px] font-bold tracking-[0.14em] text-ink-400">{row.k}</p>
+              <p className="mt-1 text-[11.5px] leading-relaxed text-ink-700 dark:text-ink-300">{row.v}</p>
+            </li>
+          ))}
+        </ul>
+      </Card>
+    </div>
   );
 
   /* ── Tab: opening (G3/G8) ────────────────────────────────────────────────── */
@@ -2808,7 +3383,19 @@ export function CycleView({
 
   const OpeningTab = (
     <div className="grid gap-4 lg:grid-cols-2">
-      <Card title="Closing date on record" sub="THE OFFICER'S ENTRY WINS; THE NOTICE'S DATE IS THE FALLBACK" workflow busy={busy} actionLabel="Set closing date">
+      <StageBrief span {...STAGE_BRIEFS.opening} />
+      <Card
+        title="Closing date on record"
+        sub="THE OFFICER'S ENTRY WINS; THE NOTICE'S DATE IS THE FALLBACK"
+        workflow
+        busy={busy}
+        actionLabel="Set closing date"
+        teaser={
+          cycle?.closingDate
+            ? `Closing ${fmtDate(cycle.closingDate)} · ${relDays(cycle.closingDate).toUpperCase()} · every bid is judged against this moment, so the officer's entry is the record, not the notice.`
+            : "No closing date on record — the notice's date is only a fallback, and nothing can be opened against a moment the desk does not hold."
+        }
+      >
         <div className="flex items-end gap-2">
           <Field label="CLOSING DATE">
             <input className={inputCls} type="date" value={d.closing ?? ""} onChange={(e) => set("closing", e.target.value)} />
@@ -2822,7 +3409,18 @@ export function CycleView({
         </p>
       </Card>
 
-      <Card title="Record the public bid opening" sub="LATE BIDS ARE REJECTED UNOPENED — THE REGISTER GOES TO THE PROCUREMENT UNIT'S GATE" workflow busy={busy} actionLabel="Record bid opening">
+      <Card
+        title="Record the public bid opening"
+        sub="LATE BIDS ARE REJECTED UNOPENED — THE REGISTER GOES TO THE PROCUREMENT UNIT'S GATE"
+        workflow
+        busy={busy}
+        actionLabel="Record bid opening"
+        teaser={
+          cycle?.opening
+            ? `${count(cycle.opening.rows.length, "bid")} received · ${count(cycle.opening.rows.filter((r) => r.late).length, "late bid")} rejected unopened · ${cycle.opening.certifiedAt ? `register certified ${fmtDateTime(cycle.opening.certifiedAt)}` : "the register is not certified yet"}`
+            : "The register is empty — each bid is entered with its exact time of receipt, and anything after the closing moment is rejected unopened."
+        }
+      >
         {cycle?.opening?.certifiedAt ? (
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
@@ -2952,6 +3550,8 @@ export function CycleView({
       <Card
         title="Applications from the supplier portal"
         sub="FILED ELECTRONICALLY AT /ORG — ATTESTED org:<name> · LATE AND DUPLICATE BIDS ALREADY REFUSED AT FILING"
+        /* The odd last card in a two-column stage — full width keeps the row even. */
+        className="lg:col-span-2"
       >
         {(() => {
           const apps = portalApps.filter((a) => a.tenderId === ref);
@@ -3053,6 +3653,41 @@ export function CycleView({
   const presentMembers = members.filter((m) => m.status === "PRESENT");
   const assignedEvaluators = presentMembers.filter((m) => m.office === "EVALUATION_COMMITTEE");
   const sheetEvaluator = d.sheetEvaluator || assignedEvaluators[0]?.name || "";
+  const publishedEvaluationNotice = [...(cycle?.notices ?? [])].reverse().find((notice) => !!notice.issuedAt);
+  const publishedEvaluationCriteria = publishedEvaluationNotice?.evaluationCriteria ?? [];
+  const splitMatch = publishedEvaluationNotice?.md.match(/^\*\*Technical\/financial split:\*\*\s*(\d+)\/(\d+)\s*$/m);
+  const publishedTechWeight = splitMatch ? Number(splitMatch[1]) : NaN;
+  const publishedFormulaReady = !!publishedEvaluationNotice?.md.match(/^\*\*Financial formula:\*\*\s*\S.+$/m) &&
+    !!publishedEvaluationNotice?.md.match(/^\*\*FX basis:\*\*\s*\S.+$/m) &&
+    !!publishedEvaluationNotice?.md.match(/^\*\*Preference\/reservation scheme:\*\*\s*\S.+$/m) &&
+    !!publishedEvaluationNotice?.md.match(/^\*\*Foreign bidders permitted:\*\*\s*(?:Yes|No)$/m) &&
+    Number.isInteger(publishedTechWeight) && publishedTechWeight >= 0 && publishedTechWeight <= 100 &&
+    publishedTechWeight + Number(splitMatch?.[2]) === 100;
+  const publishedCriteriaWeight = publishedEvaluationCriteria.reduce((sum, criterion) => sum + criterion.weight, 0);
+  const publishedCriteriaReady =
+    publishedFormulaReady &&
+    publishedEvaluationCriteria.length > 0 &&
+    Math.abs(publishedCriteriaWeight - 100) <= 0.0001 &&
+    publishedEvaluationCriteria.every((criterion) => criterion.title.trim() && Number.isFinite(criterion.weight) && criterion.weight > 0);
+  const scoreBasisReady = (() => {
+    const matrix = cycle?.matrix;
+    if (matrix?.scoringBasisBlockReason !== undefined) return matrix.scoringBasisBlockReason === null;
+    const evaluationCurrency = matrix?.evaluationCurrency?.toUpperCase();
+    if (!matrix || !evaluationCurrency || !matrix.med) return false;
+    const foreignCurrencies = [...new Set(matrix.bids
+      .map((bid) => bid.financial?.currency?.toUpperCase())
+      .filter((currency): currency is string => !!currency && currency !== evaluationCurrency))];
+    return foreignCurrencies.every((currency) => (matrix.fxRates ?? []).some(
+      (rate) => rate.base.toUpperCase() === currency && rate.quote.toUpperCase() === evaluationCurrency && rate.rate > 0 && !!rate.source.trim(),
+    ));
+  })();
+  const scoringStarted = !!cycle?.matrix && (
+    !!cycle.matrix.scoringStartedAt ||
+    (cycle.matrix.sheets?.length ?? 0) > 0 ||
+    cycle.matrix.bids.some((bid) => bid.technicalScores.some((score) =>
+      score.score !== 0 && cycle.matrix?.med?.adjustments?.[`${bid.bidder}|${score.criterionId}`] === undefined,
+    ))
+  );
 
   const submitSheet = () => {
     if (!cycle?.matrix) return;
@@ -3116,19 +3751,42 @@ export function CycleView({
     ).then((ok) => ok && refreshCycle());
   };
 
-  const buildMatrix = () =>
-    act(
+  const buildMatrix = () => {
+    if (!publishedCriteriaReady) {
+      onToast("PUBLISH EVALUATION CRITERIA THAT SUM TO EXACTLY 100 BEFORE BUILDING THE MATRIX");
+      return;
+    }
+    void act(
       `/api/tenders/${ref}/matrix`,
       {
-        criteria: [
-          { title: d.c1Title, weight: Number(d.c1W) },
-          { title: d.c2Title, weight: Number(d.c2W) },
-          { title: d.c3Title, weight: Number(d.c3W) },
-        ].filter((c) => c.title && Number.isFinite(c.weight)),
-        technicalWeightPct: Number(d.techW) || undefined,
+        criteria: publishedEvaluationCriteria.map(({ title, weight }) => ({ title, weight })),
+        technicalWeightPct: publishedTechWeight,
       },
       "EVALUATION MATRIX BUILT — SCORES DRAFT",
     ).then((ok) => ok && refreshCycle());
+  };
+
+  const certifyFinancialAdjustments = () => {
+    const matrix = cycle?.matrix;
+    if (!matrix) return;
+    const rows = matrix.bids.map((bid) => {
+      const key = encodeURIComponent(bid.bidder);
+      return {
+        bidder: bid.bidder,
+        arithmeticCorrection: Number(d[`fin-${key}-correction`] || 0),
+        unconditionalDiscount: Number(d[`fin-${key}-discount`] || 0),
+        otherAdjustment: Number(d[`fin-${key}-other`] || 0),
+        preferenceScheme: d[`fin-${key}-preference`] || "",
+        localContentPct: d[`fin-${key}-local-content`] ? Number(d[`fin-${key}-local-content`]) : undefined,
+        ...(d[`fin-${key}-reservation-domiciled`] && d[`fin-${key}-reservation-citizen`] ? {
+          reservationEligible: d[`fin-${key}-reservation-domiciled`] === "yes",
+          reservationCitizenSupplier: d[`fin-${key}-reservation-citizen`] === "yes",
+        } : {}),
+        evidenceRef: d[`fin-${key}-evidence`] || "",
+      };
+    });
+    void act(`/api/tenders/${ref}/matrix/financial-adjustments`, { rows }, "FINANCIAL ADJUSTMENTS STAGED — PROCUREMENT UNIT CERTIFICATION GATE RAISED").then((ok) => ok && refreshCycle());
+  };
 
   const saveScores = (bidder: string) =>
     act(
@@ -3142,13 +3800,22 @@ export function CycleView({
 
   const recordMed = () => {
     const adjustments: Record<string, number> = {};
-    for (const line of (d.medAdj ?? "").split("\n")) {
+    for (const line of (d.medAdj ?? "").split("\n").map((value) => value.trim()).filter(Boolean)) {
       const m = line.match(/^(.+?)\s*\|\s*(C-\d+)\s*=\s*([\d.]+)$/);
-      if (m) adjustments[`${m[1].trim()}|${m[2]}`] = Number(m[3]);
+      if (!m) {
+        onToast("MED LINES READ: BIDDER | C-01 = SCORE — REMOVE OR CORRECT THE INVALID LINE");
+        return;
+      }
+      const score = Number(m[3]);
+      if (!Number.isFinite(score) || score < 0 || score > 100) {
+        onToast("MED SCORE ADJUSTMENTS MUST BE BETWEEN 0 AND 100");
+        return;
+      }
+      adjustments[`${m[1].trim()}|${m[2]}`] = score;
     }
     return act(
       `/api/tenders/${ref}/matrix/med`,
-      { attendees: (d.medAttendees ?? "").split(",").map((s) => s.trim()).filter(Boolean), adjustments, notes: d.medNotes || undefined },
+      { attendees: (d.medAttendees ?? "").split(",").map((s) => s.trim()).filter(Boolean), adjustments, notes: d.medNotes },
       "MED SESSION RECORDED",
     ).then((ok) => ok && refreshCycle());
   };
@@ -3156,16 +3823,130 @@ export function CycleView({
   const certifyMatrix = () =>
     act(`/api/tenders/${ref}/matrix/certify`, {}, "CERTIFICATION GATE RAISED — EVALUATION COMMITTEE SIGNS").then((ok) => ok && refreshCycle());
 
+  const openAlbDossier = () => {
+    const bidder = d.albBidder ?? "";
+    const basis = (d.albBasis ?? "").trim();
+    if (!bidder || basis.length < 12) {
+      onToast("SELECT A BIDDER AND RECORD THE PRICING EVIDENCE FOR THE FIVE-DAY CLARIFICATION");
+      return;
+    }
+    const finding = cycle?.findings?.find((item) =>
+      (item.rule === "R-PRICE-OUTLIER" || item.rule === "R-VALUE-OUTLIER") &&
+      item.item.toLowerCase().includes(bidder.toLowerCase()),
+    );
+    void act(
+      `/api/tenders/${ref}/alb`,
+      { bidder, basis, ...(finding ? { findingId: finding.id } : {}) },
+      "FIVE-WORKING-DAY ALB DOSSIER OPENED — BIDDER JUSTIFICATION REQUESTED",
+    ).then((ok) => ok && refreshCycle());
+  };
+
   /* Same rule the sidecar enforces on signing: every PRESENT member must have a COI record. */
   const outstandingCoi = cycle
     ? presentMembers.filter((m) => !cycle.coi.some((x) => x.member.toLowerCase() === m.name.toLowerCase()))
     : [];
+  const openAlbDossiers = cycle?.alb.filter((dossier) => !dossier.resolution) ?? [];
   const sheets = cycle?.matrix?.sheets ?? [];
   const divergences = cycle?.matrix ? sheetDivergences(cycle.matrix.sheets ?? []) : [];
 
+  /* A minority position is evidence, not an approval: it needs no gate, but
+     the record carries it beside the recommendation it disagrees with. */
+  const dissentCard = (stage: "EVALUATION_CERTIFICATION" | "AWARD_REPORT", title: string, sub: string) => {
+    const rows = (cycle?.dissents ?? []).filter((x) => x.stage === stage);
+    const memberKey = `dis-${stage}-member`;
+    const positionKey = `dis-${stage}-position`;
+    const basisKey = `dis-${stage}-basis`;
+    return (
+      <Card
+        title={title}
+        sub={sub}
+        right={rows.length ? <Chip tone="warn">{rows.length} ON FILE</Chip> : <Chip tone="muted">NONE RECORDED</Chip>}
+      >
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          <Field label="MEMBER HOLDING THE POSITION">
+            <input
+              className={inputCls}
+              list={`dis-members-${stage}`}
+              placeholder="Name — a present committee member"
+              value={d[memberKey] ?? ""}
+              onChange={(e) => set(memberKey, e.target.value)}
+            />
+            <datalist id={`dis-members-${stage}`}>
+              {presentMembers.map((m) => (
+                <option key={m.name} value={m.name} />
+              ))}
+            </datalist>
+          </Field>
+          <Field label="POSITION">
+            <select className={inputCls} value={d[positionKey] ?? "DISSENT"} onChange={(e) => set(positionKey, e.target.value)}>
+              <option value="DISSENT">Dissent — disagrees with the recommendation</option>
+              <option value="ABSTAIN">Abstain — declines to decide</option>
+              <option value="CONCUR_WITH_NOTES">Concurs with notes — agrees, with reservations on the record</option>
+            </select>
+          </Field>
+        </div>
+        <div className="mt-2.5">
+          <Field label="BASIS — THE REASONS, IN WORDS THE AUDITOR CAN TEST">
+            <textarea
+              className={cn(inputCls, "h-20 py-2 text-[12px] leading-relaxed")}
+              placeholder="Which criterion, which evidence, what the committee should have done instead."
+              value={d[basisKey] ?? ""}
+              onChange={(e) => set(basisKey, e.target.value)}
+            />
+          </Field>
+        </div>
+        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+          <Btn
+            variant="ghost"
+            onClick={() =>
+              act(
+                `/api/tenders/${ref}/dissents`,
+                {
+                  member: d[memberKey],
+                  position: d[positionKey] || "DISSENT",
+                  stage,
+                  basis: d[basisKey],
+                },
+                "POSITION RECORDED — THE FILE CARRIES IT BESIDE THE RECOMMENDATION",
+              ).then((ok) => {
+                if (ok) {
+                  set(memberKey, "");
+                  set(basisKey, "");
+                }
+                return ok;
+              })
+            }
+            disabled={busy || !ref || !(d[memberKey] ?? "").trim() || (d[basisKey] ?? "").trim().length < 10}
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Record the position
+          </Btn>
+          <span className="font-code text-[8.5px] tracking-[0.12em] text-ink-400">
+            {(d[basisKey] ?? "").trim().length < 10 ? "A BASIS OF AT LEAST 10 CHARACTERS IS REQUIRED" : "READY"}
+          </span>
+        </div>
+        {rows.length ? (
+          <ul className="mt-3 space-y-1.5 border-t border-ink-100 pt-2.5 dark:border-white/[0.06]">
+            {rows.map((x) => (
+              <li key={x.id} className="rounded-lg border border-ink-100 bg-paper px-2.5 py-2 text-[11.5px] dark:border-white/[0.07]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold text-ink-900">{x.member}</span>
+                  <Chip tone={x.position === "DISSENT" ? "warn" : "muted"}>{x.position.replace(/_/g, " ")}</Chip>
+                  <span className="font-code text-[8px] tracking-[0.1em] text-ink-400">{fmtDateTime(x.recordedAt)}</span>
+                </div>
+                <p className="mt-1 leading-relaxed text-ink-600">{x.basis}</p>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </Card>
+    );
+  };
+
   const EvaluationTab = cycle ? (
     <div className="grid gap-4">
-      <Card title="Conflict-of-interest declarations" sub="EVERY PRESENT MEMBER DECLARES BEFORE THE MATRIX IS CERTIFIED — THE GATE ENFORCES IT" workflow busy={busy} actionLabel="Manage declarations">
+      <StageBrief {...STAGE_BRIEFS.evaluation} />
+
+      <Card title="Conflict-of-interest declarations" sub="EVERY PRESENT MEMBER DECLARES BEFORE THE MATRIX IS CERTIFIED — THE GATE ENFORCES IT" workflow busy={busy} actionLabel="Manage declarations" teaser={`${count(cycle.coi.length, "declaration")} for ${count(presentMembers.length, "present member")} · ${count(cycle.coi.filter((c) => c.recused).length, "recusal")} · ${cycle.coi.length >= presentMembers.length && presentMembers.length > 0 ? "the certification gate has a complete set" : "the gate will refuse a partial set"}`}>
         {presentMembers.length === 0 ? (
           <div className="rounded-xl border border-dashed border-ink-200 px-4 py-6 text-center">
             <p className="text-[12px] font-semibold text-ink-700">No present committee members on record</p>
@@ -3234,6 +4015,11 @@ export function CycleView({
 
       {cycle.matrix ? (
         <Card title={`Evaluation matrix ${cycle.matrix.id}`} sub={`${cycle.matrix.status} · TECHNICAL ${cycle.matrix.technicalWeightPct}/FINANCIAL ${100 - cycle.matrix.technicalWeightPct}${cycle.matrix.certifiedBy ? ` · CERTIFIED BY ${cycle.matrix.certifiedBy.toUpperCase()}` : ""}`} workflow busy={busy} actionLabel="Open evaluation matrix">
+          {!scoreBasisReady && cycle.matrix.status === "DRAFT" ? (
+            <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2 text-[10.5px] leading-relaxed text-amber-900 dark:border-amber-500/20 dark:bg-amber-500/[0.04] dark:text-amber-200">
+              Scoring is locked until the evaluation currency and required FX quotes are recorded and the committee records its pre-score MED basis.
+            </div>
+          ) : null}
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-[12px]">
               <thead>
@@ -3296,7 +4082,7 @@ export function CycleView({
                     <td className="py-2 pr-2">{b.verdict === "RECOMMENDED" ? <Chip tone="ok">RECOMMENDED</Chip> : b.verdict === "DISQUALIFIED" ? <Chip tone="warn">DISQUALIFIED</Chip> : <Chip tone="muted">NOT RECOMMENDED</Chip>}</td>
                     <td className="py-2">
                       {cycle.matrix!.status === "DRAFT" ? (
-                        <Btn variant="ghost" onClick={() => saveScores(b.bidder)} disabled={busy}>
+                  <Btn variant="ghost" onClick={() => saveScores(b.bidder)} disabled={busy || !scoreBasisReady}>
                           Save
                         </Btn>
                       ) : null}
@@ -3309,15 +4095,30 @@ export function CycleView({
           {cycle.matrix.status === "DRAFT" ? (
             <div className="mt-3 grid gap-3 border-t border-ink-100 pt-3 lg:grid-cols-2">
               <div className="space-y-2">
-                <Field label="MED ATTENDEES (COMMA-SEPARATED)">
-                  <input className={inputCls} value={d.medAttendees ?? ""} onChange={(e) => set("medAttendees", e.target.value)} placeholder={members.map((m) => m.name).join(", ")} />
+                <Field label="MARGIN-OF-ERROR SESSION ATTENDEES (COMMA-SEPARATED)">
+                  <input className={inputCls} value={d.medAttendees ?? ""} onChange={(e) => set("medAttendees", e.target.value)} placeholder={members.map((m) => m.name).join(", ")} disabled={scoringStarted} />
                 </Field>
-                <Field label="ADJUSTMENTS — ONE PER LINE: BIDDER | C-01 = 85">
-                  <textarea className={cn(inputCls, "h-16 py-2")} value={d.medAdj ?? ""} onChange={(e) => set("medAdj", e.target.value)} />
+                <Field label="MARGIN-OF-ERROR ADJUSTMENTS — ONE PER LINE: BIDDER | C-01 = 85">
+                  <textarea className={cn(inputCls, "h-16 py-2")} value={d.medAdj ?? ""} onChange={(e) => set("medAdj", e.target.value)} disabled={scoringStarted} />
                 </Field>
-                <Btn variant="ghost" onClick={recordMed} disabled={busy}>
-                  <FileSignature className="h-3.5 w-3.5" aria-hidden="true" /> Record MED session
+                <Field label="MARGIN-OF-ERROR BASIS — ADJUSTMENT OR WHY NONE IS REQUIRED">
+                  <textarea className={cn(inputCls, "h-16 py-2")} value={d.medNotes ?? ""} onChange={(e) => set("medNotes", e.target.value)} placeholder="Record the margin-of-error basis before any scores are entered…" disabled={scoringStarted} />
+                </Field>
+                <Btn variant="ghost" onClick={recordMed} disabled={busy || scoringStarted || (d.medNotes ?? "").trim().length < 12}>
+                  <FileSignature className="h-3.5 w-3.5" aria-hidden="true" /> Record pre-score margin-of-error basis
                 </Btn>
+                {scoringStarted ? <p className="text-[10.5px] leading-snug text-amber-700 dark:text-amber-300">The FX and MED basis was locked when scoring began.</p> : null}
+                {cycle.matrix.med ? (
+                  <div className="rounded-lg border border-ink-100 bg-white/70 px-2.5 py-2 text-[10.5px] leading-relaxed dark:border-white/[0.07] dark:bg-white/[0.025]">
+                    <p className="font-semibold text-ink-800">MED recorded · {fmtDateTime(cycle.matrix.med.recordedAt)}</p>
+                    <p className="mt-1 text-ink-500">{cycle.matrix.med.notes || "No basis note on the legacy record."}</p>
+                    {Object.entries(cycle.matrix.med.adjustments ?? {}).length ? (
+                      <ul className="mt-1 space-y-0.5 font-code text-[8px] text-ink-500">
+                        {Object.entries(cycle.matrix.med.adjustments ?? {}).map(([key, score]) => <li key={key}>{key.replace("|", " · ")} → {score}</li>)}
+                      </ul>
+                    ) : <p className="mt-1 font-code text-[8px] text-ink-400">NO SCORE ADJUSTMENTS RECORDED</p>}
+                  </div>
+                ) : null}
               </div>
               <div className="flex flex-col items-start gap-2">
                 {outstandingCoi.length ? (
@@ -3326,7 +4127,13 @@ export function CycleView({
                     {outstandingCoi.map((m) => m.name).join(", ")}
                   </p>
                 ) : null}
-                <Btn onClick={certifyMatrix} disabled={busy || outstandingCoi.length > 0}>
+                {openAlbDossiers.length ? (
+                  <p className="text-[12px] text-amber-800 dark:text-amber-300">
+                    <span className="font-semibold">Resolve open ALB dossiers before certification:</span>{" "}
+                    {openAlbDossiers.map((dossier) => dossier.bidder).join(", ")}
+                  </p>
+                ) : null}
+                <Btn onClick={certifyMatrix} disabled={busy || outstandingCoi.length > 0 || openAlbDossiers.length > 0}>
                   <Stamp className="h-3.5 w-3.5" aria-hidden="true" /> Certify the matrix (gate)
                 </Btn>
               </div>
@@ -3336,21 +4143,35 @@ export function CycleView({
       ) : (
         <Card title="Build the evaluation matrix" sub="CRITERIA WEIGHTS MUST SUM TO 100 — THE VALIDATOR REFUSES ANYTHING ELSE" workflow busy={busy} actionLabel="Set evaluation criteria">
           <div className="grid gap-3">
-            {[1, 2, 3].map((n) => (
-              <div key={n} className="grid grid-cols-[2fr_1fr] gap-2">
-                <input className={inputCls} placeholder={`Criterion ${n}`} value={d[`c${n}Title`] ?? ""} onChange={(e) => set(`c${n}Title`, e.target.value)} />
-                <input className={inputCls} type="number" min={1} max={100} placeholder="Weight %" value={d[`c${n}W`] ?? ""} onChange={(e) => set(`c${n}W`, e.target.value)} />
+            {publishedCriteriaReady ? (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 dark:border-emerald-500/20 dark:bg-emerald-500/[0.04]">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-code text-[8px] font-bold tracking-[0.14em] text-emerald-800 dark:text-emerald-300">PUBLISHED EVALUATION CRITERIA · TOTAL {publishedCriteriaWeight.toFixed(1)}%</p>
+                  <Chip tone="ok">NOTICE {publishedEvaluationNotice?.id}</Chip>
+                </div>
+                <ul className="mt-2 grid gap-1 sm:grid-cols-2">
+                  {publishedEvaluationCriteria.map((criterion) => (
+                    <li key={criterion.id} className="flex items-center justify-between gap-2 rounded-lg border border-emerald-200/70 bg-white/70 px-2.5 py-2 text-[11.5px] dark:border-white/[0.06] dark:bg-white/[0.025]">
+                      <span className="min-w-0 truncate font-medium text-ink-800">{criterion.title}</span>
+                      <span className="shrink-0 font-code text-[9px] font-bold text-ink-500">{criterion.weight}%</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-[10px] text-ink-500">The matrix will use this issued notice’s criteria exactly.</p>
               </div>
-            ))}
-            <div className="grid grid-cols-[2fr_1fr] gap-2">
+            ) : (
+              <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/60 px-3 py-3 dark:border-amber-500/25 dark:bg-amber-500/[0.04]">
+                <p className="text-[11.5px] font-semibold text-amber-900 dark:text-amber-200">No valid criteria table found in an issued notice.</p>
+                <p className="mt-1 text-[10.5px] leading-relaxed text-amber-800 dark:text-amber-300">In Solicitation, draft a specification with evaluation criteria, draft or redraft the notice, and publish it through the procurement-unit gate. The weights must total exactly 100 before scoring begins.</p>
+              </div>
+            )}
+            <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
               <Field label="TECHNICAL WEIGHT % (REST GOES TO THE FINANCIAL FORMULA)">
-                <input className={inputCls} type="number" min={0} max={100} placeholder="80" value={d.techW ?? ""} onChange={(e) => set("techW", e.target.value)} />
+                <input className={inputCls} type="number" min={0} max={100} value={Number.isFinite(publishedTechWeight) ? publishedTechWeight : ""} disabled />
               </Field>
-              <div className="flex items-end">
-                <Btn onClick={buildMatrix} disabled={busy || !ref}>
-                  <Play className="h-3.5 w-3.5" aria-hidden="true" /> Build
-                </Btn>
-              </div>
+              <Btn onClick={buildMatrix} disabled={busy || !ref || !publishedCriteriaReady}>
+                <Play className="h-3.5 w-3.5" aria-hidden="true" /> Build from notice
+              </Btn>
             </div>
           </div>
         </Card>
@@ -3363,8 +4184,74 @@ export function CycleView({
           workflow
           busy={busy}
           actionLabel="Manage evaluation integrity"
+          teaser={`${count(cycle.matrix.sheets?.length ?? 0, "evaluator sheet")} · ${count(sheetDivergences(cycle.matrix.sheets ?? []).length, "divergent cell")} · ${cycle.matrix.consensus ? "consensus minute recorded" : "consensus minute not recorded"}`}
         >
+          {!cycle.matrix.financialAdjustmentsCertifiedAt ? (
+            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-500/20 dark:bg-amber-500/[0.04]">
+              <p className="font-code text-[8.5px] font-bold tracking-[0.14em] text-amber-900 dark:text-amber-200">FINANCIAL BASIS — RECORD BEFORE ANY EVALUATOR SCORES</p>
+              <p className="mt-1 text-[10.5px] leading-relaxed text-amber-800 dark:text-amber-300">For each bidder, record arithmetic correction, unconditional discount, other documented adjustment, and a source reference. The published preference scheme controls whether any margin is available. A second procurement-unit member certifies this record.</p>
+              <div className="mt-3 space-y-2">
+                {cycle.matrix.bids.map((bid) => {
+                  const key = encodeURIComponent(bid.bidder);
+                  return (
+                    <div key={bid.bidder} className="grid gap-1.5 rounded-lg border border-amber-200/70 bg-white/70 p-2 dark:border-white/[0.06] dark:bg-white/[0.025] sm:grid-cols-2 lg:grid-cols-4">
+                      <p className="truncate self-center text-[11.5px] font-semibold text-ink-800" title={bid.bidder}>{bid.bidder}</p>
+                      <input className={inputCls} type="number" step="0.01" placeholder="Arithmetic correction ±" value={d[`fin-${key}-correction`] ?? "0"} onChange={(e) => set(`fin-${key}-correction`, e.target.value)} />
+                      <input className={inputCls} type="number" min="0" step="0.01" placeholder="Unconditional discount" value={d[`fin-${key}-discount`] ?? "0"} onChange={(e) => set(`fin-${key}-discount`, e.target.value)} />
+                      <input className={inputCls} type="number" step="0.01" placeholder="Other evaluated adjustment ±" value={d[`fin-${key}-other`] ?? "0"} onChange={(e) => set(`fin-${key}-other`, e.target.value)} />
+                      {cycle.matrix?.preferenceScheme === "SI45-2025" ? (
+                        <select className={inputCls} value={d[`fin-${key}-preference`] ?? ""} onChange={(e) => set(`fin-${key}-preference`, e.target.value)}>
+                          <option value="">No preference claimed</option>
+                          <option value="LOCAL_SUPPLIER">Local supplier · 5%</option>
+                          <option value="CITIZEN_SUPPLIER">Citizen supplier · 7%</option>
+                          <option value="CITIZEN_WOMAN_OWNED">Citizen woman owned · 9%</option>
+                          <option value="CITIZEN_YOUTH_OWNED">Citizen youth owned · 9%</option>
+                          <option value="CITIZEN_PWD_OWNED">Citizen PWD owned · 10%</option>
+                          <option value="CITIZEN_SMALL_TURNOVER">Citizen small turnover · 8%</option>
+                          <option value="CITIZEN_LOCAL_JV">Citizen/local JV · 6%</option>
+                          <option value="LOCAL_CONTENT_CITIZEN">Citizen local content · 15%</option>
+                          <option value="LOCAL_CONTENT_CITIZEN_LOCAL_JV">Citizen/local JV content · 12%</option>
+                          <option value="LOCAL_CONTENT_LOCAL">Local producer content · 10%</option>
+                        </select>
+                      ) : null}
+                      {d[`fin-${key}-preference`]?.startsWith("LOCAL_CONTENT_") ? (
+                        <input className={inputCls} type="number" min="35" max="100" placeholder="Verified local content %" value={d[`fin-${key}-local-content`] ?? ""} onChange={(e) => set(`fin-${key}-local-content`, e.target.value)} />
+                      ) : null}
+                      {cycle.matrix?.preferenceScheme === "CDF_RESERVATION" ? (
+                        <>
+                          <select className={inputCls} value={d[`fin-${key}-reservation-citizen`] ?? ""} onChange={(e) => set(`fin-${key}-reservation-citizen`, e.target.value)}>
+                            <option value="">Citizen supplier?</option>
+                            <option value="yes">Yes — citizen supplier</option>
+                            <option value="no">No — not a citizen supplier</option>
+                          </select>
+                          <select className={inputCls} value={d[`fin-${key}-reservation-domiciled`] ?? ""} onChange={(e) => set(`fin-${key}-reservation-domiciled`, e.target.value)}>
+                            <option value="">Domiciled in {cycle.matrix?.cdfReservationConstituency ?? "funded constituency"}?</option>
+                            <option value="yes">Yes — domiciled in funded constituency</option>
+                            <option value="no">No — domiciled elsewhere</option>
+                          </select>
+                          {!cycle.matrix?.cdfReservationExceptionRef && d[`fin-${key}-reservation-domiciled`] === "no" ? (
+                            <p className="text-[10px] leading-relaxed text-amber-800 dark:text-amber-300 sm:col-span-2">The published notice has no locality exception; a citizen bidder domiciled outside the funded constituency will be marked nonresponsive.</p>
+                          ) : null}
+                        </>
+                      ) : null}
+                      <input className={cn(inputCls, "sm:col-span-2 lg:col-span-2")} placeholder="Bid page / correction / ownership / local-content evidence reference" value={d[`fin-${key}-evidence`] ?? ""} onChange={(e) => set(`fin-${key}-evidence`, e.target.value)} />
+                    </div>
+                  );
+                })}
+              </div>
+              <Btn className="mt-3" onClick={certifyFinancialAdjustments} disabled={busy || !ref || cycle.matrix.status !== "DRAFT"}>
+                <Stamp className="h-3.5 w-3.5" aria-hidden="true" /> Certify evaluated-price inputs
+              </Btn>
+            </div>
+          ) : (
+            <p className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-[10.5px] text-emerald-900 dark:border-emerald-500/20 dark:bg-emerald-500/[0.04] dark:text-emerald-200">
+              Financial adjustments certified {fmtDateTime(cycle.matrix.financialAdjustmentsCertifiedAt)} · preference: {cycle.matrix.preferenceScheme ?? "None"} · formula: {cycle.matrix.financialFormula}
+            </p>
+          )}
           <div className="mb-3 flex flex-wrap items-center gap-2">
+            <Chip tone={cycle.matrix.criteriaNoticeId ? "ok" : "warn"}>
+              {cycle.matrix.criteriaNoticeId ? `CRITERIA FROM NOTICE ${cycle.matrix.criteriaNoticeId}` : "LEGACY CRITERIA SOURCE NOT RECORDED"}
+            </Chip>
             <Chip tone={sheets.length >= assignedEvaluators.length && assignedEvaluators.length >= 2 ? "ok" : "warn"}>
               SHEETS {sheets.length}/{assignedEvaluators.length || "—"}
             </Chip>
@@ -3379,6 +4266,18 @@ export function CycleView({
                 SIG {cycle.matrix.consensus.signature.slice(0, 12).toUpperCase()}
               </span>
             ) : null}
+          </div>
+          <div className={cn(
+            "mb-3 rounded-lg border px-3 py-2 text-[10.5px] leading-relaxed",
+            scoreBasisReady
+              ? "border-emerald-200 bg-emerald-50/60 text-emerald-900 dark:border-emerald-500/20 dark:bg-emerald-500/[0.04] dark:text-emerald-200"
+              : "border-amber-200 bg-amber-50/60 text-amber-900 dark:border-amber-500/20 dark:bg-amber-500/[0.04] dark:text-amber-200",
+          )}>
+            {scoreBasisReady
+              ? scoringStarted
+                ? "Pre-score FX and MED basis locked; scores and signed sheets are now being collected."
+                : "FX and MED basis recorded. The committee may now begin scoring."
+              : cycle.matrix.scoringBasisBlockReason ?? "Record the currency basis, sourced FX quotes where needed, and the MED adjustment or reason for none before scoring."}
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
@@ -3449,6 +4348,7 @@ export function CycleView({
                                     type="number"
                                     min={0}
                                     max={100}
+                                    disabled={!scoreBasisReady}
                                     value={d[`sh-${sheetEvaluator}-${bid.bidder}-${criterion.id}`] ?? ""}
                                     onChange={(e) => set(`sh-${sheetEvaluator}-${bid.bidder}-${criterion.id}`, e.target.value)}
                                   />
@@ -3460,7 +4360,7 @@ export function CycleView({
                       </table>
                     </div>
                   ) : null}
-                  <Btn variant="ghost" onClick={submitSheet} disabled={busy || !sheetEvaluator}>
+                  <Btn variant="ghost" onClick={submitSheet} disabled={busy || !sheetEvaluator || !scoreBasisReady}>
                     <FileSignature className="h-3.5 w-3.5" aria-hidden="true" /> Submit sheet for {sheetEvaluator || "—"}
                   </Btn>
                   <p className="text-[10.5px] leading-snug text-ink-400">
@@ -3537,7 +4437,7 @@ export function CycleView({
                 placeholder="ZMW"
                 value={d.evalCurrency ?? cycle.matrix.evaluationCurrency ?? ""}
                 onChange={(e) => set("evalCurrency", e.target.value.toUpperCase())}
-                disabled={cycle.matrix.status === "CERTIFIED"}
+                disabled={cycle.matrix.status === "CERTIFIED" || scoringStarted}
               />
               <textarea
                 className={cn(inputCls, "h-16 py-2")}
@@ -3547,12 +4447,12 @@ export function CycleView({
                   (cycle.matrix.fxRates ?? []).map((rate) => `${rate.base} = ${rate.rate} | ${rate.source} | ${rate.asOf.slice(0, 10)}`).join("\n")
                 }
                 onChange={(e) => set("fxRates", e.target.value)}
-                disabled={cycle.matrix.status === "CERTIFIED"}
+                disabled={cycle.matrix.status === "CERTIFIED" || scoringStarted}
               />
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {cycle.matrix.status === "DRAFT" ? (
-                <Btn variant="ghost" onClick={saveFx} disabled={busy}>
+                <Btn variant="ghost" onClick={saveFx} disabled={busy || scoringStarted}>
                   <Check className="h-3.5 w-3.5" aria-hidden="true" /> Save the FX basis
                 </Btn>
               ) : null}
@@ -3565,25 +4465,124 @@ export function CycleView({
             <p className="text-[10.5px] leading-snug text-ink-400">
               One line per foreign currency: BASE = RATE | SOURCE | YYYY-MM-DD. The financial formula scores the converted amount; the gate refuses a missing, unsourced or stale quote.
             </p>
+            {!scoreBasisReady ? <p className="text-[10.5px] leading-snug text-amber-700 dark:text-amber-300">Record the evaluated-price basis and pre-score MED session before any evaluator enters scores.</p> : null}
           </div>
         </Card>
       ) : null}
 
-      {cycle.alb.length ? (
-        <Card title="Abnormally low bids" sub={`JUSTIFICATION CLOCK — ${5} WORKING DAYS PER DOSSIER`}>
-          <ul className="space-y-2">
+      <Card
+        title="Abnormally low bids"
+        sub="OPEN A CITED FIVE-WORKING-DAY JUSTIFICATION DOSSIER — EACH RESOLUTION NEEDS THE EVALUATION COMMITTEE GATE"
+        right={cycle.alb.some((a) => !a.resolution) ? <Chip tone="warn">{cycle.alb.filter((a) => !a.resolution).length} OPEN</Chip> : <Chip tone={cycle.alb.length ? "ok" : "muted"}>{cycle.alb.length ? "ALL RESOLVED" : "NO DOSSIERS"}</Chip>}
+      >
+        <div className="grid gap-3 rounded-xl border border-ink-100 bg-paper p-3 dark:border-white/[0.07]">
+          <div className="grid gap-2 sm:grid-cols-[minmax(180px,0.8fr)_minmax(260px,1.5fr)_auto] sm:items-end">
+            <Field label="BIDDER — ON THIS MATRIX">
+              <select className={inputCls} value={d.albBidder ?? ""} onChange={(e) => set("albBidder", e.target.value)}>
+                <option value="">Select a bidder</option>
+                {(cycle.matrix?.bids ?? []).map((bid) => <option key={bid.bidder} value={bid.bidder}>{bid.bidder}</option>)}
+              </select>
+            </Field>
+            <Field label="PRICE EVIDENCE — WHY JUSTIFICATION IS REQUIRED">
+              <input className={inputCls} value={d.albBasis ?? ""} onChange={(e) => set("albBasis", e.target.value)} maxLength={800} placeholder="e.g. price is materially below comparable bids for the same scope" />
+            </Field>
+            <Btn onClick={openAlbDossier} disabled={busy || cycle.matrix?.status === "CERTIFIED" || !d.albBidder || (d.albBasis ?? "").trim().length < 12 || cycle.alb.some((a) => a.bidder.toLowerCase() === (d.albBidder ?? "").toLowerCase() && !a.resolution)}>
+              <CircleAlert className="h-3.5 w-3.5" aria-hidden="true" /> Open five-day dossier
+            </Btn>
+          </div>
+          {cycle.matrix?.status === "CERTIFIED" ? <p className="text-[10.5px] text-ink-400">ALB dossiers must be opened and resolved before the evaluation matrix is certified.</p> : null}
+          {d.albBidder ? (() => {
+            const bid = (cycle.matrix?.bids ?? []).find((row) => row.bidder === d.albBidder);
+            const signals = bid?.priceSignals ?? [];
+            return signals.length ? (
+              <div className="rounded-lg border border-ink-100 bg-white px-2.5 py-2 dark:border-white/[0.07] dark:bg-white/[0.025]">
+                <p className="font-code text-[8px] font-bold tracking-[0.12em] text-ink-400">PRICE SCHEDULE SIGNALS · HUMAN REVIEW REQUIRED</p>
+                <ul className="mt-1 space-y-0.5">
+                  {signals.slice(0, 4).map((signal, index) => (
+                    <li key={`${signal.item}-${index}`} className="text-[10.5px] leading-relaxed text-ink-600">
+                      {signal.item} · {signal.currency ?? "currency unstated"}{signal.ratioToPeerMedian !== undefined ? ` · ${signal.ratioToPeerMedian}× peer median` : " · no comparable peer"}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="text-[10.5px] leading-relaxed text-ink-400">No same-item price comparison is available for this bid; cite the file evidence in the reason field above.</p>
+            );
+          })() : null}
+        </div>
+        {cycle.alb.length ? (
+          <ul className="mt-3 space-y-2">
             {cycle.alb.map((a) => (
-              <li key={a.id} className="flex items-center justify-between gap-3 rounded-xl border border-ink-100 bg-paper px-3 py-2.5">
-                <div>
-                  <p className="text-[13px] font-semibold text-ink-900">{a.bidder}</p>
-                  <p className="font-code text-[8.5px] tracking-[0.12em] text-ink-400">RESPONSE DUE {fmtDate(a.responseDueAt)} · {relDays(a.responseDueAt).toUpperCase()}</p>
+              <li key={a.id} className="rounded-xl border border-ink-100 bg-paper px-3 py-2.5 dark:border-white/[0.07]">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-semibold text-ink-900">{a.bidder}</p>
+                    <p className="font-code text-[8.5px] tracking-[0.12em] text-ink-400">OPENED {a.openedAt ? fmtDate(a.openedAt) : "—"} · RESPONSE DUE {fmtDate(a.responseDueAt)} · {relDays(a.responseDueAt).toUpperCase()}</p>
+                  </div>
+                  {a.resolution ? <Chip tone={a.resolution.outcome === "JUSTIFIED" ? "ok" : "warn"}>{a.resolution.outcome}</Chip> : <Chip tone="warn">OPEN</Chip>}
                 </div>
-                {a.resolution ? <Chip tone="ok">{a.resolution.outcome}</Chip> : <Chip tone="warn">OPEN</Chip>}
+                {a.openingBasis ? <p className="mt-1.5 text-[11px] leading-relaxed text-ink-600">Basis: {a.openingBasis}</p> : null}
+                {a.response ? (
+                  <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50/60 p-2.5 text-[11px] dark:border-emerald-500/20 dark:bg-emerald-500/[0.04]">
+                    <p className="font-semibold text-emerald-900 dark:text-emerald-200">Bidder response received {fmtDateTime(a.response.receivedAt)} · {a.response.submittedByOrg}</p>
+                    <p className="mt-1 whitespace-pre-wrap text-ink-700">{a.response.text}</p>
+                    <p className="mt-1 font-code text-[8px] text-ink-500">EVIDENCE {a.response.evidenceRef} · RECEIPT {a.response.receiptHash?.slice(0, 16) ?? "—"}</p>
+                  </div>
+                ) : a.noResponseRecordedAt ? (
+                  <p className="mt-2 text-[11px] text-amber-800 dark:text-amber-300">No bidder response recorded after the deadline on {fmtDateTime(a.noResponseRecordedAt)} by {a.noResponseRecordedBy}.</p>
+                ) : null}
+                {a.resolution ? (
+                  <p className="mt-1.5 text-[11.5px] leading-relaxed text-ink-600">{a.resolution.note}</p>
+                ) : (
+                  <div className="mt-2 flex flex-wrap items-end gap-1.5">
+                    {!a.response && !a.noResponseRecordedAt && new Date(a.responseDueAt).getTime() < Date.now() ? (
+                      <Btn
+                        variant="ghost"
+                        onClick={() => act(`/api/tenders/${ref}/alb/${a.id}/no-response`, {}, "ALB NON-RESPONSE RECORDED").then((ok) => ok && refreshCycle())}
+                        disabled={busy}
+                      >
+                        Record no response after deadline
+                      </Btn>
+                    ) : null}
+                    <Field label="OUTCOME">
+                      <select className={inputCls} value={d[`alb-${a.id}-outcome`] ?? "JUSTIFIED"} onChange={(e) => set(`alb-${a.id}-outcome`, e.target.value)}>
+                        <option value="JUSTIFIED" disabled={!a.response}>Justified — the price is sustainable and explained</option>
+                        <option value="REJECTED">Rejected — the price is not sustainable, the bid falls away</option>
+                        <option value="WITHDRAWN">Withdrawn — the bidder stood down</option>
+                      </select>
+                    </Field>
+                    <Field label="NOTE — THE REASONS ON THE FILE">
+                      <input className={cn(inputCls, "w-64")} placeholder="What the bidder showed, and what the committee accepted" value={d[`alb-${a.id}-note`] ?? ""} onChange={(e) => set(`alb-${a.id}-note`, e.target.value)} />
+                    </Field>
+                    <Btn
+                      variant="ghost"
+                      onClick={() =>
+                        act(
+                          `/api/tenders/${ref}/alb/${a.id}/resolve`,
+                          { outcome: d[`alb-${a.id}-outcome`] || "JUSTIFIED", note: d[`alb-${a.id}-note`] },
+                          "ALB RESOLUTION GATE RAISED — THE COMMITTEE SIGNS",
+                        ).then((ok) => ok && refreshCycle())
+                      }
+                      disabled={busy || !ref || (!a.response && !a.noResponseRecordedAt) || !(d[`alb-${a.id}-note`] ?? "").trim()}
+                    >
+                      Resolve (gate)
+                    </Btn>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
-        </Card>
-      ) : null}
+        ) : <p className="mt-3 text-[11px] leading-relaxed text-ink-400">No justification dossiers are open. Each new dossier records the pricing evidence and starts its five-working-day response clock.</p>}
+        <p className="mt-2 text-[11px] leading-relaxed text-ink-400">
+          A resolution takes effect when the evaluation committee signs it — the dossier stays open until the gate is decided, and an under-valued bid may not be recommended while its dossier is open.
+        </p>
+      </Card>
+
+      {dissentCard(
+        "EVALUATION_CERTIFICATION",
+        "Minority positions — the certification",
+        "A MEMBER WHO WOULD NOT CERTIFY SAYS SO HERE; THE CERTIFIED MATRIX STILL CARRIES THE NOTE",
+      )}
     </div>
   ) : null;
 
@@ -3628,18 +4627,30 @@ export function CycleView({
       },
       "FINDING DISPOSITION RECORDED",
     ).then((ok) => ok && refreshCycle());
-  const publishNotice = () => act(`/api/tenders/${ref}/award-notice/publish`, {}, "NOTICE PUBLICATION GATE RAISED — STANDSTILL FOLLOWS").then((ok) => ok && refreshCycle());
+  const publishNotice = () => act(
+    `/api/tenders/${ref}/award-notice/publish`,
+    { dispatchEvidenceRef: d.awardDispatchRef },
+    "AWARD DISPATCH AND PUBLICATION GATE RAISED",
+  ).then((ok) => ok && refreshCycle());
   const draftDebrief = (bidder: string) => act(`/api/tenders/${ref}/debrief`, { bidder }, "DEBRIEF DRAFTED").then((ok) => ok && refreshCycle());
   const issueDebrief = (id: string) => act(`/api/tenders/${ref}/debrief/${id}/issue`, {}, "ISSUING GATE RAISED").then((ok) => ok && refreshCycle());
 
   const AwardTab = cycle ? (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid gap-4">
+      <StageBrief {...STAGE_BRIEFS.award} />
+
+      <div className="grid gap-4 lg:grid-cols-2">
       <Card
         title="Award blockers"
         sub="A HIGH FINDING AGAINST THE RECOMMENDED BID IS OPEN UNTIL A NAMED DISPOSITION CLOSES IT"
         workflow
         busy={busy}
         actionLabel="Dispose of award findings"
+        teaser={
+          (cycle.blockers ?? []).length > 0
+            ? `${count((cycle.blockers ?? []).length, "open blocker")} — the award report gate will refuse until each one has a named disposition.`
+            : `${(cycle.findings ?? []).filter((f) => f.disposition).length} of ${count((cycle.findings ?? []).length, "finding")} disposed · nothing blocking the recommendation.`
+        }
       >
         {(cycle.blockers ?? []).length > 0 ? (
           <div className="mb-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-[11.5px] text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
@@ -3721,6 +4732,11 @@ export function CycleView({
         workflow
         busy={busy}
         actionLabel="Record the procurement method"
+        teaser={
+          cycle.method?.methodId
+            ? `${cycle.method.name ?? cycle.method.methodId}${cycle.method.approvalRef ? ` · authority ${cycle.method.approvalRef}` : " · no approval reference"}${cycle.method.ok ? " · clears the value band" : ` · ${cycle.method.block ?? "blocked"}`}`
+            : "No method on the file — the award report cannot be signed until the legal route is chosen and justified."
+        }
       >
         {cycle.method?.methodId ? (
           <div className="mb-3 space-y-1.5">
@@ -3802,6 +4818,11 @@ export function CycleView({
         workflow
         busy={busy}
         actionLabel="Record the supplier assurance check"
+        teaser={
+          cycle.assurance?.status === "UNVERIFIED" || !cycle.assurance
+            ? "No assurance check on record — the entity that would sign this contract has not been tested against the registry, tax and sanctions registers."
+            : `${cycle.assurance.status} · registry ${cycle.assurance.verification?.registryStatus ?? "not read"} · tax ${cycle.assurance.verification?.taxStatus ?? "not read"} · checked ${fmtDate(cycle.assurance.verification?.checkedAt)}`
+        }
       >
         {cycle.assurance ? (
           <div className="mb-3 space-y-2">
@@ -3873,7 +4894,7 @@ export function CycleView({
         ) : null}
       </Card>
 
-      <Card title="Award recommendation report" sub="THE STATUTORY REPORT — FINDINGS, MATRIX, RECOMMENDATION, SIGNATURES" workflow busy={busy} actionLabel="Manage award report">
+      <Card title="Award recommendation report" sub="THE STATUTORY REPORT — FINDINGS, MATRIX, RECOMMENDATION, SIGNATURES" workflow busy={busy} actionLabel="Manage award report" teaser={cycle.awardReport?.signedAt ? `Signed ${fmtDate(cycle.awardReport.signedAt)} by ${cycle.awardReport.signedBy ?? "the accounting officer"} · recommendation: ${cycle.awardReport.recommendation ?? "not stated"}` : "Not signed — the report is the document the accounting officer signs, and nothing downstream opens without that signature."}>
         {cycle.awardReport ? (
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
@@ -3897,7 +4918,7 @@ export function CycleView({
         </p>
       </Card>
 
-      <Card title="Debrief letters" sub="QUALITATIVE DEBRIEFS FOR EVERY UNSUCCESSFUL BIDDER — DRAFTED FROM THEIR OWN RECORD" workflow busy={busy} actionLabel="Manage debriefs">
+      <Card title="Debrief letters" sub="QUALITATIVE DEBRIEFS FOR EVERY UNSUCCESSFUL BIDDER — DRAFTED FROM THEIR OWN RECORD" workflow busy={busy} actionLabel="Manage debriefs" teaser={`${count(cycle.debriefs.filter((d) => d.status === "ISSUED").length, "debrief issued")} of ${count(cycle.debriefs.length, "unsuccessful bidder")} · a bidder without a debrief has a finding against the file`}>
         {cycle.debriefs.length === 0 ? (
           <div className="space-y-2">
             <p className="text-[11.5px] text-ink-400">Draft from the matrix's unsuccessful bidders:</p>
@@ -3923,40 +4944,12 @@ export function CycleView({
         )}
       </Card>
 
-      <Card title="Clarifications & addenda" sub="EVERY ANSWER GOES TO EVERY BIDDER — AN ADDENDUM INSIDE 7 DAYS MUST MOVE THE CLOSING" workflow busy={busy} actionLabel="Manage clarifications">
-        <ul className="space-y-1.5">
-          {cycle.clarifications.slice(0, 4).map((c) => (
-            <li key={c.id} className="rounded-lg bg-paper px-2.5 py-2 text-[12px]">
-              <span className="font-semibold text-ink-800">{c.askedBy}:</span> <span className="text-ink-600">{c.question}</span>
-              {c.answer ? <span className="block text-emerald-800 dark:text-emerald-300">A: {c.answer}</span> : (
-                <div className="mt-1 flex gap-1.5">
-                  <input className={inputCls} placeholder="Answer on behalf of the buyer" value={d[`ans-${c.id}`] ?? ""} onChange={(e) => set(`ans-${c.id}`, e.target.value)} />
-                  <Btn variant="ghost" onClick={() => act(`/api/tenders/${ref}/clarifications/${c.id}/answer`, { answer: d[`ans-${c.id}`] }, "ANSWER RECORDED").then((ok) => ok && refreshCycle())} disabled={busy || !d[`ans-${c.id}`]}>
-                    Post
-                  </Btn>
-                </div>
-              )}
-            </li>
-          ))}
-          {cycle.clarifications.length === 0 ? <li className="py-4 text-center text-[12px] text-ink-400">No clarifications logged.</li> : null}
-        </ul>
-        <div className="mt-3 flex gap-1.5">
-          <input className={inputCls} placeholder="Addendum summary" value={d.addSummary ?? ""} onChange={(e) => set("addSummary", e.target.value)} />
-          <input className={cn(inputCls, "w-36")} placeholder="Extend closing to" value={d.addExt ?? ""} onChange={(e) => set("addExt", e.target.value)} />
-          <Btn variant="ghost" onClick={() => act(`/api/tenders/${ref}/addenda`, { summary: d.addSummary, extendsClosingTo: d.addExt || undefined }, "ADDENDUM ISSUED").then((ok) => ok && refreshCycle())} disabled={busy || !d.addSummary}>
-            <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-          </Btn>
-        </div>
-        {cycle.addenda.length ? (
-          <ul className="mt-2 space-y-1">
-            {cycle.addenda.map((a) => (
-              <li key={a.id} className="text-[11.5px] text-ink-500">
-                Addendum {a.number}: {a.summary} {a.closingExtensionRequired ? <Chip tone="warn">CLOSING EXTENSION REQUIRED</Chip> : null}
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </Card>
+      {dissentCard(
+        "AWARD_REPORT",
+        "Minority positions — the award recommendation",
+        "A MEMBER WHO DISAGREES WITH THE RECOMMENDATION SAYS SO HERE, BEFORE THE OFFICER SIGNS",
+      )}
+      </div>
     </div>
   ) : null;
 
@@ -3964,12 +4957,16 @@ export function CycleView({
 
   const StandstillTab = cycle ? (
     <div className="grid gap-4 lg:grid-cols-2">
+      <StageBrief span {...STAGE_BRIEFS.standstill} />
       <Card
         title="Award notice and standstill"
         sub="PUBLICATION OPENS THE STATUTORY REVIEW WINDOW"
         workflow
         busy={busy}
         actionLabel="Manage notice"
+        teaser={
+          `${cycle.awardNotice?.publishedAt ? `Published ${fmtDate(cycle.awardNotice.publishedAt)} on ${cycle.awardNotice.portal}` : "Not yet published — the review clock has not started"} · standstill ${cycle.standstill ? `${cycle.standstill.status.toLowerCase()} · ${count(cycle.standstill.days, "working day", "working days")}` : "not opened"}`
+        }
       >
         {cycle.standstill ? (
           <div className="space-y-3">
@@ -3987,26 +4984,35 @@ export function CycleView({
             {cycle.standstill.status === "ACTIVE" ? (
               <Btn
                 variant="ghost"
-                onClick={() => act(`/api/tenders/${ref}/standstill/lift`, { actor: "officer" }, "STANDSTILL LIFTED").then((ok) => ok && refreshCycle())}
-                disabled={busy}
+                onClick={() => act(`/api/tenders/${ref}/standstill/lift`, {}, "STANDSTILL LAPSE APPROVAL GATE RAISED").then((ok) => ok && refreshCycle())}
+                disabled={busy || new Date(cycle.standstill.endsAt).getTime() > Date.now() || cycle.complaints.some((c) => c.status === "OPEN" || c.status === "ESCALATED")}
               >
-                <Check className="h-3.5 w-3.5" aria-hidden="true" /> Lift the standstill
+                <Check className="h-3.5 w-3.5" aria-hidden="true" /> Mark elapsed (approval gate)
               </Btn>
             ) : (
-              <p className="text-[11.5px] leading-relaxed text-ink-500">The review window is closed. The contract stage can now proceed.</p>
+              <p className="text-[11.5px] leading-relaxed text-ink-500">The review window is recorded as elapsed. Contract signing still checks the statutory end time and open complaints.</p>
             )}
+          </div>
+        ) : cycle.awardNotice?.publishedAt ? (
+          <div className="space-y-3">
+            <Chip tone="ok">AWARD NOTICE PUBLISHED · {cycle.awardNotice.portal}</Chip>
+            <p className="text-[11.5px] leading-relaxed text-ink-500">Dispatch recorded {fmtDateTime(cycle.awardNotice.dispatchedAt)} to {(cycle.awardNotice.dispatchedTo ?? []).length} bidders. Evidence: {cycle.awardNotice.dispatchEvidenceRef ?? "—"}.</p>
+            {cycle.awardNotice.standstillExemptReason ? <p className="text-[11.5px] text-ink-500">No standstill applies: {cycle.awardNotice.standstillExemptReason}</p> : null}
           </div>
         ) : cycle.awardNotice ? (
           <div className="space-y-3">
             <Chip tone="brand">NOTICE DRAFTED · PUBLICATION GATE PENDING</Chip>
-            <p className="text-[11.5px] leading-relaxed text-ink-500">Publication requires the signed award report and opens the standstill clock.</p>
+            <p className="text-[11.5px] leading-relaxed text-ink-500">Award report signed. The notice must be sent to every bidder; the dispatch evidence is staged for the accounting officer gate.</p>
           </div>
         ) : (
           <div className="space-y-3">
             <p className="text-[12px] leading-relaxed text-ink-500">
-              The notice is ready to publish once the award report has been signed by the accounting officer.
+              The notice includes the winning value. Enter the portal or messaging delivery evidence reference for dispatch to every bidder.
             </p>
-            <Btn onClick={publishNotice} disabled={busy || !ref || !cycle.awardReport?.signedAt}>
+            <Field label="BIDDER DISPATCH EVIDENCE REFERENCE" hint="portal receipt, email batch ID or equivalent delivery record">
+              <input className={inputCls} value={d.awardDispatchRef ?? ""} onChange={(e) => set("awardDispatchRef", e.target.value)} placeholder="e.g. ZPPA dispatch receipt" />
+            </Field>
+            <Btn onClick={publishNotice} disabled={busy || !ref || !cycle.awardReport?.signedAt || !(d.awardDispatchRef ?? "").trim()}>
               <Stamp className="h-3.5 w-3.5" aria-hidden="true" /> Publish the notice of award
             </Btn>
             {!cycle.awardReport?.signedAt ? <p className="font-code text-[8px] tracking-[0.14em] text-ink-400">AWAITING SIGNED AWARD REPORT</p> : null}
@@ -4014,7 +5020,15 @@ export function CycleView({
         )}
       </Card>
 
-      <Card title="Review window" sub="THE CLOCK AND COMPLAINTS THAT HOLD THE CONTRACT" workflow busy={busy} actionLabel="Review standstill status">
+      <Card title="Review window" sub="THE CLOCK AND COMPLAINTS THAT HOLD THE CONTRACT" workflow busy={busy} actionLabel="Review standstill status" teaser={
+        cycle.standstill
+          ? `Ends ${fmtDate(cycle.standstill.endsAt)} · ${
+              cycle.complaints.filter((c) => c.status === "OPEN" || c.status === "ESCALATED").length === 0
+                ? "no live complaint — the lift is clean"
+                : `${count(cycle.complaints.filter((c) => c.status === "OPEN" || c.status === "ESCALATED").length, "live complaint")} holding the contract and the payment`
+            }`
+          : "Not started — the window opens when the award notice is published, not when the decision is signed."
+      }>
         {cycle.standstill ? (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2">
@@ -4091,8 +5105,13 @@ export function CycleView({
       (ok) => ok && (setD((p) => ({ ...p, milTitle: "", milDue: "" })), refreshCycle()),
     );
   const addVariation = () =>
-    act(`/api/tenders/${ref}/contract/variations`, { description: d.varDesc, valueDelta: Number(d.varDelta) }, "VARIATION LOGGED").then(
-      (ok) => ok && (setD((p) => ({ ...p, varDesc: "", varDelta: "" })), refreshCycle()),
+    act(`/api/tenders/${ref}/contract/variations`, {
+      description: d.varDesc,
+      valueDelta: Number(d.varDelta),
+      legalAdviceRef: d.varAdvice,
+      approvalReference: d.varApproval,
+    }, "VARIATION APPROVAL GATE RAISED").then(
+      (ok) => ok && (setD((p) => ({ ...p, varDesc: "", varDelta: "", varAdvice: "", varApproval: "" })), refreshCycle()),
     );
   const addPayment = () =>
     act(
@@ -4111,12 +5130,14 @@ export function CycleView({
   const ContractTab = cycle ? (
     cycle.contract ? (
       <div className="grid gap-4 lg:grid-cols-2">
+        <StageBrief span {...STAGE_BRIEFS.contract} />
         <Card
           title={`Contract — ${cycle.contract.supplier}`}
           sub={`${cycle.contract.currency ?? ""} ${fmtMoney(cycle.contract.value)} · ${cycle.contract.completedAt ? "COMPLETED" : cycle.contract.status ?? "LEGACY_UNEXECUTED"}`}
           workflow
           busy={busy}
           actionLabel="Manage contract"
+          teaser={`${cycle.contract.executedAt ? `Executed ${fmtDate(cycle.contract.executedAt)}` : "Not executed"} · security ${cycle.contract.security ? `${fmtMoney(cycle.contract.security.amount)} with ${cycle.contract.security.issuer}` : "not on record"} · retention ${cycle.contract.retentionPct !== undefined ? `${cycle.contract.retentionPct}%` : "not set"} · ${count((cycle.contract.payments ?? []).length, "payment")} certified`}
         >
           {(() => {
             const liveComplaints = cycle.complaints.filter((c) => c.status === "OPEN" || c.status === "ESCALATED");
@@ -4130,7 +5151,21 @@ export function CycleView({
           <ul className="space-y-1.5 text-[12.5px] text-ink-600">
             <li>Status: <span className="font-semibold text-ink-900">{cycle.contract.status ?? "LEGACY_UNEXECUTED — cannot pay"}</span>{cycle.contract.executedAt ? ` · executed ${fmtDate(cycle.contract.executedAt)}` : ""}</li>
             <li>Supplier acceptance: {cycle.contract.supplierAcceptedAt ? `${fmtDate(cycle.contract.supplierAcceptedAt)} · ${cycle.contract.supplierSignatory ?? "—"}` : <span className="font-semibold text-amber-700 dark:text-amber-300">not recorded</span>}</li>
-            <li>Performance security: {cycle.contract.performanceSecurity ? `${fmtMoney(cycle.contract.performanceSecurity.amount)} · valid to ${fmtDate(cycle.contract.performanceSecurity.validUntil)}` : <span className="font-semibold text-amber-700 dark:text-amber-300">none</span>}</li>
+            <li>
+              Performance security:{" "}
+              {cycle.contract.security || (cycle.contract.performanceSecurity?.length ?? 0) > 0 ? (
+                <>
+                  {cycle.contract.security
+                    ? `${fmtMoney(cycle.contract.security.amount)} · declared at execution · valid to ${fmtDate(cycle.contract.security.validUntil)}`
+                    : "none declared at execution"}
+                  {cycle.contract.performanceSecurity?.length
+                    ? ` · ${cycle.contract.performanceSecurity.length} instrument${cycle.contract.performanceSecurity.length === 1 ? "" : "s"} on the register`
+                    : ""}
+                </>
+              ) : (
+                <span className="font-semibold text-amber-700 dark:text-amber-300">none</span>
+              )}
+            </li>
             <li>Insurance: {cycle.contract.insurance ? `${cycle.contract.insurance.policyNo} · valid to ${fmtDate(cycle.contract.insurance.validUntil)}` : <span className="font-semibold text-amber-700 dark:text-amber-300">none</span>}</li>
             <li>Retention: {cycle.contract.retentionPct ?? 0}% · warranty {cycle.contract.warrantyDays ?? 0} days · variation cap 25% cumulative.</li>
             <li>Payments certify at a named gate, inside the contract value and the three-way match.</li>
@@ -4153,7 +5188,7 @@ export function CycleView({
           ) : null}
         </Card>
 
-        <Card title="Milestones" sub={`${cycle.contract.milestones.length} ON THE SCHEDULE`} workflow busy={busy} actionLabel="Manage milestones">
+        <Card title="Milestones" sub={`${cycle.contract.milestones.length} ON THE SCHEDULE`} workflow busy={busy} actionLabel="Manage milestones" teaser={`${count(cycle.contract.milestones.filter((m) => m.status === "DONE").length, "milestone")} complete of ${count(cycle.contract.milestones.length, "milestone")} · payments are certified against a completed milestone, never against a promise`}>
           <ul className="space-y-1.5">
             {cycle.contract.milestones.map((m) => (
               <li key={m.id} className="flex items-center justify-between gap-2 rounded-lg bg-paper px-2.5 py-2 text-[12.5px]">
@@ -4181,7 +5216,7 @@ export function CycleView({
           </div>
         </Card>
 
-        <Card title="Variations" sub={`THE GATE BITES AT ${10}%+ OF CONTRACT VALUE`} workflow busy={busy} actionLabel="Manage variations">
+        <Card title="Variations" sub="PRIOR APPROVAL + ATTORNEY-GENERAL ADVICE · 25% CUMULATIVE INCREASE CAP" workflow busy={busy} actionLabel="Manage variations" teaser={`${count(cycle.contract.variations.length, "variation")} · cumulative approved increase is subject to the statutory 25% cap · every variation goes to the approval gate`}>
           <ul className="space-y-1.5">
             {cycle.contract.variations.map((v) => (
               <li key={v.id} className="flex items-center justify-between gap-2 rounded-lg bg-paper px-2.5 py-2 text-[12.5px]">
@@ -4198,12 +5233,17 @@ export function CycleView({
             ))}
             {cycle.contract.variations.length === 0 ? <li className="py-3 text-center text-[12px] text-ink-400">No variations.</li> : null}
           </ul>
-          <div className="mt-3 grid grid-cols-[2fr_1fr_auto] gap-1.5">
+          <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
             <input className={inputCls} placeholder="Variation description" value={d.varDesc ?? ""} onChange={(e) => set("varDesc", e.target.value)} />
             <input className={inputCls} type="number" placeholder="± value" value={d.varDelta ?? ""} onChange={(e) => set("varDelta", e.target.value)} />
-            <Btn variant="ghost" onClick={addVariation} disabled={busy || !d.varDesc || !d.varDelta}>
+            <input className={inputCls} placeholder="Attorney-General legal advice reference" value={d.varAdvice ?? ""} onChange={(e) => set("varAdvice", e.target.value)} />
+            <input className={inputCls} placeholder="Approving authority reference" value={d.varApproval ?? ""} onChange={(e) => set("varApproval", e.target.value)} />
+            <div className="sm:col-span-2">
+              <Btn variant="ghost" onClick={addVariation} disabled={busy || !d.varDesc || !d.varDelta || !d.varAdvice || !d.varApproval}>
               <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-            </Btn>
+                Request approval
+              </Btn>
+            </div>
           </div>
         </Card>
 
@@ -4213,6 +5253,7 @@ export function CycleView({
           workflow
           busy={busy}
           actionLabel="Manage payments"
+          teaser={`${count((cycle.contract.payments ?? []).length, "payment")} on the register · ${fmtMoney((cycle.contract.payments ?? []).reduce((sum, p) => sum + (p.net ?? p.amount), 0))} ${cycle.contract.currency ?? ""} net of retention · contract ceiling ${fmtMoney(cycle.contract.value)}`}
         >
           <ul className="space-y-1.5">
             {cycle.contract.payments.map((p) => (
@@ -4267,9 +5308,148 @@ export function CycleView({
             </Btn>
           </div>
         </Card>
+        {(() => {
+          const contract = cycle.contract;
+          if (!contract) return null;
+          const register = contract.performanceSecurity ?? [];
+          return (
+            <Card
+              className="lg:col-span-2"
+              title="Performance security"
+              sub="THE INSTRUMENTS HELD AGAINST THE CONTRACT — RECEIPT AND VERIFICATION ARE SEPARATE ACTS"
+              right={
+                register.length
+                  ? <Chip tone="ok">{register.length} ON THE REGISTER</Chip>
+                  : <Chip tone="warn">NONE RECEIVED</Chip>
+              }
+            >
+              <div className="space-y-2">
+                {contract.security ? (
+                  <div className="rounded-xl border border-ink-100 bg-paper px-3 py-2.5 text-[12px] dark:border-white/[0.08]">
+                    <p className="font-code text-[8px] font-bold tracking-[0.14em] text-ink-400">DECLARED AT EXECUTION</p>
+                    <p className="mt-1 text-ink-700">
+                      {fmtMoney(contract.security.amount)} · {contract.security.issuer || "issuer not stated"} · valid to {fmtDate(contract.security.validUntil)}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-[11.5px] leading-relaxed text-ink-400">
+                    No security was declared when the contract was executed. Record what was actually received below — the declared figure and the instruments held are two different facts on this file.
+                  </p>
+                )}
+
+                <ul className="space-y-1.5">
+                  {register.map((s) => (
+                    <li key={s.id} className="rounded-lg border border-ink-100 bg-paper px-2.5 py-2 text-[12px] dark:border-white/[0.07]">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="min-w-0 text-ink-800">
+                          {s.instrument.replace(/_/g, " ")} · {s.currency ?? contract.currency ?? ""} {fmtMoney(s.amount)}
+                          <span className="text-ink-400">
+                            {s.provider ? ` · ${s.provider}` : ""}
+                            {s.reference ? ` · ${s.reference}` : ""}
+                          </span>
+                        </span>
+                        {s.verifiedAt ? (
+                          <Chip tone="ok">VERIFIED{s.verifiedBy ? ` · ${s.verifiedBy}` : ""}</Chip>
+                        ) : (
+                          <div className="flex items-end gap-1.5">
+                            <input
+                              className={cn(inputCls, "h-8 w-36 text-[11.5px]")}
+                              placeholder="Verifying officer"
+                              value={d[`sec-${s.id}-by`] ?? ""}
+                              onChange={(e) => set(`sec-${s.id}-by`, e.target.value)}
+                            />
+                            <Btn
+                              variant="ghost"
+                              className="h-8"
+                              onClick={() =>
+                                act(
+                                  `/api/tenders/${ref}/contract/security/${s.id}/verify`,
+                                  { actor: d[`sec-${s.id}-by`] },
+                                  "SECURITY VERIFIED — THE NAME IS ON THE RECORD",
+                                ).then((ok) => ok && refreshCycle())
+                              }
+                              disabled={busy || !ref || !(d[`sec-${s.id}-by`] ?? "").trim()}
+                            >
+                              Verify
+                            </Btn>
+                          </div>
+                        )}
+                      </div>
+                      <p className="mt-1 font-code text-[8px] tracking-[0.12em] text-ink-400">
+                        RECEIVED {fmtDate(s.receivedAt)}
+                        {s.validUntil ? ` · VALID TO ${fmtDate(s.validUntil)}` : " · NO EXPIRY ON RECORD"}
+                      </p>
+                    </li>
+                  ))}
+                  {register.length ? null : (
+                    <li className="py-2 text-[11.5px] text-ink-400">No instrument has been received against this contract.</li>
+                  )}
+                </ul>
+
+                <div className="grid gap-1.5 border-t border-ink-100 pt-2.5 sm:grid-cols-2 dark:border-white/[0.06]">
+                  <Field label="INSTRUMENT">
+                    <select className={inputCls} value={d.secInstrument ?? "BANK_GUARANTEE"} onChange={(e) => set("secInstrument", e.target.value)}>
+                      <option value="BANK_GUARANTEE">Bank guarantee</option>
+                      <option value="INSURANCE_BOND">Insurance bond</option>
+                      <option value="CASH_DEPOSIT">Cash deposit</option>
+                      <option value="OTHER">Other instrument</option>
+                    </select>
+                  </Field>
+                  <Field label="AMOUNT">
+                    <input className={inputCls} type="number" placeholder="e.g. 4800000" value={d.secRegAmount ?? ""} onChange={(e) => set("secRegAmount", e.target.value)} />
+                  </Field>
+                  <Field label="ISSUER / PROVIDER">
+                    <input className={inputCls} placeholder="Bank or insurer" value={d.secRegProvider ?? ""} onChange={(e) => set("secRegProvider", e.target.value)} />
+                  </Field>
+                  <Field label="REFERENCE">
+                    <input className={inputCls} placeholder="Guarantee or bond number" value={d.secRegRef ?? ""} onChange={(e) => set("secRegRef", e.target.value)} />
+                  </Field>
+                  <Field label="VALID UNTIL">
+                    <input className={inputCls} type="date" value={d.secRegValid ?? ""} onChange={(e) => set("secRegValid", e.target.value)} />
+                  </Field>
+                  <Field label="CURRENCY">
+                    <input className={inputCls} placeholder={contract.currency ?? "ZMW"} value={d.secRegCurrency ?? ""} onChange={(e) => set("secRegCurrency", e.target.value)} />
+                  </Field>
+                </div>
+                <Btn
+                  variant="ghost"
+                  onClick={() =>
+                    act(
+                      `/api/tenders/${ref}/contract/security`,
+                      {
+                        instrument: d.secInstrument || "BANK_GUARANTEE",
+                        amount: Number(d.secRegAmount),
+                        currency: d.secRegCurrency || contract.currency || undefined,
+                        provider: d.secRegProvider || undefined,
+                        reference: d.secRegRef || undefined,
+                        validUntil: d.secRegValid || undefined,
+                      },
+                      "SECURITY RECEIVED — RECORD THE OFFICER WHO VERIFIED IT",
+                    ).then((ok) => ok && refreshCycle())
+                  }
+                  disabled={busy || !ref || !(Number(d.secRegAmount) > 0)}
+                >
+                  <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Record a security received
+                </Btn>
+              </div>
+            </Card>
+          );
+        })()}
       </div>
     ) : (
       <div className="grid gap-4 lg:grid-cols-2">
+        <StageBrief
+          span
+          label="CONTRACT · NOTHING IS OBLIGATED YET"
+          lede="No contract is on the register for this tender. Before one can exist, three things must be true: the award report is signed, the standstill window has lapsed without a live complaint, and the money is committed against an approved budget line."
+          items={[
+            "A signed award report — the contract cannot be prepared from an unsigned recommendation.",
+            "A lapsed standstill: the review window is the bidder's remedy and it runs before signature, not after.",
+            "An approved budget line with enough free balance to carry the whole contract value; the commitment is booked the moment the pack exists.",
+            "A retention percentage decided up front, so every later payment is tested against it rather than negotiated case by case.",
+          ]}
+          gate="Preparing the pack raises the accounting officer's gate. The desk will not create an obligation a named officer has not signed."
+        />
         <Card title="Budget line" sub="AN AWARD COMMITS MONEY AGAINST A LINE — NO COMMITMENT, NO CONTRACT" workflow busy={busy} actionLabel="Manage budget">
           <ul className="space-y-1.5">
             {budgetLines.map((line) => (
@@ -4319,6 +5499,7 @@ export function CycleView({
           {!cycle.awardReport?.signedAt ? <p className="mt-3 text-[11.5px] text-ink-400">The award report must be signed first.</p> : null}
           {!budgetLines.length ? <p className="mt-3 text-[11.5px] text-amber-700 dark:text-amber-300">Create a budget line first — the award must commit money.</p> : null}
         </Card>
+
       </div>
     )
   ) : null;
@@ -4327,12 +5508,18 @@ export function CycleView({
 
   const ClosureTab = cycle ? (
     <div className="grid gap-4 lg:grid-cols-2">
+      <StageBrief span {...STAGE_BRIEFS.closure} />
       <Card
         title="Final acceptance"
         sub="CERTIFICATE · DEFECTS PERIOD · PERFORMANCE RATING"
         workflow
         busy={busy}
         actionLabel="Record final acceptance"
+        teaser={
+          cycle.contract?.completedAt
+            ? `Accepted ${fmtDate(cycle.contract.completedAt)}${cycle.contract.completion ? ` · defects liability to ${fmtDate(cycle.contract.completion.defectsLiabilityEndsAt)} · rated ${cycle.contract.completion.performanceRating}/5` : ""}`
+            : "No acceptance certificate on record — the contract is still open and the supplier's register still shows it as live."
+        }
       >
         {cycle.contract?.completedAt ? (
           <div className="space-y-4">
@@ -4394,7 +5581,7 @@ export function CycleView({
         )}
       </Card>
 
-      <Card title="Closure file" sub="THE LAST RECORD IN THE PROCUREMENT CYCLE" workflow busy={busy} actionLabel="Review closure evidence">
+      <Card title="Closure file" sub="THE LAST RECORD IN THE PROCUREMENT CYCLE" workflow busy={busy} actionLabel="Review closure evidence" teaser={`${cycle.contract?.completedAt ? "Closed" : "Open"} · notice ${cycle.notices.length ? "on file" : "missing"} · register ${cycle.opening?.certifiedAt ? "certified" : "uncertified"} · matrix ${cycle.matrix?.certifiedBy ? "certified" : "uncertified"} · award ${cycle.awardReport?.signedAt ? "signed" : "unsigned"} · contract ${cycle.contract?.status ?? "none"}`}>
         <ul className="space-y-2 text-[12px] text-ink-600">
           <li className="flex items-center justify-between gap-3 rounded-lg bg-paper px-3 py-2.5">
             <span>Signed award report</span>
@@ -4424,7 +5611,17 @@ export function CycleView({
 
   const ComplaintsTab = cycle ? (
     <div className="grid gap-4 lg:grid-cols-2">
-      <Card title="Log a complaint" sub="STANDSTILL-WINDOW COMPLAINTS ARE MARKED AS SUCH" workflow busy={busy} actionLabel="Log a complaint">
+      <StageBrief span {...DESK_TOOL_BRIEFS.complaints} />
+      <Card
+        title="Log a complaint"
+        sub="STANDSTILL-WINDOW COMPLAINTS ARE MARKED AS SUCH"
+        workflow
+        busy={busy}
+        actionLabel="Log a complaint"
+        teaser={`${count(cycle.complaints.length, "complaint")} on this tender · ${
+          cycle.complaints.filter((c) => c.status === "OPEN" || c.status === "ESCALATED").length
+        } still live · the grounds are recorded as filed, and the answer is issued at a gate, never typed as decided`}
+      >
         <div className="grid gap-2">
           <div className="grid gap-2 sm:grid-cols-2">
             <input className={inputCls} placeholder="Complainant" value={d.cmpWho ?? ""} onChange={(e) => set("cmpWho", e.target.value)} />
@@ -4444,7 +5641,38 @@ export function CycleView({
         </div>
       </Card>
 
-      <Card title="Complaints on this tender" sub="RESPONSES ARE DRAFTED, SIGNED AT A GATE, THEN ISSUE" workflow busy={busy} actionLabel="Manage complaint responses">
+      <Card
+        title="Complaints on this tender"
+        sub="RESPONSES ARE DRAFTED, SIGNED AT A GATE, THEN ISSUE"
+        workflow
+        busy={busy}
+        actionLabel="Manage complaint responses"
+        teaser={
+          cycle.complaints.length === 0
+            ? "No complaint on record. A filed complaint keeps its grounds verbatim, holds the contract while open, and closes only by an explicit act."
+            : `${cycle.complaints.filter((c) => c.status === "OPEN").length} open · ${cycle.complaints.filter((c) => c.status === "ESCALATED").length} escalated · ${cycle.complaints.filter((c) => c.duringStandstill).length} filed inside the standstill window`
+        }
+      >
+        <dl className="mb-4 grid grid-cols-4 gap-px overflow-hidden rounded-[10px] border border-ink-100 bg-ink-100/70 dark:border-white/[0.07] dark:bg-white/[0.07]">
+          {[
+            { label: "LIVE", n: cycle.complaints.filter((c) => c.status === "OPEN" || c.status === "ESCALATED").length, alarm: true },
+            { label: "ANSWERED", n: cycle.complaints.filter((c) => c.status === "ANSWERED").length },
+            { label: "IN REVIEW", n: cycle.complaints.filter((c) => c.status === "ESCALATED").length },
+            { label: "CLOSED", n: cycle.complaints.filter((c) => c.status === "CLOSED" || c.status === "WITHDRAWN").length },
+          ].map((bucket) => (
+            <div key={bucket.label} className="bg-[#fffefa] px-3 py-2.5 dark:bg-[#12141a]">
+              <dt className="eyebrow text-[7px] tracking-[0.16em]">{bucket.label}</dt>
+              <dd
+                className={cn(
+                  "mt-1 font-display text-[17px] font-bold leading-none tabular",
+                  bucket.alarm && bucket.n > 0 ? "text-brand-600 dark:text-brand-400" : "text-ink-900 dark:text-white",
+                )}
+              >
+                {bucket.n}
+              </dd>
+            </div>
+          ))}
+        </dl>
         {cycle.complaints.length === 0 ? (
           <div className="rounded-xl border border-dashed border-ink-200 px-4 py-8 text-center">
             <Scale className="mx-auto h-5 w-5 text-ink-400" aria-hidden="true" />
@@ -4586,8 +5814,97 @@ export function CycleView({
   }, [cycles]);
   const stageDistMax = Math.max(...stageDist, 1);
 
+  const defaultReportPeriod = quarterlyPeriods.find((period) => period.status === "READY") ?? quarterlyPeriods[0];
+  const reportPeriodKey = d.qprPeriod ?? (defaultReportPeriod ? `${defaultReportPeriod.year}-Q${defaultReportPeriod.quarter}` : "");
+  const selectedReportPeriod = quarterlyPeriods.find((period) => `${period.year}-Q${period.quarter}` === reportPeriodKey);
+  const QuarterlyReportsTab = (
+    <div className="grid gap-4">
+      <StageBrief {...DESK_TOOL_BRIEFS.reporting} />
+      <Card title="Variation and preference returns" sub="QUARTERLY SNAPSHOT · ACCOUNTING OFFICER APPROVAL REQUIRED">
+        {!quarterlyPeriods.length ? (
+          <div className="rounded-xl border border-dashed border-ink-200 px-4 py-7 text-center text-[12px] text-ink-500 dark:border-white/10">Quarterly reporting periods are loading.</div>
+        ) : (
+          <div className="grid gap-4">
+            <div className="grid gap-3 sm:grid-cols-[minmax(220px,0.6fr)_1fr] sm:items-end">
+              <Field label="REPORTING PERIOD">
+                <select className={inputCls} value={reportPeriodKey} onChange={(event) => set("qprPeriod", event.target.value)}>
+                  {quarterlyPeriods.map((period) => (
+                    <option key={`${period.year}-Q${period.quarter}`} value={`${period.year}-Q${period.quarter}`}>
+                      Q{period.quarter} {period.year} · {period.status.replaceAll("_", " ")}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              {selectedReportPeriod ? (
+                <p className="text-[11px] leading-relaxed text-ink-500">{fmtDate(selectedReportPeriod.startsAt)} – {fmtDate(selectedReportPeriod.endsAt)} · {selectedReportPeriod.entries.length} reportable record{selectedReportPeriod.entries.length === 1 ? "" : "s"}</p>
+              ) : null}
+            </div>
+
+            {selectedReportPeriod?.entries.length ? (
+              <div className="overflow-x-auto rounded-lg border border-ink-100 dark:border-white/[0.07]">
+                <table className="w-full min-w-[650px] text-left text-[11px]">
+                  <thead className="bg-paper font-code text-[8px] uppercase tracking-[0.12em] text-ink-500 dark:bg-white/[0.03]">
+                    <tr><th className="px-3 py-2">Date / tender</th><th className="px-3 py-2">Reportable event</th><th className="px-3 py-2">Supplier / reference</th><th className="px-3 py-2 text-right">Amount</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-ink-100 dark:divide-white/[0.06]">
+                    {selectedReportPeriod.entries.map((entry) => (
+                      <tr key={`${entry.tenderId}-${entry.type}-${entry.reference}`}>
+                        <td className="px-3 py-2.5"><span className="block font-semibold text-ink-800 dark:text-ink-100">{entry.tenderId}</span><span className="text-[9px] text-ink-500">{fmtDate(entry.date)}</span></td>
+                        <td className="px-3 py-2.5 text-ink-700 dark:text-ink-200">{entry.type === "VARIATION" ? "Approved contract variation" : `Preference award · ${entry.scheme ?? "scheme recorded"}`}</td>
+                        <td className="px-3 py-2.5 text-ink-600 dark:text-ink-300">{entry.supplier ?? entry.reference}<span className="block font-code text-[8px] text-ink-400">{entry.reference}</span></td>
+                        <td className="px-3 py-2.5 text-right tabular text-ink-700 dark:text-ink-200">{entry.amount === undefined ? "—" : `${entry.currency ?? ""} ${Number(entry.amount).toLocaleString()}`.trim()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : selectedReportPeriod ? (
+              <p className="rounded-lg border border-ink-100 bg-paper px-3 py-3 text-[11.5px] text-ink-500 dark:border-white/[0.06] dark:bg-white/[0.02]">No approved variations or preference awards fell in this quarter. A nil return can still be submitted for the period.</p>
+            ) : null}
+
+            {selectedReportPeriod?.status === "PENDING_GATE" && selectedReportPeriod.report ? (
+              <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.05] p-3 text-[11.5px] text-amber-900 dark:text-amber-200">
+                Awaiting accounting officer approval · gate {selectedReportPeriod.report.gateId ?? "pending"} · submission reference {selectedReportPeriod.report.submissionReference}.
+              </div>
+            ) : null}
+            {selectedReportPeriod?.status === "SUBMITTED" && selectedReportPeriod.report ? (
+              <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.05] p-3 text-[11.5px] text-emerald-900 dark:text-emerald-200">
+                Submitted {selectedReportPeriod.report.submittedAt ? fmtDate(selectedReportPeriod.report.submittedAt) : "on record"} by {selectedReportPeriod.report.submittedBy ?? "accounting officer"} · reference {selectedReportPeriod.report.submissionReference}.
+              </div>
+            ) : null}
+            {selectedReportPeriod?.status === "READY" ? (
+              <>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="AUTHORITY SUBMISSION REFERENCE" hint="The reference assigned by the reporting authority or portal.">
+                    <input className={inputCls} value={d.qprSubmission ?? ""} onChange={(event) => set("qprSubmission", event.target.value)} maxLength={200} placeholder="e.g. ZPPA quarterly return reference" />
+                  </Field>
+                  <Field label="SUPPORTING EVIDENCE REFERENCE" hint="Portal receipt, report file, or document-register reference.">
+                    <input className={inputCls} value={d.qprEvidence ?? ""} onChange={(event) => set("qprEvidence", event.target.value)} maxLength={240} placeholder="e.g. report upload receipt / document ID" />
+                  </Field>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-code text-[8px] tracking-[0.1em] text-ink-400">SNAPSHOT DIGEST · {selectedReportPeriod.digest.slice(0, 20)}</p>
+                  <Btn onClick={() => act("/api/cycle/quarterly-reports", {
+                    year: selectedReportPeriod.year,
+                    quarter: selectedReportPeriod.quarter,
+                    submissionReference: d.qprSubmission,
+                    evidenceReference: d.qprEvidence,
+                  }, "QUARTERLY RETURN STAGED — ACCOUNTING OFFICER APPROVAL REQUIRED").then((ok) => ok && setD((current) => ({ ...current, qprSubmission: "", qprEvidence: "" })))} disabled={busy || !d.qprSubmission?.trim() || !d.qprEvidence?.trim()}>
+                    <FileText className="h-3.5 w-3.5" aria-hidden="true" /> Prepare return and request approval
+                  </Btn>
+                </div>
+              </>
+            ) : null}
+            {selectedReportPeriod?.status === "OPEN" ? <p className="text-[11px] text-ink-500">The quarter has not closed yet; its return will be available after {fmtDate(selectedReportPeriod.endsAt)}.</p> : null}
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+
   const AnalyticsTab = (
     <div className="grid gap-4">
+      <StageBrief {...DESK_TOOL_BRIEFS.analytics} />
       <Card
         title="Desk analytics"
         sub="READ-SIDE ONLY — COMPUTED FROM THE APPEND-ONLY LOGS, ZERO NEW INSTRUMENTATION"
@@ -4812,6 +6129,10 @@ export function CycleView({
   const previousStage = stageIndex > 0 ? STAGE_TABS[stageIndex - 1] : null;
   const nextStage = stageIndex >= 0 && stageIndex < STAGE_TABS.length - 1 ? STAGE_TABS[stageIndex + 1] : null;
   const emptyGuide = CYCLE_PAGE_EMPTY_GUIDES[tab];
+  /* A desk tool with no cycle record still states what it produces — the
+     stage pages get theirs from STAGE_BRIEFS, these from their own map. */
+  const deskToolBrief =
+    tab === "deadlines" || tab === "complaints" || tab === "analytics" || tab === "reporting" ? DESK_TOOL_BRIEFS[tab] : null;
   return (
     <section id="mc-cycle" aria-labelledby="mc-cycle-h" className="scroll-mt-24">
       <motion.div
@@ -4843,9 +6164,6 @@ export function CycleView({
                 One desk, the whole cycle — every irreversible step stops at a named human gate.
               </p>
             </div>
-            <div className="hidden shrink-0 items-center pt-0.5 sm:flex">
-              <StageLegend />
-            </div>
           </div>
 
           <div className="mt-4 flex flex-col gap-2.5 sm:flex-row sm:items-stretch">
@@ -4862,10 +6180,6 @@ export function CycleView({
             />
           </div>
         </header>
-
-        <div className="border-t border-ink-100/80 dark:border-white/[0.055]">
-          <CycleRail cycle={cycle} />
-        </div>
 
         <VitalStrip cycle={cycle} />
 
@@ -4917,8 +6231,18 @@ export function CycleView({
               {tab === "closure" ? ClosureTab : null}
               {tab === "complaints" ? ComplaintsTab : null}
               {tab === "analytics" ? AnalyticsTab : null}
+              {tab === "reporting" ? QuarterlyReportsTab : null}
               {tab !== "solicitation" && tab !== "deadlines" && !cycle && emptyGuide ? (
-                <section className="panel overflow-hidden rounded-[12px]" aria-labelledby="cycle-empty-guide-title">
+                <>
+                {activeStage ? (
+                  <StageBrief {...STAGE_BRIEFS[activeStage.id]} />
+                ) : deskToolBrief ? (
+                  <StageBrief {...deskToolBrief} />
+                ) : null}
+                <section
+                  className={cn("panel overflow-hidden rounded-[12px]", activeStage && "mt-4")}
+                  aria-labelledby="cycle-empty-guide-title"
+                >
                   <div className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_minmax(250px,0.72fr)] lg:gap-8">
                     <div>
                       <p className="font-code text-[8px] font-bold tracking-[0.16em] text-brand-600 dark:text-brand-300">
@@ -4967,6 +6291,7 @@ export function CycleView({
                     </div>
                   </div>
                 </section>
+                </>
               ) : null}
               {activeStage ? (
                 <nav className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-ink-200/70 pt-4 dark:border-white/[0.08]" aria-label="Stage page navigation">
@@ -5691,14 +7016,19 @@ function PipelineRow({
   p,
   tenders,
   onLink,
+  onValidateRequisition,
   busy,
 }: {
   p: PipelineDto;
   tenders: { ref: string; title: string }[];
   onLink: (tenderId: string) => Promise<boolean>;
+  onValidateRequisition: (budgetReference: string, note: string) => Promise<boolean>;
   busy: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [requisitionOpen, setRequisitionOpen] = useState(false);
+  const [budgetReference, setBudgetReference] = useState(p.requisition?.budgetReference ?? "");
+  const [budgetNote, setBudgetNote] = useState(p.requisition?.note ?? "");
   const dialogId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -5801,6 +7131,68 @@ function PipelineRow({
           </button>
         ) : null}
       </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {p.requisition?.budgetValidated ? (
+          <>
+            <Chip tone="ok">BUDGET VALIDATED</Chip>
+            <span className="font-code text-[8px] tracking-[0.08em] text-ink-400">
+              {p.requisition.budgetReference}
+              {p.requisition.validatedBy ? ` · BY ${p.requisition.validatedBy.toUpperCase()}` : ""}
+            </span>
+          </>
+        ) : (
+          <Chip tone="warn">BUDGET NOT YET VALIDATED</Chip>
+        )}
+        <button
+          type="button"
+          onClick={() => setRequisitionOpen((value) => !value)}
+          aria-expanded={requisitionOpen}
+          disabled={busy}
+          className="inline-flex h-7 items-center gap-1 rounded-lg border border-ink-200/90 bg-[#fffdfb] px-2.5 font-code text-[8px] font-bold tracking-[0.1em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:opacity-50 dark:border-white/[0.12] dark:bg-white/[0.04] dark:text-ink-300 dark:hover:border-white/30 dark:hover:text-white"
+        >
+          {p.requisition?.budgetValidated ? "UPDATE REQUISITION" : "VALIDATE BUDGET"}
+        </button>
+      </div>
+
+      {requisitionOpen ? (
+        <div className="mt-3 grid gap-2 rounded-xl border border-ink-200/80 bg-paper/80 p-3 dark:border-white/[0.1] dark:bg-white/[0.025]">
+          <Field label="Vote-book / budget reference" hint="REQUIRED">
+            <input
+              value={budgetReference}
+              onChange={(event) => setBudgetReference(event.target.value)}
+              maxLength={120}
+              required
+              className={inputCls}
+              placeholder="e.g. FY2026-27 / Vote 05 / Line 1203"
+            />
+          </Field>
+          <Field label="Validation note" hint="OPTIONAL · 300 CHARACTERS MAX">
+            <textarea
+              value={budgetNote}
+              onChange={(event) => setBudgetNote(event.target.value)}
+              maxLength={300}
+              rows={2}
+              className="w-full rounded-xl border border-ink-200/90 bg-[#fffdfb] px-3 py-2 text-[12px] text-ink-900 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-950 dark:border-white/[0.13] dark:bg-[#0b0d12] dark:text-ink-200 dark:placeholder:text-ink-500 dark:focus:border-white/40"
+              placeholder="Add a short note for the requisition record"
+            />
+          </Field>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Btn onClick={() => setRequisitionOpen(false)} variant="ghost" disabled={busy}>Cancel</Btn>
+            <Btn
+              onClick={() => {
+                if (!budgetReference.trim()) return;
+                void onValidateRequisition(budgetReference.trim(), budgetNote.trim()).then((ok) => {
+                  if (ok) setRequisitionOpen(false);
+                });
+              }}
+              disabled={busy || !budgetReference.trim()}
+            >
+              {busy ? "Saving…" : "Record validation"}
+            </Btn>
+          </div>
+        </div>
+      ) : null}
 
       {typeof document !== "undefined"
         ? createPortal(

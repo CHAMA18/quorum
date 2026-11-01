@@ -72,6 +72,7 @@ function cycle(): TenderCycle {
     addenda: [],
     notices: [],
     specs: [],
+    dissents: [],
     matrix: {
       id: "mat_phase0",
       tenderId: TENDER,
@@ -110,6 +111,9 @@ function cycle(): TenderCycle {
       sha: "sha-notice",
       portal: "e-GP production",
       publishedAt: "2026-10-30T11:00:00.000Z",
+      dispatchedAt: "2026-10-30T11:00:00.000Z",
+      dispatchedTo: ["Acme Supplies"],
+      dispatchEvidenceRef: "dispatch-phase0",
       publication: {
         mode: "CONNECTED",
         portal: "e-GP production",
@@ -117,6 +121,13 @@ function cycle(): TenderCycle {
         evidenceHash: "abc123",
         publishedAt: "2026-10-30T11:00:00.000Z",
       },
+    },
+    standstill: {
+      tenderId: TENDER,
+      startsAt: "2026-10-30T11:00:00.000Z",
+      endsAt: "2026-10-30T11:00:00.000Z",
+      days: 5,
+      status: "LAPSED",
     },
     createdAt: "2026-10-30T08:00:00.000Z",
   } as TenderCycle;

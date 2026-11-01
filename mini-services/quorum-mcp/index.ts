@@ -232,7 +232,7 @@ import {
   TOOLS,
   verifySessionActor,
 } from "./engine";
-import { coreVerifySupplier, cycleToolCall, executeCycleGateAction, handleCycleRoutes, nextPipelineRef, preApprovalCheck } from "./cycle-routes";
+import { coreVerifySupplier, cycleToolCall, executeCycleGateAction, executeCycleGateRejection, handleCycleRoutes, nextPipelineRef, preApprovalCheck } from "./cycle-routes";
 import { conflictScreening } from "./evaluation";
 import { sittingQuorumRefusal } from "./sittings";
 import { FEATURE_FLAGS, SIMULATED_PORTAL } from "./store";
@@ -261,25 +261,40 @@ function str(v: unknown, max = 400): string {
 
 /* Log outputs are capped to a JSON string on disk; in-memory rows may still
    be objects. Read both shapes without trusting either. */
-function logOutputObject(value: unknown): { model?: unknown; source?: unknown } {
-  if (value && typeof value === "object") return value as { model?: unknown; source?: unknown };
+function logOutputObject(value: unknown): { model?: unknown; source?: unknown; redactions?: unknown; outcome?: unknown } {
+  if (value && typeof value === "object") return value as { model?: unknown; source?: unknown; redactions?: unknown; outcome?: unknown };
   if (typeof value !== "string") return {};
   try {
     const parsed = JSON.parse(value) as unknown;
-    if (parsed && typeof parsed === "object") return parsed as { model?: unknown; source?: unknown };
+    if (parsed && typeof parsed === "object") return parsed as { model?: unknown; source?: unknown; redactions?: unknown; outcome?: unknown };
   } catch {
     /* Long outputs are capped mid-JSON; attribution is written first so it can
        still be recovered from the surviving prefix. */
   }
   const model = /"model"\s*:\s*"([^"]+)"/.exec(value)?.[1];
   const source = /"source"\s*:\s*"([^"]+)"/.exec(value)?.[1];
-  return model || source ? { model, source } : {};
+  const redactions = Number(/"redactions"\s*:\s*(\d+)/.exec(value)?.[1]);
+  const outcome = /"outcome"\s*:\s*"([^"]+)"/.exec(value)?.[1];
+  return model || source || outcome ? { model, source, outcome, redactions: Number.isFinite(redactions) ? redactions : undefined } : {};
 }
 
 /* The newest actual model answer, read from the append-only log. Health can
    therefore show what answered — not just what the environment claims. */
 function latestModelCall() {
   for (const entry of [...toolLog].reverse()) {
+    if (entry.server === "model-gateway" && entry.tool === "model_call") {
+      const inputs = entry.inputs && typeof entry.inputs === "object" ? entry.inputs as Record<string, unknown> : {};
+      const outputs = logOutputObject(entry.outputs);
+      if (outputs.outcome !== "OK" || typeof inputs.model !== "string" || !inputs.model.trim()) continue;
+      return {
+        tool: typeof inputs.purpose === "string" ? inputs.purpose : "model_call",
+        model: inputs.model.trim(),
+        source: "llm",
+        at: entry.ts,
+        runId: entry.runId ?? null,
+        redactions: typeof outputs.redactions === "number" ? outputs.redactions : 0,
+      };
+    }
     if (entry.tool !== "draft_redline" && entry.tool !== "plan_review") continue;
     const outputs = logOutputObject(entry.outputs);
     if (typeof outputs.model !== "string" || !outputs.model.trim()) continue;
@@ -1386,6 +1401,25 @@ Bun.serve({
                   prompt: String((body.vision as Record<string, unknown>).prompt ?? "").slice(0, 60) || undefined,
                   latencyMs: Number((body.vision as Record<string, unknown>).latencyMs) || 0,
                   note: String((body.vision as Record<string, unknown>).note ?? "").slice(0, 220) || undefined,
+                }
+              : undefined,
+          museVision:
+            body.museVision && typeof body.museVision === "object"
+              ? {
+                  model: String((body.museVision as Record<string, unknown>).model ?? "").slice(0, 60) || undefined,
+                  ok: (body.museVision as Record<string, unknown>).ok === true,
+                  pages: Array.isArray((body.museVision as Record<string, unknown>).pages)
+                    ? ((body.museVision as Record<string, unknown>).pages as unknown[]).filter((page): page is number => Number.isInteger(page) && Number(page) > 0).slice(0, 5)
+                    : [],
+                  usage: (body.museVision as Record<string, unknown>).usage && typeof (body.museVision as Record<string, unknown>).usage === "object"
+                    ? {
+                        promptTokens: Number(((body.museVision as Record<string, unknown>).usage as Record<string, unknown>).promptTokens) || 0,
+                        completionTokens: Number(((body.museVision as Record<string, unknown>).usage as Record<string, unknown>).completionTokens) || 0,
+                      }
+                    : undefined,
+                  latencyMs: Number((body.museVision as Record<string, unknown>).latencyMs) || 0,
+                  note: String((body.museVision as Record<string, unknown>).note ?? "").slice(0, 300) || undefined,
+                  error: String((body.museVision as Record<string, unknown>).error ?? "").slice(0, 240) || undefined,
                 }
               : undefined,
         },
@@ -2622,7 +2656,9 @@ Bun.serve({
     /* ── The tender cycle — solicitation to closure (waves 1-3) ───────── */
     if (path.startsWith("/api/cycle") || path.startsWith("/api/budget-lines") || path.startsWith("/api/procurement-file") || path.startsWith("/api/pipeline") || /^\/api\/tenders\/[A-Za-z0-9._-]+\/(closing|opening|coi|matrix|alb|award-report|award-notice|standstill|debrief|contract|findings|complaints|clarifications|addenda|notices|specs|dissents)/.test(path) || /^\/api\/tenders\/[A-Za-z0-9._-]+$/.test(path)) {
       const cycleBody = req.method === "POST" ? await readBody(req) : {};
-      return withWorkspace(workspaceId, () => handleCycleRoutes(path, req.method, cycleBody, attestedActor, workspaceId)).then((response) => response ?? json({ error: "not found" }, 404));
+      const committee = await fetchQuorum();
+      const roster = committee?.members ?? null;
+      return withWorkspace(workspaceId, () => handleCycleRoutes(path, req.method, cycleBody, attestedActor, workspaceId, attestedActorId, roster)).then((response) => response ?? json({ error: "not found" }, 404));
     }
 
     return json({ error: "not found" }, 404);

@@ -126,6 +126,7 @@ function cycle(overrides: Partial<TenderCycle> = {}): TenderCycle {
     addenda: [],
     notices: [],
     specs: [],
+    dissents: [],
     matrix: MATRIX,
     awardReport: {
       tenderId: TENDER,
@@ -142,6 +143,9 @@ function cycle(overrides: Partial<TenderCycle> = {}): TenderCycle {
       sha: "sha-notice",
       portal: "e-GP production",
       publishedAt: NOW,
+      dispatchedAt: NOW,
+      dispatchedTo: MATRIX.bids.map((bid) => bid.bidder),
+      dispatchEvidenceRef: "dispatch-ws5",
       publication: {
         mode: "CONNECTED",
         portal: "e-GP production",
@@ -168,7 +172,8 @@ function contract(overrides: Partial<ContractFile> = {}): ContractFile {
     executedAt: NOW,
     supplierAcceptedAt: NOW,
     supplierSignatory: "A. Director",
-    performanceSecurity: { amount: 100_000, issuer: "Bank", validUntil: "2027-10-30" },
+    security: { amount: 100_000, issuer: "Bank", validUntil: "2027-10-30" },
+    performanceSecurity: [],
     insurance: { policyNo: "POL-1", issuer: "Insurer", validUntil: "2027-10-30" },
     retentionPct: 10,
     milestones: [{ id: "mil_1", title: "Delivery", status: "DONE", doneAt: NOW }],
@@ -240,7 +245,7 @@ describe("contract execution", () => {
   test("expired security or insurance fails closed", () => {
     const expired = contract({
       status: "DRAFT",
-      performanceSecurity: { amount: 100_000, issuer: "Bank", validUntil: "2025-01-01" },
+      security: { amount: 100_000, issuer: "Bank", validUntil: "2025-01-01" },
     });
     expect(executionBlockReason(expired)).toContain("performance security has expired");
     const noInsurance = contract({ status: "DRAFT", insurance: undefined });
@@ -400,7 +405,7 @@ describe("contract and payment gates", () => {
   test("instruments entered at the execution gate satisfy the check and land on the contract", async () => {
     state.cycle[0].contract = contract({
       status: "DRAFT",
-      performanceSecurity: undefined,
+      security: undefined,
       insurance: undefined,
       retentionPct: undefined,
     });
@@ -411,7 +416,7 @@ describe("contract and payment gates", () => {
     });
     expect(preApprovalCheck(execGate, "Accounting Officer", [], "Accounting Officer")).toBeNull();
     await executeCycleGateAction(execGate);
-    expect(state.cycle[0].contract?.performanceSecurity?.amount).toBe(100_000);
+    expect(state.cycle[0].contract?.security?.amount).toBe(100_000);
     expect(state.cycle[0].contract?.retentionPct).toBe(5);
   });
 

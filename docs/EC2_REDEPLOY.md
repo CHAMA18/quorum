@@ -1,7 +1,8 @@
 # EC2 redeploy — expose the Muse routes on the live origin
 
-The live URL is served by the `quorum-edge` Worker in front of the EC2 origin.
-The Worker is current, but the Next build on EC2 predates the desk assistant:
+The public landing is served at `quorum-solutions.com`; the full workspace runs
+on the EC2 origin. The `quorum-edge` Worker can front that origin when deployed.
+The Next build on EC2 predates the desk assistant:
 `/api/muse/chat`, `/api/muse/speak` and `/api/muse/transcribe` return
 `404 {"error":"not found"}` through the edge, while `/api/muse/speak` returns
 audio on a local dev server.
@@ -72,13 +73,13 @@ non-zero. `KEEP_PREV=0` discards the previous build; the default keeps it.
 
 ## 3. Verify from outside
 
-Through the Worker, a **422** (or 400/503) means the route exists; **404**
+Through CloudFront, a **422** (or 400/503) means the route exists; **404**
 means the old build is still serving.
 
 ```bash
 curl -s -o /dev/null -w '%{http_code}\n' -X POST \
   -H 'content-type: application/json' --data '{}' \
-  https://quorum-edge.chungu424.workers.dev/api/muse/speak
+  https://d1n7mv5t5hn4xe.cloudfront.net/api/muse/speak
 ```
 
 Expect `422` for `speak`, `422` for `chat`, `400` for `transcribe`, and `200`

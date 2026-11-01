@@ -7,6 +7,7 @@ import {
 } from "@/lib/db";
 import { clientKey, hashPassword, publicUser, rateLimit } from "@/lib/auth";
 import { isAssignableRole } from "@/lib/permissions";
+import { validateRegistrationInvite } from "@/lib/role-assignment";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -57,25 +58,32 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  /* Resolve the invite BEFORE the account exists: its role is part of the
-     account's creation, not a label appended afterwards. An unknown,
-     expired or already-claimed code is simply ignored. */
+  /* Resolve any supplied invite before hashing the password. An invalid code
+     must never fall through to self-service workspace creation as an OWNER. */
   const invite = inviteCode ? findInviteByCode(inviteCode) : null;
-  const usableInvite =
-    invite &&
-    invite.status === "PENDING" &&
-    Date.now() - invite.createdAt.getTime() <= 14 * 86_400_000
-      ? invite
-      : null;
-
-  if (usableInvite?.email && usableInvite.email.toLowerCase() !== email) {
-    return NextResponse.json(
-      { error: "This invitation was issued to a different email address. Register using the address that received it." },
-      { status: 403 },
-    );
+  const inviteCheck = validateRegistrationInvite(inviteCode, invite, email);
+  if (!inviteCheck.ok) return NextResponse.json({ error: inviteCheck.error }, { status: inviteCheck.status });
+  let usableInvite = inviteCode ? invite : null;
+  if (usableInvite && !isAssignableRole(usableInvite.role)) {
+    return NextResponse.json({ error: "This invitation does not contain a valid workspace role." }, { status: 409 });
   }
 
   const passwordHash = await hashPassword(password);
+
+  /* Password hashing yields to the event loop. Recheck the single-use code
+     immediately before the synchronous user + invite write so concurrent
+     claims cannot attach two accounts to one invitation. */
+  if (inviteCode) {
+    const latestInvite = findInviteByCode(inviteCode, usableInvite?.workspaceId);
+    if (!latestInvite) return NextResponse.json({ error: "This invitation code is not valid." }, { status: 404 });
+    const latestCheck = validateRegistrationInvite(inviteCode, latestInvite, email);
+    if (!latestCheck.ok) return NextResponse.json({ error: latestCheck.error }, { status: latestCheck.status });
+    if (!isAssignableRole(latestInvite.role)) {
+      return NextResponse.json({ error: "This invitation does not contain a valid workspace role." }, { status: 409 });
+    }
+    usableInvite = latestInvite;
+  }
+
   const user = createUser({
     name,
     email,

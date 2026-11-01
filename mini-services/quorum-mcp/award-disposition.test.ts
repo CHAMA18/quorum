@@ -102,6 +102,7 @@ function cycle(overrides: Partial<TenderCycle> = {}): TenderCycle {
     addenda: [],
     notices: [],
     specs: [],
+    dissents: [],
     matrix: MATRIX,
     awardReport: {
       tenderId: TENDER,
@@ -118,6 +119,9 @@ function cycle(overrides: Partial<TenderCycle> = {}): TenderCycle {
       sha: "sha-notice",
       portal: "e-GP production",
       publishedAt: NOW,
+      dispatchedAt: NOW,
+      dispatchedTo: MATRIX.bids.map((bid) => bid.bidder),
+      dispatchEvidenceRef: "dispatch-ws4",
       publication: {
         mode: "CONNECTED",
         portal: "e-GP production",
@@ -406,7 +410,7 @@ describe("complaint suspension", () => {
       "Accounting Officer",
     );
     expect(reason).toContain("cmp_ws4");
-    expect(reason).toContain("suspends the contract and payment path");
+    expect(reason).toContain("standstill time has elapsed");
   });
 
   test("an answered complaint lifts the suspension", () => {
@@ -434,7 +438,8 @@ describe("complaint suspension", () => {
       executedAt: NOW,
       supplierAcceptedAt: NOW,
       supplierSignatory: "A. Director",
-      performanceSecurity: { amount: 100_000, issuer: "Bank", validUntil: "2027-10-30" },
+      security: { amount: 100_000, issuer: "Bank", validUntil: "2027-10-30" },
+      performanceSecurity: [],
       insurance: { policyNo: "POL-1", issuer: "Insurer", validUntil: "2027-10-30" },
       packMd: "# pack",
       milestones: [],

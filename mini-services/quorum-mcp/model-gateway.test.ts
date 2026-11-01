@@ -122,16 +122,26 @@ describe("the gateway call path", () => {
   test("a hosted call redacts supplier names and prices in the outgoing messages", async () => {
     state.suppliers.push({ id: "s1", name: "Acme Supplies", status: "ACTIVE" } as never);
     const bodies: string[] = [];
+    const urls: string[] = [];
     const completion = await callModel(
       { baseUrl: HOSTED, model: "llama-4", provider: "meta-model-api", apiKey: "k" },
       [{ role: "user", content: "Acme Supplies bid ZMW 1,250,000 against the ceiling." }],
-      async (_url, init) => {
+      /* meta-model-api is spoken to over the Responses API: the completion
+         arrives as output_text and the counts as input/output_tokens. */
+      async (url, init) => {
+        urls.push(String(url));
         bodies.push(String(init?.body ?? ""));
-        return httpOk({ model: "llama-4", choices: [{ message: { content: "{}" } }], usage: { prompt_tokens: 12, completion_tokens: 4 } });
+        return httpOk({
+          model: "llama-4",
+          output_text: "{}",
+          usage: { input_tokens: 12, output_tokens: 4 },
+        });
       },
       { purpose: "plan_review", runId: "run_2", policy: HOSTED_POLICY },
     );
+    expect(urls[0]).toBe(`${HOSTED}/responses`);
     expect(completion.content).toBe("{}");
+    expect(completion.api).toBe("responses");
     const body = bodies[0];
     expect(body).not.toContain("Acme Supplies");
     expect(body).not.toContain("1,250,000");
@@ -175,7 +185,11 @@ describe("the gateway call path", () => {
 });
 
 function provenanceSince(n: number): LogEntry & { inputs: { [k: string]: unknown }; outputs: { [k: string]: unknown } } {
-  for (let i = toolLog.length - 1; i >= n; i -= 1) {
+  /* The audit spine is a 600-entry ring: when it is full, `length` stays at
+     the cap and the new line lands at the last index. Clamp the floor so the
+     helper reads the newest line instead of walking past the end. */
+  const start = Math.min(n, toolLog.length - 1);
+  for (let i = toolLog.length - 1; i >= start; i -= 1) {
     if (toolLog[i].tool === "model_call") {
       /* The store caps inputs/outputs as JSON strings — unpack them the same
          way the file-backed readers do. */

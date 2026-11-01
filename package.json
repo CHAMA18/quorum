@@ -12,6 +12,8 @@
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint .",
     "test": "bun test mini-services/quorum-mcp/ src/lib/gate-receipts.test.ts src/lib/quorum-knowledge.test.ts src/lib/quorum-nav.test.ts src/lib/tender-extract.test.ts src/lib/sam.test.ts src/lib/tender-access.test.ts src/lib/audit-export.test.ts src/lib/tender-local-store.test.ts src/lib/supplier-pulse.test.ts src/app/api/public/summary/route.test.ts workers/quorum-edge/http-range.test.ts workers/quorum-edge/worker.test.ts",
+    "eval:model": "bun mini-services/quorum-mcp/model-eval.ts",
+    "eval:model:challenge": "bun mini-services/quorum-mcp/model-eval.ts --challenge",
     "test:edge": "bash -c 'set -a; [ -f .env.local ] && . ./.env.local; set +a; bun test workers/quorum-edge/ \"src/app/api/tenders/[ref]/docs/route.test.ts\"'",
     "desktop:icons": "node scripts/desktop-icons.mjs",
     "desktop:build": "npm run desktop:icons && electron-builder --publish never"

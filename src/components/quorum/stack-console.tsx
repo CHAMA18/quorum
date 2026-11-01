@@ -130,6 +130,7 @@ interface Run {
   startedAt?: string;
   progress?: string[];
   requirements?: { id: string; clause: string; page: number }[];
+  modelEvidence?: { category: string; observation: string; quote: string; citation: string; comparisonQuote?: string; comparisonCitation?: string; reviewQuestion: string; confidence: string }[];
   findings?: Finding[];
   drafts?: Draft[];
   gateId?: string;
@@ -826,13 +827,17 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                     );
                   })}
                 </ol>
-                <div className="mt-4 grid grid-cols-3 gap-2 border-t border-white/[0.08] pt-3">
+                <div className="mt-4 grid grid-cols-4 gap-2 border-t border-white/[0.08] pt-3">
                   {[["REQUIREMENTS", lastRun.requirements?.length ?? 0], ["FINDINGS", lastRun.findings?.length ?? 0], ["DRAFTS", lastRun.drafts?.length ?? 0]].map(([label, value]) => (
                     <div key={label}>
                       <p className="font-code text-[7px] tracking-[0.12em] text-ink-500">{label}</p>
                       <p className="mt-1 font-code text-[13px] text-white">{value}</p>
                     </div>
                   ))}
+                  <div>
+                    <p className="font-code text-[7px] tracking-[0.12em] text-ink-500">MODEL MAP</p>
+                    <p className="mt-1 font-code text-[13px] text-white">{lastRun.modelEvidence?.length ?? 0}</p>
+                  </div>
                 </div>
               </>
             ) : (
@@ -960,6 +965,15 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                     {((lastRun.model.promptTokens ?? 0) + (lastRun.model.completionTokens ?? 0)).toLocaleString()} TOKENS
                   </p>
                 )}
+                {(lastRun.modelEvidence ?? []).slice(0, 4).map((item, index) => (
+                  <div key={`${lastRun.id}-evidence-${index}`} className="mt-3 rounded-lg border border-ink-100 bg-paper px-3 py-2.5">
+                    <p className="font-code text-[8px] font-semibold uppercase tracking-[0.12em] text-brand-700">{item.category.replaceAll("_", " ")} · {item.confidence}</p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-ink-800">{item.observation}</p>
+                    <p className="mt-1 border-l-2 border-brand-300 pl-2 text-[10px] italic leading-relaxed text-ink-600">“{item.quote}”</p>
+                    {item.comparisonQuote && <p className="mt-1 border-l-2 border-sky-300 pl-2 text-[10px] italic leading-relaxed text-ink-600">“{item.comparisonQuote}”</p>}
+                    <p className="mt-1 truncate font-code text-[8px] text-ink-500">{item.citation}{item.comparisonCitation ? ` ↔ ${item.comparisonCitation}` : ""} · {item.reviewQuestion}</p>
+                  </div>
+                ))}
               </div>
             ) : (
               <p className="mt-3 text-[12.5px] text-ink-500">No run yet — fire the graph to watch it live.</p>

@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
 
     const out = await addCommitteeMember(
-      { name: body.name, role: body.role, isChair: body.isChair, office: body.office },
+      { name: body.name, userId: body.userId, email: body.email, role: body.role, isChair: body.isChair, office: body.office },
       user,
     );
     if (!out.ok) return NextResponse.json({ error: out.error }, { status: out.code });

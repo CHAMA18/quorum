@@ -24,11 +24,12 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   if (!can(user.role, "view_oversight")) return NextResponse.json({ error: "Oversight access required." }, { status: 403 });
 
-  const users = listUsers();
-  const invites = listInvites(200);
+  const users = listUsers(user.workspaceId);
+  const invites = listInvites(200, user.workspaceId);
+  const workspaceUserIds = new Set(users.map((account) => account.id));
   const orgs = listOrganizations();
-  const events = listOversightEvents(200);
-  const stepUps = listStepUpLogs(500);
+  const events = listOversightEvents(200).filter((event) => workspaceUserIds.has(event.actorId));
+  const stepUps = listStepUpLogs(500).filter((entry) => workspaceUserIds.has(entry.userId));
 
   const byRole: Record<string, number> = {};
   for (const u of users) byRole[u.role] = (byRole[u.role] ?? 0) + 1;
@@ -61,7 +62,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Recording an access review requires people management." }, { status: 403 });
   }
 
-  const users = listUsers();
+  const users = listUsers(user.workspaceId);
   const privileged = users.filter((u) => u.role === "OWNER" || u.role === "ADMIN");
   const withoutMfa = privileged.filter((u) => !u.totpEnabled).length;
   const orgs = listOrganizations();

@@ -27,9 +27,13 @@ type Criterion = {
   detail: string;
 };
 
-async function sidecarJson(path: string): Promise<Record<string, unknown> | null> {
+async function sidecarJson(path: string, workspaceId: string): Promise<Record<string, unknown> | null> {
   try {
-    const res = await fetch(`${SIDECAR}${path}`, { cache: "no-store", signal: AbortSignal.timeout(4000) });
+    const res = await fetch(`${SIDECAR}${path}`, {
+      headers: { "x-quorum-workspace": workspaceId },
+      cache: "no-store",
+      signal: AbortSignal.timeout(4000),
+    });
     if (!res.ok) return null;
     return (await res.json()) as Record<string, unknown>;
   } catch {
@@ -40,24 +44,25 @@ async function sidecarJson(path: string): Promise<Record<string, unknown> | null
 export async function GET(req: NextRequest) {
   const user = await getUserFromToken(req.cookies.get(SESSION_COOKIE)?.value).catch(() => null);
   if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+  if (!can(user.role, "view_oversight")) return NextResponse.json({ error: "Oversight access required." }, { status: 403 });
 
   /* Committee state lives in the WEB app's own store (roster, quorum) — read
      it from this same server, not from the sidecar. */
   const [governance, logVerify, docs, exceptions, links, runsData, gatesData, evalSummary, committee] = await Promise.all([
-    sidecarJson("/api/governance"),
-    sidecarJson("/api/log/verify"),
-    sidecarJson("/api/documents?unreviewed=1"),
-    sidecarJson("/api/exceptions"),
-    sidecarJson("/api/portal-links"),
-    sidecarJson("/api/runs"),
-    sidecarJson("/api/gates"),
-    sidecarJson("/api/eval/summary"),
-    fetch(new URL("/api/committee", req.url), { cache: "no-store", signal: AbortSignal.timeout(4000) })
+    sidecarJson("/api/governance", user.workspaceId),
+    sidecarJson("/api/log/verify", user.workspaceId),
+    sidecarJson("/api/documents?unreviewed=1", user.workspaceId),
+    sidecarJson("/api/exceptions", user.workspaceId),
+    sidecarJson("/api/portal-links", user.workspaceId),
+    sidecarJson("/api/runs", user.workspaceId),
+    sidecarJson("/api/gates", user.workspaceId),
+    sidecarJson("/api/eval/summary", user.workspaceId),
+    fetch(new URL("/api/committee", req.url), { headers: { cookie: req.headers.get("cookie") ?? "" }, cache: "no-store", signal: AbortSignal.timeout(4000) })
       .then((r) => (r.ok ? (r.json() as Promise<Record<string, unknown>>) : null))
       .catch(() => null),
   ]);
 
-  const users = listUsers();
+  const users = listUsers(user.workspaceId);
   const roles = new Set(users.map((u) => u.role));
   const privileged = users.filter((u) => isAdminRole(u.role));
   const privilegedWithoutMfa = privileged.filter((u) => !u.totpEnabled).length;

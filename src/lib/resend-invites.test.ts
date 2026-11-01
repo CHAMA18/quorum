@@ -1,14 +1,13 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { sendWorkspaceInviteEmail } from "./resend-invites";
 
-const envKeys = ["RESEND_API_KEY", "RESEND_DOMAIN_ID", "RESEND_FROM"] as const;
+const envKeys = ["QUORUM_EDGE_URL", "QUORUM_EDGE_SECRET"] as const;
 const originalEnv = Object.fromEntries(envKeys.map((key) => [key, process.env[key]]));
 const originalFetch = globalThis.fetch;
 
-function configureResend() {
-  process.env.RESEND_API_KEY = "test_key_never_sent";
-  process.env.RESEND_DOMAIN_ID = "test_domain";
-  process.env.RESEND_FROM = "Quorum <noreply@quorum-solutions.com>";
+function configureRelay() {
+  process.env.QUORUM_EDGE_URL = "https://relay.quorum.test";
+  process.env.QUORUM_EDGE_SECRET = "test_edge_secret";
 }
 
 afterEach(() => {
@@ -21,14 +20,13 @@ afterEach(() => {
 });
 
 describe("sendWorkspaceInviteEmail", () => {
-  it("does not call Resend when its verified-domain settings are incomplete", async () => {
-    delete process.env.RESEND_API_KEY;
-    delete process.env.RESEND_DOMAIN_ID;
-    delete process.env.RESEND_FROM;
+  it("does not call the relay when its authenticated edge is not configured", async () => {
+    delete process.env.QUORUM_EDGE_URL;
+    delete process.env.QUORUM_EDGE_SECRET;
     let called = false;
     globalThis.fetch = (async () => {
       called = true;
-      return Response.json({ id: "unexpected" });
+      return Response.json({ ok: true, id: "unexpected" });
     }) as unknown as typeof fetch;
 
     const result = await sendWorkspaceInviteEmail({
@@ -45,14 +43,14 @@ describe("sendWorkspaceInviteEmail", () => {
     expect(called).toBe(false);
   });
 
-  it("sends the recipient a safe, prefilled invite email with an idempotency key", async () => {
-    configureResend();
+  it("sends the recipient a safe, prefilled invite through the signed edge relay", async () => {
+    configureRelay();
     let requestUrl = "";
     let requestInit: RequestInit | undefined;
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       requestUrl = String(input);
       requestInit = init;
-      return Response.json({ id: "email-123" }, { status: 200 });
+      return Response.json({ ok: true, id: "email-123" }, { status: 200 });
     }) as typeof fetch;
 
     const result = await sendWorkspaceInviteEmail({
@@ -67,20 +65,25 @@ describe("sendWorkspaceInviteEmail", () => {
 
     const body = JSON.parse(String(requestInit?.body)) as Record<string, unknown>;
     const headers = new Headers(requestInit?.headers);
-    expect(requestUrl).toBe("https://api.resend.com/emails");
+    expect(requestUrl).toBe("https://relay.quorum.test/__edge/email");
     expect(requestInit?.method).toBe("POST");
+    expect(headers.get("x-quorum-edge-key")).toBe("test_edge_secret");
     expect(headers.get("idempotency-key")).toBe("team-invite/invite-123");
-    expect(body.from).toBe("Quorum <noreply@quorum-solutions.com>");
-    expect(body.to).toEqual(["teammate@example.com"]);
+    expect(body.to).toBe("teammate@example.com");
+    expect(String(body.subject)).toContain("<Officer>");
     expect(String(body.html)).toContain("&lt;Officer&gt;");
     expect(String(body.html)).toContain("Central &amp; Eastern Office");
     expect(String(body.html)).toContain("Q-ABCD-EFGH");
     expect(String(body.text)).toContain("https://quorum-solutions.com/?inviteCode=Q-ABCD-EFGH#/register");
-    expect(result).toEqual({ status: "SENT", detail: "Resend accepted the invitation email.", messageId: "email-123" });
+    expect(result).toEqual({
+      status: "SENT",
+      detail: "Resend accepted the invitation email through Quorum's Cloudflare relay.",
+      messageId: "email-123",
+    });
   });
 
   it("reports Resend sender/domain rejection without losing the invitation code", async () => {
-    configureResend();
+    configureRelay();
     globalThis.fetch = (async () => new Response("{}", { status: 403 })) as unknown as typeof fetch;
 
     const result = await sendWorkspaceInviteEmail({
@@ -94,6 +97,6 @@ describe("sendWorkspaceInviteEmail", () => {
     });
 
     expect(result.status).toBe("FAILED");
-    expect(result.detail).toContain("verified domain");
+    expect(result.detail).toContain("verified sender domain");
   });
 });

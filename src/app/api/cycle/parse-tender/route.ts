@@ -40,6 +40,20 @@ const ExtractionSchema = z.object({
   warnings: z.array(z.string().trim().min(1).max(300)).max(8),
 });
 
+const EXTRACTION_JSON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    title: { type: "object", additionalProperties: false, properties: { value: { type: ["string", "null"] }, confidence: { type: "number", minimum: 0, maximum: 1 }, evidence: { type: ["string", "null"] } }, required: ["value", "confidence", "evidence"] },
+    responsibleOffice: { type: "object", additionalProperties: false, properties: { value: { type: ["string", "null"], enum: [...OFFICE_CODES, null] }, confidence: { type: "number", minimum: 0, maximum: 1 }, evidence: { type: ["string", "null"] } }, required: ["value", "confidence", "evidence"] },
+    publicationDate: { type: "object", additionalProperties: false, properties: { value: { type: ["string", "null"] }, confidence: { type: "number", minimum: 0, maximum: 1 }, evidence: { type: ["string", "null"] } }, required: ["value", "confidence", "evidence"] },
+    budgetEstimate: { type: "object", additionalProperties: false, properties: { value: { type: ["number", "null"] }, confidence: { type: "number", minimum: 0, maximum: 1 }, evidence: { type: ["string", "null"] } }, required: ["value", "confidence", "evidence"] },
+    currency: { type: "object", additionalProperties: false, properties: { value: { type: ["string", "null"], enum: [...CURRENCIES, null] }, confidence: { type: "number", minimum: 0, maximum: 1 }, evidence: { type: ["string", "null"] } }, required: ["value", "confidence", "evidence"] },
+    warnings: { type: "array", maxItems: 8, items: { type: "string" } },
+  },
+  required: ["title", "responsibleOffice", "publicationDate", "budgetEstimate", "currency", "warnings"],
+} as const;
+
 function parseModelJson(text: string): unknown {
   const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
   const start = cleaned.indexOf("{");
@@ -141,7 +155,11 @@ Use null and confidence 0 when a fact is absent or ambiguous. For office, only s
 
   const startedAt = performance.now();
   try {
-    const reply = await museChat(config, messages, []);
+    const reply = await museChat(config, messages, [], undefined, {
+      responseSchema: { name: "quorum_tender_notice_extraction", schema: EXTRACTION_JSON_SCHEMA },
+      reasoningEffort: "medium",
+      maxOutputTokens: 1800,
+    });
     const parsed = ExtractionSchema.safeParse(parseModelJson(reply.text));
     await recordMetaRun(user, {
       model: reply.model,

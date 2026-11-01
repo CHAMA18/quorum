@@ -8,7 +8,7 @@ import {
   useSpring,
   useTransform,
 } from "framer-motion";
-import { ArrowDown, ArrowRight, CircleDot, Landmark, PenLine } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUpRight, CircleDot, Landmark, PenLine, Sparkles } from "lucide-react";
 import { AgentRun } from "@/components/quorum/agent-run";
 import { HeroFilm } from "@/components/quorum/hero-film";
 import { SpecBar } from "@/components/quorum/reveal";
@@ -226,6 +226,34 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
                   <Landmark className="h-3.5 w-3.5" aria-hidden="true" />
                 </span>
                 Built for ministries, medical stores &amp; oversight bodies
+              </span>
+            </motion.div>
+
+            {/* Hackathon + model attribution — a judge should see, before any
+                sign-in, that this is a Meta build and which models carry it. */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.66, ease: EASE }}
+              className="mt-3 flex flex-wrap items-center gap-2"
+            >
+              <a
+                href="https://d1n7mv5t5hn4xe.cloudfront.net"
+                className="focus-brand group inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white/70 px-3.5 py-1.5 text-[12px] font-semibold text-ink-800 transition-colors hover:border-brand-300 hover:text-brand-700 dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-200"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-brand-600" aria-hidden="true" />
+                Meta Global AI Developer Hackathon 2026 · Indie track
+                <ArrowUpRight
+                  className="h-3.5 w-3.5 text-ink-400 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                  aria-hidden="true"
+                />
+              </a>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-200/70 bg-paper/60 px-3.5 py-1.5 font-code text-[10.5px] font-medium tracking-[0.08em] text-ink-500 dark:border-white/10 dark:text-ink-400">
+                MUSE SPARK 1.3
+                <span className="text-ink-300" aria-hidden="true">·</span>
+                LLAMA 3.2 IN-REGION
+                <span className="text-ink-300" aria-hidden="true">·</span>
+                SAM 3.1
               </span>
             </motion.div>
 

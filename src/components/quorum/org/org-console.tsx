@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { ThemeModeRow } from "@/components/quorum/theme-toggle";
 import { ApplicationTable } from "./application-table";
 import { ContractAcceptance } from "./contract-acceptance";
+import { SupplierClarifications } from "./supplier-clarifications";
 import { SupplierOverview } from "./supplier-overview";
 import { completeness, fmtDate, money, type Application, type OrgContract, type Tender } from "./supplier-data";
 
@@ -43,7 +44,7 @@ import { completeness, fmtDate, money, type Application, type OrgContract, type 
  * The organization console — the supplier's desk. Five surfaces: Overview
  * (what the desk sees), Profile (the legal identity, editable), Opportunities
  * (the open tenders, with apply), Applications (what this organization has
- * on the record) and Contracts (the signed packs it may accept). Every
+ * on the record, including buyer clarification requests) and Contracts (the signed packs it may accept). Every
  * application it files is attested org:<name> and lands in the same audit
  * spine the officers read.
  */
@@ -1456,6 +1457,8 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
                     <Stamp className="h-3.5 w-3.5" aria-hidden="true" /> New submission
                   </button>
                 </div>
+
+                <SupplierClarifications />
 
                 {applicationsError ? (
                   <div className="flex flex-col items-start gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-[13px] text-brand-800 sm:flex-row sm:items-center sm:justify-between dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-brand-200">

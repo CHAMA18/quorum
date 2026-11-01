@@ -1,4 +1,4 @@
-import type { Run } from "./store";
+import { toolLog, type Run } from "./store";
 
 /**
  * Model attribution — one vocabulary for the demo, the API and the report.
@@ -233,11 +233,11 @@ function actualModel(value: string | undefined): string | null {
 
 /**
  * Per-run attribution from stored facts, not the current environment:
- * plan source/model, draft source/model, token counts. Old rows that only
- * encoded "(llm)" in the model string are still read correctly.
+ * plan and draft sources, all model-call tokens/redactions and successful
+ * endpoint model names. Old rows that only encoded "(llm)" remain readable.
  */
 export function modelAttributionForRun(
-  run: Pick<Run, "plan" | "drafts" | "usage">,
+  run: Pick<Run, "plan" | "drafts" | "usage"> & Partial<Pick<Run, "id">>,
 ): RunModelAttribution {
   const drafts = Array.isArray(run.drafts) ? run.drafts : [];
   const planSource = run.plan?.source ?? null;
@@ -260,10 +260,27 @@ export function modelAttributionForRun(
     if (typeof draft.redactions === "number" && draft.redactions > 0) redactions += draft.redactions;
   }
 
-  const promptTokens = run.usage?.promptTokens ?? 0;
-  const completionTokens = run.usage?.completionTokens ?? 0;
+  const modelCalls = run.id
+    ? toolLog.filter((entry) => entry.runId === run.id && entry.server === "model-gateway" && entry.tool === "model_call")
+    : [];
+  let promptTokens = run.usage?.promptTokens ?? 0;
+  let completionTokens = run.usage?.completionTokens ?? 0;
+  if (modelCalls.length > 0) {
+    promptTokens = 0;
+    completionTokens = 0;
+    redactions = 0;
+    for (const entry of modelCalls) {
+      const outputs = entry.outputs && typeof entry.outputs === "object" ? entry.outputs as Record<string, unknown> : {};
+      const inputs = entry.inputs && typeof entry.inputs === "object" ? entry.inputs as Record<string, unknown> : {};
+      promptTokens += Number(outputs.promptTokens) || 0;
+      completionTokens += Number(outputs.completionTokens) || 0;
+      if (outputs.outcome === "OK" && typeof inputs.model === "string") models.add(inputs.model);
+      redactions += Number(outputs.redactions) || 0;
+    }
+  }
+  const modelAnswered = modelCalls.some((entry) => (entry.outputs as Record<string, unknown> | undefined)?.outcome === "OK");
   const mode =
-    planSource === "llm" || draftLlm > 0
+    planSource === "llm" || draftLlm > 0 || modelAnswered
       ? draftTemplate > 0
         ? "mixed"
         : "llm"

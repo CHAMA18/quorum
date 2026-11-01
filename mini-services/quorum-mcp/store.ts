@@ -180,6 +180,19 @@ export interface ReviewPlan {
   model?: string;
 }
 
+/** A model-generated reading aid. Each statement is retained only when its
+ * masked or unmasked quote can be matched back to the cited source locally. */
+export interface EvidenceObservation {
+  category: "requirement" | "evaluation_criterion" | "delivery_or_contract_term" | "bidder_declaration" | "discrepancy";
+  observation: string;
+  quote: string;
+  citation: string;
+  comparisonQuote?: string;
+  comparisonCitation?: string;
+  reviewQuestion: string;
+  confidence: "low" | "medium" | "high";
+}
+
 export interface Run {
   id: string;
   tenantId?: string;
@@ -199,6 +212,9 @@ export interface Run {
   error?: string;
   /* The plan this run was reviewed under (plan_review node output). */
   plan?: ReviewPlan;
+  /* Model reading aid, kept separate from deterministic findings and never
+     treated as a decision or a verified rule violation. */
+  modelEvidence?: EvidenceObservation[];
   /* Drafting cost for this run: how many drafts came from the model and the tokens it used. */
   usage?: { drafts: number; llmDrafts: number; promptTokens: number; completionTokens: number };
   /* Tender detail typed by the officer at launch (manual entry). Persisted for
@@ -213,6 +229,7 @@ export interface RosterMemberForGate {
   /* The web user id behind the roster row. Office authority is bound to this
      id, not to a typed name. Older rosters may not carry it. */
   id?: string;
+  userId?: string;
   name: string;
   status: "PRESENT" | "EXCUSED";
   office?: Office;
@@ -472,6 +489,9 @@ export interface CoiDeclaration {
   id: string;
   tenderId: string;
   member: string;
+  memberId?: string;
+  signedByUserId?: string;
+  signature?: string;
   declaration: "NO_CONFLICT" | "CONFLICT_DECLARED";
   conflicts?: string;
   /* The names the declaration covers. Screening compares them with the
@@ -554,6 +574,7 @@ export interface EvalScoreSheet {
   tenderId: string;
   evaluator: string;
   evaluatorId?: string;
+  submittedByUserId?: string;
   scores: EvalSheetScore[];
   note?: string;
   submittedBy: string;
@@ -583,6 +604,7 @@ export interface EvalConsensus {
   notes: string;
   divergences: EvalDivergence[];
   recordedBy: string;
+  recordedByUserId?: string;
   recordedAt: string;
   signature: string;
 }
@@ -605,6 +627,7 @@ export interface EvalBidResult {
   bidder: string;
   source?: string;
   late: boolean;
+  albOpen?: boolean;
   responsiveness: Responsiveness;
   reasons: string[];
   technicalScores: EvalScore[];
@@ -614,11 +637,27 @@ export interface EvalBidResult {
   financial?: {
     amount: number;
     currency?: string;
+    adjustments?: {
+      arithmeticCorrection?: number;
+      unconditionalDiscount?: number;
+      otherAdjustment?: number;
+      preferencePct?: number;
+      preferenceScheme?: string;
+      reservationEligible?: boolean;
+      reservationCitizenSupplier?: boolean;
+      reservationExceptionRef?: string;
+      localContentPct?: number;
+      evidenceRef: string;
+      verifiedBy: string;
+      verifiedAt: string;
+    };
     formulaScore?: number;
     /* The evaluated basis the formula scored. Present when a conversion was
        applied; `fxError` explains why a foreign price could not be scored. */
     evaluatedAmount?: number;
     evaluatedCurrency?: string;
+    correctedAmount?: number;
+    preferenceAdjustedAmount?: number;
     fxRate?: number;
     fxSource?: string;
     fxAsOf?: string;
@@ -631,10 +670,21 @@ export interface EvalBidResult {
 export interface EvalMatrix {
   id: string;
   tenderId: string;
+  criteriaNoticeId?: string;
+  scoringStartedAt?: string;
   marketSignals?: EvalMarketSignals;
   runId?: string;
   criteria: EvalCriterion[];
   technicalWeightPct: number;
+  financialFormula?: string;
+  preferenceScheme?: string;
+  foreignBiddersPermitted?: boolean;
+  cdfReservationExceptionRef?: string;
+  cdfReservationConstituency?: string;
+  financialAdjustmentsCertifiedAt?: string;
+  financialAdjustmentsCertifiedBy?: string;
+  financialAdjustmentsDigest?: string;
+  financialAdjustmentsGateId?: string;
   bids: EvalBidResult[];
   /* The common basis every bid is scored in. Absent on legacy matrices — the
      financial formula then compares stated amounts as before. */
@@ -660,15 +710,27 @@ export interface AlbDossier {
   id: string;
   tenderId: string;
   bidder: string;
+  openingBasis?: string;
   findingId?: string;
   openedAt: string;
   letterMd: string;
   responseDueAt: string;
+  response?: {
+    text?: string;
+    evidenceRef: string;
+    receivedAt: string;
+    submittedBy: string;
+    submittedByOrg?: string;
+    receiptHash?: string;
+  };
+  noResponseRecordedAt?: string;
+  noResponseRecordedBy?: string;
   resolution?: {
     outcome: "JUSTIFIED" | "REJECTED" | "WITHDRAWN";
     note: string;
     at: string;
     by: string;
+    responseEvidenceRef?: string;
     gateId?: string;
   };
 }
@@ -695,6 +757,12 @@ export interface AwardNotice {
   gateId?: string;
   publishedAt?: string;
   publishedBy?: string;
+  dispatchedTo?: string[];
+  dispatchedAt?: string;
+  dispatchEvidenceRef?: string;
+  standstillExemptReason?: string;
+  quarterlyReportRef?: string;
+  reportedAt?: string;
 }
 
 export interface Standstill {
@@ -703,6 +771,8 @@ export interface Standstill {
   endsAt: string;
   days: number;
   status: "ACTIVE" | "LAPSED" | "LIFTED";
+  liftedAt?: string;
+  liftedBy?: string;
 }
 
 export interface DebriefLetter {
@@ -738,8 +808,38 @@ export interface ContractVariation {
   gateId?: string;
   decidedBy?: string;
   approvedAt?: string;
+  approvalReference?: string;
+  legalAdviceRef?: string;
+  quarterlyReportRef?: string;
+  reportedAt?: string;
   /* A cumulative-cap override: a named reason and the officer who seconded it. */
   override?: { reason: string; secondedBy: string; by: string; at: string };
+}
+
+export interface QuarterlyProcurementReport {
+  id: string;
+  workspaceId: string;
+  year: number;
+  quarter: 1 | 2 | 3 | 4;
+  status: "PENDING_GATE" | "SUBMITTED";
+  entries: {
+    tenderId: string;
+    type: "VARIATION" | "PREFERENCE_AWARD";
+    reference: string;
+    date: string;
+    supplier?: string;
+    amount?: number;
+    currency?: string;
+    scheme?: string;
+  }[];
+  digest: string;
+  submissionReference: string;
+  evidenceReference: string;
+  requestedBy: string;
+  requestedAt: string;
+  gateId?: string;
+  submittedAt?: string;
+  submittedBy?: string;
 }
 
 export interface ContractPayment {
@@ -809,6 +909,7 @@ export interface ContractFile {
   tenderId: string;
   supplier: string;
   value: number;
+  originalValue?: number;
   currency?: string;
   openedAt: string;
   openedFromGate?: string;
@@ -1403,6 +1504,7 @@ interface PersistShape {
   pipeline: PipelineEntry[];
   budgetLines: BudgetLine[];
   commitments: Commitment[];
+  quarterlyReports: QuarterlyProcurementReport[];
   stepUpUses: StepUpUse[];
   exceptions: ProcurementException[];
   documents: DocumentRecord[];
@@ -1706,6 +1808,40 @@ export function normalizeFeatures(raw: unknown): Features {
   return next;
 }
 
+/* A cycle record written before a field existed still has to answer every gate
+   that reads it. The arrays the type calls required are filled in on load —
+   and again where a gate reads the record — rather than left for a reader to
+   trip over. Nothing already on the record is touched, so a real empty list
+   and a missing one end up the same way. */
+const CYCLE_ARRAYS = ["coi", "alb", "debriefs", "complaints", "clarifications", "addenda", "notices", "specs", "dissents"] as const;
+const CONTRACT_ARRAYS = ["milestones", "variations", "payments", "performanceSecurity"] as const;
+/* Same rule one level down: a matrix written before bids or criteria existed
+   must read as an empty evaluation, never as an undefined one — the award and
+   certification gates map over these lists without asking. */
+const MATRIX_ARRAYS = ["bids", "criteria"] as const;
+
+export function normalizeCycle<T extends TenderCycle>(cycle: T): T {
+  const record = cycle as unknown as Record<string, unknown>;
+  for (const key of CYCLE_ARRAYS) {
+    if (!Array.isArray(record[key])) record[key] = [];
+  }
+  const matrix = record.matrix;
+  if (matrix && typeof matrix === "object") {
+    const scored = matrix as Record<string, unknown>;
+    for (const key of MATRIX_ARRAYS) {
+      if (!Array.isArray(scored[key])) scored[key] = [];
+    }
+  }
+  const contract = record.contract;
+  if (contract && typeof contract === "object") {
+    const file = contract as Record<string, unknown>;
+    for (const key of CONTRACT_ARRAYS) {
+      if (!Array.isArray(file[key])) file[key] = [];
+    }
+  }
+  return cycle;
+}
+
 export const STATE_VERSION = 1;
 const workspaceContext = new AsyncLocalStorage<string>();
 export const currentWorkspaceId = () => workspaceContext.getStore() ?? "demo";
@@ -1763,6 +1899,7 @@ export const state: PersistShape = {
   pipeline: [],
   budgetLines: [],
   commitments: [],
+  quarterlyReports: [],
   stepUpUses: [],
   exceptions: [],
   documents: [],
@@ -1822,13 +1959,15 @@ export async function loadState() {
     state.applications.length = 0;
     state.applications.push(...(raw.applications ?? []));
     state.cycle.length = 0;
-    state.cycle.push(...(raw.cycle ?? []));
+    state.cycle.push(...((raw.cycle ?? []) as TenderCycle[]).map(normalizeCycle));
     state.pipeline.length = 0;
     state.pipeline.push(...(raw.pipeline ?? []));
     state.budgetLines.length = 0;
     state.budgetLines.push(...(raw.budgetLines ?? []));
     state.commitments.length = 0;
     state.commitments.push(...(raw.commitments ?? []));
+    state.quarterlyReports.length = 0;
+    state.quarterlyReports.push(...(raw.quarterlyReports ?? []));
     state.stepUpUses.length = 0;
     state.stepUpUses.push(...(raw.stepUpUses ?? []));
     state.connector = normalizeConnector(raw.connector);

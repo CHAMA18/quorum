@@ -242,7 +242,7 @@ function matrixWith(bidders: { bidder: string; scores: number[]; amount?: number
 describe("scoring matrix (G1)", () => {
   test("weights must sum to exactly 100", () => {
     expect(validateCriteria(CRITERIA)).toBeNull();
-    expect(validateCriteria([...CRITERIA, { id: "C-04", title: "X", weight: 10 }])).toContain("must sum to 100");
+    expect(validateCriteria([...CRITERIA, { id: "C-04", title: "X", weight: 10 }])).toContain("sum to exactly 100");
     expect(validateCriteria([])).toContain("at least one");
     expect(validateCriteria([{ id: "C-01", title: "X", weight: 0 }])).toContain("weight must be 1-100");
   });

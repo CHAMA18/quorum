@@ -1352,6 +1352,7 @@ export function OrgAuthScreen() {
         <div className="pointer-events-none absolute -left-44 top-1/3 h-[420px] w-[420px] rounded-full bg-brand-600/10 blur-[130px]" aria-hidden="true" />
         <div className="pointer-events-none absolute inset-0 bg-grid-dark opacity-60" aria-hidden="true" />
         <div className="relative max-w-xl space-y-6">
+          <QuorumLogo variant="light" />
           <h1 className="type-display text-[42px] text-white">
             The supplier side
             <br />

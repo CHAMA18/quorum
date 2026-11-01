@@ -165,7 +165,7 @@ Gate decisions require step-up and are signed with Ed25519 receipts. The replay 
     title: "Deployment and data",
     body: `The production app is a Next.js 16 web app plus a Bun sidecar (quorum-mcp) on an EC2 t4g.small in af-south-1, behind nginx and systemd. The web app and sidecar share a flat JSON store; the sidecar also keeps append-only tool-log.jsonl and sealed submissions. The sidecar boots with the Next server and self-heals via /api/mcp-ensure.
 
-The current HTTPS front door is a Cloudflare Worker at https://quorum-edge.chungu424.workers.dev. It proxies the EC2 origin, provides Workers AI text-to-speech, and holds the private R2 upload gate: the quorum-tenders bucket is bound as TENDERS, and /__edge/upload and /__edge/object require the server-to-server x-quorum-edge-key. The branded domain quorum.chungu-chama.com still has no public DNS/TLS record; the Worker URL is the working demo URL. The Worker is stateless; the sidecar and its files stay on the persistent host.
+The public HTTPS entry point is https://quorum-solutions.com. The full workspace runs on the EC2 origin in af-south-1. The quorum-edge Cloudflare Worker is the stateless front door for Workers AI text-to-speech and the private R2 upload gate: the quorum-tenders bucket is bound as TENDERS, and /__edge/upload and /__edge/object require the server-to-server x-quorum-edge-key. When the Worker is deployed against a live origin it can also proxy the app; the sidecar and its files stay on the persistent host.
 
 The app uses Firebase Auth, Storage and Analytics only — not Firebase Functions. Postgres/Drizzle and a full multi-tenant data layer are not in the deployed build.`,
   },

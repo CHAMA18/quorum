@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
   createUser,
+  findClaimedWorkspaceMembership,
   findUserByEmail,
   markUserVerified,
   updateUserPassword,
@@ -92,11 +93,13 @@ export async function POST(req: NextRequest) {
         } else if (identity.emailVerified) {
           /* Account lost in a store rebuild but alive and verified at
            * Firebase — restore it. */
+          const membership = findClaimedWorkspaceMembership(email);
           user = createUser({
             name: identity.name.trim() || email.split("@")[0],
             email,
             password: passwordHash,
             emailVerified: true,
+            ...(membership ?? {}),
           });
           authed = true;
         } else {

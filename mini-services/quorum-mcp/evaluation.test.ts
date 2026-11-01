@@ -95,9 +95,9 @@ function coi(member: string, entities: CoiDeclaration["entities"] = []): CoiDecl
 }
 
 const ROSTER: RosterMemberForGate[] = [
-  { name: "Eval One", status: "PRESENT", office: "EVALUATION_COMMITTEE" },
-  { name: "Eval Two", status: "PRESENT", office: "EVALUATION_COMMITTEE" },
-  { name: "Buyer", status: "PRESENT", office: "PROCUREMENT_UNIT" },
+  { id: "seat-eval-one", userId: "user-eval-one", name: "Eval One", status: "PRESENT", office: "EVALUATION_COMMITTEE" },
+  { id: "seat-eval-two", userId: "user-eval-two", name: "Eval Two", status: "PRESENT", office: "EVALUATION_COMMITTEE" },
+  { id: "seat-buyer", userId: "user-buyer", name: "Buyer", status: "PRESENT", office: "PROCUREMENT_UNIT" },
 ];
 
 describe("FX-scored prices", () => {
@@ -298,11 +298,23 @@ describe("the evaluator routes", () => {
   });
 
   test("sheets and consensus move the matrix technical column, and the gate accepts the record", async () => {
-    const m = matrix();
+    const m = matrix({
+      med: {
+        recordedAt: NOW.toISOString(),
+        attendees: ["Eval One", "Eval Two"],
+        adjustments: {},
+        notes: "No margin-of-error adjustment was required before scoring.",
+      },
+      financialAdjustmentsCertifiedAt: NOW.toISOString(),
+    });
     state.cycle = state.cycle.filter((cycle) => cycle.tenderId !== TENDER);
     state.cycle.push({
       tenderId: TENDER,
-      coi: [coi("Eval One"), coi("Eval Two"), coi("Buyer")],
+      coi: [
+        { ...coi("Eval One"), memberId: "seat-eval-one", signedByUserId: "user-eval-one" },
+        { ...coi("Eval Two"), memberId: "seat-eval-two", signedByUserId: "user-eval-two" },
+        { ...coi("Buyer"), memberId: "seat-buyer", signedByUserId: "user-buyer" },
+      ],
       matrix: m,
       alb: [],
       debriefs: [],
@@ -311,6 +323,7 @@ describe("the evaluator routes", () => {
       addenda: [],
       notices: [],
       specs: [],
+      dissents: [],
       createdAt: NOW.toISOString(),
     } as TenderCycle);
 
@@ -321,14 +334,14 @@ describe("the evaluator routes", () => {
       const res = await handleCycleRoutes(`/api/tenders/${TENDER}/matrix/sheets`, "POST", {
         evaluator,
         scores: sheet(evaluator, first, second).scores,
-      }, evaluator);
+      }, evaluator, "demo", evaluator === "Eval One" ? "user-eval-one" : "user-eval-two", ROSTER);
       expect(res?.status).toBe(201);
     }
 
     const consensusRes = await handleCycleRoutes(`/api/tenders/${TENDER}/matrix/consensus`, "POST", {
       attendees: ["Eval One", "Eval Two"],
       notes: "The panel reconciled the method spread against the cited evidence.",
-    }, "Eval One");
+    }, "Eval One", "demo", "user-eval-one", ROSTER);
     expect(consensusRes?.status).toBe(201);
 
     const cycle = state.cycle.find((row) => row.tenderId === TENDER)!;
@@ -349,11 +362,22 @@ describe("the evaluator routes", () => {
   });
 
   test("a sheet from a member who declared a conflict is refused at the route", async () => {
-    const m = matrix();
+    const m = matrix({
+      med: {
+        recordedAt: NOW.toISOString(),
+        attendees: ["Eval One", "Eval Two"],
+        adjustments: {},
+        notes: "No margin-of-error adjustment was required before scoring.",
+      },
+      financialAdjustmentsCertifiedAt: NOW.toISOString(),
+    });
     state.cycle = state.cycle.filter((cycle) => cycle.tenderId !== TENDER);
     state.cycle.push({
       tenderId: TENDER,
-      coi: [{ ...coi("Eval One"), declaration: "CONFLICT_DECLARED", conflicts: "Family interest" }, coi("Eval Two")],
+      coi: [
+        { ...coi("Eval One"), memberId: "seat-eval-one", signedByUserId: "user-eval-one", declaration: "CONFLICT_DECLARED", conflicts: "Family interest" },
+        { ...coi("Eval Two"), memberId: "seat-eval-two", signedByUserId: "user-eval-two" },
+      ],
       matrix: m,
       alb: [],
       debriefs: [],
@@ -362,12 +386,13 @@ describe("the evaluator routes", () => {
       addenda: [],
       notices: [],
       specs: [],
+      dissents: [],
       createdAt: NOW.toISOString(),
     } as TenderCycle);
     const res = await handleCycleRoutes(`/api/tenders/${TENDER}/matrix/sheets`, "POST", {
       evaluator: "Eval One",
       scores: sheet("Eval One", 80, 60).scores,
-    }, "Eval One");
+    }, "Eval One", "demo", "user-eval-one", ROSTER);
     expect(res?.status).toBe(422);
     const body = (await res!.json()) as { error: string };
     expect(body.error).toContain("cannot submit");

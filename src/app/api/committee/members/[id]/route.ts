@@ -31,7 +31,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const out = await updateCommitteeMemberById(
       id,
-      { status: body.status, isChair: body.isChair, role: body.role, office: body.office },
+      { status: body.status, userId: body.userId, isChair: body.isChair, role: body.role, office: body.office },
       user,
     );
     if (!out.ok) return NextResponse.json({ error: out.error }, { status: out.code });

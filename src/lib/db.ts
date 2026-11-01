@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "fs";
 import path from "path";
 import { isWorkspaceRole, type WorkspaceRole } from "@/lib/permissions";
+import { claimedMembershipForEmail, roleForNewWorkspaceMember } from "@/lib/role-assignment";
 
 /**
  * Quorum's web-app store: one JSON file, no ORM, no native dependencies.
@@ -133,8 +134,28 @@ export interface ContactRow {
   createdAt: Date;
 }
 
+export type SupportRequestStatus = "OPEN" | "RESPONDED" | "CLOSED";
+
+export interface SupportRequestRow {
+  id: string;
+  workspaceId: string;
+  requesterId: string;
+  requesterName: string;
+  requesterEmail: string;
+  source: "BARRY";
+  subject: string;
+  message: string;
+  status: SupportRequestStatus;
+  response?: string;
+  respondedBy?: string;
+  respondedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface CommitteeMemberRow {
   id: string;
+  userId?: string;
   name: string;
   role: string;
   isChair: boolean;
@@ -324,6 +345,7 @@ interface StoreShape {
   users: UserRow[];
   sessions: SessionRow[];
   contacts: ContactRow[];
+  supportRequests: SupportRequestRow[];
   committeeMembers: CommitteeMemberRow[];
   sittings: SittingRow[];
   scheduledMeetings: ScheduledMeetingRow[];
@@ -353,6 +375,19 @@ function resolveStoreFile(): string {
   if (process.env.QUORUM_STORE_PATH) return path.resolve(process.env.QUORUM_STORE_PATH);
   const repoRoot = (() => {
     let dir = process.cwd();
+    /* In standalone production the server runs from `.next/standalone`, and
+       the build copies package.json + mini-services into that directory — so
+       the walk below stops inside `.next`, where every rebuild wipes the
+       store. Anchor on the real repo root first. */
+    if (dir.includes(`${path.sep}.next${path.sep}standalone`)) {
+      const anchored = path.resolve(dir, "..", "..");
+      if (
+        existsSync(path.join(anchored, "package.json")) &&
+        existsSync(path.join(anchored, "mini-services", "quorum-mcp"))
+      ) {
+        return anchored;
+      }
+    }
     for (let i = 0; i < 8; i++) {
       try {
         if (
@@ -375,7 +410,7 @@ function resolveStoreFile(): string {
 
 const FILE = resolveStoreFile();
 const LEGACY_FILE = path.join(process.cwd(), "db", "quorum-store.json");
-const DATE_FIELDS = ["createdAt", "updatedAt", "expiresAt", "claimedAt", "usedAt", "readAt", "decidedAt", "emailDeliveryAttemptedAt"] as const;
+const DATE_FIELDS = ["createdAt", "updatedAt", "expiresAt", "claimedAt", "usedAt", "readAt", "decidedAt", "respondedAt", "emailDeliveryAttemptedAt"] as const;
 
 function revive<T>(rows: unknown): T[] {
   if (!Array.isArray(rows)) return [];
@@ -506,6 +541,7 @@ function load(): StoreShape {
     users: [],
     sessions: [],
     contacts: [],
+    supportRequests: [],
     committeeMembers: [],
     sittings: [],
     scheduledMeetings: [],
@@ -542,6 +578,7 @@ function load(): StoreShape {
     users: revive<UserRow>(raw.users).map((user) => ({ ...user, workspaceId: user.workspaceId || (typeof raw.workspaceId === "string" ? raw.workspaceId : "") })),
     sessions: revive<SessionRow>(raw.sessions),
     contacts: revive<ContactRow>(raw.contacts),
+    supportRequests: revive<SupportRequestRow>(raw.supportRequests),
     committeeMembers: revive<CommitteeMemberRow>(raw.committeeMembers),
     sittings: reviveSittings(raw.sittings),
     scheduledMeetings: reviveMeetings(raw.scheduledMeetings),
@@ -569,6 +606,8 @@ globalForStore.__quorumStore = store;
 if (!store.workspaceId) store.workspaceId = randomUUID();
 for (const user of store.users) if (!user.workspaceId) user.workspaceId = store.workspaceId;
 if (!Array.isArray(store.sittings)) store.sittings = [];
+if (!Array.isArray(store.invites)) store.invites = [];
+if (!Array.isArray(store.supportRequests)) store.supportRequests = [];
 if (!Array.isArray(store.scheduledMeetings)) store.scheduledMeetings = [];
 if (!Array.isArray(store.meetingNotes)) store.meetingNotes = [];
 if (!Array.isArray(store.organizations)) store.organizations = [];
@@ -629,6 +668,10 @@ export function findUserByEmail(email: string): UserRow | null {
   return store.users.find((user) => user.email === email) ?? null;
 }
 
+export function findClaimedWorkspaceMembership(email: string) {
+  return claimedMembershipForEmail(store.invites, email);
+}
+
 export function findUserById(id: string, workspaceId?: string): UserRow | null {
   return store.users.find((user) => user.id === id && (!workspaceId || user.workspaceId === workspaceId)) ?? null;
 }
@@ -650,12 +693,12 @@ export function createUser(data: {
 }): UserRow {
   if (findUserByEmail(data.email)) throw new Error(`User already exists: ${data.email}`);
   const at = now();
-  /* The first account owns the workspace. An invite can grant any other
-     non-owner role, but it can never make the first account a non-owner. */
+  /* New self-serve workspaces begin with an owner. An explicit invitation
+     keeps its assigned role even if the member list is temporarily empty. */
   const workspaceUsers = store.users.filter((user) => user.workspaceId === (data.workspaceId ?? store.workspaceId));
   const workspaceId = data.workspaceId ?? (workspaceUsers.length === 0 && store.users.length === 0 ? store.workspaceId : randomUUID());
   const scopedUsers = store.users.filter((existing) => existing.workspaceId === workspaceId);
-  const role: WorkspaceRole = scopedUsers.length === 0 ? "OWNER" : data.role ?? "OFFICER";
+  const role = roleForNewWorkspaceMember(scopedUsers.length, data.role);
   const user: UserRow = {
     id: newId(),
     workspaceId,
@@ -929,6 +972,56 @@ export function createContactMessage(data: {
   return row;
 }
 
+export function createSupportRequest(data: {
+  workspaceId: string;
+  requesterId: string;
+  requesterName: string;
+  requesterEmail: string;
+  subject: string;
+  message: string;
+}): SupportRequestRow {
+  const at = now();
+  const row: SupportRequestRow = {
+    id: `sup_${newId().slice(0, 12)}`,
+    ...data,
+    source: "BARRY",
+    subject: data.subject.trim().slice(0, 120),
+    message: data.message.trim().slice(0, 2000),
+    status: "OPEN",
+    createdAt: at,
+    updatedAt: at,
+  };
+  store.supportRequests.push(row);
+  persist();
+  return row;
+}
+
+export function listSupportRequests(workspaceId: string, requesterId?: string): SupportRequestRow[] {
+  return store.supportRequests
+    .filter((row) => row.workspaceId === workspaceId && (!requesterId || row.requesterId === requesterId))
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+}
+
+export function respondToSupportRequest(
+  id: string,
+  workspaceId: string,
+  responderName: string,
+  response: string,
+): SupportRequestRow | null {
+  const row = store.supportRequests.find((request) => request.id === id && request.workspaceId === workspaceId);
+  if (!row) return null;
+  const clean = response.trim();
+  if (!clean || clean.length > 4000) return null;
+  const at = now();
+  row.response = clean;
+  row.respondedBy = responderName.trim().slice(0, 100) || "Quorum Support";
+  row.respondedAt = at;
+  row.status = "RESPONDED";
+  row.updatedAt = at;
+  persist();
+  return row;
+}
+
 /* ── Committee roster + settings ────────────────────────────────────────── */
 
 export function listCommitteeMembers(): CommitteeMemberRow[] {
@@ -944,6 +1037,7 @@ export function listCommitteeMembers(): CommitteeMemberRow[] {
 }
 
 export function createCommitteeMember(data: {
+  userId?: string;
   name: string;
   role: string;
   isChair: boolean;
@@ -952,6 +1046,7 @@ export function createCommitteeMember(data: {
   const at = now();
   const row: CommitteeMemberRow = {
     id: `cmb_${randomUUID().slice(0, 8)}`,
+    ...(data.userId ? { userId: data.userId } : {}),
     name: data.name,
     role: data.role,
     isChair: data.isChair,
@@ -968,7 +1063,7 @@ export function createCommitteeMember(data: {
 
 export function updateCommitteeMember(
   id: string,
-  patch: Partial<Pick<CommitteeMemberRow, "name" | "role" | "isChair" | "status" | "office">>
+  patch: Partial<Pick<CommitteeMemberRow, "name" | "userId" | "role" | "isChair" | "status" | "office">>
 ): CommitteeMemberRow | null {
   const row = store.committeeMembers.find((m) => m.id === id);
   if (!row) return null;

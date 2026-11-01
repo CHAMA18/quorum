@@ -6,6 +6,7 @@ import {
   Globe,
   Package,
   Scale,
+  Sparkles,
   Stethoscope,
   Ticket,
   Timer,
@@ -20,6 +21,7 @@ import {
  * collar on the left names the feed; only the feed itself scrolls.
  */
 const ITEMS = [
+  { icon: Sparkles, text: "MUSE SPARK 1.3 ON META MODEL API · LLAMA 3.2 IN-REGION" },
   { icon: Globe, text: "BUILT FOR PUBLIC HEALTH PROCUREMENT ACROSS AFRICA" },
   { icon: Scale, text: "AGENTS PREPARE THE FILE — COMMITTEES AWARD THE TENDER" },
   { icon: FileSearch, text: "EVERY FINDING CITED, OR IT DOESN'T COUNT" },

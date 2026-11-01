@@ -125,12 +125,16 @@ export function revalidateAward(input: {
 }): AwardRevalidation {
   const blockers: string[] = [];
   const matrix = input.matrix;
+  /* A matrix written before bids carried a responsiveness decision holds rows
+     with neither a responsiveness nor a verdict. Reading one must not throw:
+     a bid nobody assessed is a refusal, not a crash. */
+  const bids = matrix?.bids ?? [];
   const winner =
     input.bidder?.trim() ||
-    matrix?.bids
+    bids
       .filter((b) => b.responsiveness === "RESPONSIVE")
       .sort((a, b) => (b.total ?? 0) - (a.total ?? 0))[0]?.bidder;
-  const row = matrix?.bids.find((b) => b.bidder.toLowerCase() === (winner ?? "").toLowerCase());
+  const row = bids.find((b) => b.bidder.toLowerCase() === (winner ?? "").toLowerCase());
 
   if (!matrix) blockers.push("No evaluation matrix is on record — an award cannot rest on a matrix that does not exist.");
   else if (matrix.status !== "CERTIFIED") blockers.push("The evaluation matrix is not certified — certify it before the award is signed.");
@@ -138,7 +142,9 @@ export function revalidateAward(input: {
 
   if (winner) {
     if (!row) blockers.push(`${winner} is not on the evaluation matrix — the recommendation does not reconcile to the scoring record.`);
-    else if (row.responsiveness !== "RESPONSIVE" || row.verdict === "DISQUALIFIED") {
+    else if (!row.responsiveness) {
+      blockers.push(`${winner} has no responsiveness decision on the evaluation matrix — record it before the award is signed.`);
+    } else if (row.responsiveness !== "RESPONSIVE" || row.verdict === "DISQUALIFIED") {
       blockers.push(`${winner} is recorded ${row.responsiveness.toLowerCase().replace(/_/g, " ")} — a non-responsive bid cannot be awarded.`);
     }
   }

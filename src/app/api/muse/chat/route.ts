@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHmac } from "node:crypto";
 import { z } from "zod";
 import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import type { AuthUser } from "@/lib/auth-types";
-import { museChat, museConfigFromEnv, type MuseMessage } from "@/lib/muse";
+import { museChat, museConfigFromEnv, museResponsesInput, museUsesResponses, type MuseMessage } from "@/lib/muse";
 import { canReadDeskTool, DESK_TOOLS, runDeskTool, type DeskToolContext } from "@/lib/muse-desk-tools";
 import { ACTION_TOOLS, buildProposal, explicitReviewAssignment, isActionTool, proposalStagedNote, type Proposal } from "@/lib/muse-actions";
 import { localAgent } from "@/lib/muse-local-brain";
@@ -58,6 +59,12 @@ function toolsForUser(user: AuthUser) {
   const reads = DESK_TOOLS.filter((tool) => canReadDeskTool(tool.name, {}, user));
   const actions = can(user.role, "run_reviews") ? ACTION_TOOLS : [];
   return [...reads, ...actions];
+}
+
+function safetyIdentifier(user: AuthUser): string | undefined {
+  const key = process.env.MUSE_SAFETY_IDENTIFIER_SECRET?.trim() || process.env.GATE_SIGNING_KEY?.trim();
+  if (!key) return undefined;
+  return createHmac("sha256", key).update(user.id).digest("hex");
 }
 
 const SYSTEM_PROMPT = `You are Barry, Quorum's desk agent — the procurement officer's aide on a public-procurement tender review desk. You are genuinely agentic, and you say so: you read the desk live, and you can act on it.
@@ -134,9 +141,14 @@ async function modelLoop(
   const toolsRead: string[] = [];
   let staged: Proposal | undefined;
   let blockedAction = false;
+  /* Responses is stateless here: keep the original instructions/history and
+     append each exact model turn plus its tool outputs, including encrypted
+     reasoning. Chat Completions continues to rebuild from `messages`. */
+  let continuationInput: unknown[] | undefined = museUsesResponses(cfg) ? museResponsesInput(messages) : undefined;
+  const modelSafetyId = safetyIdentifier(user);
   try {
     for (let round = 0; round < MAX_ROUNDS; round++) {
-      const reply = await museChat(cfg, messages, staged ? availableTools.filter((tool) => !isActionTool(tool.name)) : availableTools);
+      const reply = await museChat(cfg, messages, staged ? availableTools.filter((tool) => !isActionTool(tool.name)) : availableTools, continuationInput, { safetyIdentifier: modelSafetyId });
 
       if (reply.toolCalls.length === 0) {
         return { reply: reply.text || "I have nothing on that — try naming a tender reference.", model: reply.model, toolsRead };
@@ -148,26 +160,23 @@ async function modelLoop(
       messages.push({ role: "assistant", content: reply.text || "", tool_calls: reply.rawToolCalls });
 
       let stagedThisRound = false;
+      const responseOutputs: unknown[] = [];
+      const addToolResult = (callId: string, content: string) => {
+        messages.push({ role: "tool", tool_call_id: callId, content });
+        responseOutputs.push({ type: "function_call_output", call_id: callId, output: content });
+      };
       for (const call of reply.toolCalls) {
         /* An action call: stage it, tell the model, and stop the loop — the
            officer's consent is the next event, not another model pass. */
         if (isActionTool(call.name)) {
           const tenderId = String(call.args.tenderId ?? "").trim();
           if (!can(user.role, "run_reviews") || call.name !== "launch_review") {
-            messages.push({
-              role: "tool",
-              tool_call_id: call.id,
-              content: JSON.stringify({ staged: false, error: "This role cannot assign a review, and the assistant cannot make final gate decisions." }),
-            });
+            addToolResult(call.id, JSON.stringify({ staged: false, error: "This role cannot assign a review, and the assistant cannot make final gate decisions." }));
             blockedAction = true;
             continue;
           }
           if (!tenderId || !explicitReviewAssignment(message, tenderId)) {
-            messages.push({
-              role: "tool",
-              tool_call_id: call.id,
-              content: JSON.stringify({ staged: false, error: "A review can be assigned only when the current user message explicitly requests a review and names the exact tender reference." }),
-            });
+            addToolResult(call.id, JSON.stringify({ staged: false, error: "A review can be assigned only when the current user message explicitly requests a review and names the exact tender reference." }));
             blockedAction = true;
             continue;
           }
@@ -181,58 +190,48 @@ async function modelLoop(
             tenderRecord = { error: "The tender record could not be verified." };
           }
           if (tenderRecord.error) {
-            messages.push({
-              role: "tool",
-              tool_call_id: call.id,
-              content: JSON.stringify({ staged: false, error: `I could not verify ${tenderId} in this workspace. ${String(tenderRecord.error).slice(0, 220)}` }),
-            });
+            addToolResult(call.id, JSON.stringify({ staged: false, error: `I could not verify ${tenderId} in this workspace. ${String(tenderRecord.error).slice(0, 220)}` }));
             blockedAction = true;
             continue;
           }
           if (!toolsRead.includes("find_tender")) toolsRead.push("find_tender");
           if (staged) {
             toolsRead.push(call.name);
-            messages.push({
-              role: "tool",
-              tool_call_id: call.id,
-              content: JSON.stringify({ staged: false, note: "A proposal is already staged for this turn. Wait for the officer's decision before staging another." }),
-            });
+            addToolResult(call.id, JSON.stringify({ staged: false, note: "A proposal is already staged for this turn. Wait for the officer's decision before staging another." }));
             continue;
           }
           const built = buildProposal(call.name, call.args, user);
           if ("error" in built) {
             toolsRead.push(call.name);
-            messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify({ staged: false, error: built.error }) });
+            addToolResult(call.id, JSON.stringify({ staged: false, error: built.error }));
             continue;
           }
           staged = built;
           toolsRead.push(call.name);
-          messages.push({ role: "tool", tool_call_id: call.id, content: proposalStagedNote(call.name, built) });
+          addToolResult(call.id, proposalStagedNote(call.name, built));
           stagedThisRound = true;
           continue;
         }
         /* A read: run it now. */
         if (!canReadDeskTool(call.name, call.args, user)) {
-          messages.push({
-            role: "tool",
-            tool_call_id: call.id,
-            content: JSON.stringify({ error: `The signed-in role (${user.role}) cannot read this record.` }),
-          });
+          addToolResult(call.id, JSON.stringify({ error: `The signed-in role (${user.role}) cannot read this record.` }));
           continue;
         }
         toolsRead.push(call.name);
-        messages.push({ role: "tool", tool_call_id: call.id, content: await runDeskTool(call.name, call.args, context) });
+        addToolResult(call.id, await runDeskTool(call.name, call.args, context));
       }
 
+      continuationInput = reply.responseItems?.length ? [...(continuationInput ?? []), ...reply.responseItems, ...responseOutputs] : undefined;
+
       if (blockedAction && !staged) {
-        const spoken = await museChat(cfg, messages, availableTools.filter((tool) => !isActionTool(tool.name)));
+        const spoken = await museChat(cfg, messages, availableTools.filter((tool) => !isActionTool(tool.name)), continuationInput, { safetyIdentifier: modelSafetyId });
         return { reply: spoken.text || "Tell me the tender reference and explicitly ask me to review it. I cannot make the final gate decision.", model: spoken.model, toolsRead };
       }
 
       /* The action is staged — one more pass so the model can explain the
          card in its own words, with no tools left to call. */
       if (stagedThisRound && staged) {
-        const spoken = await museChat(cfg, messages, []);
+        const spoken = await museChat(cfg, messages, [], continuationInput, { safetyIdentifier: modelSafetyId });
         return { reply: spoken.text || staged.label, model: spoken.model, toolsRead, proposal: staged };
       }
     }
@@ -242,7 +241,7 @@ async function modelLoop(
       role: "user",
       content: "(That is all the desk reads you get for this question. Answer now from what you already have.)",
     });
-    const final = await museChat(cfg, messages, []);
+    const final = await museChat(cfg, messages, [], continuationInput ? [...continuationInput, { role: "user", content: "(That is all the desk reads you get for this question. Answer now from what you already have.)" }] : undefined, { safetyIdentifier: modelSafetyId });
     return { reply: final.text || "I could not finish that read — try again in a moment.", model: final.model, toolsRead };
   } catch (err) {
     return {

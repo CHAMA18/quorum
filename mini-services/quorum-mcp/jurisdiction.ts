@@ -56,7 +56,7 @@ export const JURISDICTION_PACKS: Record<JurisdictionId, JurisdictionPack> = {
     workingWeekdays: WEEKDAYS,
     addendumMinNoticeDays: 7,
     albResponseDays: 5,
-    standstillDays: 10,
+    standstillDays: 5,
     complaintResponseDays: 14,
     calendarYears: [2026, 2027, 2028],
     holidays: [
@@ -199,6 +199,9 @@ export function isWorkingDay(date: Date | string, pack: JurisdictionPack): boole
   const d = typeof date === "string" ? new Date(date) : date;
   if (Number.isNaN(d.getTime())) return false;
   const p = partsInZone(d, pack.timezone);
+  if (!calendarCoversYear(pack, p.y)) {
+    throw new Error(`the ${pack.id} working-day calendar does not cover ${p.y}; load a verified holiday calendar before calculating statutory dates`);
+  }
   if (!pack.workingWeekdays.includes(p.weekday)) return false;
   return !isHoliday(d, pack);
 }
@@ -218,6 +221,11 @@ export function addWorkingDaysIn(iso: string, days: number, packOrId: Jurisdicti
   const pack = typeof packOrId === "string" ? jurisdictionPack(packOrId) : packOrId;
   const start = new Date(iso);
   if (Number.isNaN(start.getTime())) return iso;
+  if (!Number.isInteger(days) || days < 0) throw new Error("working days must be a non-negative whole number");
+  const startYear = partsInZone(start, pack.timezone).y;
+  if (!calendarCoversYear(pack, startYear)) {
+    throw new Error(`the ${pack.id} working-day calendar does not cover ${startYear}; load a verified holiday calendar before calculating statutory dates`);
+  }
   const cursor = new Date(start);
   let added = 0;
   while (added < days) {
@@ -233,6 +241,12 @@ export function workingDaysBetweenIn(a: string, b: string, packOrId: Jurisdictio
   const start = new Date(a);
   const end = new Date(b);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) return 0;
+  for (const date of [start, end]) {
+    const year = partsInZone(date, pack.timezone).y;
+    if (!calendarCoversYear(pack, year)) {
+      throw new Error(`the ${pack.id} working-day calendar does not cover ${year}; load a verified holiday calendar before calculating statutory dates`);
+    }
+  }
   let n = 0;
   const cursor = new Date(start);
   while (cursor < end) {

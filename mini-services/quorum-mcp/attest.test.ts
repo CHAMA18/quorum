@@ -77,7 +77,8 @@ function officeGate(office: Gate["requiredOffice"]): Gate {
 describe("preApprovalCheck fail-closed", () => {
   test("an approver on nobody's register is refused, with the office named", () => {
     const reason = preApprovalCheck(officeGate("ACCOUNTING_OFFICER"), "Ghost Officer", [], "Someone Else");
-    expect(reason).toContain("not on the committee register");
+      expect(typeof reason).toBe("string");
+      expect(reason ?? "").toContain("not on the committee register");
     expect(reason).toContain("accounting officer");
   });
 
@@ -222,6 +223,221 @@ describe("certify_evaluation refuses until every PRESENT member has declared", (
     seed(["Eng. Bwalya Phiri", "Dr. Chanda Mwale"]);
     const gate = { ...officeGate(undefined), tenderId: TENDER };
     expect(preApprovalCheck(gate, "Someone Else", roster, "Someone Else")).toBeNull();
+  });
+});
+
+/* ── A record written before a field existed must still answer the gate ──── */
+
+describe("gate checks survive a cycle written before a field existed", () => {
+  const TENDER = "T-LEGACY-GATE";
+  const GATE_TOOLS = [
+    "certify_evaluation",
+    "sign_award_report",
+    "publish_award_notice",
+    "approve_procurement_method",
+    "issue_debrief",
+    "sign_contract_pack",
+    "certify_payment",
+    "execute_contract",
+    "approve_variation",
+    "record_contract_completion",
+    "respond_complaint",
+  ];
+  const roster: RosterMemberForGate[] = [
+    { name: "Officer", status: "PRESENT", office: "PROCUREMENT_UNIT" },
+    { name: "Eval One", status: "PRESENT", office: "EVALUATION_COMMITTEE" },
+    { name: "Eval Two", status: "PRESENT", office: "EVALUATION_COMMITTEE" },
+  ];
+
+  const seed = (record: unknown) => {
+    state.cycle = state.cycle.filter((c) => c.tenderId !== TENDER);
+    state.cycle.push(record as TenderCycle);
+  };
+  const clear = () => {
+    state.cycle = state.cycle.filter((c) => c.tenderId !== TENDER);
+  };
+
+  test("a bare record answers every gate with a refusal, never a throw", () => {
+    seed({ tenderId: TENDER, createdAt: new Date().toISOString() });
+    try {
+      for (const tool of GATE_TOOLS) {
+        const gate = { ...officeGate(undefined), tenderId: TENDER, tool } as Gate;
+        let reason: string | null = null;
+        expect(() => {
+          reason = preApprovalCheck(gate, "Officer", roster, "Officer");
+        }).not.toThrow();
+        /* Not `undefined`: a gate answers with a reason or with silence. */
+        expect(reason === null || typeof reason === "string").toBe(true);
+      }
+    } finally {
+      clear();
+    }
+  });
+
+  test("a contract written before payments and variations existed still answers", () => {
+    seed({
+      tenderId: TENDER,
+      createdAt: new Date().toISOString(),
+      coi: [],
+      contract: {
+        tenderId: TENDER,
+        supplier: "Legacy Ltd",
+        value: 1_000,
+        openedAt: new Date().toISOString(),
+        status: "EXECUTED",
+      },
+    });
+    try {
+      for (const tool of ["certify_payment", "approve_variation", "record_contract_completion", "execute_contract"]) {
+        const gate = { ...officeGate(undefined), tenderId: TENDER, tool, inputs: { paymentId: "pay_1", variationId: "v_1" } } as Gate;
+        expect(() => preApprovalCheck(gate, "Officer", roster, "Officer")).not.toThrow();
+      }
+      const contract = state.cycle.find((c) => c.tenderId === TENDER)?.contract;
+      expect(contract?.payments).toEqual([]);
+      expect(contract?.variations).toEqual([]);
+    } finally {
+      clear();
+    }
+  });
+});
+
+describe("gate checks survive a gate and roster written before newer fields", () => {
+  const TENDER = "T-LEGACY-GATE-SHAPE";
+  const roster: RosterMemberForGate[] = [
+    { name: "Officer", status: "PRESENT", office: "PROCUREMENT_UNIT" },
+    { name: "Eval One", status: "PRESENT", office: "EVALUATION_COMMITTEE" },
+    { name: "Eval Two", status: "PRESENT", office: "EVALUATION_COMMITTEE" },
+  ];
+
+  const seed = (record: Record<string, unknown>) => {
+    state.cycle = state.cycle.filter((c) => c.tenderId !== TENDER);
+    state.cycle.push({ ...record, tenderId: TENDER } as unknown as TenderCycle);
+  };
+  const clear = () => {
+    state.cycle = state.cycle.filter((c) => c.tenderId !== TENDER);
+  };
+
+  test("a gate persisted with no inputs answers every tool instead of throwing", () => {
+    seed({
+      createdAt: new Date().toISOString(),
+      matrix: { id: "mx_legacy", status: "CERTIFIED", criteria: [], bids: [{ bidder: "Acme Ltd" }] },
+    });
+    try {
+      for (const tool of [
+        "record_financial_adjustments",
+        "publish_notice",
+        "publish_award_notice",
+        "resolve_alb",
+        "approve_procurement_method",
+        "sign_contract_pack",
+        "certify_payment",
+        "approve_variation",
+        "record_contract_completion",
+        "respond_complaint",
+      ]) {
+        const gate = { id: `gate_${tool}`, runId: "cycle", tenderId: TENDER, tool, status: "PENDING", createdAt: new Date().toISOString() } as unknown as Gate;
+        const answer = () => preApprovalCheck(gate, "Officer", roster, "Officer");
+        expect(answer).not.toThrow();
+        /* Never `undefined`, and never a silent pass for a tool that needs the
+           inputs this gate never carried. */
+        expect(answer()).toContain("raised without its staged inputs");
+      }
+    } finally {
+      clear();
+    }
+  });
+
+  test("a matrix written before bids existed refuses the gate, never crashes it", () => {
+    seed({ createdAt: new Date().toISOString(), matrix: { id: "mx_legacy", status: "DRAFT" } });
+    try {
+      const adjustments = {
+        id: "gate_adj",
+        runId: "cycle",
+        tenderId: TENDER,
+        tool: "record_financial_adjustments",
+        inputs: { matrixId: "mx_legacy", digest: "digest" },
+        status: "PENDING",
+        createdAt: new Date().toISOString(),
+      } as unknown as Gate;
+      expect(() => preApprovalCheck(adjustments, "Officer", roster, "Officer")).not.toThrow();
+      expect(preApprovalCheck(adjustments, "Officer", roster, "Officer")).toContain("financial adjustment");
+
+      const certify = {
+        id: "gate_cert",
+        runId: "cycle",
+        tenderId: TENDER,
+        tool: "certify_evaluation",
+        inputs: {},
+        status: "PENDING",
+        createdAt: new Date().toISOString(),
+      } as unknown as Gate;
+      expect(() => preApprovalCheck(certify, "Officer", roster, "Officer")).not.toThrow();
+    } finally {
+      clear();
+    }
+  });
+
+  test("an awarded bid with no responsiveness decision is refused by name", () => {
+    seed({
+      createdAt: new Date().toISOString(),
+      coi: [],
+      matrix: { id: "mx_legacy", status: "CERTIFIED", criteria: [], bids: [{ bidder: "Acme Ltd" }] },
+      awardReport: { tenderId: TENDER, recommendation: "Acme Ltd" },
+    });
+    try {
+      const gate = { id: "gate_award", runId: "cycle", tenderId: TENDER, tool: "sign_award_report", inputs: {}, status: "PENDING", createdAt: new Date().toISOString() } as unknown as Gate;
+      const reason = preApprovalCheck(gate, "Officer", roster, "Officer");
+      expect(reason).toContain("Acme Ltd has no responsiveness decision");
+    } finally {
+      clear();
+    }
+  });
+
+  test("a roster row with no name is an absent member, not a crash", () => {
+    seed({ createdAt: new Date().toISOString() });
+    const nameless = [{ status: "PRESENT", office: "PROCUREMENT_UNIT" }] as unknown as RosterMemberForGate[];
+    try {
+      const gate = { ...officeGate("ACCOUNTING_OFFICER"), tenderId: TENDER };
+      const refused = () => preApprovalCheck(gate, "Ghost Officer", nameless, "Someone Else");
+      expect(refused).not.toThrow();
+      expect(refused()).toContain("not on the committee register");
+    } finally {
+      clear();
+    }
+  });
+
+  test("a notice written before the field check existed cannot be published", () => {
+    seed({
+      createdAt: new Date().toISOString(),
+      notices: [{ id: "n_legacy", md: "# Notice\n", createdAt: new Date().toISOString() }],
+    });
+    const entry = {
+      id: "pipe_legacy",
+      ref: "PLAN-1",
+      title: "Legacy plan",
+      linkedTenderId: TENDER,
+      workspaceId: "demo",
+      createdAt: new Date().toISOString(),
+      requisition: { budgetValidated: true, budgetReference: "BUD-1" },
+    } as unknown as (typeof state.pipeline)[number];
+    state.pipeline.push(entry);
+    try {
+      const gate = {
+        id: "gate_notice",
+        runId: "cycle",
+        tenderId: TENDER,
+        tool: "publish_notice",
+        inputs: { noticeId: "n_legacy" },
+        status: "PENDING",
+        createdAt: new Date().toISOString(),
+      } as unknown as Gate;
+      expect(preApprovalCheck(gate, "Officer", roster, "Officer")).toBe(
+        "The solicitation notice is incomplete and cannot be published.",
+      );
+    } finally {
+      state.pipeline = state.pipeline.filter((p) => p.id !== "pipe_legacy");
+      clear();
+    }
   });
 });
 

@@ -45,6 +45,7 @@ beforeEach(() => {
     addenda: [],
     notices: [],
     specs: [],
+    dissents: [],
     matrix: MATRIX,
     createdAt: NOW.toISOString(),
   });

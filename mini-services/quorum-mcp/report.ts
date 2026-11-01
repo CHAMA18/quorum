@@ -28,14 +28,31 @@ function gateWord(g: Gate | undefined): string {
    estimate as estimated, and records the token counts it was computed from. */
 const ASSUMED_USD_PER_MTOK = { input: 2, output: 8 };
 
-function costLine(run: Run): string {
-  const u = run.usage ?? { drafts: 0, llmDrafts: 0, promptTokens: 0, completionTokens: 0 };
-  const tokens = u.promptTokens + u.completionTokens;
-  const usd = (u.promptTokens / 1e6) * ASSUMED_USD_PER_MTOK.input + (u.completionTokens / 1e6) * ASSUMED_USD_PER_MTOK.output;
-  if (tokens === 0) {
-    return `Template mode — 0 model tokens, estimated model spend **$0.0000**. Redlines came from the deterministic fallback, so the recorded cost is drafting latency only.`;
+function modelCallsForRun(audit: typeof toolLog): typeof toolLog {
+  return audit.filter((entry) => entry.server === "model-gateway" && entry.tool === "model_call");
+}
+
+function modelUsage(run: Run, calls: typeof toolLog) {
+  if (calls.length === 0) {
+    return run.usage ?? { promptTokens: 0, completionTokens: 0 };
   }
-  return `Estimated model spend **$${usd.toFixed(4)}** for ${tokens.toLocaleString()} tokens (${u.promptTokens.toLocaleString()} in / ${u.completionTokens.toLocaleString()} out) across ${u.drafts} draft(s), ${u.llmDrafts} from the model. Assumes USD ${ASSUMED_USD_PER_MTOK.input.toFixed(2)}/1M input + USD ${ASSUMED_USD_PER_MTOK.output.toFixed(2)}/1M output — an explicit assumption, not a quote; replace with the endpoint's real pricing.`;
+  return calls.reduce((total, entry) => {
+    const outputs = entry.outputs && typeof entry.outputs === "object" ? entry.outputs as Record<string, unknown> : {};
+    total.promptTokens += Number(outputs.promptTokens) || 0;
+    total.completionTokens += Number(outputs.completionTokens) || 0;
+    return total;
+  }, { promptTokens: 0, completionTokens: 0 });
+}
+
+function costLine(run: Run, calls: typeof toolLog): string {
+  const u = run.usage ?? { drafts: 0, llmDrafts: 0, promptTokens: 0, completionTokens: 0 };
+  const measured = modelUsage(run, calls);
+  const tokens = measured.promptTokens + measured.completionTokens;
+  const usd = (measured.promptTokens / 1e6) * ASSUMED_USD_PER_MTOK.input + (measured.completionTokens / 1e6) * ASSUMED_USD_PER_MTOK.output;
+  if (tokens === 0) {
+    return `No model calls returned tokens — estimated model spend **$0.0000**. Redlines came from the deterministic fallback, or configured model calls did not return usage.`;
+  }
+  return `Estimated model spend **$${usd.toFixed(4)}** for ${tokens.toLocaleString()} tokens (${measured.promptTokens.toLocaleString()} in / ${measured.completionTokens.toLocaleString()} out) across ${calls.length} recorded model call(s), including planning, evidence reading, repair and drafting. Assumes USD ${ASSUMED_USD_PER_MTOK.input.toFixed(2)}/1M input + USD ${ASSUMED_USD_PER_MTOK.output.toFixed(2)}/1M output — an explicit assumption, not a quote; replace with the endpoint's real pricing.`;
 }
 
 export function buildReport(runId: string): { filename: string; markdown: string } | null {
@@ -44,6 +61,8 @@ export function buildReport(runId: string): { filename: string; markdown: string
 
   const gate = state.gates.find((g) => g.runId === run.id);
   const audit = toolLog.filter((l) => l.runId === run.id);
+  const modelCalls = modelCallsForRun(audit);
+  const measuredUsage = modelUsage(run, modelCalls);
   const lines: string[] = [];
 
   lines.push(`# Sourced report — tender ${run.tenderId}`);
@@ -65,6 +84,14 @@ export function buildReport(runId: string): { filename: string; markdown: string
      which model wrote each accepted draft, and the exact strings the endpoint
      returned. Template mode is stated, never disguised as model output. */
   const attribution = modelAttributionForRun(run);
+  const callModels = modelCalls.map((entry) => {
+    const inputs = entry.inputs && typeof entry.inputs === "object" ? entry.inputs as Record<string, unknown> : {};
+    return typeof inputs.model === "string" ? inputs.model : "";
+  }).filter(Boolean);
+  const redactions = modelCalls.reduce((total, entry) => {
+    const outputs = entry.outputs && typeof entry.outputs === "object" ? entry.outputs as Record<string, unknown> : {};
+    return total + (Number(outputs.redactions) || 0);
+  }, 0);
   lines.push("## Model attribution");
   lines.push("");
   lines.push("| Field | Value |");
@@ -72,10 +99,23 @@ export function buildReport(runId: string): { filename: string; markdown: string
   lines.push(`| Review plan | ${attribution.planSource === "llm" ? `model-led (\`${attribution.planModel ?? "model"}\`)` : "deterministic pack inspection"} |`);
   lines.push(`| Drafts from the model | ${attribution.draftLlm} of ${attribution.draftTotal} |`);
   lines.push(`| Drafts from template | ${attribution.draftTemplate} |`);
-  lines.push(`| Model(s) returned by the endpoint | ${attribution.models.length ? attribution.models.map((m) => `\`${m}\``).join(", ") : "none — template mode"} |`);
-  lines.push(`| Tokens | ${(attribution.promptTokens + attribution.completionTokens).toLocaleString()} (${attribution.promptTokens.toLocaleString()} in / ${attribution.completionTokens.toLocaleString()} out) |`);
-  lines.push(`| Redactions before a hosted call | ${attribution.redactions.toLocaleString()} span(s) — supplier names and currency amounts replaced; zero means the in-region path saw the full evidence |`);
+  lines.push(`| Model(s) returned by the endpoint | ${callModels.length ? [...new Set(callModels)].map((m) => `\`${m}\``).join(", ") : attribution.models.length ? attribution.models.map((m) => `\`${m}\``).join(", ") : "none — template mode"} |`);
+  lines.push(`| Tokens across recorded model calls | ${(measuredUsage.promptTokens + measuredUsage.completionTokens).toLocaleString()} (${measuredUsage.promptTokens.toLocaleString()} in / ${measuredUsage.completionTokens.toLocaleString()} out) |`);
+  lines.push(`| Hosted redactions | ${redactions.toLocaleString()} replaced span(s) across the model calls |`);
   lines.push("");
+
+  if (modelCalls.length) {
+    lines.push("### Model call details");
+    lines.push("");
+    lines.push("| Purpose | Model | API | Reasoning | Tokens in/out | Latency | Outcome | Redactions |");
+    lines.push("| --- | --- | --- | --- | ---: | ---: | --- | ---: |");
+    for (const entry of modelCalls) {
+      const inputs = entry.inputs && typeof entry.inputs === "object" ? entry.inputs as Record<string, unknown> : {};
+      const outputs = entry.outputs && typeof entry.outputs === "object" ? entry.outputs as Record<string, unknown> : {};
+      lines.push(`| ${mdEscape(String(inputs.purpose ?? "—"))} | \`${mdEscape(String(inputs.model ?? "—"))}\` | ${mdEscape(String(inputs.api ?? "—"))} | ${mdEscape(String(inputs.reasoningEffort ?? "—"))} | ${(Number(outputs.promptTokens) || 0).toLocaleString()} / ${(Number(outputs.completionTokens) || 0).toLocaleString()} | ${entry.durationMs} ms | ${mdEscape(String(outputs.outcome ?? entry.status))} | ${(Number(outputs.redactions) || 0).toLocaleString()} |`);
+    }
+    lines.push("");
+  }
 
   if (run.plan) {
     lines.push(`## Review plan (${run.plan.source})`);
@@ -107,6 +147,29 @@ export function buildReport(runId: string): { filename: string; markdown: string
     for (const req of run.requirements) lines.push(`| ${req.id} | ${mdEscape(req.clause)} | ${req.page} |`);
   } else lines.push("_No SHALL/must clauses pinned._");
   lines.push("");
+
+  lines.push(`## Model evidence map (${run.modelEvidence?.length ?? 0})`);
+  lines.push("");
+  lines.push("These are model-generated reading aids, not findings or decisions. Each quote was checked against the named source before it was retained; hosted-model redactions remain visible as placeholders.");
+  lines.push("");
+  if (run.modelEvidence?.length) {
+    for (const item of run.modelEvidence) {
+      lines.push(`### ${mdEscape(item.category.replaceAll("_", " "))} · ${item.confidence} confidence`);
+      lines.push("");
+      lines.push(`- **Observation:** ${mdEscape(item.observation)}`);
+      lines.push(`- **Source quote:** “${mdEscape(item.quote)}”`);
+      lines.push(`- **Citation:** \`${mdEscape(item.citation)}\``);
+      if (item.comparisonCitation && item.comparisonQuote) {
+        lines.push(`- **Comparison quote:** “${mdEscape(item.comparisonQuote)}”`);
+        lines.push(`- **Comparison citation:** \`${mdEscape(item.comparisonCitation)}\``);
+      }
+      lines.push(`- **Human review question:** ${mdEscape(item.reviewQuestion)}`);
+      lines.push("");
+    }
+  } else {
+    lines.push("_No model evidence observations were available for this run; deterministic checks and source-cited requirements remain available._");
+    lines.push("");
+  }
 
   lines.push(`## Findings (${run.findings.length}) — every claim cites its source`);
   lines.push("");
@@ -189,7 +252,7 @@ export function buildReport(runId: string): { filename: string; markdown: string
 
   lines.push("## Run cost (estimated)");
   lines.push("");
-  lines.push(costLine(run));
+  lines.push(costLine(run, modelCalls));
   lines.push("");
 
   lines.push("---");
