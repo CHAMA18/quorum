@@ -6,12 +6,15 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 
 const baseUrl = process.env.QUORUM_MCP_URL || "http://127.0.0.1:3031";
+const serverVersion = process.env.QUORUM_MCP_VERSION || "0.2.0";
 const allowedHosts = new Set(["127.0.0.1", "localhost", "[::1]"]);
 const parsedUrl = new URL(baseUrl);
 if (
   parsedUrl.protocol !== "http:" ||
   !allowedHosts.has(parsedUrl.hostname) ||
-  (parsedUrl.port && parsedUrl.port !== "3031") ||
+  parsedUrl.port !== "3031" ||
+  parsedUrl.username ||
+  parsedUrl.password ||
   parsedUrl.pathname !== "/" ||
   parsedUrl.search ||
   parsedUrl.hash
@@ -46,7 +49,7 @@ async function getReadTools() {
 }
 
 const server = new Server(
-  { name: "quorum-mcp-vscode", version: "0.1.0" },
+  { name: "quorum-mcp-vscode", version: serverVersion },
   { capabilities: { tools: {} } },
 );
 

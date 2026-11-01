@@ -1,29 +1,46 @@
 # Quorum MCP for VS Code
 
-The extension connects VS Code Chat to the local Quorum MCP sidecar. It exposes
-only tools the Quorum server marks `READ`; writes and irreversible actions are
-not available from this bridge.
+Quorum MCP adds the local procurement assistant to VS Code Chat as a native MCP
+server. It publishes only tools marked `READ` by Quorum; write and filing tools
+are filtered out by the stdio bridge.
 
-## Install for development
+The bridge connects only to the Quorum sidecar on loopback port `3031`. It does
+not send workspace contents or MCP requests to a remote Quorum endpoint.
 
-1. Open this repository in VS Code.
-2. Open `vscode-extension/` as an extension development host, or install the
-   packaged extension when a `.vsix` is available.
-3. Start Quorum (`bun run dev`). Its MCP sidecar normally starts with the web
-   app on `127.0.0.1:3031`.
-4. Run **Quorum MCP: Check Local Connection** from the Command Palette.
-5. Run **Quorum MCP: Configure Read-only Server**. This adds or updates only
-   `servers.quorumMcp` in the workspace `.vscode/mcp.json` and preserves other
-   JSONC entries.
-6. In VS Code Chat, reload MCP servers if prompted and enable **quorumMcp**.
-   Ask questions about runs, deadlines, committee status, or tender records.
+## Install the packaged extension
 
-The extension defaults to `http://127.0.0.1:3031`. A different host, HTTPS
-endpoint, or port is intentionally refused: this bridge is for the local
-sidecar and does not transmit workspace data to a remote MCP service.
+From the repository root, install the VSIX with:
 
-## Package
+```bash
+code --install-extension vscode-extension/quorum-mcp-0.2.0.vsix
+```
 
-From this directory, run `npm install`, then package the extension with
-`npx @vscode/vsce package`. The generated `.vsix` is local build output and
-should be reviewed before distribution.
+You can also open **Extensions: Install from VSIX…** in VS Code and select that
+file.
+
+## Connect Quorum
+
+1. Start Quorum with `bun run dev`. The web app starts the local MCP sidecar on
+   `127.0.0.1:3031`.
+2. Open the Command Palette and run **Quorum MCP: Check Local Connection**.
+3. In VS Code Chat, open **Chat: Open Customizations → MCP Servers** and enable
+   **Quorum MCP**.
+4. Use the server's read-only tools in an agent chat.
+
+**Quorum MCP: Configure Connection** opens the extension setting
+`quorumMcp.serverUrl`. Only `http://127.0.0.1:3031`, `http://localhost:3031`,
+and `http://[::1]:3031` are accepted. The extension registers its MCP server
+directly with VS Code and does not write a machine-specific path into the
+workspace's `.vscode/mcp.json`.
+
+## Build from source
+
+```bash
+npm ci
+npm run check
+npm run package
+```
+
+Packaging writes `quorum-mcp-0.2.0.vsix` in this directory. The VSIX contains
+the pinned MCP SDK dependency; the Quorum application itself must be running
+locally when you use its tools.

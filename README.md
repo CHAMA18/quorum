@@ -529,9 +529,15 @@ provider setup requirements for messaging, calendars, storage and procurement da
 
 ## VS Code integration
 
-The source extension is in [`vscode-extension/`](vscode-extension/README.md). Install its dependencies with `npm install --prefix vscode-extension`, open the extension folder in an Extension Development Host (or package it as a VSIX), then start Quorum with `bun run dev`. Run **Quorum MCP: Check Local Connection**, then **Quorum MCP: Configure Read-only Server** from the Command Palette. The extension adds `servers.quorumMcp` to `.vscode/mcp.json`; enable or reload it in VS Code Chat to use Quorum's read-only MCP tools.
+The installable VSIX and source are in [`vscode-extension/`](vscode-extension/README.md).
+Install `vscode-extension/quorum-mcp-0.2.0.vsix`, start Quorum with `bun run dev`,
+and enable **Quorum MCP** under **Chat: Open Customizations → MCP Servers**. The
+extension registers its MCP server directly with VS Code instead of writing a local
+path into the workspace configuration. **Quorum MCP: Check Local Connection** tests
+the sidecar; **Quorum MCP: Configure Connection** opens its URL setting.
 
-The VS Code bridge accepts only the local sidecar at `127.0.0.1:3031` and filters out every tool not marked `READ`. Gate decisions, writes, and other irreversible actions are intentionally unavailable through this extension.
+The bridge accepts loopback HTTP on port `3031` only and exposes tools marked `READ`.
+Gate decisions, writes and filing actions are unavailable through the extension.
 
 ---
 

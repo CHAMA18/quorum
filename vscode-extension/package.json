@@ -1,22 +1,28 @@
 {
   "name": "quorum-mcp",
   "displayName": "Quorum MCP",
-  "description": "Read-only Quorum procurement desk tools for VS Code chat.",
-  "version": "0.1.0",
+  "description": "Read-only Quorum procurement MCP tools in VS Code Chat.",
+  "version": "0.2.0",
   "publisher": "chama18",
   "license": "MIT",
+  "icon": "icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/CHAMA18/the-bid-box-challenge"
+    "url": "https://github.com/CHAMA18/quorum.git"
+  },
+  "homepage": "https://github.com/CHAMA18/quorum/tree/main/vscode-extension#readme",
+  "bugs": {
+    "url": "https://github.com/CHAMA18/quorum/issues"
   },
   "engines": {
-    "vscode": "^1.99.0"
+    "vscode": "^1.105.0"
   },
   "categories": [
     "Other",
     "Machine Learning"
   ],
   "activationEvents": [
+    "onMcpServerDefinitionProvider:quorumMcp.server",
     "onCommand:quorumMcp.configure",
     "onCommand:quorumMcp.checkConnection"
   ],
@@ -25,7 +31,7 @@
     "commands": [
       {
         "command": "quorumMcp.configure",
-        "title": "Quorum MCP: Configure Read-only Server"
+        "title": "Quorum MCP: Configure Connection"
       },
       {
         "command": "quorumMcp.checkConnection",
@@ -38,19 +44,26 @@
         "quorumMcp.serverUrl": {
           "type": "string",
           "default": "http://127.0.0.1:3031",
-          "description": "Local Quorum MCP sidecar URL. Only loopback URLs on port 3031 are accepted."
+          "scope": "application",
+          "description": "Local Quorum MCP sidecar URL. Only loopback HTTP URLs on port 3031 are accepted."
         }
       }
-    }
+    },
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "quorumMcp.server",
+        "label": "Quorum MCP"
+      }
+    ]
   },
   "scripts": {
-    "check": "node --check extension.js && node --check server.mjs"
+    "check": "node --check extension.js && node --check server.mjs",
+    "package": "vsce package"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.32.1",
-    "jsonc-parser": "^3.3.1"
+    "@modelcontextprotocol/sdk": "1.32.1"
   },
   "devDependencies": {
-    "@types/vscode": "^1.99.0"
+    "@vscode/vsce": "^3.6.2"
   }
 }
