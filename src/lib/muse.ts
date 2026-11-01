@@ -190,6 +190,17 @@ export async function museChat(
     };
   }
 
+  const responseFormat = generation.responseSchema
+    ? {
+        type: "json_schema",
+        json_schema: {
+          name: generation.responseSchema.name,
+          schema: generation.responseSchema.schema,
+          strict: true,
+        },
+      }
+    : undefined;
+
   const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
     method: "POST",
     headers: { authorization: `Bearer ${cfg.apiKey}`, "content-type": "application/json" },
@@ -204,7 +215,7 @@ export async function museChat(
       ...(generation.reasoningEffort ? { reasoning_effort: generation.reasoningEffort } : {}),
       ...(generation.safetyIdentifier ? { safety_identifier: generation.safetyIdentifier } : {}),
       store: false,
-      ...(generation.responseSchema ? { response_format: { type: "json_schema", json_schema: { name: generation.responseSchema.name, schema: generation.responseSchema.schema, strict: true } } } : {}),
+      ...(responseFormat ? { response_format: responseFormat } : {}),
     }),
     cache: "no-store",
     signal: AbortSignal.timeout(45_000),
