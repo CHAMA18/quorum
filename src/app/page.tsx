@@ -42,6 +42,14 @@ function subscribeHash(onChange: () => void) {
 }
 const getHash = () => window.location.hash;
 const getServerHash = () => "";
+const STATIC_EXPORT = process.env.NEXT_PUBLIC_STATIC_EXPORT === "1";
+
+function workspaceUrl(route: string): string {
+  const destination = new URL(process.env.NEXT_PUBLIC_WORKSPACE_ORIGIN!);
+  destination.search = window.location.search;
+  destination.hash = route;
+  return destination.toString();
+}
 
 export default function Home() {
   const [, bump] = useReducer((n: number) => n + 1, 0);
@@ -56,6 +64,13 @@ export default function Home() {
         : "landing";
   const authMode: AuthMode = hash === "#/login" ? "login" : "register";
 
+  /* The static landing host has no /api runtime. Keep auth and workspace on
+     the server-backed origin so session cookies and protected APIs stay same-origin. */
+  useEffect(() => {
+    if (!STATIC_EXPORT || view === "landing") return;
+    window.location.replace(workspaceUrl(view === "auth" ? `/${authMode}` : "/dashboard"));
+  }, [view, authMode]);
+
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const officerFirstName = user?.name?.trim().split(/\s+/)[0] || undefined;
@@ -66,6 +81,10 @@ export default function Home() {
 
   /* The server-verified httpOnly session is the sole source of identity. */
   useEffect(() => {
+    if (STATIC_EXPORT) {
+      setAuthReady(true);
+      return;
+    }
     let alive = true;
     fetch("/api/auth/me", { cache: "no-store" })
       .then((r) => {
@@ -113,6 +132,10 @@ export default function Home() {
   }, []);
 
   const openAuth = useCallback((mode: AuthMode) => {
+    if (STATIC_EXPORT) {
+      window.location.assign(workspaceUrl(`/${mode}`));
+      return;
+    }
     if (window.location.hash !== `#/${mode}`) {
       window.location.hash = `/${mode}`; // fires hashchange → snapshot updates
     }
@@ -137,6 +160,10 @@ export default function Home() {
   }, []);
 
   const enterWorkspace = useCallback(() => {
+    if (STATIC_EXPORT) {
+      window.location.assign(workspaceUrl("/dashboard"));
+      return;
+    }
     if (window.location.hash !== "#/dashboard") {
       window.location.hash = "/dashboard"; // fires hashchange → snapshot updates
     }

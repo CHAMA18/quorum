@@ -14,13 +14,19 @@ const isStatic = process.env.STATIC_EXPORT === "1";
 /* GitHub Pages serves under /the-bid-box-challenge; a root-hosted static site
    (e.g. a custom domain) sets STATIC_BASE_PATH="" to build without a prefix. */
 const staticBasePath = process.env.STATIC_BASE_PATH ?? "/the-bid-box-challenge";
+const workspaceOrigin =
+  process.env.NEXT_PUBLIC_WORKSPACE_ORIGIN ?? "https://d1n7mv5t5hn4xe.cloudfront.net";
 
 const nextConfig: NextConfig = {
   output: isStatic ? "export" : "standalone",
   ...(isStatic ? { basePath: staticBasePath, images: { unoptimized: true } } : {}),
   /* Public media referenced from plain <video>/<img> tags needs the same
      prefix as the static export's basePath. */
-  env: { NEXT_PUBLIC_BASE_PATH: isStatic ? staticBasePath : "" },
+  env: {
+    NEXT_PUBLIC_BASE_PATH: isStatic ? staticBasePath : "",
+    NEXT_PUBLIC_STATIC_EXPORT: isStatic ? "1" : "0",
+    NEXT_PUBLIC_WORKSPACE_ORIGIN: workspaceOrigin,
+  },
   /* Keep standalone output rooted in this app; a parent package-lock.json
      must not nest the server under an unrelated workspace directory. */
   turbopack: { root: process.cwd() },
