@@ -52,30 +52,30 @@ function RequestCard({
             </Chip>
             <Chip tone="brand">FROM BARRY</Chip>
           </div>
-          <p className="mt-1.5 text-[10px] text-ink-500">
+          <p className="mt-1.5 text-[11px] leading-relaxed text-ink-600">
             {request.requesterName} · {request.requesterEmail} · sent {fmtStamp(request.createdAt)}
           </p>
         </div>
-        {request.status === "OPEN" ? <span className="inline-flex items-center gap-1.5 font-code text-[8px] font-bold uppercase tracking-[0.14em] text-amber-700 dark:text-amber-300"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" />Needs reply</span> : null}
+        {request.status === "OPEN" ? <span className="inline-flex items-center gap-1.5 font-code text-[10px] font-bold uppercase tracking-[0.06em] text-amber-800 dark:text-amber-300"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" />Needs reply</span> : null}
       </div>
 
       <div className="mt-4 rounded-xl border border-ink-100 bg-ink-50/70 px-4 py-3 dark:border-white/8 dark:bg-white/[0.025]">
-        <p className="whitespace-pre-wrap text-[12px] leading-relaxed text-ink-800">{request.message}</p>
+        <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-ink-800">{request.message}</p>
       </div>
 
       {request.response ? (
         <div className="mt-3 rounded-xl border border-emerald-200/80 bg-emerald-50/70 px-4 py-3 dark:border-emerald-500/20 dark:bg-emerald-500/[0.05]">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="font-code text-[8px] font-bold uppercase tracking-[0.16em] text-emerald-800 dark:text-emerald-300">Response · {request.respondedBy ?? "Support"}</p>
-            <p className="font-code text-[8px] text-ink-400">{fmtStamp(request.respondedAt)}</p>
+            <p className="font-code text-[10px] font-bold uppercase tracking-[0.08em] text-emerald-800 dark:text-emerald-300">Response · {request.respondedBy ?? "Support"}</p>
+            <p className="text-[10.5px] text-ink-600">{fmtStamp(request.respondedAt)}</p>
           </div>
-          <p className="mt-2 whitespace-pre-wrap text-[12px] leading-relaxed text-ink-800">{request.response}</p>
+          <p className="mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-ink-800">{request.response}</p>
         </div>
       ) : null}
 
       {canReply && request.status !== "CLOSED" ? (
         <div className="mt-4 grid gap-2">
-          <label htmlFor={`support-reply-${request.id}`} className="font-code text-[8px] font-bold uppercase tracking-[0.16em] text-ink-500">
+          <label htmlFor={`support-reply-${request.id}`} className="font-code text-[10px] font-bold uppercase tracking-[0.08em] text-ink-700">
             {request.response ? "Update response" : "Write a response"}
           </label>
           <textarea
@@ -85,7 +85,7 @@ function RequestCard({
             maxLength={4000}
             rows={3}
             placeholder="Write a clear reply for the requester…"
-            className="w-full rounded-xl border border-ink-200 bg-white px-3 py-2.5 text-[12px] leading-relaxed text-ink-950 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-500 dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-100 dark:placeholder:text-ink-500 dark:focus:border-white/30"
+            className="focus-brand min-h-28 w-full rounded-xl border border-ink-200 bg-white px-3.5 py-3 text-[13px] leading-relaxed text-ink-950 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-500 dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-100 dark:placeholder:text-ink-500 dark:focus:border-white/30"
           />
           <div className="flex justify-end">
             <Button variant="brand" size="sm" onClick={() => void sendReply()} disabled={sending || response.trim().length < 2}>
@@ -94,7 +94,7 @@ function RequestCard({
           </div>
         </div>
       ) : !canReply ? (
-        <p className="mt-3 text-[10px] text-ink-400">Only workspace owners and admins can send support responses.</p>
+        <p className="mt-3 text-[11px] leading-relaxed text-ink-600">Only workspace owners and admins can send support responses.</p>
       ) : null}
     </article>
   );
@@ -123,7 +123,7 @@ export function SupportPanel({ data, refresh, notify }: PanelProps) {
         ].map(({ label, value, icon: Icon }) => (
           <div key={label} className="panel flex items-center gap-3 rounded-xl px-4 py-3.5">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"><Icon className="h-4 w-4" aria-hidden="true" /></span>
-            <span><span className="block font-code text-[8px] font-bold uppercase tracking-[0.15em] text-ink-400">{label}</span><span className="mt-0.5 block font-display text-[20px] font-black text-ink-950">{value}</span></span>
+            <span><span className="block font-code text-[10px] font-bold uppercase tracking-[0.08em] text-ink-600">{label}</span><span className="mt-0.5 block font-display text-[20px] font-black text-ink-950">{value}</span></span>
           </div>
         ))}
       </div>

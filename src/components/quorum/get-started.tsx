@@ -153,7 +153,7 @@ export function GetStarted({
                     <Gauge className="h-5 w-5 text-brand-600" aria-hidden="true" />
                   </span>
                   <div>
-                    <p className="font-code text-[9.5px] font-semibold tracking-[0.24em] text-ink-500">
+                    <p className="font-code text-[10px] font-semibold tracking-[0.24em] text-ink-500">
                       FIRST-RUN READINESS
                     </p>
                     <p className="font-display text-[18px] font-extrabold tracking-tight text-ink-950">
@@ -261,7 +261,7 @@ export function GetStarted({
                     We&apos;ll reply within one working day with your pilot portal list.
                   </p>
                 </div>
-                <p className="font-code text-[9.5px] tracking-[0.18em] text-brand-600">
+                <p className="font-code text-[10px] tracking-[0.18em] text-brand-600">
                   GATE RULE APPLIES TO US TOO — A HUMAN REPLIES, NOT A BOT
                 </p>
               </div>
@@ -269,21 +269,21 @@ export function GetStarted({
               <>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="font-code text-[9.5px] font-semibold tracking-[0.24em] text-brand-700">
+                    <p className="font-code text-[10px] font-semibold tracking-[0.24em] text-brand-700">
                       REQUEST A PILOT
                     </p>
                     <p className="mt-1 text-[15px] font-semibold text-ink-950">
                       Three tenders, free — on your own portals.
                     </p>
                   </div>
-                  <p className="font-code text-[9px] tracking-[0.16em] text-ink-400">
+                  <p className="font-code text-[10px] tracking-[0.16em] text-ink-400">
                     NO CARD · NO DECK · A REAL RUN
                   </p>
                 </div>
 
                 <form onSubmit={submit} className="mt-5 grid gap-3 sm:grid-cols-[1fr_1.2fr_1fr_auto]" noValidate>
                   <div>
-                    <label htmlFor="pilot-name" className="mb-1 block font-code text-[9px] font-semibold tracking-[0.18em] text-ink-500">
+                    <label htmlFor="pilot-name" className="mb-1 block font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">
                       NAME
                     </label>
                     <input
@@ -293,11 +293,11 @@ export function GetStarted({
                       onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                       placeholder="Amina Mwangi"
                       autoComplete="name"
-                      className="h-12 w-full rounded-lg border border-ink-200 bg-paper px-4 text-[14px] text-ink-900 outline-none transition-all placeholder:text-ink-300 focus:border-ink-950 focus:bg-white focus:ring-2 focus:ring-ink-950/10"
+                      className="h-12 w-full rounded-lg border border-ink-200 bg-paper px-4 text-[14px] text-ink-900 outline-none transition-all placeholder:text-ink-400 focus:border-ink-950 focus:bg-white focus:ring-2 focus:ring-ink-950/10 dark:placeholder:text-ink-400"
                     />
                   </div>
                   <div>
-                    <label htmlFor="pilot-email" className="mb-1 block font-code text-[9px] font-semibold tracking-[0.18em] text-ink-500">
+                    <label htmlFor="pilot-email" className="mb-1 block font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">
                       WORK EMAIL
                     </label>
                     <input
@@ -307,11 +307,11 @@ export function GetStarted({
                       onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                       placeholder="a.mwangi@county.go.ke"
                       autoComplete="email"
-                      className="h-12 w-full rounded-lg border border-ink-200 bg-paper px-4 text-[14px] text-ink-900 outline-none transition-all placeholder:text-ink-300 focus:border-ink-950 focus:bg-white focus:ring-2 focus:ring-ink-950/10"
+                      className="h-12 w-full rounded-lg border border-ink-200 bg-paper px-4 text-[14px] text-ink-900 outline-none transition-all placeholder:text-ink-400 focus:border-ink-950 focus:bg-white focus:ring-2 focus:ring-ink-950/10 dark:placeholder:text-ink-400"
                     />
                   </div>
                   <div>
-                    <label htmlFor="pilot-org" className="mb-1 block font-code text-[9px] font-semibold tracking-[0.18em] text-ink-500">
+                    <label htmlFor="pilot-org" className="mb-1 block font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">
                       INSTITUTION · OPTIONAL
                     </label>
                     <input
@@ -321,7 +321,7 @@ export function GetStarted({
                       onChange={(e) => setForm((f) => ({ ...f, institution: e.target.value }))}
                       placeholder="County health agency"
                       autoComplete="organization"
-                      className="h-12 w-full rounded-lg border border-ink-200 bg-paper px-4 text-[14px] text-ink-900 outline-none transition-all placeholder:text-ink-300 focus:border-ink-950 focus:bg-white focus:ring-2 focus:ring-ink-950/10"
+                      className="h-12 w-full rounded-lg border border-ink-200 bg-paper px-4 text-[14px] text-ink-900 outline-none transition-all placeholder:text-ink-400 focus:border-ink-950 focus:bg-white focus:ring-2 focus:ring-ink-950/10 dark:placeholder:text-ink-400"
                     />
                   </div>
                   <div className="flex items-end">

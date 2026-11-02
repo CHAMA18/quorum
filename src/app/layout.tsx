@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
+import { MotionConfig } from "framer-motion";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseAnalytics } from "@/components/quorum/firebase-analytics";
@@ -47,6 +48,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#d92616",
+  viewportFit: "cover",
 };
 
 export default async function RootLayout({
@@ -78,12 +80,13 @@ export default async function RootLayout({
         className="font-body antialiased bg-background text-foreground"
       >
         <ThemeProvider>
-          {children}
-          {/* The voice assistant is a desk tool: it rides the workspace, docs
-              and org portal — never the public landing or auth door. */}
-          <MuseAssistantGate name={firstName} />
-          <FirebaseAnalytics />
-          <Toaster />
+          <MotionConfig reducedMotion="user">
+            {children}
+            {/* The assistant is for working areas and docs, not sign-in screens. */}
+            <MuseAssistantGate name={firstName} />
+            <FirebaseAnalytics />
+            <Toaster />
+          </MotionConfig>
         </ThemeProvider>
       </body>
     </html>

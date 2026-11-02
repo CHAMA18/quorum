@@ -185,8 +185,8 @@ export function StoredDocsBrowser({
     <div className="rounded-[10px] border border-ink-200 bg-white">
       <div className="flex items-center justify-between gap-3 border-b border-ink-100 px-3.5 py-2.5">
         <div className="min-w-0">
-          <p className="font-code text-[9px] font-semibold tracking-[0.18em] text-ink-500">{title}</p>
-          <p className="mt-0.5 truncate font-code text-[7.5px] tracking-[0.1em] text-ink-400" aria-live="polite">
+          <p className="font-code text-[10.5px] font-semibold tracking-[0.12em] text-ink-600">{title}</p>
+          <p className="mt-0.5 truncate font-code text-[10px] tracking-[0.04em] text-ink-600" aria-live="polite">
             {summary}
           </p>
         </div>
@@ -196,7 +196,7 @@ export function StoredDocsBrowser({
           title="Read the tender's prefix in R2 again"
           onClick={refresh}
           disabled={loading}
-          className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-ink-400 transition-colors hover:bg-ink-50 hover:text-ink-800 disabled:opacity-40"
+          className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-md text-ink-500 transition-colors hover:bg-ink-50 hover:text-ink-800 disabled:opacity-40"
         >
           <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} aria-hidden="true" />
         </button>
@@ -210,16 +210,16 @@ export function StoredDocsBrowser({
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="SEARCH FILENAME OR TYPE"
-              className="h-7 w-full rounded-md border border-ink-200 bg-paper/60 pl-7 pr-2 font-code text-[8px] tracking-[0.1em] text-ink-800 outline-none placeholder:text-ink-400 focus:border-ink-400"
+              placeholder="Search filename or type"
+              className="focus-brand h-11 w-full rounded-md border border-ink-200 bg-paper/60 pl-7 pr-2 text-base text-ink-800 outline-none placeholder:text-ink-400 focus:border-ink-400"
             />
           </label>
           <label className="flex items-center gap-1.5">
-            <span className="font-code text-[7px] tracking-[0.12em] text-ink-400">SORT</span>
+            <span className="font-code text-[10px] font-semibold tracking-[0.04em] text-ink-600">SORT</span>
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as SortKey)}
-              className="h-7 rounded-md border border-ink-200 bg-paper/60 px-1.5 font-code text-[8px] tracking-[0.08em] text-ink-700 outline-none focus:border-ink-400"
+              className="focus-brand h-11 rounded-md border border-ink-200 bg-paper/60 px-2 text-base text-ink-700 outline-none focus:border-ink-400"
             >
               {SORTS.map((option) => (
                 <option key={option.id} value={option.id}>
@@ -253,7 +253,7 @@ export function StoredDocsBrowser({
                 <Database className="h-3.5 w-3.5 shrink-0 text-ink-400" aria-hidden="true" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[12px] font-medium text-ink-800">{doc.filename}</span>
-                  <span className="mt-0.5 block truncate font-code text-[7.5px] tracking-[0.08em] text-ink-400">
+                  <span className="mt-0.5 block truncate font-code text-[10px] tracking-[0.02em] text-ink-600">
                     {bytesLabel(doc.bytes)} · {stampLabel(doc.uploaded)} · {doc.contentType}
                   </span>
                 </span>
@@ -262,7 +262,7 @@ export function StoredDocsBrowser({
                   aria-label={`Download ${doc.filename}`}
                   disabled={busyKey === doc.key}
                   onClick={() => void download(doc)}
-                  className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-ink-400 transition-colors hover:bg-brand-50 hover:text-brand-700 disabled:opacity-40"
+                  className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-md text-ink-500 transition-colors hover:bg-brand-50 hover:text-brand-700 disabled:opacity-40"
                 >
                   <Download className={cn("h-3.5 w-3.5", busyKey === doc.key && "animate-pulse")} aria-hidden="true" />
                 </button>
@@ -276,7 +276,7 @@ export function StoredDocsBrowser({
                       setActionError("");
                       setNotice("");
                     }}
-                    className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-ink-400 transition-colors hover:bg-brand-50 hover:text-brand-700 disabled:opacity-40"
+                    className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-md text-ink-500 transition-colors hover:bg-brand-50 hover:text-brand-700 disabled:opacity-40"
                   >
                     <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
@@ -289,7 +289,7 @@ export function StoredDocsBrowser({
                     type="button"
                     onClick={() => setConfirmKey(null)}
                     disabled={deletingKey === doc.key}
-                    className="h-6 rounded-md border border-ink-200 bg-white px-2 font-code text-[7.5px] font-bold tracking-[0.12em] text-ink-600 hover:border-ink-400 disabled:opacity-40"
+                    className="focus-brand inline-flex min-h-11 items-center rounded-md border border-ink-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.04em] text-ink-700 hover:border-ink-400 disabled:opacity-40"
                   >
                     CANCEL
                   </button>
@@ -297,7 +297,7 @@ export function StoredDocsBrowser({
                     type="button"
                     onClick={() => void remove(doc)}
                     disabled={deletingKey === doc.key}
-                    className="h-6 rounded-md bg-brand-600 px-2 font-code text-[7.5px] font-bold tracking-[0.12em] text-white hover:bg-brand-700 disabled:opacity-40"
+                    className="focus-brand inline-flex min-h-11 items-center rounded-md bg-brand-600 px-3 font-code text-[10px] font-bold tracking-[0.04em] text-white hover:bg-brand-700 disabled:opacity-40"
                   >
                     {deletingKey === doc.key ? "REMOVING…" : "REMOVE"}
                   </button>
@@ -309,12 +309,12 @@ export function StoredDocsBrowser({
       )}
 
       {truncated && (
-        <p className="border-t border-ink-100 px-3.5 py-2 font-code text-[7.5px] tracking-[0.12em] text-ink-400">
+        <p className="border-t border-ink-100 px-3.5 py-2 font-code text-[10px] tracking-[0.06em] text-ink-500">
           SHOWING THE FIRST {objects.length} OBJECTS
         </p>
       )}
       {notice && (
-        <p role="status" className="border-t border-ink-100 px-3.5 py-2 font-code text-[7.5px] tracking-[0.1em] text-ink-500">
+        <p role="status" className="border-t border-ink-100 px-3.5 py-2 font-code text-[10px] tracking-[0.06em] text-ink-600">
           {notice}
         </p>
       )}

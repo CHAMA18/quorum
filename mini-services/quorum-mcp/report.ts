@@ -64,8 +64,9 @@ export function buildReport(runId: string): { filename: string; markdown: string
   const modelCalls = modelCallsForRun(audit);
   const measuredUsage = modelUsage(run, modelCalls);
   const lines: string[] = [];
+  const publicReference = run.reference ?? run.id;
 
-  lines.push(`# Sourced report — tender ${run.tenderId}`);
+  lines.push(`# Sourced report — tender ${publicReference}`);
   lines.push("");
   lines.push(`> Prepared by the quorum-agent (MCP tool registry, LangGraph.js graphs).`);
   lines.push(`> The agent prepares the file; the committee awards the tender.`);
@@ -73,7 +74,7 @@ export function buildReport(runId: string): { filename: string; markdown: string
   lines.push("| Field | Value |");
   lines.push("| --- | --- |");
   lines.push(`| Run | ${run.id} |`);
-  lines.push(`| Tender | ${run.tenderId} |`);
+  lines.push(`| Tender | ${publicReference} |`);
   lines.push(`| Status | ${run.status} |`);
   lines.push(`| Started | ${run.startedAt} |`);
   lines.push(`| Updated | ${run.updatedAt} |`);
@@ -129,7 +130,9 @@ export function buildReport(runId: string): { filename: string; markdown: string
     lines.push(`| Value parsing | ${run.plan.parseMarkdownValues ? "deep (markdown bid values + OCDS records)" : "OCDS records only"} |`);
     lines.push(`| Rule focus | ${run.plan.focusRules.join(" > ")} |`);
     lines.push(`| Max redline drafts | ${run.plan.maxDrafts} |`);
-    lines.push(`| Pack | ${run.plan.pack.files} files · ${run.plan.pack.bids} bids · ${run.plan.pack.ocdsRecords} OCDS records |`);
+    lines.push(
+      `| Pack | ${run.plan.pack.files} files · ${run.plan.pack.bidders ?? run.plan.pack.bids} bidders · ${run.plan.pack.ocdsRecords} OCDS records |`,
+    );
     lines.push("");
   }
 
@@ -263,7 +266,7 @@ export function buildReport(runId: string): { filename: string; markdown: string
     }). Full ledger: tool-log.jsonl (append-only).*`
   );
 
-  const filename = `quorum-report-${run.tenderId.replace(/[^A-Za-z0-9._-]+/g, "_")}-${run.id}.md`;
+  const filename = `quorum-report-${publicReference.replace(/[^A-Za-z0-9._-]+/g, "_")}-${run.id}.md`;
   return { filename, markdown: lines.join("\n") };
 }
 

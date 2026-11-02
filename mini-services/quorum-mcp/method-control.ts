@@ -2,7 +2,7 @@
  * Procurement method control (WS6).
  *
  * The method is not a label on a form; it is the legal route the money
- * travels. Open bidding is the default, and every other route must be
+ * travels. Open national bidding is the default, and every other route must be
  * justified in the record and signed by the accounting officer at a gate.
  * Where the law also demands the regulator's prior approval — direct or
  * limited bidding above the jurisdiction threshold, and any alternative
@@ -32,15 +32,24 @@ export const METHOD_VALUE_LIMITS: Record<string, Record<string, { max: number; c
 /** The methods that need the regulator's prior approval rather than only the entity's gate. */
 export const AUTHORITY_APPROVAL_METHODS = new Set(["direct-bidding", "limited-bidding", "alternative-method"]);
 
-/** Methods that are open to the market by advertisement — the default, no gate. */
-export const OPEN_METHODS = new Set(["open-bidding"]);
+/** Open bidding routes stay the no-gate default; all other routes keep the method approval gate. */
+export const OPEN_METHODS = new Set([
+  "open-national-bidding",
+  "open-international-bidding",
+]);
+
+const LEGACY_METHOD_IDS: Record<string, string> = {
+  "open-bidding": "open-national-bidding",
+  "open-selection": "open-national-selection",
+};
 
 export function methodsForJurisdiction(jurisdictionId: string | undefined): ProcurementMethod[] {
   return METHODS_BY_JURISDICTION[(jurisdictionId ?? "ZM").toUpperCase()] ?? [];
 }
 
 export function findMethod(jurisdictionId: string | undefined, methodId: string | undefined): ProcurementMethod | undefined {
-  const id = (methodId ?? "").trim();
+  const rawId = (methodId ?? "").trim();
+  const id = LEGACY_METHOD_IDS[rawId] ?? rawId;
   if (!id) return undefined;
   return methodsForJurisdiction(jurisdictionId).find((m) => m.id === id);
 }
@@ -136,7 +145,9 @@ export function methodControlBlockReason(input: MethodControlInput): string | nu
 /** True when the method itself needs a named-human gate before it can be relied on. */
 export function methodNeedsGate(methodId: string | undefined): boolean {
   const id = (methodId ?? "").trim();
-  return !!id && !OPEN_METHODS.has(id);
+  if (!id) return false;
+  const method = findMethod("ZM", methodId);
+  return !method || !OPEN_METHODS.has(method.id);
 }
 
 /** Everything the desk should see about the recorded method, including why it fails. */

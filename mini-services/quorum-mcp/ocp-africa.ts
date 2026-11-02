@@ -6,7 +6,7 @@
  * check a bidder, a price or a record against.
  *
  * Source: OCP Data Registry — https://data.open-contracting.org/en/search/
- * Retrieved: 2026-10-30 · 136 datasets listed registry-wide;
+ * Retrieved: 2026-11-01 · 136 datasets listed registry-wide;
  * 22 are African, across 9 countries (Ghana, Kenya, Liberia, Nigeria, Rwanda, South Africa, Tanzania, Uganda, Zambia).
  *
  * This file is generated — see mine-ocp-africa.py beside it. Every field is
@@ -58,7 +58,7 @@ export interface OcpAfricaSource {
 export const OCP_AFRICA_SOURCE: OcpAfricaSource = {
   "registry": "OCP Data Registry — Open Contracting Partnership",
   "via": "https://data.open-contracting.org/en/search/",
-  "retrieved": "2026-10-30",
+  "retrieved": "2026-11-01",
   "scope": "136 datasets listed registry-wide; 22 African datasets across 9 countries",
   "licenseNote": "Each dataset keeps the licence its publisher states on the registry; where none is stated the registry shows ‘—’.",
   "note": "Coverage dates, retrieval dates, formats and sizes are taken from the registry's own record; counts are its published \"Count of …\" figures. A dataset the publisher stopped updating is flagged, never hidden."

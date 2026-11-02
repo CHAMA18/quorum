@@ -1,4 +1,5 @@
 import type { PublicOrg } from "@/lib/org-auth";
+import { systemReferenceLabel } from "@/lib/system-reference";
 
 /**
  * Shared shapes and formatters for the supplier console. The API routes hand
@@ -8,6 +9,7 @@ import type { PublicOrg } from "@/lib/org-auth";
 
 export type Tender = {
   ref: string;
+  systemReference?: string;
   title: string;
   buyer: string;
   sector: string;
@@ -19,11 +21,23 @@ export type Tender = {
   status: "OPEN" | "CLOSED";
   daysLeft?: number;
   applications: number;
+  requiredDocuments?: string[];
+};
+
+export type SupplierBidDocument = {
+  requirement: string;
+  key: string;
+  filename: string;
+  bytes: number;
+  contentType: string;
+  sha256: string;
+  uploadedAt: string;
 };
 
 export type Application = {
   id: string;
   tenderId: string;
+  systemReference?: string;
   orgName: string;
   /* A sealed filing carries no price until the certified opening reveals it. */
   amount?: number;
@@ -31,14 +45,20 @@ export type Application = {
   coverNote?: string;
   sealed?: boolean;
   receiptId?: string;
+  bidDocuments?: SupplierBidDocument[];
   version?: number;
   receivedAt: string;
   status: string;
 };
 
+export function publicReferenceLabel(reference?: string): string {
+  return systemReferenceLabel(reference);
+}
+
 /** The contract as the portal reads it: the signed instrument plus its acceptance. */
 export type OrgContract = {
   tenderRef: string;
+  systemReference?: string;
   contract: {
     tenderId: string;
     supplier: string;

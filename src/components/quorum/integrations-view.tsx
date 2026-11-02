@@ -270,7 +270,7 @@ export function IntegrationsView() {
               <Code2 className="h-5 w-5" aria-hidden="true" />
             </span>
             <div>
-              <p className="font-code text-[8px] font-bold tracking-[0.2em] text-brand-700 dark:text-brand-300">MODEL CONTEXT PROTOCOL · MCP</p>
+              <p className="font-code text-[10px] font-bold tracking-[0.1em] text-brand-800 dark:text-brand-300">Model Context Protocol · MCP</p>
               <h2 id="ai-client-setup-title" className="mt-1 text-[20px] font-black tracking-tight text-ink-950 dark:text-white">Bring Quorum into your AI workspace.</h2>
               <p className="mt-2 max-w-3xl text-[12px] leading-relaxed text-ink-600 dark:text-ink-300">
                 Connect compatible AI clients—including Cursor, Claude Desktop, VS Code, Windsurf and Cline—to Quorum’s read-only procurement tools. MCP is the shared interface; your client’s model stays in control of the conversation.
@@ -280,33 +280,33 @@ export function IntegrationsView() {
 
           <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
             <div className="space-y-3">
-              <label className="block">
-                <span className="mb-1.5 block font-code text-[8px] font-bold tracking-[0.13em] text-ink-500 dark:text-ink-400">AI CLIENT</span>
-                <div role="tablist" aria-label="AI client" className="flex flex-wrap gap-1.5">
+              <div className="block">
+                <span className="mb-1.5 block font-code text-[10px] font-bold tracking-[0.08em] text-ink-700 dark:text-ink-300">AI client</span>
+                <div role="group" aria-label="Select an AI client" className="flex flex-wrap gap-1.5">
                   {MCP_CLIENTS.map((name) => (
-                    <button key={name} type="button" role="tab" aria-selected={client === name} onClick={() => setClient(name)} className={cn("rounded-lg px-3 py-2 text-[11px] font-semibold transition-colors", client === name ? "bg-ink-100 text-ink-950 dark:bg-white/[0.1] dark:text-white" : "text-ink-600 hover:bg-ink-50 dark:text-ink-300 dark:hover:bg-white/[0.05]")}>
+                    <button key={name} type="button" aria-pressed={client === name} onClick={() => setClient(name)} className={cn("focus-brand inline-flex min-h-11 items-center rounded-lg px-3 text-[12px] font-semibold transition-colors", client === name ? "bg-ink-100 text-ink-950 dark:bg-white/[0.1] dark:text-white" : "text-ink-700 hover:bg-ink-50 dark:text-ink-300 dark:hover:bg-white/[0.05]")}>
                       {name}
                     </button>
                   ))}
                 </div>
-              </label>
+              </div>
               <label className="block">
-                <span className="mb-1.5 block font-code text-[8px] font-bold tracking-[0.13em] text-ink-500 dark:text-ink-400">LOCAL QUORUM CHECKOUT PATH</span>
-                <input value={projectPath} onChange={(event) => setProjectPath(event.target.value.trim())} placeholder="/Users/you/projects/quorum" className="min-h-10 w-full rounded-lg border border-ink-200 bg-white px-3 font-mono text-[10px] text-ink-900 outline-none placeholder:text-ink-400 focus:border-brand-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-white" />
+                <span className="mb-1.5 block font-code text-[10px] font-bold tracking-[0.08em] text-ink-700 dark:text-ink-300">Local Quorum checkout path</span>
+                <input value={projectPath} onChange={(event) => setProjectPath(event.target.value.trim())} placeholder="/Users/you/projects/quorum" className="focus-brand min-h-11 w-full rounded-lg border border-ink-200 bg-white px-3 font-mono text-[12px] text-ink-900 outline-none placeholder:text-ink-400 focus:border-brand-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-white" />
               </label>
               <p className="text-[10px] leading-relaxed text-ink-500 dark:text-ink-400">Install the bridge once with <code>npm install --prefix vscode-extension</code>, then run Quorum locally with <code>bun run dev</code>. Replace the sample path with your repository’s absolute path.</p>
               <p className="text-[11px] leading-relaxed text-ink-700 dark:text-ink-200">{MCP_CLIENT_GUIDES[client].setup}</p>
               {client === "Cursor" ? <CursorLogo /> : null}
-              <a href={MCP_CLIENT_GUIDES[client].href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-code text-[8px] font-bold tracking-[0.1em] text-brand-700 hover:text-brand-600 dark:text-brand-300">
-                {client} MCP SETUP GUIDE <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
+              <a href={MCP_CLIENT_GUIDES[client].href} target="_blank" rel="noreferrer" className="focus-brand inline-flex min-h-11 items-center gap-1 font-code text-[10px] font-bold tracking-[0.06em] text-brand-800 hover:text-brand-600 dark:text-brand-300">
+                {client} MCP setup guide <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
               </a>
               <div className="flex items-start justify-between gap-3 rounded-lg border border-ink-200 bg-white px-3 py-2.5 dark:border-white/10 dark:bg-white/[0.04]">
                 <code className="break-all text-[11px] text-ink-900 dark:text-white">{REMOTE_MCP_ENDPOINT}</code>
-                <button type="button" aria-label="Copy server URL" onClick={() => void copyRemoteUrl()} className="shrink-0 text-ink-500 hover:text-ink-900 dark:hover:text-white">
+                <button type="button" aria-label="Copy server URL" onClick={() => void copyRemoteUrl()} className="focus-brand grid min-h-11 min-w-11 shrink-0 place-items-center rounded-md text-ink-600 hover:bg-paper hover:text-ink-950 dark:hover:bg-white/[0.06] dark:hover:text-white">
                   {copied ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
                 </button>
               </div>
-              <button type="button" onClick={() => setAddedClient(client)} className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-ink-950 px-3 text-[10px] font-semibold text-white transition hover:bg-ink-800 dark:bg-white dark:text-ink-950 dark:hover:bg-ink-100">
+              <button type="button" onClick={() => setAddedClient(client)} className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg bg-ink-950 px-3 text-[12px] font-semibold text-white transition hover:bg-ink-800 dark:bg-white dark:text-ink-950 dark:hover:bg-ink-100">
                 <Check className="h-3.5 w-3.5" aria-hidden="true" />
                 I’ve added the server
               </button>
@@ -314,10 +314,10 @@ export function IntegrationsView() {
             </div>
             <div className="min-w-0 overflow-hidden rounded-xl border border-ink-200 bg-ink-950 dark:border-white/10">
               <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
-                <span className="font-code text-[8px] font-bold tracking-[0.13em] text-white/60">LOCAL MCP CONFIG · READ-ONLY BRIDGE</span>
-                <span className="rounded-full bg-emerald-400/10 px-2 py-1 font-code text-[7px] font-bold tracking-[0.1em] text-emerald-300">STDIO</span>
+                <span className="font-code text-[10px] font-bold tracking-[0.06em] text-white/80">Local MCP config · read-only bridge</span>
+                <span className="rounded-full bg-emerald-400/10 px-2 py-1 font-code text-[10px] font-bold tracking-[0.06em] text-emerald-200">STDIO</span>
               </div>
-              <pre className="max-h-56 overflow-auto p-3 text-[9px] leading-relaxed text-emerald-100"><code>{clientConfig(client, projectPath)}</code></pre>
+              <pre className="max-h-56 overflow-auto p-3 text-[10px] leading-relaxed text-emerald-100"><code>{clientConfig(client, projectPath)}</code></pre>
             </div>
           </div>
           <p className="mt-4 rounded-lg border border-amber-300/70 bg-amber-50 px-3.5 py-3 text-[10px] leading-relaxed text-amber-950 dark:border-amber-500/20 dark:bg-amber-500/[0.07] dark:text-amber-100">
@@ -330,43 +330,43 @@ export function IntegrationsView() {
         <div className="px-5 py-6 sm:px-7 sm:py-7">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="font-code text-[8px] font-bold tracking-[0.2em] text-brand-700 dark:text-brand-300">REMOTE · HTTPS · BEARER AUTH</p>
+              <p className="font-code text-[10px] font-bold tracking-[0.1em] text-brand-800 dark:text-brand-300">Remote · HTTPS · bearer authentication</p>
               <h2 id="remote-mcp-title" className="mt-1 text-[18px] font-black tracking-tight text-ink-950 dark:text-white">Connect an AI client from anywhere.</h2>
               <p className="mt-1.5 max-w-3xl text-[11px] leading-relaxed text-ink-600 dark:text-ink-300">The remote gateway uses a client token at the Cloudflare edge and a separate private credential for the origin hop. Only read-only MCP tools are exposed; the sidecar remains loopback-only.</p>
             </div>
-            <span className={cn("rounded-full border px-2.5 py-1 font-code text-[7px] font-bold tracking-[0.12em]", remoteState === "connected" ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300" : "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-500/20 dark:bg-amber-500/[0.07] dark:text-amber-100")}>
+            <span className={cn("rounded-full border px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em]", remoteState === "connected" ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300" : "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-500/20 dark:bg-amber-500/[0.07] dark:text-amber-100")}>
               {remoteState === "connected" ? "REMOTE READY" : remoteState === "checking" ? "CHECKING" : remoteState === "unavailable" ? "NOT REACHABLE" : "DEPLOYMENT REQUIRED"}
             </span>
           </div>
           <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
             <div className="space-y-3">
               <div>
-                <span className="mb-1.5 block font-code text-[8px] font-bold tracking-[0.13em] text-ink-500 dark:text-ink-400">REMOTE MCP URL</span>
+                <span className="mb-1.5 block font-code text-[10px] font-bold tracking-[0.08em] text-ink-700 dark:text-ink-300">Remote MCP URL</span>
                 <code className="block break-all rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-[10px] text-ink-900 dark:border-white/10 dark:bg-white/[0.04] dark:text-white">{REMOTE_MCP_ENDPOINT}</code>
               </div>
               <label className="block">
-                <span className="mb-1.5 block font-code text-[8px] font-bold tracking-[0.13em] text-ink-500 dark:text-ink-400">REMOTE CLIENT TOKEN</span>
-                <input type="password" autoComplete="off" value={remoteToken} onChange={(event) => setRemoteToken(event.target.value)} placeholder="Paste the MCP_REMOTE_TOKEN set by the service administrator" className="min-h-10 w-full rounded-lg border border-ink-200 bg-white px-3 font-mono text-[10px] text-ink-900 outline-none placeholder:text-ink-400 focus:border-brand-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-white" />
+                <span className="mb-1.5 block font-code text-[10px] font-bold tracking-[0.08em] text-ink-700 dark:text-ink-300">Remote client token</span>
+                <input type="password" autoComplete="off" value={remoteToken} onChange={(event) => setRemoteToken(event.target.value)} placeholder="Paste the MCP_REMOTE_TOKEN set by the service administrator" className="focus-brand min-h-11 w-full rounded-lg border border-ink-200 bg-white px-3 font-mono text-[12px] text-ink-900 outline-none placeholder:text-ink-400 focus:border-brand-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-white" />
               </label>
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => void copyRemoteConfig()} className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-ink-950 px-3 text-[10px] font-semibold text-white hover:bg-ink-800 dark:bg-white dark:text-ink-950 dark:hover:bg-ink-100">
+                <button type="button" onClick={() => void copyRemoteConfig()} className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg bg-ink-950 px-3 text-[12px] font-semibold text-white hover:bg-ink-800 dark:bg-white dark:text-ink-950 dark:hover:bg-ink-100">
                   {copied ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
                   {copied ? "Remote config copied" : `Copy ${client} remote config`}
                 </button>
-                <button type="button" onClick={() => void checkRemoteMcp()} disabled={!remoteToken || remoteState === "checking"} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-ink-200 px-3 text-[10px] font-semibold text-ink-700 hover:bg-white disabled:opacity-50 dark:border-white/10 dark:text-ink-200 dark:hover:bg-white/[0.05]">
+                <button type="button" onClick={() => void checkRemoteMcp()} disabled={!remoteToken || remoteState === "checking"} className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg border border-ink-200 px-3 text-[12px] font-semibold text-ink-800 hover:bg-white disabled:opacity-50 dark:border-white/10 dark:text-ink-200 dark:hover:bg-white/[0.05]">
                   <RefreshCw className={cn("h-3.5 w-3.5", remoteState === "checking" && "animate-spin")} aria-hidden="true" />
                   Check remote connection
                 </button>
               </div>
-              <p className="text-[9px] leading-relaxed text-ink-500 dark:text-ink-400">The token stays in this page’s memory and is only used for the check or the configuration you copy. Store it in your client’s private settings; never commit it.</p>
+              <p className="text-[10.5px] leading-relaxed text-ink-600 dark:text-ink-300">The token stays in this page’s memory and is only used for the check or the configuration you copy. Store it in your client’s private settings; never commit it.</p>
             </div>
             <div className="min-w-0 overflow-hidden rounded-xl border border-ink-200 bg-ink-950 dark:border-white/10">
-              <div className="border-b border-white/10 px-3 py-2"><span className="font-code text-[8px] font-bold tracking-[0.13em] text-white/60">REMOTE MCP · HTTP STREAMABLE</span></div>
-              <pre className="max-h-56 overflow-auto p-3 text-[9px] leading-relaxed text-emerald-100"><code>{remoteClientConfig(client, remoteToken)}</code></pre>
+              <div className="border-b border-white/10 px-3 py-2"><span className="font-code text-[10px] font-bold tracking-[0.06em] text-white/80">Remote MCP · HTTP streamable</span></div>
+              <pre className="max-h-56 overflow-auto p-3 text-[10px] leading-relaxed text-emerald-100"><code>{remoteClientConfig(client, remoteToken)}</code></pre>
             </div>
           </div>
           {remoteState === "unavailable" || remoteState === "idle" ? <p className="mt-4 rounded-lg border border-amber-300/70 bg-amber-50 px-3.5 py-3 text-[10px] leading-relaxed text-amber-950 dark:border-amber-500/20 dark:bg-amber-500/[0.07] dark:text-amber-100">The gateway route and its secrets must be deployed before this endpoint accepts connections. Keep the origin secret server-side and use a separate long random client token.</p> : null}
-          {client === "Claude Desktop" ? <p className="mt-3 text-[9px] leading-relaxed text-ink-500 dark:text-ink-400">Claude Desktop supports local MCP servers through the setup above. For remote access, use its supported connector flow if available for your account; otherwise use the local bridge.</p> : null}
+          {client === "Claude Desktop" ? <p className="mt-3 text-[10px] leading-relaxed text-ink-500 dark:text-ink-400">Claude Desktop supports local MCP servers through the setup above. For remote access, use its supported connector flow if available for your account; otherwise use the local bridge.</p> : null}
         </div>
       </section>
 
@@ -377,14 +377,14 @@ export function IntegrationsView() {
               <Cable className="h-5 w-5" aria-hidden="true" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="font-code text-[8px] font-bold tracking-[0.2em] text-brand-700 dark:text-brand-300">QUORUM TOOL SERVER</p>
+              <p className="font-code text-[10px] font-bold tracking-[0.1em] text-brand-800 dark:text-brand-300">Quorum tool server</p>
               <h2 id="quorum-mcp-integration-title" className="mt-1 text-[20px] font-black tracking-tight text-ink-950 dark:text-white">Quorum MCP</h2>
               <p className="mt-2 max-w-3xl text-[12px] leading-relaxed text-ink-600 dark:text-ink-300">
                 The MCP sidecar exposes Quorum tools over JSON-RPC. Local clients connect through the read-only stdio bridge above; direct internet access is not enabled on this deployment.
               </p>
             </div>
             <span className={cn(
-              "shrink-0 rounded-full border px-2.5 py-1 font-code text-[7px] font-bold tracking-[0.12em]",
+              "shrink-0 rounded-full border px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em]",
               mcpState === "connected"
                 ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
                 : "border-ink-200 bg-white text-ink-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-300",
@@ -394,15 +394,15 @@ export function IntegrationsView() {
           </div>
 
           <div className="rounded-xl border border-ink-100 bg-paper/70 p-4 dark:border-white/[0.07] dark:bg-white/[0.025]">
-            <p className="font-code text-[7px] font-bold tracking-[0.15em] text-ink-400">LOCAL ENDPOINT · HTTP JSON-RPC 2.0</p>
+            <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">Local endpoint · HTTP JSON-RPC 2.0</p>
             <code className="mt-1 block break-all text-[11px] text-ink-900 dark:text-white">{mcpEndpoint || "No public remote MCP endpoint configured"}</code>
             <div className="mt-3 flex flex-wrap gap-2">
-              {localRuntime ? <button type="button" onClick={() => void checkMcp()} disabled={mcpState === "checking"} className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-ink-950 px-3 text-[10px] font-semibold text-white transition hover:bg-ink-800 disabled:opacity-50 dark:bg-white dark:text-ink-950 dark:hover:bg-ink-100">
+              {localRuntime ? <button type="button" onClick={() => void checkMcp()} disabled={mcpState === "checking"} className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg bg-ink-950 px-3 text-[12px] font-semibold text-white transition hover:bg-ink-800 disabled:opacity-50 dark:bg-white dark:text-ink-950 dark:hover:bg-ink-100">
                 <RefreshCw className={cn("h-3.5 w-3.5", mcpState === "checking" && "animate-spin")} aria-hidden="true" />
                 Check local server
               </button> : null}
               {mcpState === "connected" ? (
-                <button type="button" onClick={() => void copyMcpConfig()} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-ink-200 px-3 text-[10px] font-semibold text-ink-700 hover:bg-white dark:border-white/10 dark:text-ink-200 dark:hover:bg-white/[0.05]">
+                <button type="button" onClick={() => void copyMcpConfig()} className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg border border-ink-200 px-3 text-[12px] font-semibold text-ink-800 hover:bg-white dark:border-white/10 dark:text-ink-200 dark:hover:bg-white/[0.05]">
                   {copied ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
                   {copied ? "Copied" : "Copy MCP client config"}
                 </button>
@@ -426,7 +426,7 @@ export function IntegrationsView() {
               <ShieldCheck className="h-5 w-5" aria-hidden="true" />
             </span>
             <div className="max-w-3xl">
-              <p className="font-code text-[8px] font-bold tracking-[0.2em] text-brand-700 dark:text-brand-300">CONNECTED WORKSPACE · INTEGRATIONS</p>
+              <p className="font-code text-[10px] font-bold tracking-[0.1em] text-brand-800 dark:text-brand-300">Connected workspace · integrations</p>
               <h1 className="mt-1 font-display text-[25px] font-black tracking-[-0.025em] text-ink-950 dark:text-white sm:text-[30px]">Bring your procurement tools together.</h1>
               <p className="mt-2 text-[12px] leading-relaxed text-ink-600 dark:text-ink-300">
                 Review the providers that fit Quorum. Connections are not enabled yet; no external messages, files or calendar events are being sent from this catalog.
@@ -434,8 +434,8 @@ export function IntegrationsView() {
             </div>
           </div>
           <div className="relative mt-5 flex flex-wrap gap-2">
-            <span className="rounded-full border border-ink-200/80 bg-white/70 px-2.5 py-1 font-code text-[7.5px] font-bold tracking-[0.13em] text-ink-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-300">{INTEGRATIONS.length} PROVIDERS</span>
-            <span className="rounded-full border border-ink-200/80 bg-white/70 px-2.5 py-1 font-code text-[7.5px] font-bold tracking-[0.13em] text-ink-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-300">ADMIN SETUP REQUIRED</span>
+            <span className="rounded-full border border-ink-200/80 bg-white/70 px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em] text-ink-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-300">{INTEGRATIONS.length} providers</span>
+            <span className="rounded-full border border-ink-200/80 bg-white/70 px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em] text-ink-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-300">Admin setup required</span>
           </div>
         </div>
       </section>
@@ -450,9 +450,9 @@ export function IntegrationsView() {
                   <IntegrationMark kind={integration.icon} />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="font-code text-[7px] font-bold tracking-[0.16em] text-ink-400">{integration.category}</p>
+                  <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">{integration.category}</p>
                   <h2 className="mt-1 text-[13px] font-bold leading-snug text-ink-950 dark:text-white">{integration.name}</h2>
-                  <span className="mt-1.5 inline-flex items-center gap-1.5 font-code text-[7px] font-bold tracking-[0.12em] text-ink-500 dark:text-ink-400">
+                  <span className="mt-1.5 inline-flex items-center gap-1.5 font-code text-[10px] font-bold tracking-[0.06em] text-ink-600 dark:text-ink-300">
                     <span className="h-1.5 w-1.5 rounded-full bg-ink-300 dark:bg-ink-500" aria-hidden="true" />
                     NOT CONNECTED
                   </span>
@@ -464,7 +464,7 @@ export function IntegrationsView() {
                   type="button"
                   aria-expanded={isExpanded}
                   onClick={() => setExpanded(isExpanded ? null : integration.id)}
-                  className="inline-flex min-h-8 items-center gap-1.5 text-[10px] font-semibold text-ink-600 transition-colors hover:text-brand-700 dark:text-ink-300 dark:hover:text-brand-300"
+                  className="focus-brand inline-flex min-h-11 items-center gap-1.5 text-[12px] font-semibold text-ink-700 transition-colors hover:text-brand-700 dark:text-ink-200 dark:hover:text-brand-300"
                 >
                   {isExpanded ? "Hide setup requirements" : "Review setup requirements"}
                   <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isExpanded && "rotate-180")} aria-hidden="true" />
@@ -474,15 +474,15 @@ export function IntegrationsView() {
                     <p className="text-[10px] leading-relaxed text-ink-600 dark:text-ink-300">{integration.use}</p>
                     <ul className="space-y-1.5">
                       {integration.requirements.map((requirement) => (
-                        <li key={requirement} className="flex gap-2 text-[9.5px] leading-relaxed text-ink-500 dark:text-ink-400">
+                        <li key={requirement} className="flex gap-2 text-[10.5px] leading-relaxed text-ink-600 dark:text-ink-300">
                           <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-brand-500" aria-hidden="true" />
                           {requirement}
                         </li>
                       ))}
                     </ul>
                     {integration.href ? (
-                      <a href={integration.href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-code text-[7px] font-bold tracking-[0.12em] text-brand-700 hover:text-brand-600 dark:text-brand-300">
-                        PROVIDER DOCUMENTATION <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
+                      <a href={integration.href} target="_blank" rel="noreferrer" className="focus-brand inline-flex min-h-11 items-center gap-1 font-code text-[10px] font-bold tracking-[0.06em] text-brand-800 hover:text-brand-600 dark:text-brand-300">
+                        Provider documentation <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
                       </a>
                     ) : null}
                   </div>

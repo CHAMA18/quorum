@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-10-30T04:49:45Z",
-  "retrieved": "2026-10-30",
+  "generatedAt": "2026-11-01T16:37:19Z",
+  "retrieved": "2026-11-01",
   "registryTotal": 136,
   "africa": {
     "source": {
       "registry": "OCP Data Registry — Open Contracting Partnership",
       "via": "https://data.open-contracting.org/en/search/",
-      "retrieved": "2026-10-30",
+      "retrieved": "2026-11-01",
       "scope": "136 datasets listed registry-wide; 22 African datasets across 9 countries",
       "licenseNote": "Each dataset keeps the licence its publisher states on the registry; where none is stated the registry shows ‘—’.",
       "note": "Coverage dates, retrieval dates, formats and sizes are taken from the registry's own record; counts are its published \"Count of …\" figures. A dataset the publisher stopped updating is flagged, never hidden."
@@ -1298,7 +1298,7 @@
     "source": {
       "registry": "OCP Data Registry — Open Contracting Partnership",
       "via": "https://data.open-contracting.org/en/search/",
-      "retrieved": "2026-10-30",
+      "retrieved": "2026-11-01",
       "scope": "136 datasets listed registry-wide; 114 non-African datasets across 63 countries",
       "licenseNote": "Each dataset keeps the licence its publisher states on the registry; where none is stated the registry shows ‘—’.",
       "note": "Coverage dates, retrieval dates, formats and sizes are taken from the registry's own record; counts are its published \"Count of …\" figures. A dataset the publisher stopped updating is flagged, never hidden."
@@ -1847,7 +1847,7 @@
         "listingRange": "Sep 2021 - Apr 2026",
         "stale": false,
         "updateFrequency": "Monthly",
-        "listingRetrieved": "Oct 2026",
+        "listingRetrieved": "Nov 2026",
         "retrievedNote": "retrieved monthly",
         "formats": [
           "JSON",
@@ -1857,14 +1857,14 @@
         "registryUrl": "https://data.open-contracting.org/en/publication/153",
         "coverageFrom": "2021-09-29",
         "coverageTo": "2026-04-30",
-        "recordModified": "2026-10-02",
+        "recordModified": "2026-11-01",
         "language": "Portuguese",
         "license": "https://creativecommons.org/licenses/by/4.0/",
         "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
         "downloads": [
           {
             "format": "CSV",
-            "size": "50.3 MB",
+            "size": "50.5 MB",
             "url": "https://data.open-contracting.org/en/publication/153/download?name=full.csv.tar.gz"
           },
           {
@@ -1874,11 +1874,11 @@
           },
           {
             "format": "XLSX",
-            "size": "86.6 MB",
+            "size": "86.9 MB",
             "url": "https://data.open-contracting.org/en/publication/153/download?name=full.xlsx"
           }
         ],
-        "lastRetrieved": "2026-10-02",
+        "lastRetrieved": "2026-11-01",
         "policyUrl": "https://medicamentos.transparencia.org.br/dados-abertos",
         "ocidPrefix": "ocds-ye9ov3",
         "portalUrl": "https://medicamentos.transparencia.org.br/dados-abertos",
@@ -6472,7 +6472,7 @@
         "listingRange": "Aug 2021 - Nov 2023",
         "stale": false,
         "updateFrequency": "Daily",
-        "listingRetrieved": "Oct 2026",
+        "listingRetrieved": "Nov 2026",
         "retrievedNote": "retrieved monthly",
         "formats": [
           "JSON",
@@ -6482,7 +6482,7 @@
         "registryUrl": "https://data.open-contracting.org/en/publication/78",
         "coverageFrom": "2021-08-02",
         "coverageTo": "2023-11-30",
-        "recordModified": "2026-10-02",
+        "recordModified": "2026-11-01",
         "language": "Spanish",
         "license": "Open Data Commons Attribution License (ODC-By)",
         "licenseUrl": "https://opendatacommons.org/licenses/by/",
@@ -6494,11 +6494,11 @@
           },
           {
             "format": "JSONL",
-            "size": "39.4 MB",
+            "size": "39.5 MB",
             "url": "https://data.open-contracting.org/en/publication/78/download?name=full.jsonl.gz"
           }
         ],
-        "lastRetrieved": "2026-10-02",
+        "lastRetrieved": "2026-11-01",
         "policyUrl": "https://saeusceprod01.blob.core.windows.net/portalweb/datos-abiertos/Alcance_de_Publicacion_Peru_Compras.pdf",
         "ocidPrefix": "ocds-luoe2u",
         "portalUrl": "https://www.catalogos.perucompras.gob.pe/ConsultaOrdenesPub",
@@ -7480,42 +7480,42 @@
         ],
         "registryUrl": "https://data.open-contracting.org/en/publication/41",
         "coverageFrom": "2021-01-01",
-        "coverageTo": "2026-10-22",
-        "recordModified": "2026-10-24",
+        "coverageTo": "2026-10-29",
+        "recordModified": "2026-10-31",
         "language": "English",
         "license": "Open Government Licence v3.0",
         "licenseUrl": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
         "downloads": [
           {
             "format": "CSV",
-            "size": "229.9 MB",
+            "size": "231.3 MB",
             "url": "https://data.open-contracting.org/en/publication/41/download?name=full.csv.tar.gz"
           },
           {
             "format": "JSONL",
-            "size": "214.0 MB",
+            "size": "215.4 MB",
             "url": "https://data.open-contracting.org/en/publication/41/download?name=full.jsonl.gz"
           }
         ],
-        "lastRetrieved": "2026-10-24",
+        "lastRetrieved": "2026-10-31",
         "policyUrl": "https://www.gov.uk/government/publications/open-contracting",
         "ocidPrefix": "ocds-h6vhtk",
         "portalUrl": "https://www.find-tender.service.gov.uk/apidocumentation/1.0/GET-ocdsReleasePackages",
         "counts": {
-          "parties": 681973,
-          "planning_activities": 23153,
-          "tenders": 212809,
+          "parties": 685976,
+          "planning_activities": 23343,
+          "tenders": 214281,
           "tenderers": 0,
-          "tender_items": 246085,
-          "awards": 270451,
-          "suppliers": 437509,
-          "award_items": 72580,
-          "contracts": 243871,
-          "contract_items": 4356,
+          "tender_items": 247053,
+          "awards": 272062,
+          "suppliers": 440501,
+          "award_items": 73834,
+          "contracts": 245289,
+          "contract_items": 4371,
           "transactions": 0,
-          "documents": 245427,
-          "milestones": 40357,
-          "amendments": 42481
+          "documents": 248535,
+          "milestones": 40972,
+          "amendments": 42668
         }
       },
       {

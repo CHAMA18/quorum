@@ -93,7 +93,7 @@ export function verifyTenderDownload(input: {
 export function tenderDownloadFilename(key: string): string {
   const base = key.split("/").pop() ?? "";
   const name = base
-    .replace(/^\d{10,16}-/, "")
+    .replace(/^\d{10,16}-(?:[a-f0-9-]{36}-)?/i, "")
     .replace(/[\u0000-\u001f\u007f"\\/]+/g, "-")
     .replace(/\s+/g, " ")
     .trim()

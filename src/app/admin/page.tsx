@@ -31,9 +31,9 @@ export default async function AdminPage() {
 
   if (!can(user.role, "view_oversight")) {
     return (
-      <main className="grid min-h-screen place-items-center bg-paper px-6">
+      <main className="admin-surface grid min-h-screen place-items-center bg-paper px-6">
         <div className="panel w-full max-w-md rounded-2xl px-6 py-7">
-          <p className="font-code text-[8px] font-bold uppercase tracking-[0.24em] text-brand-600">
+          <p className="font-code text-[10px] font-bold uppercase tracking-[0.12em] text-brand-600">
             ACCESS REFUSED
           </p>
           <h1 className="mt-2 font-display text-[24px] font-black tracking-[-0.02em] text-ink-950">
@@ -47,13 +47,13 @@ export default async function AdminPage() {
           <div className="mt-5 flex flex-wrap gap-2">
             <a
               href="/#/dashboard"
-              className="focus-brand inline-flex h-9 items-center rounded-lg bg-ink-950 px-4 font-code text-[9px] font-bold uppercase tracking-[0.16em] text-white dark:bg-white dark:text-ink-950"
+              className="focus-brand inline-flex min-h-11 items-center rounded-lg bg-ink-950 px-4 font-code text-[10px] font-bold uppercase tracking-[0.08em] text-white dark:bg-white dark:text-[#0b0c0f]"
             >
               RETURN TO THE WORKSPACE
             </a>
             <a
               href="/"
-              className="focus-brand inline-flex h-9 items-center rounded-lg border border-ink-200 px-4 font-code text-[9px] font-bold uppercase tracking-[0.16em] text-ink-600 dark:border-white/15 dark:text-ink-300"
+              className="focus-brand inline-flex min-h-11 items-center rounded-lg border border-ink-200 px-4 font-code text-[10px] font-bold uppercase tracking-[0.08em] text-ink-600 dark:border-white/15 dark:text-ink-300"
             >
               LANDING
             </a>

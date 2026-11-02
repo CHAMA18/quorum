@@ -1,66 +1,74 @@
-# Muse Film Kit — regenerate the Quorum demo film with Muse Image
+# Muse Image landing-film kit
 
-**Meta Global AI Developer Hackathon 2026 edition.** The landing page's five-chapter
-demo film was originally rendered with CogVideoX-3 (open weights). This kit regenerates
-all five chapters with **Muse Image via the Meta Model API**, so the film itself becomes
-part of the build-with-Meta story.
+This kit regenerates Quorum's five-chapter landing-page film with Meta Muse
+Image. It renders five silent chapter MP4s directly into `public/film/`, so the
+existing landing-page cinema player and chapter controls keep working.
 
-The cinema player on the landing page reads `public/film/chapter-{1..5}.mp4` — the
-assembler writes exactly those filenames, so nothing in the app changes.
+Muse Image uses Meta Model API at `https://api.meta.ai/v1`, model
+`muse-image-1.0`, with `POST /images/generations` for the character anchor and
+`POST /images/edits` for subsequent shots. Chapter 1, frame 1 establishes the
+lead procurement officer; every other shot uses it as a character and palette
+reference for continuity.
 
-## What's here
+## Requirements
 
-| File | Purpose |
-| --- | --- |
-| `prompts.json` | 5 chapters × 8 frames, each prompt written to the chapter's story beat and Quorum's visual language (near-black `#14161b` operations-room palette, single signal-red accent `#e8382a`, Lusaka procurement office, no text/watermarks) |
-| `generate-frames.ts` | Bun script that calls the image-generation endpoint for every frame and saves `frames/chapter-N/frame-KK.png` |
-| `assemble-film.sh` | ffmpeg Ken Burns (slow zoom) per frame → `chapter-N.mp4`, silent, 24 fps, yuv420p, `+faststart` |
+- Bun
+- `ffmpeg` and `ffprobe`
+- Meta Model API access with Muse Image enabled
 
-## Prerequisites
+The generator reads `MUSE_API_KEY` (or `MODEL_API_KEY`) and optional
+`MUSE_BASE_URL` from the process environment or the repository-root
+`.env.local`. It never prints the key. The default generation makes 40 images;
+at Meta's published $0.01/image price, the full set is about **$0.40**.
 
-1. **Meta Model API token** — from your Meta developer console (dev.meta.ai). Hackathon
-   participants receive API credits; the film costs roughly **40 images** (5 chapters × 8
-   frames), well inside the credit allowance.
-2. **Bun** — already the project's runtime (`bun install` once at the repo root).
-3. **ffmpeg** — `apt install ffmpeg` / `brew install ffmpeg`.
+## Generate and render
 
-## Run it
+Run commands from this directory:
 
 ```bash
-cd SUBMISSION/muse-film-kit
+# First, create and inspect the shared character-reference frame.
+bun run generate-frames.ts --force --only 1 --limit 1
 
-# 1. Point the generator at your Meta Model API image endpoint.
-#    Check the exact endpoint + model id in your console / the Model API docs.
-export META_API_KEY="<your-token>"
-# export META_IMAGE_URL="<your-meta-model-api-base-url>/v1/images/generations"
-# export META_IMAGE_MODEL="<muse-image-model-id>"
+# Once the anchor looks right, generate the remaining shots. Existing frames
+# are skipped, so this does not regenerate or rebill the anchor.
+bun run generate-frames.ts
 
-# 2. Generate the 40 frames (idempotent — reruns skip existing frames).
-bun run generate-frames.ts            # add --force to redo, --only 1,3 to restrict
-
-# 3. Assemble the five chapter MP4s into public/film/.
+# Render 5 chapters, 8 shots each, 2 seconds per shot, 24 fps, 2.39:1.
 ./assemble-film.sh
-
-# 4. Review: bun run dev → landing page → the film plays the new chapters.
 ```
 
-## Tuning
+The generated JPEG stills live under `frames/chapter-N/`. Rendered output is
+`../../public/film/chapter-N.mp4`. Generated text is avoided in the images;
+the landing-page player carries all titles and chapter copy. The final edit is
+silent and uses slow, alternating camera drifts over the Muse Image frames.
+The renderer defaults to 1920×804, H.264 CRF 20, and the `fast` encoder
+preset. Set `WIDTH`, `HEIGHT`, `OUTLINE`, or `ENCODER_PRESET` to trade output
+size and render time against resolution and compression quality.
 
-- **Pacing** — `SECONDS_PER_FRAME=3 ./assemble-film.sh` slows each chapter to 24 s.
-- **Resolution** — edit `meta.size` in `prompts.json` (e.g. `1920x1080`) and the
-  `scale=1280:720` + `s=1280x720` values in `assemble-film.sh` to match.
-- **Look** — `style_suffix` in `prompts.json` is appended to every frame prompt; it is
-  the single place to restyle the whole film.
-- **Partial regeneration** — `bun run generate-frames.ts --only 5 --force` regenerates
-  chapter 5 only.
+For focused regeneration:
 
-## Notes
+```bash
+bun run generate-frames.ts --force --only 3 --limit 2
+CHAPTERS="3" ./assemble-film.sh
+```
 
-- The request/response shape for image generation is isolated in `callImageApi()` in
-  `generate-frames.ts`. It implements the generic OpenAI-compatible
-  `POST /v1/images/generations` shape (`{prompt, size, n}` → `b64_json | url`). If the
-  Meta Model API differs, adapt that one function — everything else is endpoint-agnostic.
-- Keep the existing CogVideoX files until the new chapters are reviewed; the assembler
-  overwrites `public/film/chapter-N.mp4` only after a chapter's frames all render.
-- The film is silent by design — the landing page plays it muted, sequenced by Quorum's
-  own cinema player (title cards, chapter ticks, master clock).
+To regenerate one frame, specify both its chapter and frame number, for
+example `bun run generate-frames.ts --only 4 --frame 8`.
+
+`--limit` is the number of frames per selected chapter. `SECONDS_PER_FRAME`
+and `FPS` can be changed for a different pace, but the landing-page player
+expects each chapter to remain a silent H.264 MP4.
+
+## Visual direction
+
+One Zambian procurement officer carries the story from an overflowing paper
+archive through source verification and committee review. A red cloth ribbon
+connects the archive, source pages, reviewed variance and final decision. The
+images use lived-in Lusaka interiors, practical light and tactile paper rather
+than synthetic dashboards, floating graphics or invented on-screen claims.
+
+## Meta references
+
+- [Muse Image generation docs](https://dev.meta.ai/docs/image-generation)
+- [Generate image API reference](https://dev.meta.ai/docs/api-reference/images/create-image)
+- [Meta Model API overview](https://dev.meta.ai/docs/overview)

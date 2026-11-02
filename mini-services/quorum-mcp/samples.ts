@@ -138,6 +138,28 @@ export const SAMPLE_TENDERS: SampleTender[] = [
   },
 ];
 
+/**
+ * Public IDs reserved for the built-in sample records. The source-pack keys
+ * above stay internal; these stable Quorum IDs are what supplier-facing
+ * records display until a live procurement record takes precedence.
+ */
+export const SAMPLE_SYSTEM_REFERENCES: Readonly<Record<string, string>> = Object.freeze({
+  "KE-NCB-104293": "QRM-2026-900001",
+  "KE-MOH-2026-117": "QRM-2026-900002",
+  "KE-KCS-2026-042": "QRM-2026-900003",
+  "KE-MSA-2026-090": "QRM-2026-900005",
+  "RW-UMUCYO-2027-006": "QRM-2027-900001",
+  "KE-PHC-2026-311": "QRM-2026-900006",
+  "KE-WRA-2026-058": "QRM-2026-900007",
+  "KE-MOE-2026-205": "QRM-2026-900008",
+  "RW-RURA-2027-021": "QRM-2027-900002",
+  "KE-KEMSA-2024-ONT08": "QRM-2026-900004",
+});
+
+export function sampleSystemReferenceForTender(tenderId: string): string | undefined {
+  return SAMPLE_SYSTEM_REFERENCES[tenderId];
+}
+
 /** Live statement of what the sidecar can actually run — only covered refs listed. */
 export async function listSampleTenders(): Promise<(SampleTender & { files: string[] })[]> {
   const out: (SampleTender & { files: string[] })[] = [];

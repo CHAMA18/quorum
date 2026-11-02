@@ -8,6 +8,7 @@ import {
   rateLimit,
 } from "@/lib/org-auth";
 import { sidecarError, sidecarFetch } from "@/lib/org-sidecar";
+import { publishedTenderRequirements, verifiedSupplierFirebaseIdentity, verifySubmittedSupplierBidDocuments } from "@/lib/supplier-bid-documents";
 
 /**
  * The organization's applications — the end of the supplier journey.
@@ -66,6 +67,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Check the highlighted fields.", errors }, { status: 400 });
   }
 
+  const requirements = await publishedTenderRequirements(tenderRef);
+  if (!requirements.ok) {
+    return NextResponse.json({ error: requirements.error }, { status: requirements.status });
+  }
+  const rawDocuments = Array.isArray(body.bidDocuments) ? body.bidDocuments : [];
+  let verifiedDocuments: Awaited<ReturnType<typeof verifySubmittedSupplierBidDocuments>>;
+  let firebaseUid = "";
+  if (requirements.requiredDocuments.length || rawDocuments.length) {
+    const identity = await verifiedSupplierFirebaseIdentity(req.headers.get("authorization"), org);
+    if (!identity.ok) return NextResponse.json({ error: identity.error }, { status: identity.status });
+    firebaseUid = identity.identity.uid;
+    verifiedDocuments = await verifySubmittedSupplierBidDocuments({
+      tenderRef,
+      org,
+      firebaseUid,
+      requiredDocuments: requirements.requiredDocuments,
+      rawDocuments,
+    });
+    if (!verifiedDocuments.ok) {
+      return NextResponse.json({ error: verifiedDocuments.error }, { status: verifiedDocuments.status });
+    }
+  } else {
+    verifiedDocuments = { ok: true, documents: [] };
+  }
+
   const { status, data } = await sidecarFetch("/api/applications", {
     method: "POST",
     actor: orgActor(org),
@@ -74,6 +100,8 @@ export async function POST(req: NextRequest) {
       amount,
       currency: typeof body.currency === "string" && body.currency.trim() ? body.currency.trim() : undefined,
       coverNote: typeof body.coverNote === "string" && body.coverNote.trim() ? body.coverNote.trim() : undefined,
+      bidDocuments: verifiedDocuments.documents,
+      firebaseUid: firebaseUid || undefined,
       /* The org profile rides along for the supplier-register sync; the
          identity on the record remains the ATTESTED actor, never this body. */
       org: publicOrg(org),

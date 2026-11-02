@@ -68,7 +68,7 @@ export function Pricing() {
                 )}
               >
                 {tier.featured && (
-                  <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-brand-600 px-4 py-1.5 font-code text-[9.5px] font-bold tracking-[0.2em] text-white shadow-[0_8px_20px_rgba(217,38,22,0.35)]">
+                  <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-brand-600 px-4 py-1.5 font-code text-[10px] font-bold tracking-[0.2em] text-white shadow-[0_8px_20px_rgba(217,38,22,0.35)]">
                     MOST RUN
                   </span>
                 )}

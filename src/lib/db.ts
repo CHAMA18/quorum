@@ -287,6 +287,8 @@ export interface OrganizationRow {
   id: string;
   name: string; // legal name
   email: string; // login identity, unique
+  /** First Firebase identity used for supplier-bid uploads; never returned publicly. */
+  firebaseUid?: string;
   password: string; // scrypt:salt:hash
   registrationNo: string; // legal registration number, unique
   country: string;
@@ -1237,6 +1239,19 @@ export function findOrganizationByEmail(email: string): OrganizationRow | null {
 
 export function findOrganizationById(id: string): OrganizationRow | null {
   return store.organizations.find((o) => o.id === id) ?? null;
+}
+
+/** Bind the supplier account to its first verified Firebase identity. */
+export function bindOrganizationFirebaseUid(orgId: string, firebaseUid: string): boolean {
+  const org = findOrganizationById(orgId);
+  if (!org || !/^[A-Za-z0-9_-]{1,128}$/.test(firebaseUid)) return false;
+  if (org.firebaseUid && org.firebaseUid !== firebaseUid) return false;
+  if (!org.firebaseUid) {
+    org.firebaseUid = firebaseUid;
+    org.updatedAt = now();
+    persist();
+  }
+  return true;
 }
 
 export function findOrganizationByRegistrationNo(registrationNo: string): OrganizationRow | null {

@@ -132,6 +132,7 @@ export async function GET(req: NextRequest) {
     return {
       id: String(raw.id ?? ""),
       tenderId: String(raw.tenderId ?? ""),
+      systemReference: typeof raw.reference === "string" ? raw.reference : undefined,
       status: (raw.status as AdminRun["status"]) ?? "RUNNING",
       startedBy: typeof raw.startedBy === "string" ? raw.startedBy : null,
       startedAt: iso(raw.startedAt),
@@ -168,6 +169,7 @@ export async function GET(req: NextRequest) {
       id: String(raw.id ?? ""),
       runId: String(raw.runId ?? ""),
       tenderId: String(raw.tenderId ?? ""),
+      systemReference: typeof raw.systemReference === "string" ? raw.systemReference : undefined,
       tool: String(raw.tool ?? ""),
       status: (raw.status as AdminGate["status"]) ?? "PENDING",
       createdAt: iso(raw.createdAt),

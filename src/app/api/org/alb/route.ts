@@ -36,6 +36,11 @@ export async function GET(req: NextRequest) {
   const apps = await sidecarFetch(`/api/applications?orgId=${encodeURIComponent(org.id)}`);
   if (apps.status !== 200) return NextResponse.json({ error: sidecarError(apps.data, "Applications are not reachable right now.") }, { status: apps.status });
   const rows = Array.isArray(apps.data.applications) ? apps.data.applications as Record<string, unknown>[] : [];
+  const systemReferenceByTender = new Map(rows.flatMap((row) =>
+    typeof row.tenderId === "string" && typeof row.systemReference === "string"
+      ? [[row.tenderId, row.systemReference] as const]
+      : [],
+  ));
   const refs = [...new Set(rows
     .filter((row) => row.status !== "WITHDRAWN")
     .map((row) => typeof row.tenderId === "string" ? row.tenderId.trim() : "")
@@ -45,6 +50,7 @@ export async function GET(req: NextRequest) {
     const out = await sidecarFetch(`/api/tenders/${encodeURIComponent(tenderRef)}`);
     if (out.status !== 200) return { status: out.status, tenderRef, data: out.data, dossiers: [] as Record<string, unknown>[] };
     const cycle = out.data.cycle && typeof out.data.cycle === "object" ? out.data.cycle as Record<string, unknown> : {};
+    const cycleReference = typeof cycle.systemReference === "string" ? cycle.systemReference : undefined;
     const dossiers = Array.isArray(cycle.alb) ? cycle.alb as Record<string, unknown>[] : [];
     return {
       status: 200,
@@ -53,6 +59,7 @@ export async function GET(req: NextRequest) {
       dossiers: dossiers.filter((dossier) => sameOrg(dossier.bidder, org.name)).map((dossier) => ({
         id: dossier.id,
         tenderRef,
+        systemReference: systemReferenceByTender.get(tenderRef) ?? cycleReference,
         bidder: dossier.bidder,
         openedAt: dossier.openedAt,
         letterMd: dossier.letterMd,

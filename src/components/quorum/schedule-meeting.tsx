@@ -10,9 +10,10 @@
  * server. Nothing is scheduled without at least one other named player.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowUpRight, CalendarPlus, Check, Copy, Users, X } from "lucide-react";
+import { trapTabFocus } from "@/lib/a11y";
 import { cn } from "@/lib/utils";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -132,6 +133,18 @@ export function ScheduleMeetingDialog({
   const [players, setPlayers] = useState<{ id: string; name: string; email: string }[]>([]);
   const [playersLoaded, setPlayersLoaded] = useState(false);
   const [playersFailed, setPlayersFailed] = useState(false);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const titleRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    const active = document.activeElement;
+    const opener = active instanceof HTMLElement ? active : null;
+    const frame = requestAnimationFrame(() => titleRef.current?.focus());
+    return () => {
+      cancelAnimationFrame(frame);
+      if (opener?.isConnected) requestAnimationFrame(() => opener.focus());
+    };
+  }, []);
 
   /* Workspace accounts are optional guests — if the roster cannot be read the
      dialog still works from the register and named outside players. */
@@ -164,7 +177,10 @@ export function ScheduleMeetingDialog({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !busy) onClose();
+      if (e.key !== "Escape" || busy) return;
+      const focusedModal = document.activeElement?.closest('[role="dialog"][aria-modal="true"]');
+      if (focusedModal && focusedModal !== dialogRef.current) return;
+      onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -267,30 +283,33 @@ export function ScheduleMeetingDialog({
       onClick={() => {
         if (!busy) onClose();
       }}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Schedule a committee meeting"
     >
       <motion.div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="schedule-meeting-title"
+        tabIndex={-1}
         initial={{ opacity: 0, y: 18, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 12 }}
         transition={{ duration: 0.28, ease: EASE }}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(event) => trapTabFocus(event, dialogRef.current)}
         className="max-h-[min(92dvh,900px)] w-full max-w-2xl overflow-y-auto rounded-[12px] panel panel-lift p-5 sm:p-7"
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="flex items-center gap-2.5 font-code text-[8px] font-semibold tracking-[0.24em] text-ink-400">
+            <p className="flex items-center gap-2.5 font-code text-[10px] font-semibold tracking-[0.1em] text-ink-500">
               <span className="inline-block h-[2px] w-5 bg-brand-600" aria-hidden="true" />
               THE COMMITTEE DIARY
             </p>
-            <h3 className="mt-1.5 font-display text-[22px] font-black tracking-[-0.02em] text-ink-950">
+            <h3 id="schedule-meeting-title" className="mt-1.5 font-display text-[22px] font-black tracking-[-0.02em] text-ink-950">
               Schedule a meeting<span className="text-brand-600">.</span>
             </h3>
             <p className="mt-1.5 max-w-lg text-[12.5px] leading-relaxed text-ink-500">
-              Set the day, name the players. A fresh unlisted Jitsi room is minted now, so every invitation carries a
-              real address — no accounts, nothing installed.
+              Set a date, then invite committee members, workspace colleagues, or outside guests. Quorum creates a
+              unlisted meeting room and includes its link in each invitation; guests do not need a Quorum account or an app.
             </p>
           </div>
           <button
@@ -299,7 +318,7 @@ export function ScheduleMeetingDialog({
               if (!busy) onClose();
             }}
             aria-label="Close without scheduling"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-paper hover:text-ink-900"
+            className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-paper hover:text-ink-900"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -313,22 +332,25 @@ export function ScheduleMeetingDialog({
           }}
         >
           <label className="block">
-            <span className="font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-400">MEETING TITLE</span>
+            <span className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">MEETING TITLE</span>
             <input
+              ref={titleRef}
               value={title}
               onChange={(e) => {
                 setTitle(e.target.value);
                 setLocalErr(null);
               }}
-              placeholder="e.g. Award decision — KE-MOH-2026-041"
+              placeholder="e.g. Award decision — QRM-2026-041"
+              minLength={3}
               maxLength={140}
+              required
               aria-required="true"
-              className="mt-1.5 h-10 w-full rounded-xl border border-ink-200 bg-white px-3.5 text-[13px] text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950"
+              className="mt-1.5 h-11 w-full rounded-xl border border-ink-200 bg-white px-3.5 text-[13px] text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950"
             />
           </label>
 
           <label className="block">
-            <span className="font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-400">
+            <span className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">
               AGENDA <span className="text-ink-300">· OPTIONAL</span>
             </span>
             <textarea
@@ -343,7 +365,7 @@ export function ScheduleMeetingDialog({
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <label className="block">
-              <span className="font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-400">DATE</span>
+              <span className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">DATE</span>
               <input
                 type="date"
                 value={date}
@@ -352,12 +374,13 @@ export function ScheduleMeetingDialog({
                   setDate(e.target.value);
                   setLocalErr(null);
                 }}
+                required
                 aria-required="true"
-                className="mt-1.5 h-10 w-full rounded-xl border border-ink-200 bg-white px-3 text-[12.5px] text-ink-950 outline-none transition focus:border-ink-950"
+                className="mt-1.5 h-11 w-full rounded-xl border border-ink-200 bg-white px-3 text-[12.5px] text-ink-950 outline-none transition focus:border-ink-950"
               />
             </label>
             <label className="block">
-              <span className="font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-400">STARTS</span>
+              <span className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">STARTS</span>
               <input
                 type="time"
                 value={time}
@@ -365,12 +388,13 @@ export function ScheduleMeetingDialog({
                   setTime(e.target.value);
                   setLocalErr(null);
                 }}
+                required
                 aria-required="true"
-                className="mt-1.5 h-10 w-full rounded-xl border border-ink-200 bg-white px-3 text-[12.5px] text-ink-950 outline-none transition focus:border-ink-950"
+                className="mt-1.5 h-11 w-full rounded-xl border border-ink-200 bg-white px-3 text-[12.5px] text-ink-950 outline-none transition focus:border-ink-950"
               />
             </label>
             <label className="block">
-              <span className="font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-400">MINUTES</span>
+              <span className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">MINUTES</span>
               <input
                 type="number"
                 inputMode="numeric"
@@ -382,18 +406,18 @@ export function ScheduleMeetingDialog({
                   setDuration(e.target.value);
                   setLocalErr(null);
                 }}
-                className="mt-1.5 h-10 w-full rounded-xl border border-ink-200 bg-white px-3 text-[12.5px] tabular text-ink-950 outline-none transition focus:border-ink-950"
+                className="mt-1.5 h-11 w-full rounded-xl border border-ink-200 bg-white px-3 text-[12.5px] tabular text-ink-950 outline-none transition focus:border-ink-950"
               />
             </label>
             <label className="col-span-2 block sm:col-span-1">
-              <span className="font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-400">REPEAT</span>
+              <span className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">REPEAT</span>
               <select
                 value={repeat}
                 onChange={(e) => {
                   setRepeat(e.target.value === "WEEKLY" ? "WEEKLY" : "NONE");
                   setLocalErr(null);
                 }}
-                className="mt-1.5 h-10 w-full rounded-xl border border-ink-200 bg-white px-2.5 text-[12.5px] text-ink-950 outline-none transition focus:border-ink-950"
+                className="mt-1.5 h-11 w-full rounded-xl border border-ink-200 bg-white px-2.5 text-[12.5px] text-ink-950 outline-none transition focus:border-ink-950"
               >
                 <option value="NONE">Does not repeat</option>
                 <option value="WEEKLY">Weekly</option>
@@ -402,7 +426,7 @@ export function ScheduleMeetingDialog({
             {repeat === "WEEKLY" && (
               <div className="col-span-2 flex flex-wrap items-end justify-between gap-3 rounded-xl border border-ink-100 bg-paper/50 px-3.5 py-3 sm:col-span-4">
                 <label className="block">
-                  <span className="font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-400">
+                  <span className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">
                     NUMBER OF WEEKLY MEETINGS
                   </span>
                   <input
@@ -417,12 +441,12 @@ export function ScheduleMeetingDialog({
                       setLocalErr(null);
                     }}
                     aria-label="Number of weekly meetings, 2 to 12"
-                    className="mt-1.5 h-9 w-24 rounded-lg border border-ink-200 bg-white px-3 text-[12.5px] tabular text-ink-950 outline-none transition focus:border-ink-950"
+                    className="mt-1.5 h-11 w-24 rounded-lg border border-ink-200 bg-white px-3 text-[12.5px] tabular text-ink-950 outline-none transition focus:border-ink-950"
                   />
                 </label>
                 <p className="max-w-[36ch] text-[11.5px] leading-relaxed text-ink-500">
                   Every 7 days.{lastDate ? ` Last meeting ${lastDate}.` : ""} Each week gets its own diary record and
-                  its own room, so a night can be moved or cancelled on its own.
+                  its own room, so a meeting can be moved or cancelled on its own.
                 </p>
               </div>
             )}
@@ -430,18 +454,18 @@ export function ScheduleMeetingDialog({
 
           <div className="rounded-xl border border-ink-100 bg-paper/50 p-3.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="flex items-center gap-2 font-code text-[8px] font-bold tracking-[0.2em] text-ink-500">
+              <p className="flex items-center gap-2 font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">
                 <Users className="h-3.5 w-3.5 text-brand-600" aria-hidden="true" />
                 OTHER PLAYERS
               </p>
-              <p className="font-code text-[7.5px] tracking-[0.16em] text-ink-400">
+              <p className="font-code text-[10px] tracking-[0.04em] text-ink-500">
                 {invited} INVITED · YOU ARE ADDED AUTOMATICALLY
               </p>
             </div>
 
             <div className="mt-3 space-y-4">
               <fieldset>
-                <legend className="w-full font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-400">
+                <legend className="w-full font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">
                   THE COMMITTEE REGISTER
                 </legend>
                 {members.length > 0 ? (
@@ -452,7 +476,7 @@ export function ScheduleMeetingDialog({
                         <label
                           key={m.id}
                           className={cn(
-                            "flex cursor-pointer items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-colors",
+                            "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-colors",
                             on ? "border-ink-950 bg-ink-950/[0.05]" : "border-ink-200 bg-white hover:border-ink-400"
                           )}
                         >
@@ -460,22 +484,22 @@ export function ScheduleMeetingDialog({
                             type="checkbox"
                             checked={on}
                             onChange={() => setMemberIds((x) => toggle(x, m.id))}
-                            className="h-3.5 w-3.5 shrink-0 accent-brand-600"
+                            className="h-4 w-4 shrink-0 accent-brand-600"
                           />
                           <span
-                            className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-ink-950 font-code text-[8px] font-bold text-white"
+                            className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-ink-950 font-code text-[10px] font-bold text-white"
                             aria-hidden="true"
                           >
                             {initialsOf(m.name)}
                           </span>
                           <span className="min-w-0">
                             <span className="block truncate text-[12px] font-semibold text-ink-950">{m.name}</span>
-                            <span className="block truncate font-code text-[6.5px] tracking-[0.12em] text-ink-400">
+                            <span className="block truncate font-code text-[10px] tracking-[0.02em] text-ink-500">
                               {m.role}
                             </span>
                           </span>
                           {m.status === "EXCUSED" && (
-                            <span className="ml-auto shrink-0 font-code text-[6.5px] tracking-[0.12em] text-ink-400">
+                            <span className="ml-auto shrink-0 font-code text-[10px] tracking-[0.02em] text-ink-500">
                               EXCUSED
                             </span>
                           )}
@@ -491,11 +515,11 @@ export function ScheduleMeetingDialog({
               </fieldset>
 
               <fieldset>
-                <legend className="w-full font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-400">
+                <legend className="w-full font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">
                   WORKSPACE PLAYERS
                 </legend>
                 {!playersLoaded ? (
-                  <p className="mt-1.5 font-code text-[7.5px] tracking-[0.16em] text-ink-400">READING THE TEAM ROSTER…</p>
+                  <p className="mt-1.5 font-code text-[10px] tracking-[0.04em] text-ink-500">Reading the team roster…</p>
                 ) : playersFailed ? (
                   <p className="mt-1.5 text-[12px] leading-relaxed text-ink-500">
                     The workspace roster could not be read — the register and outside players still work.
@@ -508,7 +532,7 @@ export function ScheduleMeetingDialog({
                         <label
                           key={p.id}
                           className={cn(
-                            "flex cursor-pointer items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-colors",
+                            "flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-colors",
                             on ? "border-ink-950 bg-ink-950/[0.05]" : "border-ink-200 bg-white hover:border-ink-400"
                           )}
                         >
@@ -516,11 +540,11 @@ export function ScheduleMeetingDialog({
                             type="checkbox"
                             checked={on}
                             onChange={() => setPlayerIds((x) => toggle(x, p.id))}
-                            className="h-3.5 w-3.5 shrink-0 accent-brand-600"
+                            className="h-4 w-4 shrink-0 accent-brand-600"
                           />
                           <span className="min-w-0">
                             <span className="block truncate text-[12px] font-semibold text-ink-950">{p.name}</span>
-                            <span className="block truncate font-code text-[6.5px] tracking-[0.12em] text-ink-400">
+                            <span className="block truncate font-code text-[10px] tracking-[0.02em] text-ink-500">
                               {p.email}
                             </span>
                           </span>
@@ -536,7 +560,7 @@ export function ScheduleMeetingDialog({
               </fieldset>
 
               <fieldset>
-                <legend className="w-full font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-400">
+                <legend className="w-full font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">
                   OUTSIDE PLAYERS <span className="text-ink-300">· SUPPLIER, OVERSIGHT, ANYONE OFF THE ROLL</span>
                 </legend>
                 <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
@@ -548,7 +572,7 @@ export function ScheduleMeetingDialog({
                     }}
                     placeholder="Full name"
                     aria-label="Outside player's full name"
-                    className="h-9 min-w-0 flex-1 rounded-lg border border-ink-200 bg-white px-3 text-[12.5px] text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950"
+                    className="h-11 min-w-0 flex-1 rounded-lg border border-ink-200 bg-white px-3 text-[12.5px] text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950"
                   />
                   <input
                     value={extEmail}
@@ -558,12 +582,12 @@ export function ScheduleMeetingDialog({
                     }}
                     placeholder="Email — optional"
                     aria-label="Outside player's email, optional"
-                    className="h-9 min-w-0 flex-1 rounded-lg border border-ink-200 bg-white px-3 text-[12.5px] text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950"
+                    className="h-11 min-w-0 flex-1 rounded-lg border border-ink-200 bg-white px-3 text-[12.5px] text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950"
                   />
                   <button
                     type="button"
                     onClick={addExternal}
-                    className="inline-flex h-9 shrink-0 items-center justify-center rounded-lg border border-ink-200 bg-white px-3.5 font-code text-[8px] font-bold tracking-[0.16em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950"
+                    className="focus-brand inline-flex h-11 min-h-11 shrink-0 items-center justify-center rounded-lg border border-ink-200 bg-white px-3.5 font-code text-[10px] font-bold tracking-[0.08em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950"
                   >
                     ADD
                   </button>
@@ -576,12 +600,12 @@ export function ScheduleMeetingDialog({
                         className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white py-1 pl-2.5 pr-1.5 text-[11px] text-ink-600"
                       >
                         <span className="font-semibold text-ink-900">{x.name}</span>
-                        {x.email && <span className="font-code text-[7px] tracking-[0.08em] text-ink-400">{x.email}</span>}
+                        {x.email && <span className="font-code text-[10px] tracking-[0.02em] text-ink-500">{x.email}</span>}
                         <button
                           type="button"
                           onClick={() => setExternals((list) => list.filter((_, idx) => idx !== i))}
                           aria-label={`Remove ${x.name} from the guest list`}
-                          className="grid h-4 w-4 place-items-center rounded-full text-ink-400 transition-colors hover:bg-brand-50 hover:text-brand-700"
+                          className="focus-brand grid h-11 w-11 place-items-center rounded-full text-ink-400 transition-colors hover:bg-brand-50 hover:text-brand-700"
                         >
                           <X className="h-2.5 w-2.5" aria-hidden="true" />
                         </button>
@@ -603,8 +627,8 @@ export function ScheduleMeetingDialog({
           )}
 
           <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-            <p className="max-w-[38ch] font-code text-[7px] leading-[1.9] tracking-[0.14em] text-ink-400">
-              THE ROOM IS MINTED NOW · THE DIARY AND THE CALENDAR READ THE SAME RECORD
+            <p className="max-w-[38ch] text-[10px] leading-relaxed text-ink-500">
+              A room is created when you schedule. The diary and calendar use the same meeting record.
             </p>
             <div className="flex items-center gap-2">
               <button
@@ -612,14 +636,14 @@ export function ScheduleMeetingDialog({
                 onClick={() => {
                   if (!busy) onClose();
                 }}
-                className="inline-flex h-10 items-center rounded-xl border border-ink-200 px-4 font-code text-[8.5px] font-bold tracking-[0.14em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950"
+                className="focus-brand inline-flex h-11 min-h-11 items-center rounded-xl border border-ink-200 px-4 font-code text-[10px] font-bold tracking-[0.08em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950"
               >
                 CANCEL
               </button>
               <button
                 type="submit"
                 disabled={busy}
-                className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-5 text-[12.5px] font-semibold text-white shadow-[0_10px_26px_rgba(217,38,22,0.24)] transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="focus-brand inline-flex h-11 min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-5 text-[13px] font-semibold text-white shadow-[0_10px_26px_rgba(217,38,22,0.24)] transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <CalendarPlus className="h-4 w-4" aria-hidden="true" />
                 {busy ? "Minting the room…" : "Schedule the meeting"}
@@ -686,7 +710,7 @@ export function ScheduledMeetingsPanel({
     >
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-200/70 px-5 py-3.5 dark:border-white/10">
         <div className="min-w-0">
-          <p className="font-code text-[9px] font-bold tracking-[0.22em] text-ink-950">SCHEDULED MEETINGS</p>
+          <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-950">SCHEDULED MEETINGS</p>
           <p className="mt-0.5 text-[12px] leading-snug text-ink-500">
             {upcoming.length === 0
               ? "Nothing on the diary — the owner can call a meeting with any player."
@@ -696,7 +720,7 @@ export function ScheduledMeetingsPanel({
         <button
           type="button"
           onClick={onSchedule}
-          className="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl bg-ink-950 px-3.5 font-code text-[8px] font-bold tracking-[0.16em] text-white transition-colors hover:bg-brand-600"
+          className="focus-brand inline-flex h-11 min-h-11 shrink-0 items-center gap-2 rounded-xl bg-ink-950 px-3.5 font-code text-[10px] font-bold tracking-[0.08em] text-white transition-colors hover:bg-brand-600"
         >
           <CalendarPlus className="h-3.5 w-3.5" aria-hidden="true" />
           SCHEDULE MEETING
@@ -718,12 +742,12 @@ export function ScheduledMeetingsPanel({
             return (
               <li key={m.id} className="flex flex-wrap items-center gap-x-4 gap-y-2.5 px-5 py-3">
                 <div className="w-[78px] shrink-0">
-                  <p className="font-code text-[7.5px] font-bold tracking-[0.16em] text-ink-400">{when.day}</p>
+                  <p className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-500">{when.day}</p>
                   <p className="mt-0.5 font-display text-[17px] font-black leading-none tracking-[-0.02em] text-ink-950 tabular">
                     {when.time}
                   </p>
-                  <p className="mt-1 font-code text-[6.5px] tracking-[0.14em] text-ink-400">
-                    {m.durationMinutes} MIN
+                  <p className="mt-1 text-[10px] text-ink-500">
+                    {m.durationMinutes} min
                   </p>
                 </div>
                 <div className="min-w-0 flex-1">
@@ -731,8 +755,8 @@ export function ScheduledMeetingsPanel({
                   <p className="mt-0.5 truncate text-[11.5px] text-ink-500" title={guestLine(m.attendees)}>
                     {guestLine(m.attendees)}
                   </p>
-                  <p className="mt-0.5 truncate font-code text-[6.5px] tracking-[0.14em] text-ink-400">
-                    SCHEDULED BY {m.scheduledBy.toUpperCase()} · JITSI ROOM
+                  <p className="mt-0.5 truncate text-[10.5px] text-ink-500">
+                    Scheduled by {m.scheduledBy} · Room link ready
                     {m.seriesCount && m.seriesCount > 1
                       ? ` · WEEKLY ${m.seriesIndex ?? 1}/${m.seriesCount}`
                       : ""}
@@ -743,7 +767,7 @@ export function ScheduledMeetingsPanel({
                     href={m.joinUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-brand-600 px-3 font-code text-[7.5px] font-bold tracking-[0.14em] text-white transition-colors hover:bg-brand-700"
+                    className="focus-brand inline-flex h-11 min-h-11 items-center gap-1.5 rounded-lg bg-brand-600 px-3 font-code text-[10px] font-bold tracking-[0.06em] text-white transition-colors hover:bg-brand-700"
                   >
                     OPEN ROOM
                     <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
@@ -752,7 +776,7 @@ export function ScheduledMeetingsPanel({
                     type="button"
                     onClick={() => void copyLink(m)}
                     aria-label={`Copy the room link for ${m.title}`}
-                    className="grid h-8 w-8 place-items-center rounded-lg border border-ink-200 bg-white text-ink-500 transition-colors hover:border-ink-950 hover:text-ink-950"
+                    className="focus-brand grid h-11 w-11 place-items-center rounded-lg border border-ink-200 bg-white text-ink-500 transition-colors hover:border-ink-950 hover:text-ink-950"
                   >
                     {copiedId === m.id ? (
                       <Check className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
@@ -765,11 +789,11 @@ export function ScheduledMeetingsPanel({
                     onClick={() => requestCancel(m.id)}
                     disabled={cancelBusy === m.id}
                     className={cn(
-                      "whitespace-nowrap font-code text-[6.5px] font-bold tracking-[0.14em] transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                      "focus-brand inline-flex min-h-11 items-center rounded-lg px-2 font-code text-[10px] font-bold tracking-[0.04em] transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                       armId === m.id ? "text-brand-600" : "text-ink-400 hover:text-brand-600"
                     )}
                   >
-                    {cancelBusy === m.id ? "CANCELLING…" : armId === m.id ? "TAP AGAIN — CANCEL" : "CANCEL"}
+                    {cancelBusy === m.id ? "Cancelling…" : armId === m.id ? "Tap again to cancel" : "Cancel"}
                   </button>
                 </div>
               </li>
@@ -780,8 +804,8 @@ export function ScheduledMeetingsPanel({
 
       {upcoming.length > 3 && (
         <footer className="border-t border-ink-100 px-5 py-2.5 dark:border-white/5">
-          <p className="font-code text-[7px] tracking-[0.16em] text-ink-400">
-            +{upcoming.length - 3} MORE ON THE DIARY · ALL OF THEM ON THE CALENDAR
+          <p className="text-[11px] text-ink-500">
+            {upcoming.length - 3} more {upcoming.length - 3 === 1 ? "meeting" : "meetings"} on the calendar
           </p>
         </footer>
       )}

@@ -14,6 +14,7 @@ import {
 import { SpecBar } from "@/components/quorum/reveal";
 import type { AuthUser } from "@/lib/auth-types";
 import { can } from "@/lib/permissions";
+import { isSystemReference, systemReferenceLabel } from "@/lib/system-reference";
 import { cn } from "@/lib/utils";
 
 /**
@@ -86,6 +87,7 @@ type ComplianceSummary = {
 type ExceptionRow = {
   id: string;
   tenderId?: string;
+  systemReference?: string;
   kind: string;
   title: string;
   justification: string;
@@ -139,7 +141,7 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
   const [pack, setPack] = useState<RulePack | null>(null);
   const [exceptions, setExceptions] = useState<ExceptionRow[]>([]);
   const [docs, setDocs] = useState<DocumentRow[]>([]);
-  const [tenderIds, setTenderIds] = useState<string[]>([]);
+  const [tenderIds, setTenderIds] = useState<{ id: string; systemReference?: string }[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [summary, setSummary] = useState<ComplianceSummary | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -164,10 +166,10 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
       if (e.ok) setExceptions(((await e.json()) as { exceptions?: ExceptionRow[] }).exceptions ?? []);
       if (d.ok) setDocs(((await d.json()) as { documents?: DocumentRow[] }).documents ?? []);
       if (t.ok) {
-        const cycles = (await t.json()) as { cycles?: { tenderId: string }[] };
-        const ids = (cycles.cycles ?? []).map((c) => c.tenderId);
+        const cycles = (await t.json()) as { cycles?: { tenderId: string; systemReference?: string }[] };
+        const ids = (cycles.cycles ?? []).map((c) => ({ id: c.tenderId, systemReference: c.systemReference }));
         setTenderIds(ids);
-        setSelected((prev) => prev ?? ids[0] ?? null);
+        setSelected((prev) => prev ?? ids[0]?.id ?? null);
       }
     } catch {
       setLoadError("The compliance service did not answer. The desk still runs — try the refresh control in a moment.");
@@ -270,7 +272,7 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
           <button
             type="button"
             onClick={() => void load()}
-            className="focus-brand inline-flex h-9 items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 font-code text-[8px] font-bold tracking-[0.14em] text-ink-700 transition-colors hover:border-ink-950"
+            className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 font-code text-[10.5px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-950"
           >
             <RefreshCw className="h-3 w-3" aria-hidden="true" />
             REFRESH
@@ -279,7 +281,7 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
             <button
               type="button"
               onClick={() => setShowRaise((v) => !v)}
-              className="focus-brand inline-flex h-9 items-center gap-2 rounded-lg bg-ink-950 px-3 font-code text-[8px] font-bold tracking-[0.14em] text-white transition-colors hover:bg-ink-800"
+              className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg bg-ink-950 px-3 font-code text-[10.5px] font-bold tracking-[0.06em] text-white transition-colors hover:bg-ink-800"
             >
               <FileWarning className="h-3 w-3" aria-hidden="true" />
               {showRaise ? "CLOSE" : "RAISE EXCEPTION"}
@@ -291,7 +293,7 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
       <section className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Compliance summary">
         {stats.map((stat) => (
           <div key={stat.label} className="rounded-xl border border-ink-200/80 bg-white px-4 py-3.5">
-            <p className="font-code text-[7.5px] font-bold tracking-[0.2em] text-ink-400">{stat.label}</p>
+            <p className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-500">{stat.label}</p>
             <p className="mt-2 text-[24px] font-semibold tracking-[-0.02em] text-ink-950 tabular">{stat.value}</p>
             <p className="mt-0.5 text-[10.5px] text-ink-500">{stat.note}</p>
           </div>
@@ -308,29 +310,33 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
       {showRaise && canRun && (
         <form onSubmit={raiseException} className={`${card} mt-4 space-y-3 px-5 py-4`} aria-label="Raise a procurement exception">
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block text-[11px] font-semibold text-ink-700">
+            <label className="block text-[12px] font-semibold text-ink-700">
               Kind
               <select
                 value={form.kind}
                 onChange={(e) => setForm((f) => ({ ...f, kind: e.target.value }))}
-                className="focus-brand mt-1 block w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[12.5px] text-ink-900"
+                className="focus-brand mt-1 block min-h-11 w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[13px] text-ink-900"
               >
                 {Object.entries(KIND_LABEL).map(([k, label]) => (
                   <option key={k} value={k}>{label}</option>
                 ))}
               </select>
             </label>
-            <label className="block text-[11px] font-semibold text-ink-700">
-              Tender reference (optional)
-              <input
+            <label className="block text-[12px] font-semibold text-ink-700">
+              Tender record (optional)
+              <select
                 value={form.tenderId}
                 onChange={(e) => setForm((f) => ({ ...f, tenderId: e.target.value }))}
-                placeholder="e.g. KE-MOH-2026-117"
-                className="focus-brand mt-1 block w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[12.5px] text-ink-900 placeholder:text-ink-400"
-              />
+                className="focus-brand mt-1 block min-h-11 w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[13px] text-ink-900"
+              >
+                <option value="">No tender linked</option>
+                {tenderIds.map((tender) => (
+                  <option key={tender.id} value={tender.id}>{systemReferenceLabel(tender.systemReference, "Tender record")}</option>
+                ))}
+              </select>
             </label>
           </div>
-          <label className="block text-[11px] font-semibold text-ink-700">
+          <label className="block text-[12px] font-semibold text-ink-700">
             Title
             <input
               value={form.title}
@@ -339,10 +345,10 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
               minLength={4}
               maxLength={160}
               placeholder="What is being departed from the standard route?"
-              className="focus-brand mt-1 block w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[12.5px] text-ink-900 placeholder:text-ink-400"
+              className="focus-brand mt-1 block min-h-11 w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[13px] text-ink-900 placeholder:text-ink-400"
             />
           </label>
-          <label className="block text-[11px] font-semibold text-ink-700">
+          <label className="block text-[12px] font-semibold text-ink-700">
             Justification (at least 30 characters — the record must show the reasons)
             <textarea
               value={form.justification}
@@ -350,17 +356,17 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
               required
               minLength={30}
               rows={3}
-              className="focus-brand mt-1 block w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[12.5px] text-ink-900 placeholder:text-ink-400"
+              className="focus-brand mt-1 block min-h-11 w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[13px] text-ink-900 placeholder:text-ink-400"
             />
           </label>
-          <label className="block text-[11px] font-semibold text-ink-700">
+          <label className="block text-[12px] font-semibold text-ink-700">
             Evidence references (comma-separated: document keys, file names, gate ids)
             <input
               value={form.evidence}
               onChange={(e) => setForm((f) => ({ ...f, evidence: e.target.value }))}
               required
               placeholder="01-tender-notice.md, gate_abc123"
-              className="focus-brand mt-1 block w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[12.5px] text-ink-900 placeholder:text-ink-400"
+              className="focus-brand mt-1 block min-h-11 w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[13px] text-ink-900 placeholder:text-ink-400"
             />
           </label>
           <p className="text-[11.5px] leading-relaxed text-ink-500">
@@ -370,7 +376,7 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
           <button
             type="submit"
             disabled={busy === "raise"}
-            className="focus-brand inline-flex h-9 items-center gap-2 rounded-lg bg-brand-600 px-4 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
+            className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg bg-brand-600 px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
           >
             {busy === "raise" ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <FileWarning className="h-3.5 w-3.5" aria-hidden="true" />}
             Raise and send to the gate
@@ -383,28 +389,28 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
           {/* Per-tender compliance */}
           <section className={card} aria-labelledby="cmp-tender">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 px-5 py-4">
-              <p id="cmp-tender" className="font-code text-[8px] font-semibold uppercase tracking-[0.22em] text-ink-400">
+              <p id="cmp-tender" className="font-code text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-600">
                 Tender compliance summary
               </p>
               <select
                 value={selected ?? ""}
                 onChange={(e) => setSelected(e.target.value || null)}
-                className="focus-brand max-w-[260px] rounded-lg border border-ink-200 bg-white px-2 py-1.5 font-code text-[9px] tracking-[0.06em] text-ink-700"
+                className="focus-brand min-h-11 max-w-[260px] rounded-lg border border-ink-200 bg-white px-3 font-sans text-[12px] text-ink-800"
                 aria-label="Choose a tender"
               >
                 {tenderIds.length === 0 && <option value="">no cycles on record</option>}
-                {tenderIds.map((id) => (
-                  <option key={id} value={id}>{id}</option>
+                {tenderIds.map((tender) => (
+                  <option key={tender.id} value={tender.id}>{systemReferenceLabel(tender.systemReference, "Tender record")}</option>
                 ))}
               </select>
             </div>
             {selected && summary && (
               <div className="px-5 py-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className={cn("inline-flex h-7 items-center rounded-full border px-3 font-code text-[8px] font-bold tracking-[0.16em]", VERDICT_TONE[summary.verdict])}>
+                  <span className={cn("inline-flex min-h-7 items-center rounded-full border px-3 font-code text-[10px] font-bold tracking-[0.08em]", VERDICT_TONE[summary.verdict])}>
                     {summary.verdict.replace("_", " · ")}
                   </span>
-                  <span className="font-code text-[8px] tracking-[0.14em] text-ink-400">
+                  <span className="text-[10.5px] font-medium text-ink-600">
                     PACK {summary.pack.id.toUpperCase()} · {summary.lines.length} RULE LINE(S)
                   </span>
                 </div>
@@ -414,7 +420,7 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
                     {summary.hardFails.map((h) => (
                       <li key={`${h.rule}-${h.detail}`} className="flex items-start gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-[12px] leading-relaxed text-brand-900">
                         <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                        <span><strong className="font-code text-[8px] tracking-[0.14em]">{h.rule}</strong> — {h.detail}</span>
+                        <span><strong className="font-code text-[10px] tracking-[0.06em]">{h.rule}</strong> — {h.detail}</span>
                       </li>
                     ))}
                   </ul>
@@ -424,12 +430,12 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
                     {summary.lines.map((line) => (
                       <li key={line.rule} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
                         <div className="min-w-0">
-                          <p className="font-code text-[9px] font-bold tracking-[0.1em] text-ink-800">
+                          <p className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-800">
                             {line.rule}{line.hardFail && <span className="ml-1.5 text-brand-600">HARD-FAIL</span>}
                           </p>
                           <p className="mt-0.5 line-clamp-1 text-[11.5px] text-ink-500">{line.latestEvidence}</p>
                         </div>
-                        <div className="flex shrink-0 items-center gap-3 font-code text-[8px] tracking-[0.12em] text-ink-500">
+                        <div className="flex shrink-0 items-center gap-3 text-[10px] font-medium text-ink-600">
                           <span>×{line.count}</span>
                           <span>SEV {line.severity.slice(0, 3)}</span>
                           <span>{line.reviewed > 0 ? `${line.accepted}✓ ${line.rejected}✗` : "AWAITING HUMAN"}</span>
@@ -460,7 +466,7 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
           {pack && (
             <section className={card} aria-labelledby="cmp-pack">
               <div className="border-b border-ink-100 px-5 py-4">
-                <p id="cmp-pack" className="font-code text-[8px] font-semibold uppercase tracking-[0.22em] text-ink-400">
+                <p id="cmp-pack" className="font-code text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-600">
                   Rule pack — {pack.name}
                 </p>
                 <p className="mt-1.5 text-[11.5px] leading-relaxed text-ink-500">{pack.description}</p>
@@ -469,20 +475,20 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
                 {pack.rules.map((rule) => (
                   <li key={rule.id} className="px-5 py-3.5">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="font-code text-[9px] font-bold tracking-[0.1em] text-ink-900">{rule.id}</span>
-                      <span className={cn("inline-flex h-5 items-center rounded-full border px-2 font-code text-[7px] font-bold tracking-[0.12em]", rule.status === "MANDATORY" ? "border-ink-300 text-ink-600 dark:border-white/20 dark:text-ink-300" : "border-ink-200 text-ink-400")}>
+                      <span className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-900">{rule.id}</span>
+                      <span className={cn("inline-flex min-h-6 items-center rounded-full border px-2 font-code text-[10px] font-bold tracking-[0.06em]", rule.status === "MANDATORY" ? "border-ink-300 text-ink-700 dark:border-white/20 dark:text-ink-200" : "border-ink-200 text-ink-500")}>
                         {rule.status}
                       </span>
                       {pack.hardFailRules.some((h) => rule.id === h || rule.id.startsWith(`${h}:`)) && (
-                        <span className="inline-flex h-5 items-center rounded-full border border-brand-500/40 bg-brand-500/[0.06] px-2 font-code text-[7px] font-bold tracking-[0.12em] text-brand-700">
+                        <span className="inline-flex min-h-6 items-center rounded-full border border-brand-500/40 bg-brand-500/[0.06] px-2 font-code text-[10px] font-bold tracking-[0.06em] text-brand-800">
                           HARD-FAIL
                         </span>
                       )}
-                      <span className="font-code text-[7.5px] tracking-[0.1em] text-ink-400">{rule.severity}</span>
+                      <span className="text-[10px] font-medium text-ink-600">{rule.severity}</span>
                     </div>
                     <p className="mt-1 text-[12px] leading-relaxed text-ink-700">{rule.riskCategory} · {rule.legalReference}</p>
-                    <p className="mt-0.5 text-[11px] leading-relaxed text-ink-500"><span className="font-code text-[7px] font-bold tracking-[0.14em] text-ink-400">EXCEPTION · </span>{rule.exceptionLogic}</p>
-                    <p className="mt-0.5 text-[11px] leading-relaxed text-ink-500"><span className="font-code text-[7px] font-bold tracking-[0.14em] text-ink-400">SIGN-OFF · </span>{rule.signOffOwner}</p>
+                    <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink-600"><span className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">EXCEPTION · </span>{rule.exceptionLogic}</p>
+                    <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink-600"><span className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">SIGN-OFF · </span>{rule.signOffOwner}</p>
                   </li>
                 ))}
               </ul>
@@ -502,7 +508,7 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
           {/* Exception register */}
           <section className={card} aria-labelledby="cmp-exceptions">
             <div className="border-b border-ink-100 px-5 py-4">
-              <p id="cmp-exceptions" className="font-code text-[8px] font-semibold uppercase tracking-[0.22em] text-ink-400">
+              <p id="cmp-exceptions" className="font-code text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-600">
                 Exception register
               </p>
             </div>
@@ -513,15 +519,15 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
                 {exceptions.slice(0, 12).map((exc) => (
                   <li key={exc.id} className="px-5 py-3.5">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={cn("inline-flex h-5 items-center rounded-full border px-2 font-code text-[7px] font-bold tracking-[0.12em]", EXCEPTION_TONE[exc.status])}>
+                      <span className={cn("inline-flex min-h-6 items-center rounded-full border px-2 font-code text-[10px] font-bold tracking-[0.06em]", EXCEPTION_TONE[exc.status])}>
                         {exc.status.replace("_", " ")}
                       </span>
-                      <span className="font-code text-[7.5px] tracking-[0.12em] text-ink-400">{KIND_LABEL[exc.kind] ?? exc.kind}{exc.tenderId ? ` · ${exc.tenderId}` : ""}</span>
+                      <span className="text-[10px] font-medium text-ink-600">{KIND_LABEL[exc.kind] ?? exc.kind}{isSystemReference(exc.systemReference) ? ` · ${exc.systemReference}` : ""}</span>
                     </div>
                     <p className="mt-1 text-[12.5px] font-semibold text-ink-950">{exc.title}</p>
                     <p className="mt-0.5 line-clamp-2 text-[11.5px] leading-relaxed text-ink-500">{exc.justification}</p>
-                    <p className="mt-1 font-code text-[7.5px] tracking-[0.12em] text-ink-400">
-                      REQUESTED BY {exc.requestedBy.toUpperCase()} · {exc.requestedAt.slice(0, 10)}{exc.decidedBy ? ` · DECIDED BY ${exc.decidedBy.toUpperCase()}` : ""}
+                    <p className="mt-1 text-[10.5px] leading-relaxed text-ink-600">
+                      Requested by {exc.requestedBy} · {exc.requestedAt.slice(0, 10)}{exc.decidedBy ? ` · Decided by ${exc.decidedBy}` : ""}
                     </p>
                   </li>
                 ))}
@@ -532,7 +538,7 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
           {/* OCR review queue */}
           <section className={card} aria-labelledby="cmp-ocr">
             <div className="border-b border-ink-100 px-5 py-4">
-              <p id="cmp-ocr" className="font-code text-[8px] font-semibold uppercase tracking-[0.22em] text-ink-400">
+              <p id="cmp-ocr" className="font-code text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-600">
                 Document review queue — person in the loop
               </p>
             </div>
@@ -545,14 +551,14 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
               <ul className="divide-y divide-ink-100">
                 {reviewQueue.slice(0, 8).map((doc) => (
                   <li key={doc.id} className="px-5 py-3.5">
-                    <p className="truncate font-code text-[9px] font-bold tracking-[0.06em] text-ink-900">{doc.title}</p>
+                    <p className="truncate font-code text-[10px] font-bold tracking-[0.06em] text-ink-900">{doc.title}</p>
                     <p className="mt-0.5 text-[11px] leading-relaxed text-ink-500">{doc.extractionConfidence?.reason ?? "low-confidence extraction"} · sha {doc.sha256.slice(0, 10)}…</p>
                     {canRun && (
                       <button
                         type="button"
                         onClick={() => void clearExtraction(doc.id)}
                         disabled={busy === `doc-${doc.id}`}
-                        className="focus-brand mt-2 inline-flex h-7 items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2.5 font-code text-[7.5px] font-bold tracking-[0.12em] text-ink-700 transition-colors hover:border-ink-950 disabled:opacity-50"
+                        className="focus-brand mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.06em] text-ink-800 transition-colors hover:border-ink-950 disabled:opacity-50"
                       >
                         {busy === `doc-${doc.id}` ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <ScrollText className="h-3 w-3" aria-hidden="true" />}
                         CONFIRM EXTRACTION

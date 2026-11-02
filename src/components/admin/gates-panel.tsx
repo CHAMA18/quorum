@@ -13,6 +13,7 @@ import {
   Stamp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { systemReferenceLabel } from "@/lib/system-reference";
 import type { AdminGate } from "@/lib/admin-types";
 import {
   Button,
@@ -58,7 +59,7 @@ export function GatesPanel({ data, query, setQuery, now, navigate, notify }: Pan
     return gates.filter((gate) => {
       if (status !== "ALL" && gate.status !== status) return false;
       if (!needle) return true;
-      return `${gate.id} ${gate.runId} ${gate.tenderId} ${gate.tool} ${gate.approver ?? ""} ${gate.requiredOffice ?? ""}`
+      return `${gate.id} ${gate.runId} ${gate.systemReference ?? ""} ${gate.tool} ${gate.approver ?? ""} ${gate.requiredOffice ?? ""}`
         .toLowerCase()
         .includes(needle);
     });
@@ -137,7 +138,7 @@ export function GatesPanel({ data, query, setQuery, now, navigate, notify }: Pan
         actions={
           <a
             href="/#/dashboard"
-            className="focus-brand inline-flex h-9 items-center gap-2 rounded-lg bg-ink-950 px-3.5 font-code text-[9px] font-bold uppercase tracking-[0.16em] text-white transition-colors hover:bg-ink-800 dark:bg-white dark:text-ink-950 dark:hover:bg-ink-200"
+            className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg bg-ink-950 px-4 py-2 font-code text-[10px] font-bold uppercase tracking-[0.08em] text-white transition-colors hover:bg-ink-800 dark:bg-white dark:text-[#0b0c0f] dark:hover:bg-[#e9eaec]"
           >
             <Gavel className="h-3.5 w-3.5" aria-hidden="true" />
             SIGN IN THE WORKSPACE
@@ -160,10 +161,10 @@ export function GatesPanel({ data, query, setQuery, now, navigate, notify }: Pan
           <div key={stat.label} className="panel rounded-2xl px-4 py-3.5">
             <div className="flex items-center gap-1.5">
               <Dot tone={stat.tone as "amber" | "emerald" | "neutral"} pulse={stat.tone === "amber" && pending.length > 0} />
-              <p className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">{stat.label}</p>
+              <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">{stat.label}</p>
             </div>
             <p className="mt-1.5 type-num text-[24px] text-ink-950">{stat.value}</p>
-            <p className="mt-0.5 text-[9.5px] text-ink-400">{stat.note}</p>
+            <p className="mt-0.5 text-[10.5px] leading-relaxed text-ink-600">{stat.note}</p>
           </div>
         ))}
       </div>
@@ -208,9 +209,9 @@ export function GatesPanel({ data, query, setQuery, now, navigate, notify }: Pan
                 onClick={() => setStatus(filter.id)}
                 aria-pressed={status === filter.id}
                 className={cn(
-                  "focus-brand rounded-full border px-2 py-1 font-code text-[7.5px] font-bold uppercase tracking-[0.12em] transition-colors",
+                  "focus-brand inline-flex min-h-11 items-center rounded-lg border px-3 py-2 font-code text-[10px] font-bold uppercase tracking-[0.06em] transition-colors",
                   status === filter.id
-                    ? "border-ink-950 bg-ink-950 text-white dark:border-white dark:bg-white dark:text-ink-950"
+                    ? "border-ink-950 bg-ink-950 text-white dark:border-white dark:bg-white dark:text-[#0b0c0f]"
                     : "border-ink-200 bg-white text-ink-500 hover:border-ink-400 dark:border-white/12 dark:bg-transparent dark:text-ink-400",
                 )}
               >
@@ -240,7 +241,7 @@ export function GatesPanel({ data, query, setQuery, now, navigate, notify }: Pan
                       <div className="flex flex-wrap items-center gap-1.5">
                         <Stamp className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
                         <p className="truncate font-display text-[14px] font-black tracking-[-0.01em] text-ink-950">
-                          {gate.tenderId}
+                          {systemReferenceLabel(gate.systemReference)}
                         </p>
                         <StatusChip status={gate.status} />
                         {gate.requiredOffice && (
@@ -252,7 +253,7 @@ export function GatesPanel({ data, query, setQuery, now, navigate, notify }: Pan
                           <Chip tone="amber" dot>Legacy decision</Chip>
                         ) : null}
                       </div>
-                      <p className="mt-0.5 truncate font-code text-[8px] tracking-[0.08em] text-ink-400">
+                      <p className="mt-0.5 truncate text-[10.5px] text-ink-600">
                         {gate.id} · {gate.tool.replace(/_/g, " ")} · run {gate.runId}
                       </p>
                     </div>
@@ -266,19 +267,19 @@ export function GatesPanel({ data, query, setQuery, now, navigate, notify }: Pan
 
                   <dl className="mt-3 grid gap-x-4 gap-y-2.5 border-t border-ink-100 pt-3 sm:grid-cols-2 lg:grid-cols-4 dark:border-white/8">
                     <div>
-                      <dt className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">RAISED</dt>
+                      <dt className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Raised</dt>
                       <dd className="mt-0.5 text-[11px] text-ink-800">{fmtStamp(gate.createdAt)}</dd>
-                      <dd className="text-[9.5px] text-ink-400">{fmtAgo(gate.createdAt, now)}</dd>
+                      <dd className="text-[10.5px] text-ink-600">{fmtAgo(gate.createdAt, now)}</dd>
                     </div>
                     <div>
-                      <dt className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">DECIDED</dt>
+                      <dt className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Decided</dt>
                       <dd className="mt-0.5 text-[11px] text-ink-800">{gate.decidedAt ? fmtStamp(gate.decidedAt) : "Not decided"}</dd>
-                      <dd className="text-[9.5px] text-ink-400">{gate.decidedAt ? fmtAgo(gate.decidedAt, now) : "the gate is open"}</dd>
+                      <dd className="text-[10.5px] text-ink-600">{gate.decidedAt ? fmtAgo(gate.decidedAt, now) : "the gate is open"}</dd>
                     </div>
                     <div>
-                      <dt className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">NAMED SIGNER</dt>
+                      <dt className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Named signer</dt>
                       <dd className="mt-0.5 truncate text-[11px] text-ink-800">{gate.approver ?? "—"}</dd>
-                      <dd className="truncate text-[9.5px] text-ink-400">
+                      <dd className="truncate text-[10.5px] text-ink-600">
                         {gate.secondApprover
                           ? `second: ${gate.secondApprover.by}`
                           : gate.firstApproval
@@ -287,7 +288,7 @@ export function GatesPanel({ data, query, setQuery, now, navigate, notify }: Pan
                       </dd>
                     </div>
                     <div>
-                      <dt className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">SIGNATURE</dt>
+                      <dt className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Signature</dt>
                       <dd className="mt-0.5 flex flex-wrap items-center gap-1">
                         <Chip tone={gate.signatureValid ? "emerald" : gate.decidedAt ? "amber" : "neutral"} dot>
                           {gate.signatureValid ? "VALID" : gate.decidedAt ? "UNVERIFIED" : "NOT YET"}
@@ -298,7 +299,7 @@ export function GatesPanel({ data, query, setQuery, now, navigate, notify }: Pan
                           </Chip>
                         )}
                       </dd>
-                      <dd className="truncate text-[9.5px] text-ink-400">
+                      <dd className="truncate text-[10.5px] text-ink-600">
                         {gate.stepUp
                           ? `step-up · ${gate.stepUp.method} · ${gate.stepUp.by}`
                           : gate.status === "EXECUTED"
@@ -310,10 +311,10 @@ export function GatesPanel({ data, query, setQuery, now, navigate, notify }: Pan
 
                   <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-ink-200/80 bg-paper-2/50 px-3 py-2 dark:border-white/10 dark:bg-white/[0.02]">
                     <LockKeyhole className="h-3 w-3 shrink-0 text-ink-400" aria-hidden="true" />
-                    <span className="font-code text-[7px] font-bold uppercase tracking-[0.18em] text-ink-400">RECEIPT</span>
+                    <span className="font-code text-[10px] font-bold uppercase tracking-[0.08em] text-ink-600">Receipt</span>
                     {gate.receiptHash ? (
                       <>
-                        <span className="font-code text-[9px] tracking-[0.06em] text-ink-700">{shortHash(gate.receiptHash, 18)}</span>
+                        <span className="font-code text-[10px] tracking-[0.02em] text-ink-800">{shortHash(gate.receiptHash, 18)}</span>
                         <CopyButton value={gate.receiptHash} label="hash" />
                       </>
                     ) : (
@@ -330,7 +331,7 @@ export function GatesPanel({ data, query, setQuery, now, navigate, notify }: Pan
                       </Button>
                       <a
                         href="/#/dashboard"
-                        className="focus-brand inline-flex h-7 items-center gap-1 rounded-lg border border-ink-200 bg-white px-2 font-code text-[7.5px] font-bold uppercase tracking-[0.12em] text-ink-500 transition-colors hover:border-ink-400 hover:text-ink-950 dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-400 dark:hover:border-white/25 dark:hover:text-white"
+                        className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 py-2 font-code text-[10px] font-bold uppercase tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-400 hover:text-ink-950 dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-200 dark:hover:border-white/25 dark:hover:text-white"
                       >
                         <ExternalLink className="h-2.5 w-2.5" aria-hidden="true" /> WORKSPACE
                       </a>
@@ -382,7 +383,7 @@ export function GatesPanel({ data, query, setQuery, now, navigate, notify }: Pan
         <div className="rounded-2xl border border-ink-200/80 bg-paper-2/60 px-5 py-4 dark:border-white/10 dark:bg-white/[0.02]">
           <div className="flex items-center gap-2">
             <Fingerprint className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
-            <p className="font-code text-[7.5px] font-bold uppercase tracking-[0.2em] text-ink-500">THE FIVE REFUSALS</p>
+            <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">The five refusals</p>
           </div>
           <ul className="mt-2 space-y-1.5 text-[10.5px] leading-relaxed text-ink-500">
             <li><strong className="text-ink-700">422</strong> — no approver name. A gate is never signed anonymously.</li>
@@ -395,7 +396,7 @@ export function GatesPanel({ data, query, setQuery, now, navigate, notify }: Pan
         <div className="rounded-2xl border border-ink-200/80 bg-paper-2/60 px-5 py-4 dark:border-white/10 dark:bg-white/[0.02]">
           <div className="flex items-center gap-2">
             <Gavel className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
-            <p className="font-code text-[7.5px] font-bold uppercase tracking-[0.2em] text-ink-500">WHY THIS CONSOLE DOES NOT SIGN</p>
+            <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Why this console does not sign</p>
           </div>
           <p className="mt-2 text-[10.5px] leading-relaxed text-ink-500">
             A signature is a person taking responsibility, not an administrator changing state. Offering it here would

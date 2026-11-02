@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckCircle2,
   ChevronDown,
@@ -15,6 +15,9 @@ import {
   X,
 } from "lucide-react";
 import { SpecBar } from "@/components/quorum/reveal";
+import { HorizontalScrollRegion } from "@/components/quorum/horizontal-scroll-region";
+import { trapTabFocus } from "@/lib/a11y";
+import { systemReferenceLabel } from "@/lib/system-reference";
 import { cn } from "@/lib/utils";
 
 /**
@@ -48,6 +51,7 @@ type Gate = {
   id: string;
   runId: string;
   tenderId: string;
+  systemReference?: string;
   tool: string;
   status: string;
   approver?: string;
@@ -63,6 +67,7 @@ type ChainVerdict = { ok: boolean; brokenAt: number | null; checked: number; lin
 type ReceiptVerdict = {
   gateId: string;
   tenderId: string;
+  systemReference?: string;
   status: string;
   approver: string | null;
   decidedAt: string | null;
@@ -96,6 +101,29 @@ function statusTone(status: string): string {
   return "border-ink-200 bg-white text-ink-600";
 }
 
+function auditStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    OK: "Succeeded",
+    PENDING_GATE: "Awaiting approval",
+    GATED: "Held at gate",
+    PENDING: "Pending",
+    EXECUTED: "Executed",
+    REJECTED: "Rejected",
+    ERROR: "Error",
+  };
+  return labels[status] ?? status.replace(/_/g, " ");
+}
+
+function auditKindLabel(kind: string): string {
+  const labels: Record<string, string> = {
+    READ: "Read",
+    WRITES: "Write",
+    IRREVERSIBLE: "Irreversible action",
+    GATE_DECISION: "Gate decision",
+  };
+  return labels[kind] ?? kind.replace(/_/g, " ");
+}
+
 function download(name: string, content: string, type: string) {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
@@ -120,7 +148,32 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<ReceiptVerdict | null>(null);
   const [receiptBusy, setReceiptBusy] = useState<string | null>(null);
+  const receiptDialogRef = useRef<HTMLDivElement | null>(null);
+  const receiptCloseRef = useRef<HTMLButtonElement | null>(null);
+  const receiptReturnFocusRef = useRef<HTMLElement | null>(null);
   const [filters, setFilters] = useState({ q: "", actor: "", tool: "", status: "", kind: "", from: "", to: "" });
+
+  useEffect(() => {
+    if (receipt) {
+      requestAnimationFrame(() => receiptCloseRef.current?.focus());
+      return;
+    }
+    const target = receiptReturnFocusRef.current;
+    receiptReturnFocusRef.current = null;
+    if (target?.isConnected) requestAnimationFrame(() => target.focus());
+  }, [receipt]);
+
+  useEffect(() => {
+    if (!receipt) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      const focusedModal = document.activeElement?.closest('[role="dialog"][aria-modal="true"]');
+      if (focusedModal && focusedModal !== receiptDialogRef.current) return;
+      setReceipt(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [receipt]);
 
   const query = useMemo(() => {
     const p = new URLSearchParams({ limit: String(LIMIT), XTransformPort: "3031" });
@@ -173,6 +226,7 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
   };
 
   const verifyReceipt = async (id: string) => {
+    receiptReturnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setReceiptBusy(id);
     try {
       const res = await fetch(`${SVC}/gates/${encodeURIComponent(id)}/verify?XTransformPort=3031`, { cache: "no-store" });
@@ -181,6 +235,7 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
       setReceipt(data);
       onToast(data.signatureValid ? `RECEIPT VERIFIED — ${id}` : `RECEIPT NOT VALID — ${data.reason ?? "signature mismatch"}`);
     } catch {
+      receiptReturnFocusRef.current = null;
       onToast("RECEIPT VERIFIER UNREACHABLE");
     } finally {
       setReceiptBusy(null);
@@ -213,15 +268,15 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
           <div>
             <h1 className="type-display text-[32px] text-ink-950 sm:text-[40px]">Every action, checkable.</h1>
             <p className="type-lede mt-3 text-ink-600">
-              The sidecar appends every tool call to a hash-chained log, and every executed gate carries an Ed25519
-              signature over its inputs, approver and receipt. Verify the chain, inspect a receipt, export the file.
+              Every tool call is recorded in a tamper-evident log. Signed gate receipts show what was approved, by whom,
+              and whether the record has changed. Verify the log, inspect a receipt, or export the records.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => void pull()}
-              className="focus-brand inline-flex h-9 items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 font-code text-[8px] font-bold tracking-[0.14em] text-ink-700 transition-colors hover:border-ink-950"
+              className="focus-brand inline-flex h-11 min-h-11 items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.08em] text-ink-700 transition-colors hover:border-ink-950"
             >
               <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} aria-hidden="true" /> REFRESH
             </button>
@@ -229,7 +284,7 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
               type="button"
               onClick={() => exportLog("csv")}
               disabled={entries.length === 0}
-              className="focus-brand inline-flex h-9 items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 font-code text-[8px] font-bold tracking-[0.14em] text-ink-700 transition-colors hover:border-ink-950 disabled:opacity-40"
+              className="focus-brand inline-flex h-11 min-h-11 items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.08em] text-ink-700 transition-colors hover:border-ink-950 disabled:opacity-40"
             >
               <Download className="h-3.5 w-3.5" aria-hidden="true" /> CSV
             </button>
@@ -237,7 +292,7 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
               type="button"
               onClick={() => exportLog("json")}
               disabled={entries.length === 0}
-              className="focus-brand inline-flex h-9 items-center gap-2 rounded-lg bg-ink-950 px-3 font-code text-[8px] font-bold tracking-[0.14em] text-white transition-colors hover:bg-ink-800 disabled:opacity-40"
+              className="focus-brand inline-flex h-11 min-h-11 items-center gap-2 rounded-lg bg-ink-950 px-3 font-code text-[10px] font-bold tracking-[0.08em] text-white transition-colors hover:bg-ink-800 disabled:opacity-40"
             >
               <Download className="h-3.5 w-3.5" aria-hidden="true" /> EXPORT JSON
             </button>
@@ -253,7 +308,7 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
           { label: "PENDING GATES", value: String(pending), note: "waiting on a named human" },
         ].map((card) => (
           <div key={card.label} className="rounded-xl border border-ink-200/80 bg-white px-4 py-3.5">
-            <p className="font-code text-[7.5px] font-bold tracking-[0.2em] text-ink-400">{card.label}</p>
+            <p className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-500">{card.label}</p>
             <p className="mt-2 text-[22px] font-semibold tracking-[-0.02em] text-ink-950">{card.value}</p>
             <p className="mt-0.5 text-[10.5px] text-ink-500">{card.note}</p>
           </div>
@@ -274,7 +329,7 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
             type="button"
             onClick={() => void verifyChain()}
             disabled={chainBusy}
-            className="focus-brand inline-flex h-9 items-center gap-2 rounded-lg border border-ink-950 bg-white px-3 font-code text-[8px] font-bold tracking-[0.14em] text-ink-950 transition-colors hover:bg-ink-950 hover:text-white disabled:opacity-50"
+            className="focus-brand inline-flex h-11 min-h-11 items-center gap-2 rounded-lg border border-ink-950 bg-white px-3 font-code text-[10px] font-bold tracking-[0.08em] text-ink-950 transition-colors hover:bg-ink-950 hover:text-white disabled:opacity-50"
           >
             {chainBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />}
             {chainBusy ? "VERIFYING…" : "VERIFY CHAIN"}
@@ -291,7 +346,7 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
             <p className={cn("text-[11.5px] font-semibold", chain.ok ? "text-emerald-900" : "text-red-900")}>
               {chain.ok ? `Chain intact — ${chain.checked} entries checked.` : chain.error ?? `Chain broken at entry ${chain.brokenAt}.`}
             </p>
-            <p className="font-code text-[8px] tracking-[0.12em] text-ink-500">
+            <p className="font-code text-[10px] tracking-[0.04em] text-ink-600">
               {chain.lines} LINES · {chain.checked} CHECKED · VERIFIED {new Date().toLocaleTimeString("en-GB")}
             </p>
           </div>
@@ -302,7 +357,7 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
         <div className="border-b border-ink-100 px-4 py-3.5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-[13px] font-semibold text-ink-950">Tool-call log</h2>
-            <p className="font-code text-[8px] font-bold tracking-[0.16em] text-ink-400">
+            <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">
               {total.toLocaleString()} MATCHING · {allTotal.toLocaleString()} TOTAL
             </p>
           </div>
@@ -314,7 +369,7 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
                 onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
                 placeholder="Search inputs, outputs, actors…"
                 aria-label="Search audit entries"
-                className="focus-brand h-9 w-full rounded-lg border border-ink-200 bg-white pl-8 pr-2.5 text-[12px] text-ink-900 outline-none focus:border-ink-950"
+              className="focus-brand h-11 w-full rounded-lg border border-ink-200 bg-white pl-8 pr-2.5 text-[12.5px] text-ink-900 outline-none focus:border-ink-950"
               />
             </label>
             <input
@@ -322,13 +377,13 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
               onChange={(e) => setFilters((f) => ({ ...f, actor: e.target.value }))}
               placeholder="Actor"
               aria-label="Filter by actor"
-              className="focus-brand h-9 rounded-lg border border-ink-200 bg-white px-2.5 text-[12px] text-ink-900 outline-none focus:border-ink-950"
+              className="focus-brand h-11 rounded-lg border border-ink-200 bg-white px-2.5 text-[12.5px] text-ink-900 outline-none focus:border-ink-950"
             />
             <select
               value={filters.tool}
               onChange={(e) => setFilters((f) => ({ ...f, tool: e.target.value }))}
               aria-label="Filter by tool"
-              className="focus-brand h-9 rounded-lg border border-ink-200 bg-white px-2 text-[11.5px] text-ink-900 outline-none focus:border-ink-950"
+              className="focus-brand h-11 rounded-lg border border-ink-200 bg-white px-2 text-[12px] text-ink-900 outline-none focus:border-ink-950"
             >
               <option value="">All tools</option>
               {tools.map((t) => (
@@ -339,22 +394,22 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
               value={filters.status}
               onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
               aria-label="Filter by status"
-              className="focus-brand h-9 rounded-lg border border-ink-200 bg-white px-2 text-[11.5px] text-ink-900 outline-none focus:border-ink-950"
+              className="focus-brand h-11 rounded-lg border border-ink-200 bg-white px-2 text-[12px] text-ink-900 outline-none focus:border-ink-950"
             >
               <option value="">All statuses</option>
               {["OK", "PENDING_GATE", "GATED", "ERROR"].map((s) => (
-                <option key={s} value={s}>{s}</option>
+                <option key={s} value={s}>{auditStatusLabel(s)}</option>
               ))}
             </select>
             <select
               value={filters.kind}
               onChange={(e) => setFilters((f) => ({ ...f, kind: e.target.value }))}
               aria-label="Filter by tool kind"
-              className="focus-brand h-9 rounded-lg border border-ink-200 bg-white px-2 text-[11.5px] text-ink-900 outline-none focus:border-ink-950"
+              className="focus-brand h-11 rounded-lg border border-ink-200 bg-white px-2 text-[12px] text-ink-900 outline-none focus:border-ink-950"
             >
               <option value="">All kinds</option>
               {["READ", "WRITES", "IRREVERSIBLE", "GATE_DECISION"].map((k) => (
-                <option key={k} value={k}>{k}</option>
+                <option key={k} value={k}>{auditKindLabel(k)}</option>
               ))}
             </select>
             <div className="flex items-center gap-1">
@@ -363,15 +418,15 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
                 value={filters.from}
                 onChange={(e) => setFilters((f) => ({ ...f, from: e.target.value }))}
                 aria-label="From date"
-                className="focus-brand h-9 min-w-0 flex-1 rounded-lg border border-ink-200 bg-white px-1.5 text-[10.5px] text-ink-900 outline-none focus:border-ink-950"
+                className="focus-brand h-11 min-w-0 flex-1 rounded-lg border border-ink-200 bg-white px-2 text-[12px] text-ink-900 outline-none focus:border-ink-950"
               />
-              <span className="text-[9px] text-ink-400">to</span>
+              <span className="text-[11px] text-ink-500">to</span>
               <input
                 type="date"
                 value={filters.to}
                 onChange={(e) => setFilters((f) => ({ ...f, to: e.target.value }))}
                 aria-label="To date"
-                className="focus-brand h-9 min-w-0 flex-1 rounded-lg border border-ink-200 bg-white px-1.5 text-[10.5px] text-ink-900 outline-none focus:border-ink-950"
+                className="focus-brand h-11 min-w-0 flex-1 rounded-lg border border-ink-200 bg-white px-2 text-[12px] text-ink-900 outline-none focus:border-ink-950"
               />
             </div>
           </div>
@@ -379,7 +434,7 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
             <button
               type="button"
               onClick={() => setFilters({ q: "", actor: "", tool: "", status: "", kind: "", from: "", to: "" })}
-              className="mt-2 inline-flex items-center gap-1 font-code text-[8px] font-bold tracking-[0.14em] text-brand-700 hover:underline"
+              className="mt-2 inline-flex min-h-11 items-center gap-1 rounded-md px-2 font-code text-[10px] font-bold tracking-[0.08em] text-brand-700 hover:underline"
             >
               <X className="h-3 w-3" aria-hidden="true" /> CLEAR FILTERS
             </button>
@@ -389,23 +444,23 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
         {failed ? (
           <div className="px-4 py-8 text-center">
             <p className="text-[12.5px] font-medium text-ink-800">The audit service is unreachable.</p>
-            <button type="button" onClick={() => void pull()} className="mt-2 font-code text-[8px] font-bold tracking-[0.16em] text-brand-700 hover:underline">
+            <button type="button" onClick={() => void pull()} className="mt-2 inline-flex min-h-11 items-center rounded-md px-2 font-code text-[10px] font-bold tracking-[0.08em] text-brand-700 hover:underline">
               RETRY
             </button>
           </div>
         ) : loading && entries.length === 0 ? (
-          <div className="flex items-center justify-center gap-2 px-4 py-10 font-code text-[8px] font-bold tracking-[0.18em] text-ink-400">
+          <div className="flex items-center justify-center gap-2 px-4 py-10 font-code text-[10px] font-bold tracking-[0.1em] text-ink-500">
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> READING THE SPINE…
           </div>
         ) : entries.length === 0 ? (
           <p className="px-4 py-10 text-center text-[12.5px] text-ink-500">No entries match these filters.</p>
         ) : (
-          <div className="overflow-x-auto">
+          <HorizontalScrollRegion label="Audit log table">
             <table className="w-full min-w-[760px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-ink-100 bg-paper/50">
                   {["", "Seq", "When", "Actor", "Tool", "Kind", "Status", "Run"].map((h) => (
-                    <th key={h} className="px-3 py-2 font-code text-[7px] font-bold tracking-[0.18em] text-ink-400 first:pl-4">{h}</th>
+                    <th key={h} className="px-3 py-2.5 font-code text-[10px] font-bold tracking-[0.1em] text-ink-500 first:pl-4">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -418,7 +473,7 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
                 })}
               </tbody>
             </table>
-          </div>
+          </HorizontalScrollRegion>
         )}
       </section>
 
@@ -428,7 +483,7 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
             <h2 className="text-[13px] font-semibold text-ink-950">Signed gate receipts</h2>
             <p className="mt-0.5 text-[11px] text-ink-500">Ed25519 over the decision, approver, inputs hash and filing receipt.</p>
           </div>
-          <span className="font-code text-[8px] font-bold tracking-[0.16em] text-ink-400">{signedGates.length} SIGNED</span>
+          <span className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">{signedGates.length} SIGNED</span>
         </div>
         {signedGates.length === 0 ? (
           <p className="px-4 py-8 text-center text-[12.5px] text-ink-500">No gate has been signed yet. Sign one from Approvals.</p>
@@ -439,17 +494,17 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
                 <FileKey2 className="h-4 w-4 shrink-0 text-brand-700" aria-hidden="true" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[12px] font-semibold text-ink-950">
-                    {g.tenderId} <span className="font-normal text-ink-400">·</span>{" "}
+                    {systemReferenceLabel(g.systemReference, "Tender record")} <span className="font-normal text-ink-400">·</span>{" "}
                     <span className="font-code text-[10px] font-normal text-ink-500">{g.id}</span>
                   </p>
-                  <p className="mt-0.5 font-code text-[9px] tracking-[0.05em] text-ink-500">
+                  <p className="mt-0.5 font-code text-[10.5px] leading-relaxed tracking-[0.02em] text-ink-600">
                     {g.approver ?? "UNSIGNED"} · {g.status} · {g.signature?.keyId ?? "NO KEY"} ·{" "}
                     {g.signatureValid ? "SIGNATURE VALID" : "SIGNATURE INVALID"}
                   </p>
                 </div>
                 <span
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-code text-[7.5px] font-bold tracking-[0.12em]",
+                    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em]",
                     g.signatureValid ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-red-300 bg-red-50 text-red-700",
                   )}
                 >
@@ -460,10 +515,10 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
                   type="button"
                   onClick={() => void verifyReceipt(g.id)}
                   disabled={receiptBusy === g.id}
-                  className="focus-brand inline-flex h-8 items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2.5 font-code text-[7.5px] font-bold tracking-[0.12em] text-ink-700 transition-colors hover:border-ink-950 disabled:opacity-50"
+                  className="focus-brand inline-flex h-11 min-h-11 items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2.5 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-950 disabled:opacity-50"
                 >
                   {receiptBusy === g.id ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <FileKey2 className="h-3 w-3" aria-hidden="true" />}
-                  DETAIL
+                  Verify
                 </button>
               </div>
             ))}
@@ -472,14 +527,22 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
       </section>
 
       {receipt ? (
-        <div className="fixed inset-0 z-[110] grid place-items-center bg-ink-950/45 px-4 backdrop-blur-[3px]" role="dialog" aria-modal="true" aria-labelledby="receipt-title">
-          <div className="max-h-[86vh] w-full max-w-[720px] overflow-auto rounded-2xl border border-ink-200 bg-[#fffdfb] shadow-2xl">
+        <div className="fixed inset-0 z-[110] grid place-items-center bg-ink-950/45 px-4 backdrop-blur-[3px]">
+          <div
+            ref={receiptDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="receipt-title"
+            tabIndex={-1}
+            onKeyDown={(event) => trapTabFocus(event, receiptDialogRef.current)}
+            className="max-h-[86vh] w-full max-w-[720px] overflow-auto rounded-2xl border border-ink-200 bg-[#fffdfb] shadow-2xl"
+          >
             <div className="sticky top-0 flex items-start justify-between gap-3 border-b border-ink-100 bg-[#fffdfb] px-5 py-4">
               <div>
                 <h3 id="receipt-title" className="text-[14px] font-semibold text-ink-950">Gate receipt · {receipt.gateId}</h3>
-                <p className="mt-0.5 font-code text-[9px] tracking-[0.08em] text-ink-500">{receipt.tenderId} · {receipt.status}</p>
+                <p className="mt-0.5 font-code text-[10.5px] tracking-[0.02em] text-ink-500">{systemReferenceLabel(receipt.systemReference, "Tender record")} · {receipt.status}</p>
               </div>
-              <button type="button" onClick={() => setReceipt(null)} aria-label="Close receipt" className="grid h-8 w-8 place-items-center rounded-full text-ink-400 hover:bg-ink-950/[0.05] hover:text-ink-800">
+              <button ref={receiptCloseRef} type="button" onClick={() => setReceipt(null)} aria-label="Close receipt" className="focus-brand grid h-11 w-11 place-items-center rounded-full text-ink-400 hover:bg-ink-950/[0.05] hover:text-ink-800">
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
@@ -496,19 +559,19 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
                 </div>
               </div>
               <dl className="grid gap-2 text-[11.5px] sm:grid-cols-2">
-                <div><dt className="font-code text-[7.5px] font-bold tracking-[0.16em] text-ink-400">APPROVER</dt><dd className="mt-0.5 text-ink-900">{receipt.approver ?? "—"}</dd></div>
-                <div><dt className="font-code text-[7.5px] font-bold tracking-[0.16em] text-ink-400">DECIDED</dt><dd className="mt-0.5 text-ink-900">{receipt.decidedAt ? stamp(receipt.decidedAt) : "—"}</dd></div>
-                <div><dt className="font-code text-[7.5px] font-bold tracking-[0.16em] text-ink-400">STEP-UP</dt><dd className="mt-0.5 text-ink-900">{receipt.stepUp ? `${receipt.stepUp.by} · ${receipt.stepUp.method}` : "—"}</dd></div>
-                <div><dt className="font-code text-[7.5px] font-bold tracking-[0.16em] text-ink-400">KEY ID</dt><dd className="mt-0.5 font-code text-[10.5px] text-ink-900">{receipt.signature?.keyId ?? "—"}</dd></div>
+                <div><dt className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">APPROVER</dt><dd className="mt-0.5 text-ink-900">{receipt.approver ?? "—"}</dd></div>
+                <div><dt className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">DECIDED</dt><dd className="mt-0.5 text-ink-900">{receipt.decidedAt ? stamp(receipt.decidedAt) : "—"}</dd></div>
+                <div><dt className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">STEP-UP</dt><dd className="mt-0.5 text-ink-900">{receipt.stepUp ? `${receipt.stepUp.by} · ${receipt.stepUp.method}` : "—"}</dd></div>
+                <div><dt className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">KEY ID</dt><dd className="mt-0.5 font-code text-[10.5px] text-ink-900">{receipt.signature?.keyId ?? "—"}</dd></div>
               </dl>
               <details className="rounded-lg border border-ink-200 bg-white">
-                <summary className="cursor-pointer px-3 py-2 font-code text-[8px] font-bold tracking-[0.14em] text-ink-600">SIGNED RECEIPT JSON</summary>
+                <summary className="focus-brand inline-flex min-h-11 cursor-pointer items-center px-3 font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">SIGNED RECEIPT JSON</summary>
                 <pre className="max-h-[300px] overflow-auto border-t border-ink-100 p-3 font-code text-[10px] leading-relaxed text-ink-800">{JSON.stringify(receipt, null, 2)}</pre>
               </details>
               <button
                 type="button"
                 onClick={() => download(`quorum-receipt-${receipt.gateId}.json`, JSON.stringify(receipt, null, 2), "application/json")}
-                className="focus-brand inline-flex h-9 items-center gap-2 rounded-lg bg-ink-950 px-3 font-code text-[8px] font-bold tracking-[0.14em] text-white hover:bg-ink-800"
+                className="focus-brand inline-flex h-11 min-h-11 items-center gap-2 rounded-lg bg-ink-950 px-3 font-code text-[10px] font-bold tracking-[0.08em] text-white hover:bg-ink-800"
               >
                 <Download className="h-3.5 w-3.5" aria-hidden="true" /> DOWNLOAD RECEIPT
               </button>
@@ -525,19 +588,19 @@ function FragmentRow({ entry: e, open, onToggle }: { entry: LogEntry; open: bool
     <>
       <tr className={cn("border-b border-ink-50 align-top transition-colors hover:bg-paper/50", open && "bg-paper/50")}>
         <td className="pl-4 pr-1 py-2.5">
-          <button type="button" onClick={onToggle} aria-label={open ? "Collapse entry" : "Expand entry"} aria-expanded={open} className="grid h-5 w-5 place-items-center rounded text-ink-400 hover:bg-ink-950/[0.06] hover:text-ink-800">
+          <button type="button" onClick={onToggle} aria-label={`${open ? "Collapse" : "Expand"} audit entry ${e.seq}`} aria-expanded={open} className="focus-brand grid h-11 w-11 place-items-center rounded-lg text-ink-400 hover:bg-ink-950/[0.06] hover:text-ink-800">
             {open ? <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" /> : <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />}
           </button>
         </td>
-        <td className="px-3 py-2.5 font-code text-[9px] text-ink-500">{e.seq}</td>
-        <td className="whitespace-nowrap px-3 py-2.5 text-[10.5px] text-ink-600">{stamp(e.ts)}</td>
+        <td className="px-3 py-2.5 font-code text-[10.5px] text-ink-600">{e.seq}</td>
+        <td className="whitespace-nowrap px-3 py-2.5 text-[11.5px] text-ink-700">{stamp(e.ts)}</td>
         <td className="px-3 py-2.5 text-[11px] font-medium text-ink-900">{e.actor}</td>
-        <td className="px-3 py-2.5 font-code text-[10px] text-ink-800">{e.tool}</td>
-        <td className="px-3 py-2.5 font-code text-[8px] tracking-[0.08em] text-ink-500">{e.kind}</td>
+        <td className="px-3 py-2.5 font-code text-[11px] text-ink-900">{e.tool}</td>
+        <td className="px-3 py-2.5 font-code text-[10px] tracking-[0.02em] text-ink-700">{auditKindLabel(e.kind)}</td>
         <td className="px-3 py-2.5">
-          <span className={cn("inline-flex rounded-full border px-2 py-0.5 font-code text-[7px] font-bold tracking-[0.08em]", statusTone(e.status))}>{e.status}</span>
+          <span className={cn("inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold", statusTone(e.status))}>{auditStatusLabel(e.status)}</span>
         </td>
-        <td className="max-w-[140px] truncate px-3 py-2.5 font-code text-[9px] text-ink-500">{e.runId ?? "—"}</td>
+        <td className="max-w-[140px] truncate px-3 py-2.5 font-code text-[10.5px] text-ink-600">{e.runId ?? "—"}</td>
       </tr>
       {open ? (
         <tr className="border-b border-ink-100 bg-paper/40">
@@ -545,15 +608,15 @@ function FragmentRow({ entry: e, open, onToggle }: { entry: LogEntry; open: bool
           <td colSpan={7} className="px-3 py-3">
             <div className="grid gap-2 lg:grid-cols-2">
               <div>
-                <p className="font-code text-[7.5px] font-bold tracking-[0.16em] text-ink-400">INPUTS</p>
-                <pre className="mt-1 max-h-[180px] overflow-auto rounded-lg border border-ink-200 bg-white p-2.5 font-code text-[9.5px] leading-relaxed text-ink-800">{JSON.stringify(e.inputs, null, 2)}</pre>
+                <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">Inputs</p>
+                <pre className="mt-1 max-h-[180px] overflow-auto rounded-lg border border-ink-200 bg-white p-2.5 font-code text-[10.5px] leading-relaxed text-ink-900">{JSON.stringify(e.inputs, null, 2)}</pre>
               </div>
               <div>
-                <p className="font-code text-[7.5px] font-bold tracking-[0.16em] text-ink-400">OUTPUTS</p>
-                <pre className="mt-1 max-h-[180px] overflow-auto rounded-lg border border-ink-200 bg-white p-2.5 font-code text-[9.5px] leading-relaxed text-ink-800">{JSON.stringify(e.outputs, null, 2)}</pre>
+                <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">Outputs</p>
+                <pre className="mt-1 max-h-[180px] overflow-auto rounded-lg border border-ink-200 bg-white p-2.5 font-code text-[10.5px] leading-relaxed text-ink-900">{JSON.stringify(e.outputs, null, 2)}</pre>
               </div>
             </div>
-            <p className="mt-2 font-code text-[8px] tracking-[0.08em] text-ink-400">
+            <p className="mt-2 break-all font-code text-[10px] tracking-[0.02em] text-ink-600">
               SELF {e.self ?? "—"} · PREV {e.prev ?? "—"} · {e.durationMs}ms
             </p>
           </td>

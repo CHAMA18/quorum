@@ -336,7 +336,7 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
           <button
             type="button"
             onClick={() => navigate("audit")}
-            className="focus-brand inline-flex h-9 items-center gap-2 rounded-lg bg-ink-950 px-3.5 font-code text-[9px] font-bold uppercase tracking-[0.16em] text-white transition-colors hover:bg-ink-800 dark:bg-white dark:text-ink-950 dark:hover:bg-ink-200"
+            className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg bg-ink-950 px-3.5 font-code text-[10px] font-bold uppercase tracking-[0.1em] text-white transition-colors hover:bg-ink-800 dark:bg-white dark:text-[#0b0c0f] dark:hover:bg-[#e9eaec]"
           >
             <Fingerprint className="h-3.5 w-3.5" aria-hidden="true" />
             THE RECORD
@@ -416,7 +416,7 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
               <button
                 type="button"
                 onClick={() => navigate("gates")}
-                className="font-code text-[7.5px] font-bold uppercase tracking-[0.16em] text-brand-700 hover:text-brand-800 dark:text-brand-300"
+                className="focus-brand inline-flex min-h-11 items-center rounded-lg px-2 font-code text-[10px] font-bold uppercase tracking-[0.06em] text-brand-800 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-500/10"
               >
                 OPEN THE QUEUE →
               </button>
@@ -436,7 +436,7 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
                 return count > 0 ? (
                   <span
                     key={role}
-                    className="rounded border border-ink-200 px-1.5 py-0.5 font-code text-[7px] font-bold tracking-[0.1em] text-ink-500 dark:border-white/10"
+                    className="rounded border border-ink-200 px-2 py-1 font-code text-[10px] font-bold tracking-[0.03em] text-ink-600 dark:border-white/10"
                   >
                     {role.slice(0, 3)} {count}
                   </span>
@@ -455,7 +455,7 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
             <button
               type="button"
               onClick={() => navigate("orgs")}
-              className="font-code text-[7.5px] font-bold uppercase tracking-[0.16em] text-ink-500 hover:text-ink-950 dark:hover:text-white"
+              className="focus-brand inline-flex min-h-11 items-center rounded-lg px-2 font-code text-[10px] font-bold uppercase tracking-[0.06em] text-ink-600 hover:bg-ink-100 hover:text-ink-950 dark:hover:bg-white/[0.06] dark:hover:text-white"
             >
               {openAppeals > 0 ? "DECIDE APPEALS →" : "OPEN THE REGISTER →"}
             </button>
@@ -474,7 +474,7 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
               action={
                 <div className="text-right">
                   <p className="type-num text-[22px] text-ink-950">{fmtNum(totalCalls)}</p>
-                  <p className="font-code text-[7px] font-bold uppercase tracking-[0.18em] text-ink-400">CALLS IN WINDOW</p>
+                  <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Calls in window</p>
                 </div>
               }
             />
@@ -482,13 +482,13 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
               <DayBars points={points} />
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ink-100 px-5 py-2.5 dark:border-white/8">
-              <p className="font-code text-[7.5px] font-semibold uppercase tracking-[0.16em] text-ink-400">
+              <p className="text-[10.5px] leading-relaxed text-ink-600">
                 {fmtNum(desk.audit.allTotal)} lines in the chain · newest {desk.audit.entries[0] ? fmtAgo(desk.audit.entries[0].ts, now) : "—"}
               </p>
               <button
                 type="button"
                 onClick={() => navigate("audit")}
-                className="font-code text-[7.5px] font-bold uppercase tracking-[0.16em] text-ink-500 hover:text-ink-950 dark:hover:text-white"
+                className="focus-brand inline-flex min-h-11 items-center rounded-lg px-2 font-code text-[10px] font-bold uppercase tracking-[0.06em] text-ink-600 hover:bg-ink-100 hover:text-ink-950 dark:hover:bg-white/[0.06] dark:hover:text-white"
               >
                 READ THE CHAIN →
               </button>
@@ -521,7 +521,7 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
                         <span className="block text-[12.5px] font-semibold text-ink-950">{alert.title}</span>
                         <span className="mt-0.5 block text-[11px] leading-relaxed text-ink-500">{alert.detail}</span>
                       </span>
-                      <span className="mt-0.5 inline-flex shrink-0 items-center gap-1 font-code text-[7.5px] font-bold uppercase tracking-[0.14em] text-ink-400 transition-colors group-hover:text-brand-700 dark:group-hover:text-brand-300">
+                      <span className="mt-0.5 inline-flex shrink-0 items-center gap-1 text-[10px] font-semibold text-ink-600 transition-colors group-hover:text-brand-700 dark:group-hover:text-brand-300">
                         {alert.cta}
                         <ArrowRight className="h-3 w-3" aria-hidden="true" />
                       </span>
@@ -549,9 +549,9 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
                 { label: "Recent decisions", value: desk.decisions.length, note: "independent act ledger" },
               ].map((item) => (
                 <div key={item.label} className="px-4 py-3.5">
-                  <dt className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">{item.label}</dt>
+                  <dt className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">{item.label}</dt>
                   <dd className="mt-1.5 type-num text-[20px] text-ink-950">{typeof item.value === "number" ? fmtNum(item.value) : item.value}</dd>
-                  <p className="mt-0.5 text-[9.5px] text-ink-400">{item.note}</p>
+                  <p className="mt-0.5 text-[10.5px] leading-relaxed text-ink-600">{item.note}</p>
                 </div>
               ))}
             </dl>
@@ -567,7 +567,7 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
                 <button
                   type="button"
                   onClick={() => navigate("audit")}
-                  className="font-code text-[7.5px] font-bold uppercase tracking-[0.16em] text-ink-500 hover:text-ink-950 dark:hover:text-white"
+                  className="focus-brand inline-flex min-h-11 items-center rounded-lg px-2 font-code text-[10px] font-bold uppercase tracking-[0.06em] text-ink-600 hover:bg-ink-100 hover:text-ink-950 dark:hover:bg-white/[0.06] dark:hover:text-white"
                 >
                   ALL LINES →
                 </button>
@@ -579,7 +579,7 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
               <ul className="divide-y divide-ink-100 dark:divide-white/8">
                 {desk.audit.entries.slice(0, 8).map((entry) => (
                   <li key={entry.id} className="flex items-center gap-3 px-5 py-2.5">
-                    <span className="w-14 shrink-0 font-code text-[9px] tabular text-ink-400">{fmtClock(entry.ts).slice(0, 5)}</span>
+                    <span className="w-14 shrink-0 font-code text-[10px] tabular text-ink-600">{fmtClock(entry.ts).slice(0, 5)}</span>
                     <span
                       className={cn(
                         "h-1.5 w-1.5 shrink-0 rounded-full",
@@ -591,10 +591,10 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
                       <span className="font-semibold text-ink-950">{entry.tool.replace(/_/g, " ")}</span>
                       <span className="text-ink-400"> · {entry.actor}</span>
                     </span>
-                    <span className="hidden shrink-0 font-code text-[7.5px] font-bold uppercase tracking-[0.14em] text-ink-400 sm:inline">
+                    <span className="hidden shrink-0 text-[10px] font-semibold text-ink-600 sm:inline">
                       {entry.kind}
                     </span>
-                    <span className="w-10 shrink-0 text-right font-code text-[8.5px] tabular text-ink-400">
+                    <span className="w-10 shrink-0 text-right font-code text-[10px] tabular text-ink-600">
                       {entry.durationMs}ms
                     </span>
                   </li>
@@ -615,7 +615,7 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
                 <button
                   type="button"
                   onClick={() => navigate("system")}
-                  className="font-code text-[7.5px] font-bold uppercase tracking-[0.16em] text-ink-400 hover:text-ink-950 dark:hover:text-white"
+                  className="focus-brand inline-flex min-h-11 items-center rounded-lg px-2 font-code text-[10px] font-bold uppercase tracking-[0.06em] text-ink-600 hover:bg-ink-100 hover:text-ink-950 dark:hover:bg-white/[0.06] dark:hover:text-white"
                 >
                   DETAIL →
                 </button>
@@ -665,22 +665,22 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
             <PanelHead eyebrow="Model chain" title="Who answered" description="Attribution is recorded, never inferred." />
             <div className="space-y-3 px-5 py-4">
               <div className="rounded-xl border border-ink-200/80 bg-white/60 px-3 py-2.5 dark:border-white/10 dark:bg-white/[0.03]">
-                <p className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">PRIMARY</p>
+                <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Primary</p>
                 <p className="mt-1 truncate text-[12px] font-semibold text-ink-950">
                   {model?.configured ? model.model : "Deterministic template"}
                 </p>
-                <p className="truncate font-code text-[8px] tracking-[0.1em] text-ink-400">
+                <p className="truncate text-[10.5px] text-ink-600">
                   {model?.configured
                     ? `${model.providerLabel ?? "model"} · ${hostOf(model.endpoint ?? null)}`
                     : "no endpoint configured · drafts labelled template"}
                 </p>
               </div>
               <div className="rounded-xl border border-ink-200/80 bg-white/60 px-3 py-2.5 dark:border-white/10 dark:bg-white/[0.03]">
-                <p className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">FALLBACK</p>
+                <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Fallback</p>
                 <p className="mt-1 truncate text-[12px] font-semibold text-ink-950">
                   {model?.fallback?.model ?? "None configured"}
                 </p>
-                <p className="truncate font-code text-[8px] tracking-[0.1em] text-ink-400">
+                <p className="truncate text-[10.5px] text-ink-600">
                   {model?.fallback
                     ? `${model.fallback.providerLabel} · ${hostOf(model.fallback.endpoint)}`
                     : "the template is the last resort"}
@@ -694,7 +694,7 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
                 <Chip tone="neutral">{model?.providerLabel ?? "template"}</Chip>
               </div>
               <div className="border-t border-ink-100 pt-3 dark:border-white/8">
-                <p className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">NEWEST ATTRIBUTED ANSWER</p>
+                <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Newest attributed answer</p>
                 {lastCall ? (
                   <>
                     <p className="mt-1 truncate text-[11.5px] font-semibold text-ink-950">{lastCall.model}</p>
@@ -730,7 +730,7 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
                 <button
                   type="button"
                   onClick={() => navigate("system")}
-                  className="mt-2 font-code text-[7.5px] font-bold uppercase tracking-[0.16em] text-ink-500 hover:text-ink-950 dark:hover:text-white"
+                  className="focus-brand mt-2 inline-flex min-h-11 items-center rounded-lg px-2 font-code text-[10px] font-bold uppercase tracking-[0.06em] text-ink-600 hover:bg-ink-100 hover:text-ink-950 dark:hover:bg-white/[0.06] dark:hover:text-white"
                 >
                   READ THE ROSTER →
                 </button>
@@ -742,7 +742,7 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
                   <li key={member.id} className="flex items-center gap-2 px-5 py-2">
                     <Dot tone={member.status === "PRESENT" ? "emerald" : "neutral"} />
                     <span className="min-w-0 flex-1 truncate text-[11px] text-ink-800">{member.name}</span>
-                    <span className="shrink-0 font-code text-[7px] font-bold uppercase tracking-[0.12em] text-ink-400">
+                    <span className="shrink-0 text-[10px] font-semibold text-ink-600">
                       {member.office.replace(/_/g, " ")}
                     </span>
                   </li>
@@ -761,10 +761,10 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
                   <li key={event.id} className="px-5 py-2.5">
                     <div className="flex items-center gap-1.5">
                       <Activity className="h-3 w-3 shrink-0 text-ink-400" aria-hidden="true" />
-                      <p className="font-code text-[7.5px] font-bold uppercase tracking-[0.14em] text-ink-700">
+                      <p className="font-code text-[10px] font-bold uppercase tracking-[0.06em] text-ink-800">
                         {event.action.replace(/_/g, " ")}
                       </p>
-                      <span className="ml-auto font-code text-[7px] text-ink-400">{fmtAgo(event.createdAt, now)}</span>
+                      <span className="ml-auto text-[10px] text-ink-600">{fmtAgo(event.createdAt, now)}</span>
                     </div>
                     <p className="mt-1 truncate text-[11px] font-semibold text-ink-950">{event.targetName}</p>
                     <p className="truncate text-[10px] text-ink-500">
@@ -789,7 +789,7 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
         </div>
         <div className="flex items-center gap-2">
           <Gavel className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
-          <span className="font-code text-[7.5px] font-bold uppercase tracking-[0.18em] text-ink-400">
+          <span className="text-[10px] font-semibold text-ink-600">
             THE MACHINE NEVER HOLDS THE PEN
           </span>
         </div>
@@ -817,9 +817,9 @@ function VitalRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
           <p className="text-[11px] font-semibold text-ink-800">{label}</p>
-          <p className="shrink-0 font-code text-[8px] font-bold uppercase tracking-[0.12em] text-ink-500">{value}</p>
+          <p className="shrink-0 font-code text-[10px] font-bold uppercase tracking-[0.05em] text-ink-600">{value}</p>
         </div>
-        <p className="mt-0.5 truncate font-code text-[8px] tracking-[0.06em] text-ink-400">{detail}</p>
+        <p className="mt-0.5 truncate text-[10.5px] text-ink-600">{detail}</p>
       </div>
     </div>
   );

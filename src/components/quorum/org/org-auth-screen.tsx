@@ -26,6 +26,7 @@ import { RegisterShowcase } from "@/components/quorum/org/register-showcase";
 import { SearchSelect, type SelectOption } from "@/components/quorum/org/search-select";
 import { COUNTRIES, SUGGESTED_COUNTRIES, findCountry, type Country } from "@/lib/countries";
 import { LEGAL_FORM_GROUPS, LEGAL_FORM_OTHER } from "@/lib/legal-forms";
+import { ensureOrgFirebaseIdentity } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
 
 /**
@@ -163,26 +164,21 @@ const PW_META = [
 ];
 
 const inputCls =
-  "h-11 w-full rounded-lg border border-ink-200 bg-white px-3.5 text-[14px] text-ink-950 outline-none transition-all placeholder:text-ink-300 focus:border-ink-950 focus:ring-4 focus:ring-ink-950/10 dark:border-white/10 dark:bg-night-2 dark:text-white dark:placeholder:text-ink-500";
+  "h-11 w-full rounded-lg border border-ink-200 bg-white px-3.5 text-[14px] text-ink-950 outline-none transition-all placeholder:text-ink-400 focus:border-ink-950 focus:ring-4 focus:ring-ink-950/10 dark:border-white/10 dark:bg-night-2 dark:text-white dark:placeholder:text-ink-500";
 
 function Field({
   label,
   error,
-  aside,
   children,
 }: {
   label: string;
   error?: string;
-  aside?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <label className="block space-y-1.5">
-      <span className="flex items-center justify-between gap-3">
-        <span className="font-code text-[9.5px] font-semibold uppercase tracking-[0.16em] text-ink-500 dark:text-ink-400">
-          {label}
-        </span>
-        {aside}
+      <span className="font-code text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-600 dark:text-ink-300">
+        {label}
       </span>
       {children}
       {error ? <span role="alert" className="block text-[12px] font-medium text-brand-700 dark:text-brand-300">{error}</span> : null}
@@ -209,8 +205,8 @@ function PassphraseMeter({ password }: { password: string }) {
         ))}
       </div>
       <div className="mt-1.5 flex items-center justify-between gap-2">
-        <p className="font-code text-[9px] font-semibold tracking-[0.18em] text-ink-500 dark:text-ink-400">{meta.label}</p>
-        <p className="font-code text-[8.5px] tracking-[0.1em] text-ink-300 dark:text-ink-500">
+        <p className="font-code text-[10px] font-semibold tracking-[0.1em] text-ink-600 dark:text-ink-300">{meta.label}</p>
+        <p className="font-code text-[10px] tracking-[0.04em] text-ink-500 dark:text-ink-400">
           {PW_CHECKS.map((c) => c.label).join(" · ")}
         </p>
       </div>
@@ -304,6 +300,7 @@ function RegisterWizard({
         if (j.errors?.name || j.errors?.registrationNo || j.errors?.country) setStep(1);
         return;
       }
+      await ensureOrgFirebaseIdentity({ name: form.name, email: form.email, password: form.password });
       onRegistered(j.org.name);
     } catch {
       setBanner("The portal is unreachable — try again shortly.");
@@ -343,8 +340,8 @@ function RegisterWizard({
       {/* step rail */}
       <div>
         <div className="flex items-baseline justify-between">
-          <p className="font-code text-[9px] font-semibold tracking-[0.2em] text-ink-400">ORGANIZATION REGISTRATION</p>
-          <p className="font-code text-[9px] font-semibold tracking-[0.2em] text-ink-400">
+          <p className="font-code text-[10px] font-semibold tracking-[0.1em] text-ink-600 dark:text-ink-300">ORGANIZATION REGISTRATION</p>
+          <p className="font-code text-[10px] font-semibold tracking-[0.1em] text-ink-600 dark:text-ink-300">
             STEP <span className="text-ink-950 dark:text-white">{step}</span> OF 4
           </p>
         </div>
@@ -354,8 +351,11 @@ function RegisterWizard({
               <button
                 type="button"
                 onClick={() => s.n < step && setStep(s.n)}
+                disabled={s.n > step}
+                aria-current={s.n === step ? "step" : undefined}
+                aria-label={`Step ${s.n}: ${s.label}${s.n === step ? ", current step" : s.n < step ? ", complete, activate to edit" : ", not yet available"}`}
                 className={cn(
-                  "w-full min-w-0 rounded-lg px-1.5 py-1.5 text-left transition-colors",
+                  "focus-brand min-h-11 w-full min-w-0 rounded-lg px-2 py-2 text-left transition-colors disabled:cursor-default",
                   s.n === step
                     ? "bg-ink-50 ring-1 ring-inset ring-ink-200 dark:bg-white/[0.07] dark:ring-white/10"
                     : s.n < step
@@ -366,9 +366,9 @@ function RegisterWizard({
                 <span className="flex items-center gap-1.5">
                   <span
                     className={cn(
-                      "grid h-4 w-4 place-items-center rounded-full font-code text-[8px] font-bold",
+                      "grid h-5 w-5 place-items-center rounded-full font-code text-[10px] font-bold",
                       s.n < step
-                        ? "bg-ink-950 text-white dark:bg-white dark:text-ink-950"
+                        ? "bg-ink-950 text-white dark:bg-white dark:text-[#0b0c0f]"
                         : s.n === step
                           ? "bg-brand-600 text-white"
                           : "bg-ink-100 text-ink-400 dark:bg-white/10 dark:text-ink-300",
@@ -382,7 +382,7 @@ function RegisterWizard({
                          them — below that the numbered rail plus the
                          "STEP n OF 4" line carry the state without
                          overflowing the phone. */
-                      "hidden min-w-0 truncate font-code text-[9px] font-semibold uppercase tracking-[0.1em] min-[480px]:inline",
+                      "hidden min-w-0 truncate font-code text-[10px] font-semibold uppercase tracking-[0.05em] min-[480px]:inline",
                       s.n === step ? "text-ink-950 dark:text-white" : s.n < step ? "text-ink-500 dark:text-ink-400" : "text-ink-400",
                     )}
                   >
@@ -533,7 +533,7 @@ function RegisterWizard({
                         addCategory(categoryDraft);
                         setCategoryDraft("");
                       }}
-                      className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-ink-200 text-ink-600 transition-colors hover:border-brand-600 hover:text-brand-700 dark:border-white/10"
+                      className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-ink-200 text-ink-600 transition-colors hover:border-brand-600 hover:text-brand-700 dark:border-white/10"
                       aria-label="Add category"
                     >
                       <Check className="h-4 w-4" aria-hidden="true" />
@@ -542,9 +542,9 @@ function RegisterWizard({
                   {form.categories.length > 0 ? (
                     <div className="flex flex-wrap gap-1.5">
                       {form.categories.map((c) => (
-                        <span key={c} className="inline-flex items-center gap-1 rounded-full bg-ink-950 px-2.5 py-1 text-[12px] font-medium text-white dark:bg-white dark:text-ink-950">
+                        <span key={c} className="inline-flex min-h-11 items-center gap-1 rounded-full bg-ink-950 py-1 pl-3 pr-1 text-[12px] font-medium text-white dark:bg-white dark:text-[#0b0c0f]">
                           {c}
-                          <button type="button" onClick={() => set("categories", form.categories.filter((x) => x !== c))} aria-label={`Remove ${c}`}>
+                          <button type="button" onClick={() => set("categories", form.categories.filter((x) => x !== c))} aria-label={`Remove ${c}`} className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-full hover:bg-white/10 dark:hover:bg-[#e9eaec]">
                             <X className="h-3 w-3" aria-hidden="true" />
                           </button>
                         </span>
@@ -557,7 +557,7 @@ function RegisterWizard({
                         key={s}
                         type="button"
                         onClick={() => addCategory(s)}
-                        className="rounded-full border border-dashed border-ink-300 px-2.5 py-1 text-[11.5px] text-ink-500 transition-colors hover:border-brand-600 hover:text-brand-700 dark:border-white/15 dark:text-ink-400"
+                        className="focus-brand inline-flex min-h-11 items-center rounded-full border border-dashed border-ink-300 px-3 text-[12px] text-ink-600 transition-colors hover:border-brand-600 hover:text-brand-700 dark:border-white/15 dark:text-ink-300"
                       >
                         + {s}
                       </button>
@@ -583,8 +583,8 @@ function RegisterWizard({
                     value={form.password}
                     onChange={(e) => set("password", e.target.value)}
                   />
-                  <button type="button" onClick={() => setShowPass((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-700" aria-label={showPass ? "Hide password" : "Show password"}>
-                    {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  <button type="button" onClick={() => setShowPass((v) => !v)} className="focus-brand absolute right-1 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-lg text-ink-500 hover:text-ink-900 dark:text-ink-400 dark:hover:text-white" aria-label={showPass ? "Hide password" : "Show password"} aria-pressed={showPass}>
+                    {showPass ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
                   </button>
                 </div>
               </Field>
@@ -594,7 +594,7 @@ function RegisterWizard({
               </Field>
 
               <div className="overflow-hidden rounded-xl border border-ink-100 dark:border-white/10">
-                <p className="border-b border-ink-100 bg-sand px-3.5 py-2 font-code text-[9px] font-semibold tracking-[0.16em] text-ink-500 dark:border-white/10 dark:bg-night-2 dark:text-ink-400">
+                <p className="border-b border-ink-100 bg-sand px-3.5 py-2 font-code text-[10px] font-semibold tracking-[0.08em] text-ink-600 dark:border-white/10 dark:bg-night-2 dark:text-ink-300">
                   REVIEW — WHAT THE DESK WILL SEE
                 </p>
                 <dl className="divide-y divide-ink-50 dark:divide-ink-900">
@@ -654,18 +654,18 @@ function RegisterWizard({
 
 function OnTheRegister({ orgName, onEnter }: { orgName: string; onEnter: () => void }) {
   const enteredRef = useRef(false);
+  const enterButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => enterButtonRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   const enter = () => {
     if (enteredRef.current) return;
     enteredRef.current = true;
     onEnter();
   };
-
-  /* The session is already open — the console is one step away, automatically. */
-  useEffect(() => {
-    const t = setTimeout(enter, 2100);
-    return () => clearTimeout(t);
-  }, []);
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="text-center" aria-live="polite">
@@ -683,29 +683,15 @@ function OnTheRegister({ orgName, onEnter }: { orgName: string; onEnter: () => v
           {orgName} <span className="text-brand-600">is on the record.</span>
         </h2>
         <p className="mx-auto mt-2.5 max-w-sm text-[13.5px] leading-relaxed text-ink-600 dark:text-ink-300">
-          The organization profile is live and this session is open. Next: the opportunities board — where every open
-          tender carries its closing date, and your applications carry this profile&apos;s attested identity.
+          The organization profile is live and this session is open. Enter the console when you&apos;re ready to review
+          open tenders and manage applications under this organization&apos;s verified identity.
         </p>
 
-        <div className="mx-auto mt-6 w-full max-w-sm" aria-hidden="true">
-          <div className="flex items-center justify-between font-code text-[8.5px] tracking-[0.2em] text-ink-400">
-            <span>OPENING THE CONSOLE</span>
-            <span>SESSION · HTTPONLY</span>
-          </div>
-          <div className="mt-2 h-[3px] w-full overflow-hidden rounded-full bg-ink-100 dark:bg-white/10">
-            <motion.div
-              initial={{ width: "4%" }}
-              animate={{ width: "100%" }}
-              transition={{ duration: 2.05, ease: "linear" }}
-              className="h-full rounded-full bg-brand-600"
-            />
-          </div>
-        </div>
-
         <button
+          ref={enterButtonRef}
           type="button"
           onClick={enter}
-          className="group mt-6 inline-flex h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-ink-950 px-7 text-[15px] font-semibold text-white transition-all hover:bg-brand-600"
+          className="focus-brand group mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink-950 px-7 text-[15px] font-semibold text-white transition-all hover:bg-brand-600"
         >
           Enter the console
           <ArrowRight className="h-4.5 w-4.5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
@@ -826,6 +812,7 @@ function SignIn({ onDone }: { onDone: () => void }) {
         setSuspended(res.status === 403);
         return;
       }
+      await ensureOrgFirebaseIdentity({ email, password });
       setSuspended(false);
       onDone();
     } catch {
@@ -953,20 +940,22 @@ function SignIn({ onDone }: { onDone: () => void }) {
           <Field label="Organization email">
             <input autoFocus className={inputCls} type="email" autoComplete="email" placeholder="bids@organization.example" value={email} onChange={(e) => setEmail(e.target.value)} />
           </Field>
-          <Field
-            label="Password"
-            aside={
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-3">
+              <label htmlFor="supplier-signin-password" className="font-code text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-600 dark:text-ink-300">
+                Password
+              </label>
               <button
                 type="button"
                 onClick={openReset}
-                className="font-code text-[9.5px] font-semibold uppercase tracking-[0.16em] text-brand-700 transition-colors hover:text-brand-600 dark:text-brand-400 dark:hover:text-brand-300"
+                className="focus-brand inline-flex min-h-11 items-center rounded-lg px-2 font-code text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-700 transition-colors hover:text-brand-600 dark:text-brand-400 dark:hover:text-brand-300"
               >
                 Forgot password?
               </button>
-            }
-          >
+            </div>
             <div className="relative">
               <input
+                id="supplier-signin-password"
                 className={cn(inputCls, "pr-11")}
                 type={showPass ? "text" : "password"}
                 autoComplete="current-password"
@@ -977,8 +966,8 @@ function SignIn({ onDone }: { onDone: () => void }) {
                 onKeyUp={(e) => setCapsOn(e.getModifierState("CapsLock"))}
                 onBlur={() => setCapsOn(false)}
               />
-              <button type="button" onClick={() => setShowPass((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-700" aria-label={showPass ? "Hide password" : "Show password"}>
-                {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              <button type="button" onClick={() => setShowPass((v) => !v)} className="focus-brand absolute right-1 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-lg text-ink-500 hover:text-ink-900 dark:text-ink-400 dark:hover:text-white" aria-label={showPass ? "Hide password" : "Show password"} aria-pressed={showPass}>
+                {showPass ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
               </button>
             </div>
             {capsOn ? (
@@ -986,7 +975,7 @@ function SignIn({ onDone }: { onDone: () => void }) {
                 Caps Lock is on — passwords are case-sensitive.
               </span>
             ) : null}
-          </Field>
+          </div>
           {error ? (
             <ErrorNote>
               {error}
@@ -1017,19 +1006,22 @@ function SignIn({ onDone }: { onDone: () => void }) {
                       setAppealOpen(true);
                       setAppealError(null);
                     }}
-                    className="shrink-0 rounded-lg border border-amber-300 bg-white px-3 py-1.5 font-code text-[8px] font-bold tracking-[0.14em] text-amber-900 transition-colors hover:bg-amber-100 dark:border-amber-700 dark:bg-transparent dark:text-amber-200"
+                    className="focus-brand inline-flex min-h-11 shrink-0 items-center rounded-lg border border-amber-300 bg-white px-3 font-code text-[10px] font-bold tracking-[0.08em] text-amber-900 transition-colors hover:bg-amber-100 dark:border-amber-700 dark:bg-transparent dark:text-amber-200"
                   >
                     APPEAL THIS SUSPENSION
                   </button>
                 </div>
               ) : (
                 <div className="space-y-2.5">
-                  <p className="font-code text-[8px] font-bold tracking-[0.16em]">SUSPENSION APPEAL — PUBLIC FORM</p>
+                  <p className="font-code text-[10px] font-bold tracking-[0.12em]">Suspension appeal · public form</p>
                   <Field label="Registration number">
                     <input
-                      className={cn(inputCls, "h-9 text-[13px]")}
+                      className={inputCls}
                       autoComplete="off"
                       placeholder="The legal registration number on the account"
+                      required
+                      minLength={3}
+                      aria-describedby="suspension-appeal-requirements"
                       value={appealReg}
                       onChange={(e) => setAppealReg(e.target.value)}
                     />
@@ -1038,30 +1030,35 @@ function SignIn({ onDone }: { onDone: () => void }) {
                     <textarea
                       rows={3}
                       maxLength={1200}
-                      className={cn(inputCls, "h-auto resize-y py-2 text-[13px]")}
+                      className={cn(inputCls, "h-auto min-h-[104px] resize-y py-3 text-[14px]")}
                       placeholder="e.g. the tax clearance was renewed on 12 October; the certificate is attached to the profile."
+                      required
+                      minLength={20}
+                      aria-describedby="suspension-appeal-requirements"
                       value={appealReason}
                       onChange={(e) => setAppealReason(e.target.value)}
                     />
                   </Field>
-                  {appealError ? <p className="text-[12px] font-medium">{appealError}</p> : null}
+                  <p id="suspension-appeal-requirements" className="text-[12px] leading-relaxed text-amber-900 dark:text-amber-200">Enter a registration number of at least 3 characters and appeal grounds of at least 20 characters.</p>
+                  {appealError ? <p role="alert" className="text-[12px] font-medium">{appealError}</p> : null}
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
                       onClick={() => void fileAppeal()}
+                      aria-busy={appealBusy}
                       disabled={appealBusy || appealReg.trim().length < 3 || appealReason.trim().length < 20}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-amber-900 px-3 font-code text-[8px] font-bold tracking-[0.14em] text-white transition-colors hover:bg-amber-950 disabled:opacity-50"
+                      className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-amber-900 px-4 font-code text-[10px] font-bold tracking-[0.08em] text-white transition-colors hover:bg-amber-950 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {appealBusy ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <CircleAlert className="h-3 w-3" aria-hidden="true" />}
-                      FILE THE APPEAL
+                      {appealBusy ? "Submitting appeal…" : "Submit appeal"}
                     </button>
                     <button
                       type="button"
                       onClick={() => setAppealOpen(false)}
                       disabled={appealBusy}
-                      className="h-8 rounded-lg border border-amber-300 px-3 font-code text-[8px] font-bold tracking-[0.14em] text-amber-900 transition-colors hover:bg-amber-100 disabled:opacity-50 dark:border-amber-700 dark:text-amber-200"
+                      className="focus-brand inline-flex min-h-11 items-center rounded-lg border border-amber-300 px-4 font-code text-[10px] font-bold tracking-[0.08em] text-amber-900 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-amber-700 dark:text-amber-200"
                     >
-                      CANCEL
+                      Cancel
                     </button>
                   </div>
                 </div>
@@ -1088,8 +1085,8 @@ function SignIn({ onDone }: { onDone: () => void }) {
           className="space-y-3.5"
         >
           <div className="flex items-center justify-between">
-            <p className="font-code text-[9.5px] font-semibold tracking-[0.18em] text-brand-700 dark:text-brand-400">RESET ACCESS</p>
-            <p className="font-code text-[9px] tracking-[0.16em] text-ink-400">ONE-TIME CODE · 15 MIN</p>
+            <p className="font-code text-[10px] font-semibold tracking-[0.1em] text-brand-700 dark:text-brand-400">Reset access</p>
+            <p className="font-code text-[10px] tracking-[0.05em] text-ink-600 dark:text-ink-300">ONE-TIME CODE · 15 MIN</p>
           </div>
           <p className="text-[13px] leading-relaxed text-ink-500 dark:text-ink-400">
             The desk issues a one-time reset code straight to this screen — supplier accounts carry no outbound
@@ -1111,7 +1108,7 @@ function SignIn({ onDone }: { onDone: () => void }) {
           <button
             type="button"
             onClick={() => backToSignIn()}
-            className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-ink-500 transition-colors hover:text-ink-900 dark:text-ink-400 dark:hover:text-white"
+            className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-[13px] font-semibold text-ink-600 transition-colors hover:text-ink-900 dark:text-ink-300 dark:hover:text-white"
           >
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> Back to sign in
           </button>
@@ -1127,8 +1124,8 @@ function SignIn({ onDone }: { onDone: () => void }) {
           className="space-y-3.5"
         >
           <div className="flex items-center justify-between">
-            <p className="font-code text-[9.5px] font-semibold tracking-[0.18em] text-brand-700 dark:text-brand-400">RESET CODE ISSUED</p>
-            <p className="flex items-center gap-1.5 font-code text-[9px] font-semibold tracking-[0.16em] text-ink-400">
+            <p className="font-code text-[10px] font-semibold tracking-[0.1em] text-brand-700 dark:text-brand-400">RESET CODE ISSUED</p>
+            <p className="flex items-center gap-1.5 font-code text-[10px] font-semibold tracking-[0.05em] text-ink-600 dark:text-ink-300">
               <span className={cn("relative flex h-1.5 w-1.5", secondsLeft > 0 && "text-brand-600")}>
                 {secondsLeft > 0 ? (
                   <>
@@ -1152,7 +1149,7 @@ function SignIn({ onDone }: { onDone: () => void }) {
                 <button
                   type="button"
                   onClick={() => void copyCode()}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2.5 py-1.5 font-code text-[9px] font-semibold tracking-[0.16em] text-ink-600 transition-colors hover:bg-ink-50 dark:border-white/15 dark:bg-night-2 dark:text-ink-300 dark:hover:bg-white/5"
+                  className="focus-brand inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 font-code text-[10px] font-semibold tracking-[0.1em] text-ink-600 transition-colors hover:bg-ink-50 dark:border-white/15 dark:bg-night-2 dark:text-ink-300 dark:hover:bg-white/5"
                   aria-label="Copy the reset code"
                 >
                   {copied ? <Check className="h-3 w-3 text-ink-950 dark:text-white" aria-hidden="true" /> : <Copy className="h-3 w-3" aria-hidden="true" />}
@@ -1187,8 +1184,8 @@ function SignIn({ onDone }: { onDone: () => void }) {
                 value={newPass}
                 onChange={(e) => setNewPass(e.target.value)}
               />
-              <button type="button" onClick={() => setShowNewPass((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-700" aria-label={showNewPass ? "Hide new password" : "Show new password"}>
-                {showNewPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              <button type="button" onClick={() => setShowNewPass((v) => !v)} className="focus-brand absolute right-1 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-lg text-ink-500 hover:text-ink-900 dark:text-ink-400 dark:hover:text-white" aria-label={showNewPass ? "Hide new password" : "Show new password"} aria-pressed={showNewPass}>
+                {showNewPass ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
               </button>
             </div>
           </Field>
@@ -1210,7 +1207,7 @@ function SignIn({ onDone }: { onDone: () => void }) {
           <button
             type="button"
             onClick={openReset}
-            className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-ink-500 transition-colors hover:text-ink-900 dark:text-ink-400 dark:hover:text-white"
+            className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-[13px] font-semibold text-ink-500 transition-colors hover:text-ink-900 dark:text-ink-400 dark:hover:text-white"
           >
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> Issue a different code
           </button>
@@ -1263,6 +1260,11 @@ export function OrgAuthScreen() {
   const [registeredName, setRegisteredName] = useState<string | null>(null);
   const registerButtonRef = useRef<HTMLButtonElement | null>(null);
   const registerDialogRef = useRef<HTMLDivElement | null>(null);
+  const registerBusyRef = useRef(false);
+  const setRegisterBusyState = useCallback((busy: boolean) => {
+    registerBusyRef.current = busy;
+    setRegisterBusy(busy);
+  }, []);
 
   const checkExisting = useCallback(async () => {
     try {
@@ -1298,24 +1300,34 @@ export function OrgAuthScreen() {
   );
 
   const closeRegistration = useCallback(() => {
-    if (registerBusy) return;
+    if (registerBusyRef.current) return;
     setRegisterOpen(false);
     window.requestAnimationFrame(() => registerButtonRef.current?.focus());
-  }, [registerBusy]);
+  }, []);
 
   useEffect(() => {
     if (!registerOpen) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const focusFrame = window.requestAnimationFrame(() => {
+      const closeButton = registerDialogRef.current?.querySelector<HTMLElement>(
+        '[aria-label="Close organization registration"]',
+      );
+      const firstFocusable = registerDialogRef.current?.querySelector<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      (closeButton ?? firstFocusable)?.focus();
+    });
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !registerBusy) closeRegistration();
+      if (event.key === "Escape" && !registerBusyRef.current) closeRegistration();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => {
+      window.cancelAnimationFrame(focusFrame);
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [registerOpen, registerBusy, closeRegistration]);
+  }, [registerOpen, closeRegistration]);
 
   const trapRegistrationTab = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== "Tab") return;
@@ -1327,7 +1339,11 @@ export function OrgAuthScreen() {
     if (focusable.length === 0) return;
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
-    if (event.shiftKey && (document.activeElement === first || !registerDialogRef.current?.contains(document.activeElement))) {
+    const focusIsOutside = !registerDialogRef.current?.contains(document.activeElement);
+    if (focusIsOutside) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus();
+    } else if (event.shiftKey && document.activeElement === first) {
       event.preventDefault();
       last.focus();
     } else if (!event.shiftKey && document.activeElement === last) {
@@ -1337,7 +1353,7 @@ export function OrgAuthScreen() {
   };
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
+    <div className="supplier-console grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
       {/* Story panel */}
       <div className="relative hidden overflow-hidden bg-night lg:flex lg:flex-col lg:justify-between lg:p-12">
         <AuthFilm />
@@ -1374,7 +1390,7 @@ export function OrgAuthScreen() {
       <div className="flex flex-col bg-paper dark:bg-night">
         {/* pt-5 — the portal switcher now lives in the card, so the mobile header needs no clearance */}
         <div className="flex items-center justify-end px-5 pb-4 pt-5 lg:hidden">
-          <Link href="/" className="font-code text-[10px] font-semibold tracking-[0.16em] text-ink-500 hover:text-ink-900 dark:hover:text-white">
+          <Link href="/" className="focus-brand inline-flex min-h-11 items-center rounded-lg px-2 font-code text-[10px] font-semibold tracking-[0.12em] text-ink-600 hover:text-ink-900 dark:text-ink-300 dark:hover:text-white">
             OFFICER DESK →
           </Link>
         </div>
@@ -1387,7 +1403,7 @@ export function OrgAuthScreen() {
               <div className="pointer-events-none absolute inset-0 bg-grid-dark opacity-60" aria-hidden="true" />
               <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-brand-600/20 blur-[70px]" aria-hidden="true" />
               <div className="relative">
-                <p className="font-code text-[9px] font-semibold tracking-[0.22em] text-brand-300">SUPPLIER PORTAL</p>
+                <p className="font-code text-[10px] font-semibold tracking-[0.12em] text-brand-300">SUPPLIER PORTAL</p>
                 <h2 className="type-display mt-2 text-[22px] text-white">
                   The supplier side of the desk<span className="text-brand-500">.</span>
                 </h2>
@@ -1401,7 +1417,7 @@ export function OrgAuthScreen() {
 
             {/* Portal tag — the Quorum / Supplier switcher sits inside the card, above the brand. */}
             <div className="mb-5 hidden items-center justify-end lg:flex">
-              <span className="font-code text-[9.5px] font-semibold tracking-[0.2em] text-brand-700 dark:text-brand-400">SUPPLIER PORTAL · /ORG</span>
+              <span className="font-code text-[10px] font-semibold tracking-[0.1em] text-brand-700 dark:text-brand-400">SUPPLIER PORTAL · /ORG</span>
             </div>
 
             {registeredName ? (
@@ -1412,16 +1428,16 @@ export function OrgAuthScreen() {
             ) : existingOrg ? (
               <div className="rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-6 shadow-[0_16px_48px_rgba(11,12,15,0.08)] dark:border-white/10 dark:bg-night-2">
                 <div className="mb-5"><MasterSwitcher active="supplier" className="w-full [&>button]:flex-1" /></div>
-                <p className="font-code text-[9.5px] font-semibold tracking-[0.18em] text-brand-700 dark:text-brand-400">SESSION ALREADY OPEN</p>
+                <p className="font-code text-[10px] font-semibold tracking-[0.1em] text-brand-700 dark:text-brand-400">SESSION ALREADY OPEN</p>
                 <p className="mt-2 text-[15px] font-semibold text-ink-950 dark:text-white">{existingOrg.name}</p>
                 <p className="mt-1 text-[13px] text-ink-500 dark:text-ink-400">
                   This browser already holds an organization session ({existingOrg.status.toLowerCase()}).
                 </p>
-                <div className="mt-4 flex gap-2.5">
-                  <button type="button" onClick={onDone} className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-ink-950 text-[13.5px] font-semibold text-white transition-all hover:bg-brand-600">
+                <div className="mt-4 flex flex-col gap-2.5 sm:flex-row">
+                  <button type="button" onClick={onDone} className="focus-brand inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-ink-950 px-3 text-[13.5px] font-semibold text-white transition-all hover:bg-brand-600">
                     Continue to console <ArrowRight className="h-4 w-4" aria-hidden="true" />
                   </button>
-                  <button type="button" onClick={() => setExistingOrg(null)} className="inline-flex h-10 items-center rounded-xl border border-ink-200 px-4 text-[13px] font-semibold text-ink-700 transition-colors hover:bg-ink-50 dark:border-white/15 dark:text-ink-200 dark:hover:bg-white/5">
+                  <button type="button" onClick={() => setExistingOrg(null)} className="focus-brand inline-flex min-h-11 items-center justify-center rounded-xl border border-ink-200 px-4 text-center text-[13px] font-semibold text-ink-700 transition-colors hover:bg-ink-50 dark:border-white/15 dark:text-ink-200 dark:hover:bg-white/5">
                     Use a different organization
                   </button>
                 </div>
@@ -1446,7 +1462,7 @@ export function OrgAuthScreen() {
                         if (m === "register") setRegisterOpen(true);
                       }}
                       className={cn(
-                        "relative rounded-lg py-2.5 text-[13px] font-semibold transition-colors",
+                        "focus-brand relative inline-flex min-h-11 items-center justify-center rounded-lg px-2 text-[13px] font-semibold transition-colors",
                         mode === m ? "text-white" : "text-ink-500 hover:text-ink-900 dark:hover:text-white",
                       )}
                     >
@@ -1472,11 +1488,11 @@ export function OrgAuthScreen() {
                     {mode === "register" ? (
                       <div className="rounded-xl border border-ink-100 bg-sand/70 p-5 dark:border-white/10 dark:bg-white/[0.03] sm:p-6">
                         <div className="flex items-start gap-3">
-                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-ink-950 text-white dark:bg-white dark:text-ink-950">
+                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-ink-950 text-white dark:bg-white dark:text-[#0b0c0f]">
                             <Building2 className="h-4.5 w-4.5" aria-hidden="true" />
                           </span>
                           <div>
-                            <p className="font-code text-[9px] font-semibold tracking-[0.18em] text-brand-700 dark:text-brand-400">
+                            <p className="font-code text-[10px] font-semibold tracking-[0.1em] text-brand-700 dark:text-brand-400">
                               ORGANIZATION ONBOARDING
                             </p>
                             <h2 className="mt-1 text-[17px] font-bold text-ink-950 dark:text-white">
@@ -1497,7 +1513,7 @@ export function OrgAuthScreen() {
                           Register organization
                           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                         </button>
-                        <p className="mt-3 text-center font-code text-[8.5px] tracking-[0.12em] text-ink-400">
+                        <p className="mt-3 text-center font-code text-[10px] leading-relaxed tracking-[0.06em] text-ink-600 dark:text-ink-300">
                           FOUR STEPS · REVIEW BEFORE YOU CREATE
                         </p>
                       </div>
@@ -1531,11 +1547,11 @@ export function OrgAuthScreen() {
                     exit={{ opacity: 0, y: 12, scale: 0.99 }}
                     transition={{ duration: 0.28, ease: EASE }}
                     onKeyDown={trapRegistrationTab}
-                    className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-[16px] border border-white/10 bg-white shadow-[0_36px_100px_rgba(0,0,0,0.45)] dark:bg-night-2"
+                  className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden rounded-[16px] border border-white/10 bg-white shadow-[0_36px_100px_rgba(0,0,0,0.45)] dark:bg-night-2 sm:max-h-[92dvh]"
                   >
                     <div className="flex shrink-0 items-start justify-between gap-4 border-b border-ink-100 px-5 py-4 dark:border-white/10 sm:px-7 sm:py-5">
                       <div>
-                        <p className="font-code text-[9px] font-semibold tracking-[0.22em] text-brand-700 dark:text-brand-400">
+                        <p className="font-code text-[10px] font-semibold tracking-[0.1em] text-brand-700 dark:text-brand-400">
                           SUPPLIER PORTAL · ORGANIZATION INTAKE
                         </p>
                         <h2 id="org-registration-title" className="mt-1 text-[19px] font-bold tracking-tight text-ink-950 dark:text-white sm:text-[22px]">
@@ -1550,7 +1566,7 @@ export function OrgAuthScreen() {
                         onClick={closeRegistration}
                         disabled={registerBusy}
                         aria-label="Close organization registration"
-                        className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-ink-50 hover:text-ink-900 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-white/[0.06] dark:hover:text-white"
+                        className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-lg text-ink-500 transition-colors hover:bg-ink-50 hover:text-ink-900 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-white/[0.06] dark:hover:text-white"
                       >
                         <X className="h-4 w-4" aria-hidden="true" />
                       </button>
@@ -1558,7 +1574,7 @@ export function OrgAuthScreen() {
                     <div className="overflow-y-auto overscroll-contain p-5 sm:p-7">
                       <RegisterWizard
                         onRegistered={onRegistered}
-                        onBusyChange={setRegisterBusy}
+                        onBusyChange={setRegisterBusyState}
                       />
                     </div>
                   </motion.div>
@@ -1566,11 +1582,6 @@ export function OrgAuthScreen() {
               ) : null}
             </AnimatePresence>
 
-            <p className="mt-5 text-center text-[12px] leading-relaxed text-ink-400 dark:text-ink-500">
-              Organizations sign in here only — officers have their own door on the main site.
-              <br />
-              Your applications are refused after the closing date and one bid is counted per tender.
-            </p>
           </div>
         </div>
       </div>

@@ -119,7 +119,7 @@ export function ReadinessView({ user, onToast }: { user: AuthUser | null; onToas
           <button
             type="button"
             onClick={() => void load()}
-            className="focus-brand inline-flex h-9 items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 font-code text-[8px] font-bold tracking-[0.14em] text-ink-700 transition-colors hover:border-ink-950"
+            className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.04em] text-ink-700 transition-colors hover:border-ink-950"
           >
             <RefreshCw className="h-3 w-3" aria-hidden="true" />
             RECOMPUTE
@@ -140,7 +140,7 @@ export function ReadinessView({ user, onToast }: { user: AuthUser | null; onToas
           ) : (
             <ShieldAlert className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
           )}
-          <p className={cn("font-code text-[9px] font-bold tracking-[0.18em]", ready ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300")}>
+          <p className={cn("font-code text-[10px] font-bold tracking-[0.12em]", ready ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300")}>
             {ready ? "LAUNCH GATE · READY" : "LAUNCH GATE · NOT READY"}
           </p>
           <p className="text-[12px] text-ink-600">
@@ -160,7 +160,7 @@ export function ReadinessView({ user, onToast }: { user: AuthUser | null; onToas
         <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
           <section className={card} aria-label="Launch criteria">
             <div className="border-b border-ink-100 px-5 py-4">
-              <p className="font-code text-[8px] font-semibold uppercase tracking-[0.22em] text-ink-400">
+              <p className="font-code text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-600">
                 The nine criteria — each checked live
               </p>
             </div>
@@ -176,7 +176,7 @@ export function ReadinessView({ user, onToast }: { user: AuthUser | null; onToas
                       <CircleDashed className="h-4 w-4 shrink-0 text-amber-500" aria-hidden="true" />
                     )}
                     <span className="text-[13.5px] font-semibold text-ink-950">{c.label}</span>
-                    <span className={cn("inline-flex h-5 items-center rounded-full border px-2 font-code text-[7px] font-bold tracking-[0.12em]", STATUS_TONE[c.status])}>
+                    <span className={cn("inline-flex min-h-6 items-center rounded-full border px-2 font-code text-[10px] font-bold tracking-[0.04em]", STATUS_TONE[c.status])}>
                       {c.status}
                     </span>
                   </div>
@@ -202,7 +202,7 @@ export function ReadinessView({ user, onToast }: { user: AuthUser | null; onToas
                   type="button"
                   onClick={() => void signOff()}
                   disabled={busy === "signoff"}
-                  className="focus-brand inline-flex h-9 items-center gap-2 rounded-lg bg-brand-600 px-4 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
+                  className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg bg-brand-600 px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
                 >
                   {busy === "signoff" ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <PenLine className="h-3.5 w-3.5" aria-hidden="true" />}
                   Sign the launch gate
@@ -215,7 +215,7 @@ export function ReadinessView({ user, onToast }: { user: AuthUser | null; onToas
             {metrics && (
               <section className={card} aria-label="Pilot metrics">
                 <div className="border-b border-ink-100 px-5 py-4">
-                  <p className="flex items-center gap-2 font-code text-[8px] font-semibold uppercase tracking-[0.22em] text-ink-400">
+                  <p className="flex items-center gap-2 font-code text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-600">
                     <Timer className="h-3 w-3" aria-hidden="true" />
                     Pilot metrics — read from live state
                   </p>
@@ -232,7 +232,7 @@ export function ReadinessView({ user, onToast }: { user: AuthUser | null; onToas
                     { label: "OVERRIDE RATE", value: metrics.overrideRate !== null ? `${Math.round(metrics.overrideRate * 100)}%` : "—" },
                   ].map((m) => (
                     <div key={m.label} className="bg-white px-4 py-3">
-                      <p className="font-code text-[7px] font-bold tracking-[0.18em] text-ink-400">{m.label}</p>
+                      <p className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-600">{m.label}</p>
                       <p className="mt-1 text-[18px] font-semibold tracking-[-0.02em] text-ink-950 tabular">{m.value}</p>
                     </div>
                   ))}
@@ -244,21 +244,21 @@ export function ReadinessView({ user, onToast }: { user: AuthUser | null; onToas
             {data.eval?.original && (
               <section className={card} aria-label="Independent quality record">
                 <div className="border-b border-ink-100 px-5 py-4">
-                  <p className="font-code text-[8px] font-semibold uppercase tracking-[0.22em] text-ink-400">
+                  <p className="font-code text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-600">
                     The eval lab's own record
                   </p>
                 </div>
                 <div className="grid grid-cols-3 gap-px bg-ink-100">
                   <div className="bg-white px-4 py-3">
-                    <p className="font-code text-[7px] font-bold tracking-[0.18em] text-ink-400">RECALL (COVERED)</p>
+                    <p className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-600">RECALL (COVERED)</p>
                     <p className="mt-1 text-[18px] font-semibold text-ink-950 tabular">{Math.round(data.eval.original.recallCovered ?? 0)}%</p>
                   </div>
                   <div className="bg-white px-4 py-3">
-                    <p className="font-code text-[7px] font-bold tracking-[0.18em] text-ink-400">PRECISION</p>
+                    <p className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-600">PRECISION</p>
                     <p className="mt-1 text-[18px] font-semibold text-ink-950 tabular">{Math.round(data.eval.original.precision ?? 0)}%</p>
                   </div>
                   <div className="bg-white px-4 py-3">
-                    <p className="font-code text-[7px] font-bold tracking-[0.18em] text-ink-400">MUTATION CATCH</p>
+                    <p className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-600">MUTATION CATCH</p>
                     <p className="mt-1 text-[18px] font-semibold text-ink-950 tabular">{Math.round(data.eval.mutation?.overallDetectionRate ?? 0)}%</p>
                   </div>
                 </div>

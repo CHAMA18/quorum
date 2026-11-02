@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowLeft,
@@ -103,6 +103,9 @@ import { WorkspacePalette, type PaletteGroup } from "@/components/quorum/workspa
 import type { AuthUser } from "@/lib/auth-types";
 import { signedTenderDownloadUrl, uploadTenderDocument } from "@/lib/tender-upload";
 import { StoredDocsBrowser } from "@/components/quorum/stored-docs-browser";
+import { HorizontalScrollRegion } from "@/components/quorum/horizontal-scroll-region";
+import { preferredScrollBehavior, trapTabFocus } from "@/lib/a11y";
+import { systemReferenceLabel } from "@/lib/system-reference";
 import { cn } from "@/lib/utils";
 import { ThemeModeRow } from "@/components/quorum/theme-toggle";
 import { gateFact, type GateInputs } from "@/components/quorum/gate-facts";
@@ -122,7 +125,11 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 type RunStatus = "running" | "queued" | "gate" | "complete";
 
 export type McRun = {
+  /* Internal source tender key. Keep it for lookups; use `reference` in UI. */
   id: string;
+  /* Stable system-issued reference shown to officers; `id` stays the tender
+     key used for document, finding and cycle lookups. */
+  reference?: string;
   /* Backend run identity (`run_…`) — unique even when the same tender is
      reviewed twice. React keys use this; `id` stays the human-facing ref. */
   uid?: string;
@@ -130,7 +137,10 @@ export type McRun = {
   attempt?: number;
   title: string;
   buyer: string;
+  /* Bid documents staged for the run — not the same fact as `bidders` below. */
   bids: number | null;
+  /* Distinct firms on the pack. This is what the register column reports. */
+  bidders: number | null;
   findings: number;
   citations: number;
   unsourced: number;
@@ -199,19 +209,22 @@ type LedgerRow = {
 type BackendRun = {
   id: string;
   tenderId: string;
+  reference?: string;
   status: "RUNNING" | "AWAITING_GATE" | "REJECTED" | "FILED" | "FAILED";
   startedAt: string;
   findings: { id: string; rule: string; item: string; citation: string }[];
   gateId?: string;
   seal?: string | null;
   sealedBy?: string | null;
-  /* Set once the review plan is decided; pack.bids is the bids staged for the run. */
-  plan?: { pack?: { bids?: number } } | null;
+  /* Set once the review plan is decided: bid documents staged for the run, and
+     the distinct firms they belong to (absent on plans persisted before it was). */
+  plan?: { pack?: { bids?: number; bidders?: number } } | null;
 };
 
 type BackendGate = {
   id: string;
   tenderId: string;
+  systemReference?: string;
   status: "PENDING" | "AWAITING_SECOND" | "APPROVED" | "REJECTED" | "EXECUTED";
   tool?: string;
   requiredOffice?: string;
@@ -324,7 +337,7 @@ function useMissionData() {
       const d = await fetch("/api/sample-tenders?XTransformPort=3031").then((x) => x.json());
       const map: Record<string, { title: string; buyer: string }> = {};
       for (const s of (d.samples ?? []) as { ref: string; title?: string; buyer?: string }[]) {
-        if (s?.ref) map[s.ref] = { title: s.title || s.ref, buyer: s.buyer ?? "" };
+        if (s?.ref) map[s.ref] = { title: s.title || "Tender record", buyer: s.buyer ?? "" };
       }
       setRegistry(map);
     } catch {
@@ -392,11 +405,15 @@ function useMissionData() {
         const known = registry[r.tenderId];
         return {
           id: r.tenderId,
+          reference: r.reference,
           uid: r.id,
           attempt: attemptOf.get(r.id),
-          title: known?.title ?? r.tenderId,
+          title: known?.title ?? "Tender review",
           buyer: known?.buyer ?? "",
           bids: r.plan?.pack?.bids ?? null,
+          /* Plans persisted before bidders were recorded fall back to the bid
+             count, which was one document per bidder in every pack of that era. */
+          bidders: r.plan?.pack?.bidders ?? r.plan?.pack?.bids ?? null,
           findings: r.findings.length,
           citations,
           unsourced: r.findings.length - citations,
@@ -420,8 +437,8 @@ function useMissionData() {
           const fact = gateFact(tool, g.inputs, g.id);
           return {
             id: g.id,
-            tender: g.tenderId,
-            title: registry[g.tenderId]?.title ?? g.tenderId,
+            tender: systemReferenceLabel(g.systemReference),
+            title: registry[g.tenderId]?.title ?? "Tender record",
             supplier: g.inputs.bidder ?? "—",
             factLabel: fact.label,
             factText: fact.text,
@@ -444,7 +461,7 @@ function useMissionData() {
         .filter((g) => g.status !== "PENDING" && g.decidedAt)
         .map((g) => ({
           id: g.id,
-          tender: g.tenderId,
+          tender: systemReferenceLabel(g.systemReference),
           action: g.status === "REJECTED" ? "RETURNED" : "AWARDED",
           by: g.approver ?? "—",
           at: clockOf(g.decidedAt),
@@ -730,7 +747,7 @@ function useAgentStatus(): AgentStatus {
   return status;
 }
 
-function AgentStatusBadge({ mode, className }: { mode: AgentMode; className?: string }) {
+function AgentStatusBadge({ mode, className, darkSurface = false }: { mode: AgentMode; className?: string; darkSurface?: boolean }) {
   const label =
     mode === "online" ? "Agent · online" : mode === "offline" ? "Agent · offline" : "Agent · linking";
   return (
@@ -742,9 +759,17 @@ function AgentStatusBadge({ mode, className }: { mode: AgentMode; className?: st
            that yields its width — squeezed, it used to wrap onto two lines. */
         "inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-3 type-micro",
         mode === "online" &&
-          "border-brand-500/30 bg-brand-500/[0.06] text-brand-700 dark:border-brand-500/35 dark:text-brand-300",
-        mode === "offline" && "border-ink-200 bg-white text-ink-400 dark:border-white/10 dark:bg-white/[0.04]",
-        mode === "linking" && "border-ink-200 bg-white text-ink-500 dark:border-white/10 dark:bg-white/[0.04]",
+          (darkSurface
+            ? "border-brand-500/35 bg-brand-500/[0.08] text-brand-300"
+            : "border-brand-500/30 bg-brand-500/[0.06] text-brand-700 dark:border-brand-500/35 dark:text-brand-300"),
+        mode === "offline" &&
+          (darkSurface
+            ? "border-white/10 bg-white/[0.04] text-ink-300"
+            : "border-ink-200 bg-white text-ink-400 dark:border-white/10 dark:bg-white/[0.04]"),
+        mode === "linking" &&
+          (darkSurface
+            ? "border-white/10 bg-white/[0.04] text-ink-300"
+            : "border-ink-200 bg-white text-ink-500 dark:border-white/10 dark:bg-white/[0.04]"),
         className
       )}
     >
@@ -825,7 +850,7 @@ function AgentFeed() {
           </span>
           <span className="type-micro text-ink-200">Agent activity</span>
         </div>
-        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-brand-500/50 bg-brand-600/15 px-2 py-0.5 font-code text-[9px] font-bold tracking-[0.18em] text-brand-300">
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-brand-500/50 bg-brand-600/15 px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.08em] text-brand-300">
           <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-brand-400" aria-hidden="true" />
           LIVE
         </span>
@@ -880,13 +905,13 @@ function AgentFeed() {
    signal colour meaning as the rest of the product. */
 function StatusChip({ status }: { status: RunStatus }) {
   const base =
-    "inline-flex h-6 items-center gap-1.5 rounded-full border px-2.5 font-code text-[8.5px] font-bold tracking-[0.16em] tabular";
+    "inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 font-code text-[10px] font-bold tracking-[0.1em] tabular dark:border-0";
   if (status === "running")
     return (
       <span
         className={cn(
           base,
-          "border-brand-500/30 bg-brand-50 text-brand-700 dark:border-brand-500/35 dark:bg-brand-500/10 dark:text-brand-300"
+          "border-brand-500/30 bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
         )}
       >
         <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
@@ -901,7 +926,7 @@ function StatusChip({ status }: { status: RunStatus }) {
       <span
         className={cn(
           base,
-          "border-ink-200 bg-white text-ink-500 dark:border-white/10 dark:bg-white/[0.04]"
+          "border-ink-200 bg-white text-ink-500 dark:bg-white/[0.04]"
         )}
       >
         QUEUED
@@ -912,7 +937,7 @@ function StatusChip({ status }: { status: RunStatus }) {
       <span
         className={cn(
           base,
-          "border-brand-500/40 text-brand-700 transition-colors hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-500/10"
+          "border-brand-500/40 text-brand-700 transition-colors hover:bg-brand-50 dark:bg-brand-500/10 dark:text-brand-300 dark:hover:bg-brand-500/15"
         )}
       >
         <Gavel className="h-2.5 w-2.5" aria-hidden="true" />
@@ -923,7 +948,7 @@ function StatusChip({ status }: { status: RunStatus }) {
     <span
       className={cn(
         base,
-        "border-ink-950 bg-ink-950 text-white dark:border-white/15 dark:bg-white/10"
+        "border-ink-950 bg-ink-950 text-white dark:bg-white/10"
       )}
     >
       <CircleCheck className="h-2.5 w-2.5" aria-hidden="true" />
@@ -980,22 +1005,20 @@ function StatCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay, ease: EASE }}
       className={cn(
-        /* Flat editorial cell — the stat band wrapper owns the frame, the
-           hairlines, the rounding and the elevation. The featured cell keeps
-           the light surface by day and earns its weight from the brand rule,
-           the pulse and the red suffix; only after dark does it go night. */
-        "relative h-full overflow-hidden p-5 transition-colors duration-300 lg:p-6",
+        /* Light mode keeps the editorial band. Dark mode separates the cells
+           with tonal surfaces and soft elevation instead of visible rules. */
+        "relative h-full overflow-hidden p-5 transition-colors duration-300 dark:rounded-[12px] dark:shadow-[0_14px_34px_-26px_rgba(0,0,0,0.92)] lg:p-6",
         featured
-          ? "bg-paper text-ink-950 dark:bg-night dark:text-white"
-          : "bg-paper hover:bg-white dark:hover:bg-white/[0.03]"
+          ? "bg-paper text-ink-950 dark:bg-[#141318] dark:text-white"
+          : "bg-paper hover:bg-white dark:bg-[#111318] dark:hover:bg-[#171a20]"
       )}
     >
       {featured && (
         <>
-          <div className="bg-grid-dark pointer-events-none absolute inset-0 hidden opacity-60 dark:block" aria-hidden="true" />
+          <div className="pointer-events-none absolute inset-0 hidden bg-[radial-gradient(circle_at_92%_4%,rgba(217,38,22,0.11),transparent_48%)] dark:block" aria-hidden="true" />
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand-600/70 to-transparent dark:via-brand-500/70"
+            className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand-600/70 to-transparent dark:hidden"
           />
         </>
       )}
@@ -1062,12 +1085,9 @@ function formatBytes(n: number): string {
 
 
 /* ── Tender-reference autofill ─────────────────────────────────────────────
-   The reference is ready before the officer types a character. It drafts
-   itself three ways, in order of authority: a reference-shaped token in the
-   staged pack wins (the documents speak), then the register's own sequence
-   continues (KE-MOH-2026-014 → 015, never colliding), then a fresh
-   registry-shaped reference for the year. Every draft is labelled inline
-   and freely editable — autofill proposes, the officer disposes. */
+   New records use the neutral system sequence. An identifier printed in a
+   source document remains part of that source document; it never replaces
+   the reference assigned to a new Quorum record. */
 
 interface RefSeed {
   prefix: string;
@@ -1075,11 +1095,11 @@ interface RefSeed {
   seq: number;
 }
 
-/** Parse a procurement-shaped reference: KE-MOH-2026-014. */
+/** Parse a Quorum-issued reference: QRM-2026-014. */
 function parseRefSeed(raw: string): RefSeed | null {
-  const m = raw.trim().toUpperCase().match(/^([A-Z]{2,10})-([A-Z0-9]{2,10})-(\d{4})-(\d{1,6})$/);
+  const m = raw.trim().toUpperCase().match(/^(QRM)-(\d{4})-(\d{1,6})$/);
   if (!m) return null;
-  return { prefix: `${m[1]}-${m[2]}`, year: Number(m[3]), seq: Number(m[4]) };
+  return { prefix: m[1], year: Number(m[2]), seq: Number(m[3]) };
 }
 
 function formatRefSeed(seed: RefSeed): string {
@@ -1110,20 +1130,9 @@ function nextRefFrom(refs: string[], now = new Date()): string | null {
   return formatRefSeed(seed);
 }
 
-/** A fresh registry-shaped reference when the register has none to continue. */
+/** A fresh neutral system reference when there is no sequence to continue. */
 function freshRef(now = new Date()): string {
-  return formatRefSeed({ prefix: "KE-MOH", year: now.getFullYear(), seq: 1 });
-}
-
-/** A reference-shaped token inside a staged filename claims the field. */
-function extractRef(names: string[]): string | null {
-  for (const name of names) {
-    /* Negative lookahead, not \b — an underscore after the token is still a
-       boundary ("KE-MOH-2026-021_bid.pdf" must match). */
-    const m = name.toUpperCase().match(/([A-Z]{2,10}-[A-Z0-9]{2,10}-\d{4}-\d{1,6})(?![A-Z0-9])/);
-    if (m) return m[1];
-  }
-  return null;
+  return formatRefSeed({ prefix: "QRM", year: now.getFullYear(), seq: 1 });
 }
 
 /** Draft the tender title from the first staged filename worth reading. */
@@ -1145,14 +1154,14 @@ function draftTitleFrom(names: string[]): string | null {
 function DocStatusChip({ status }: { status: StagedDoc["status"] }) {
   if (status === "INDEXED")
     return (
-      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-ink-950 px-2 py-0.5 font-code text-[7.5px] font-bold tracking-[0.14em] text-white">
+      <span role="status" className="inline-flex shrink-0 items-center gap-1 rounded-full bg-ink-950 px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em] text-white">
         <CircleCheck className="h-2.5 w-2.5" aria-hidden="true" />
         INDEXED
       </span>
     );
   if (status === "PARSING")
     return (
-      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-brand-50 px-2 py-0.5 font-code text-[7.5px] font-bold tracking-[0.14em] text-brand-700">
+      <span role="status" className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em] text-brand-700">
         <span className="relative flex h-1.5 w-1.5">
           <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-brand-500" aria-hidden="true" />
           <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-600" aria-hidden="true" />
@@ -1161,7 +1170,7 @@ function DocStatusChip({ status }: { status: StagedDoc["status"] }) {
       </span>
     );
   return (
-    <span className="inline-flex shrink-0 items-center rounded-full border border-ink-200 px-2 py-0.5 font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-400">
+    <span role="status" className="inline-flex shrink-0 items-center rounded-full border border-ink-200 px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">
       RECEIVED
     </span>
   );
@@ -1172,7 +1181,7 @@ function DocStatusChip({ status }: { status: StagedDoc["status"] }) {
 function StorageChip({ storage }: { storage: NonNullable<StagedDoc["storage"]> }) {
   if (storage === "SYNCING")
     return (
-      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 font-code text-[7.5px] font-bold tracking-[0.14em] text-brand-700">
+      <span role="status" aria-label="Saving to Cloudflare R2" className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em] text-brand-700">
         <span className="relative flex h-1.5 w-1.5">
           <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-brand-500" aria-hidden="true" />
           <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-600" aria-hidden="true" />
@@ -1182,15 +1191,15 @@ function StorageChip({ storage }: { storage: NonNullable<StagedDoc["storage"]> }
     );
   if (storage === "CLOUD")
     return (
-      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-ink-200 bg-white px-2 py-0.5 font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-600">
+      <span role="status" aria-label="Saved to Cloudflare R2" className="inline-flex shrink-0 items-center gap-1 rounded-full border border-ink-200 bg-white px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">
         <CloudUpload className="h-2.5 w-2.5" aria-hidden="true" />
-        R2
+        CLOUD
       </span>
     );
   return (
-    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-ink-200 bg-white px-2 py-0.5 font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-400">
+    <span role="status" aria-label="Kept in the local vault" className="inline-flex shrink-0 items-center gap-1 rounded-full border border-ink-200 bg-white px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">
       <HardDrive className="h-2.5 w-2.5" aria-hidden="true" />
-      VAULT
+      LOCAL
     </span>
   );
 }
@@ -1204,7 +1213,7 @@ function NewRunModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onLaunch: (ref: string, title: string, format: string, docs: number, checks: number) => void;
+  onLaunch: (ref: string, title: string, format: string, docs: number, checks: number, sourceRef?: string) => void;
   /* The register's references — the sequence the draft continues. */
   pastRefs?: string[];
   /* Operator capability: removing an R2 object, enforced again by the route. */
@@ -1227,12 +1236,16 @@ function NewRunModal({
   const [samples, setSamples] = useState<SampleTenderRow[]>([]);
   const [samplesOpen, setSamplesOpen] = useState(false);
   const [previewSample, setPreviewSample] = useState<TenderPackRow | null>(null);
+  const [sampleSourceRef, setSampleSourceRef] = useState("");
   /* Where the current ref/title draft came from — shown inline, cleared the
      moment the officer edits (then it's theirs, not a suggestion). */
-  const [refSource, setRefSource] = useState<"" | "sequence" | "fresh" | "document" | "sample">("");
+  const [refSource, setRefSource] = useState<"" | "assigned" | "sample">("");
   const [titleSource, setTitleSource] = useState<"" | "document" | "sample">("");
   const titleTouchedRef = useRef(false);
   const refInputRef = useRef<HTMLInputElement>(null);
+  const refIssueRef = useRef(0);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const docsRef = useRef<StagedDoc[]>([]);
   const filesRef = useRef<Map<string, File>>(new Map());
@@ -1244,7 +1257,15 @@ function NewRunModal({
   const pastRefsRef = useRef(pastRefs);
   pastRefsRef.current = pastRefs;
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      refIssueRef.current += 1;
+      const target = returnFocusRef.current;
+      returnFocusRef.current = null;
+      if (target?.isConnected) requestAnimationFrame(() => target.focus());
+      return;
+    }
+    const active = document.activeElement;
+    returnFocusRef.current = active instanceof HTMLElement ? active : null;
     timersRef.current.forEach(clearTimeout);
     timersRef.current = [];
     docsRef.current = [];
@@ -1263,13 +1284,26 @@ function NewRunModal({
       setLaunchError("");
       setLaunching(false);
       setSamplesOpen(false);
+      setSampleSourceRef("");
       titleTouchedRef.current = false;
       /* Autofill the reference the instant the modal opens — the register's
-         sequence continues itself; a fresh registry shape when there is none. */
+         system sequence is the source of truth; local history is a fallback. */
       const refs = pastRefsRef.current;
       const next = nextRefFrom(refs);
       setRef(next ?? freshRef());
-      setRefSource(next ? "sequence" : "fresh");
+      setRefSource("assigned");
+      const requestId = ++refIssueRef.current;
+      void fetch("/api/pipeline/next-ref?XTransformPort=3031", { cache: "no-store" })
+        .then((response) => response.json())
+        .then((data: { ref?: string }) => {
+          const seed = data.ref ? parseRefSeed(data.ref) : null;
+          if (requestId !== refIssueRef.current || !seed) return;
+          setRef(formatRefSeed(seed));
+          setRefSource("assigned");
+        })
+        .catch(() => {
+          /* Keep the local QRM fallback if the register cannot be reached. */
+        });
       refInputRef.current?.focus();
     });
     return () => cancelAnimationFrame(id);
@@ -1297,7 +1331,11 @@ function NewRunModal({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !launching) onClose();
+      if (e.key !== "Escape" || launching) return;
+      const focusedModal = document.activeElement?.closest('[role="dialog"][aria-modal="true"]');
+      /* A nested modal is the top sheet; let it consume Escape first. */
+      if (focusedModal && focusedModal !== dialogRef.current) return;
+      onClose();
     };
     window.addEventListener("keydown", onKey);
     const timers = timersRef.current;
@@ -1325,15 +1363,9 @@ function NewRunModal({
     });
   };
 
-  /* Documents outrank the register: a reference-shaped token in a staged
-     filename claims the field instantly — the pack identifies its own tender. */
+  /* Source identifiers stay with their documents. New Quorum records keep
+     the system-issued reference shown above the staged pack. */
   const adoptFromDocs = (names: string[]) => {
-    const docRef = extractRef(names);
-    if (docRef) {
-      setRef(docRef);
-      setRefSource("document");
-      setDetailsError("");
-    }
     if (!titleTouchedRef.current) {
       const draft = draftTitleFrom(names);
       if (draft) {
@@ -1343,10 +1375,10 @@ function NewRunModal({
     }
   };
 
-  /* A sample tender stages itself: reference, title, format and the pack —
-     the files behind it are real documents the review graph will read. */
+  /* Keep the Quorum ID in the reference field; the source key stays internal
+     so the review can still read the bundled fixture documents. */
   const stageSample = (s: SampleTenderRow) => {
-    setRef(s.ref);
+    setSampleSourceRef(s.ref);
     setRefSource("sample");
     setTitle(s.title);
     setTitleSource("sample");
@@ -1396,9 +1428,8 @@ function NewRunModal({
     /* Every real file is stored in Cloudflare R2 through the edge gate in
        parallel with the ingestion pipeline. The edge secret stays on the
        server; if the gate is unreachable the document stays in the local
-       vault — never an error. Use the reference the pack itself adopted,
-       not a stale state read. */
-    const uploadRef = extractRef(fresh.map((d) => d.name)) ?? (ref.trim() || "UNREFERENCED");
+       vault — never an error. Store it under the system-issued tender ID. */
+    const uploadRef = sampleSourceRef.trim() || ref.trim() || "UNREFERENCED";
     fresh.forEach((d) => {
       const file = filesRef.current.get(d.id);
       if (!file) return;
@@ -1448,6 +1479,8 @@ function NewRunModal({
   /* Review time scales with the checks chosen: 3 checks ≈ 11 min. */
   const estMinutes = 2 + 3 * checksOn;
 
+  const trapDialogTab = (e: ReactKeyboardEvent<HTMLDivElement>) => trapTabFocus(e, dialogRef.current);
+
   return (
     <AnimatePresence>
       {open && (
@@ -1462,19 +1495,22 @@ function NewRunModal({
           }}
         >
           <motion.div
+            ref={dialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="new-evaluation-title"
+            tabIndex={-1}
             initial={{ opacity: 0, y: 26, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 14, scale: 0.98 }}
             transition={{ duration: 0.32, ease: EASE }}
             className="max-h-[min(92dvh,900px)] w-full max-w-3xl overflow-y-auto rounded-[12px] panel panel-lift p-5 sm:rounded-[16px] sm:p-8 lg:p-10"
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={trapDialogTab}
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="flex items-center gap-2.5 font-code text-[9px] font-semibold uppercase tracking-[0.28em] text-ink-500">
+                <p className="flex items-center gap-2.5 font-code text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-600">
                   <span className="inline-block h-[2px] w-6 bg-brand-600" aria-hidden="true" />
                   LAUNCH AN EVALUATION
                 </p>
@@ -1492,7 +1528,7 @@ function NewRunModal({
                 }}
                 disabled={launching}
                 aria-label="Close"
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-ink-200 text-ink-500 transition-colors hover:border-ink-400 hover:bg-ink-50 hover:text-ink-900 disabled:cursor-not-allowed disabled:opacity-50 sm:h-12 sm:w-12"
+                className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-ink-200 text-ink-500 transition-colors hover:border-ink-400 hover:bg-ink-50 hover:text-ink-900 disabled:cursor-not-allowed disabled:opacity-50 sm:h-12 sm:w-12"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -1511,7 +1547,7 @@ function NewRunModal({
                       disabled={i > step}
                       aria-current={state === "current" ? "step" : undefined}
                       className={cn(
-                        "flex min-w-0 items-center gap-1.5 font-code text-[8px] font-bold tracking-[0.12em] transition-colors sm:gap-2 sm:text-[9px] sm:tracking-[0.16em]",
+                        "flex min-h-11 min-w-0 items-center gap-1.5 font-code text-[10px] font-bold tracking-[0.04em] transition-colors sm:gap-2 sm:text-[10.5px] sm:tracking-[0.06em]",
                         state === "current" && "text-brand-700",
                         state === "done" && "text-ink-900 hover:text-brand-700",
                         state === "todo" && "cursor-default text-ink-400"
@@ -1522,7 +1558,7 @@ function NewRunModal({
                       ) : (
                         <span
                           className={cn(
-                            "grid h-4 w-4 shrink-0 place-items-center rounded-full border text-[7.5px]",
+                            "grid h-4 w-4 shrink-0 place-items-center rounded-full border text-[10px]",
                             state === "current" && "border-brand-600 bg-brand-50 text-brand-700",
                             state === "todo" && "border-ink-200 text-ink-400"
                           )}
@@ -1559,7 +1595,7 @@ function NewRunModal({
                 e.preventDefault();
                 if (step < 2) {
                   if (step === 0 && (!ref.trim() || !title.trim())) {
-                    setDetailsError("Add both the tender reference and its published title to continue.");
+                    setDetailsError("A system reference and the published tender title are needed to continue.");
                     if (!ref.trim()) refInputRef.current?.focus();
                     return;
                   }
@@ -1572,7 +1608,7 @@ function NewRunModal({
                 setLaunching(true);
                 setLaunchError("");
                 try {
-                  await onLaunch(ref.trim(), title.trim(), format, docs.length, checksOn);
+                  await onLaunch(ref.trim(), title.trim(), format, docs.length, checksOn, sampleSourceRef || undefined);
                 } catch (error) {
                   setLaunchError(error instanceof Error ? error.message : "The run could not be launched. Please try again.");
                 } finally {
@@ -1592,11 +1628,11 @@ function NewRunModal({
                   {step === 0 && (
                     <>
                       <div className="rounded-xl border border-brand-100 bg-brand-50/60 px-4 py-3">
-                        <p className="font-code text-[8px] font-bold tracking-[0.18em] text-brand-700">01 / TENDER DETAILS</p>
+                        <p className="font-code text-[10px] font-bold tracking-[0.12em] text-brand-700">01 / TENDER DETAILS</p>
                         <p className="mt-1 text-[12px] leading-relaxed text-ink-600">Identify the procurement record the committee and audit trail will refer to.</p>
                       </div>
                       <div>
-                        <label htmlFor="nr-ref" className="mb-1.5 block font-code text-[9px] font-semibold tracking-[0.18em] text-ink-500">
+                        <label htmlFor="nr-ref" className="mb-1.5 block font-code text-[10.5px] font-semibold tracking-[0.12em] text-ink-600">
                           TENDER REFERENCE <span className="text-brand-600" aria-hidden="true">*</span>
                         </label>
                         <input
@@ -1606,24 +1642,22 @@ function NewRunModal({
                           value={ref}
                           readOnly
                           aria-readonly="true"
-                          placeholder="e.g. KE-MOH-2026-014"
+                          placeholder="e.g. QRM-2026-014"
                           autoComplete="off"
                           aria-required="true"
                           aria-invalid={Boolean(detailsError && !ref.trim())}
-                          className="h-12 w-full rounded-xl border border-ink-200 bg-white px-4 font-code text-[13px] tracking-[0.04em] text-ink-900 outline-none transition-all placeholder:font-sans placeholder:tracking-normal placeholder:text-ink-400 read-only:cursor-default read-only:focus:ring-0 read-only:focus:ring-offset-0 sm:h-[52px]"
+                          className="h-12 w-full rounded-xl border border-ink-200 bg-white px-4 font-code text-base tracking-[0.04em] text-ink-900 outline-none transition-all placeholder:font-sans placeholder:tracking-normal placeholder:text-ink-400 read-only:cursor-default read-only:focus:ring-0 read-only:focus:ring-offset-0 sm:h-[52px] sm:text-[13px]"
                         />
                         {refSource !== "" && !detailsError && (
-                          <p className="mt-1.5 flex items-center gap-1.5 font-code text-[8px] tracking-[0.14em] text-ink-400" aria-live="polite">
+                          <p className="mt-1.5 flex items-center gap-1.5 text-[11px] leading-relaxed text-ink-600" aria-live="polite">
                             <CircleCheck className="h-2.5 w-2.5 text-brand-600" aria-hidden="true" />
-                            {refSource === "sequence" && "ASSIGNED BY QUORUM — CONTINUES YOUR REFERENCE SEQUENCE · LOCKED"}
-                            {refSource === "fresh" && "ASSIGNED BY QUORUM — NEW REFERENCE SEQUENCE · LOCKED"}
-                            {refSource === "document" && "READ FROM THE STAGED PACK · LOCKED"}
-                            {refSource === "sample" && "SAMPLE PACK — LOADED FROM THE BUILT-IN PACKS · LOCKED"}
+                            {refSource === "assigned" && "ASSIGNED BY QUORUM — SYSTEM REFERENCE · LOCKED"}
+                            {refSource === "sample" && "SAMPLE PACK SELECTED — QUORUM SYSTEM REFERENCE RETAINED · LOCKED"}
                           </p>
                         )}
                       </div>
                       <div>
-                        <label htmlFor="nr-title" className="mb-1.5 block font-code text-[9px] font-semibold tracking-[0.18em] text-ink-500">
+                        <label htmlFor="nr-title" className="mb-1.5 block font-code text-[10.5px] font-semibold tracking-[0.12em] text-ink-600">
                           PUBLISHED TENDER TITLE <span className="text-brand-600" aria-hidden="true">*</span>
                         </label>
                         <input
@@ -1639,16 +1673,16 @@ function NewRunModal({
                           placeholder="Use the title exactly as published"
                           aria-required="true"
                           aria-invalid={Boolean(detailsError && !title.trim())}
-                          className="h-12 w-full rounded-xl border border-ink-200 bg-white px-4 text-[13.5px] text-ink-900 outline-none transition-all placeholder:text-ink-400 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10 sm:h-[52px]"
+                          className="h-12 w-full rounded-xl border border-ink-200 bg-white px-4 text-base text-ink-900 outline-none transition-all placeholder:text-ink-400 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10 sm:h-[52px] sm:text-[13.5px]"
                         />
                         {titleSource === "sample" && (
-                          <p className="mt-1.5 flex items-center gap-1.5 font-code text-[8px] tracking-[0.14em] text-ink-400" aria-live="polite">
+                          <p className="mt-1.5 flex items-center gap-1.5 text-[11px] leading-relaxed text-ink-600" aria-live="polite">
                             <CircleCheck className="h-2.5 w-2.5 text-brand-600" aria-hidden="true" />
                             SAMPLE PACK TITLE — LOADED · EDIT FREELY
                           </p>
                         )}
                         {titleSource === "document" && (
-                          <p className="mt-1.5 flex items-center gap-1.5 font-code text-[8px] tracking-[0.14em] text-ink-400" aria-live="polite">
+                          <p className="mt-1.5 flex items-center gap-1.5 text-[11px] leading-relaxed text-ink-600" aria-live="polite">
                             <CircleCheck className="h-2.5 w-2.5 text-brand-600" aria-hidden="true" />
                             DRAFTED FROM THE STAGED PACK — REPLACE WITH THE PUBLISHED TITLE
                           </p>
@@ -1657,10 +1691,10 @@ function NewRunModal({
                       <div>
                         <div className="mb-2 flex items-end justify-between gap-3">
                           <div>
-                            <p className="font-code text-[9px] font-semibold tracking-[0.18em] text-ink-500">SOURCE FORMAT</p>
+                            <p className="font-code text-[10.5px] font-semibold tracking-[0.12em] text-ink-600">SOURCE FORMAT</p>
                             <p className="mt-1 text-[11.5px] text-ink-400">Choose the format of the original procurement record.</p>
                           </div>
-                          <span className="font-code text-[8px] tracking-[0.12em] text-ink-400">REQUIRED</span>
+                          <span className="font-code text-[10px] font-semibold tracking-[0.08em] text-ink-500">REQUIRED</span>
                         </div>
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3" role="group" aria-label="Source format">
                           {["OCDS", "PDF PACK", "EMAIL BAG"].map((f) => (
@@ -1670,7 +1704,7 @@ function NewRunModal({
                               onClick={() => setFormat(f)}
                               aria-pressed={format === f}
                               className={cn(
-                                "flex min-h-12 items-center justify-center gap-2 rounded-xl border px-3 font-code text-[9px] font-bold tracking-[0.12em] transition-all sm:min-h-[54px] sm:text-[9.5px] sm:tracking-[0.14em]",
+                                "flex min-h-12 items-center justify-center gap-2 rounded-xl border px-3 font-code text-[10.5px] font-bold tracking-[0.08em] transition-all sm:min-h-[54px] sm:text-[11px] sm:tracking-[0.1em]",
                                 format === f
                                   ? "border-ink-950 bg-ink-950 text-white shadow-[0_6px_16px_rgba(11,12,15,0.14)]"
                                   : "border-ink-200 bg-white text-ink-500 hover:border-ink-400 hover:bg-paper"
@@ -1692,9 +1726,9 @@ function NewRunModal({
                         >
                           <span className="flex items-center gap-2.5">
                             <BookOpen className="h-3.5 w-3.5 text-brand-600" aria-hidden="true" />
-                            <span className="font-code text-[9px] font-bold tracking-[0.18em] text-ink-900">SAMPLE TENDER</span>
+                            <span className="font-code text-[10.5px] font-bold tracking-[0.12em] text-ink-900">SAMPLE TENDER</span>
                           </span>
-                          <span className="flex items-center gap-2 font-code text-[8px] tracking-[0.14em] text-ink-400">
+                          <span className="flex items-center gap-2 font-code text-[10px] tracking-[0.08em] text-ink-500">
                             {samples.length > 0 && `${samples.length} PACKS`}
                             <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-300", samplesOpen && "rotate-180")} aria-hidden="true" />
                           </span>
@@ -1705,7 +1739,7 @@ function NewRunModal({
                         {samplesOpen && (
                           <div className="mt-2.5 space-y-2 rounded-xl border border-ink-100 bg-paper/60 p-2.5" role="list" aria-label="Sample tenders">
                             {samples.length === 0 && (
-                              <p className="px-2 py-3 text-center font-code text-[9px] tracking-[0.14em] text-ink-400">
+                              <p className="px-2 py-3 text-center text-[11px] leading-relaxed text-ink-600">
                                 SAMPLE PACKS COULDN’T BE LOADED — CHECK THAT THE AGENT SERVICE IS RUNNING
                               </p>
                             )}
@@ -1716,26 +1750,29 @@ function NewRunModal({
                                 className="block w-full rounded-lg border border-ink-100 bg-white px-3.5 py-3 transition-all hover:border-brand-400 hover:shadow-[0_2px_10px_rgba(217,38,22,0.07)]"
                               >
                                 <span className="flex flex-wrap items-center gap-2">
-                                  <span className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-950">{s.ref}</span>
-                                  <span className="rounded-full bg-ink-950 px-2 py-0.5 font-code text-[7px] font-bold tracking-[0.14em] text-white">{s.sector}</span>
-                                  <span className="ml-auto font-code text-[7.5px] tracking-[0.12em] text-ink-400">{s.budget} · {s.bids} BIDS</span>
+                                  <span className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">BUILT-IN SAMPLE PACK</span>
+                                  <span className="rounded-full bg-ink-950 px-2 py-0.5 font-code text-[10px] font-bold tracking-[0.04em] text-white">{s.sector}</span>
+                                  <span className="ml-auto font-code text-[10px] tracking-normal text-ink-600">{s.budget} · {s.bids} BIDDERS</span>
                                 </span>
                                 <span className="mt-1 block truncate text-[12.5px] font-medium text-ink-800">{s.title}</span>
                                 <span className="mt-1 block text-[11.5px] leading-relaxed text-ink-500">{s.challenges}</span>
-                                <span className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                                <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-2">
                                   <button
                                     type="button"
                                     onClick={() => setPreviewSample(s)}
-                                    aria-label={`Preview the full contents of tender pack ${s.ref}`}
-                                    className="flex items-center gap-1.5 rounded-md border border-ink-200 px-2.5 py-1.5 font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-700 transition-colors hover:border-ink-500 hover:bg-ink-50"
+                                    aria-label={`Preview the full contents of ${s.title}`}
+                                    className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-md border border-ink-200 px-3 py-2 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-500 hover:bg-ink-50"
                                   >
                                     <Eye className="h-3 w-3" aria-hidden="true" />
                                     PREVIEW PACK
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => stageSample(s)}
-                                    className="flex items-center gap-1.5 font-code text-[7.5px] font-bold tracking-[0.14em] text-brand-700 transition-colors hover:text-brand-600"
+                                    onClick={() => {
+                                      stageSample(s);
+                                      requestAnimationFrame(() => refInputRef.current?.focus());
+                                    }}
+                                    className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-md border border-brand-200 px-3 py-2 font-code text-[10px] font-bold tracking-[0.06em] text-brand-700 transition-colors hover:border-brand-400 hover:bg-brand-50"
                                   >
                                     <Plus className="h-2.5 w-2.5" aria-hidden="true" />
                                     STAGE THIS PACK
@@ -1750,6 +1787,7 @@ function NewRunModal({
                       <TenderPackPreview
                         sample={previewSample}
                         onClose={() => setPreviewSample(null)}
+                        onReturnFocusFallback={() => refInputRef.current?.focus()}
                         onStage={(s) => {
                           stageSample(s);
                           setPreviewSample(null);
@@ -1761,13 +1799,13 @@ function NewRunModal({
                   {step === 1 && (
                     <>
                       <div className="rounded-xl border border-brand-100 bg-brand-50/60 px-4 py-3">
-                        <p className="font-code text-[8px] font-bold tracking-[0.18em] text-brand-700">02 / SOURCE DOCUMENTS</p>
+                        <p className="font-code text-[10px] font-bold tracking-[0.12em] text-brand-700">02 / SOURCE DOCUMENTS</p>
                         <p className="mt-1 text-[12px] leading-relaxed text-ink-600">Add the tender notice and bid pack. We’ll index each file before the review begins.</p>
                       </div>
                       <div>
                         <div className="flex items-baseline justify-between gap-3">
-                          <p className="font-code text-[9px] font-semibold tracking-[0.18em] text-ink-500">TENDER PACK</p>
-                          <p className="font-code text-[8.5px] tracking-[0.14em] text-ink-400" aria-live="polite">
+                          <p id="nr-files-label" className="font-code text-[10.5px] font-semibold tracking-[0.12em] text-ink-600">TENDER PACK</p>
+                          <p className="font-code text-[10px] tracking-[0.06em] text-ink-600" aria-live="polite">
                             {docs.length === 0
                               ? "NO DOCUMENTS STAGED"
                               : `INDEXED ${indexed} OF ${docs.length}${cloudSynced > 0 ? ` · ${cloudSynced} R2` : ""}`}
@@ -1784,7 +1822,8 @@ function NewRunModal({
                             setDragging(false);
                             stageLocalFiles(e.dataTransfer.files);
                           }}
-                          aria-label="Tender document upload area"
+                          role="group"
+                          aria-labelledby="nr-files-label"
                           className={cn(
                             "relative mt-2 grid min-h-40 place-items-center rounded-[10px] border-2 border-dashed px-4 py-7 text-center transition-all sm:min-h-48 sm:py-9",
                             dragging ? "scale-[1.005] border-brand-500 bg-brand-50 shadow-[0_0_0_4px_rgba(217,38,22,0.06)]" : "border-ink-200 bg-paper/60 hover:border-ink-400 hover:bg-paper"
@@ -1797,6 +1836,8 @@ function NewRunModal({
                             multiple
                             accept=".pdf,.json,.zip,.xlsx,.csv,.docx,.eml"
                             className="sr-only"
+                            aria-hidden="true"
+                            tabIndex={-1}
                             onChange={(e) => {
                               stageLocalFiles(e.target.files);
                               e.target.value = "";
@@ -1807,16 +1848,18 @@ function NewRunModal({
                           </span>
                           <p className="mt-3 text-[14px] font-semibold text-ink-900">Drop the tender pack here</p>
                           <p className="mt-1 text-[12px] text-ink-500">or browse files from your device</p>
-                          <p className="mt-2 font-code text-[8px] tracking-[0.14em] text-ink-400">
+                          <p id="nr-files-help" className="mt-2 text-[11px] leading-relaxed text-ink-600">
                             NOTICE · BIDS · OCDS JSON · PRICE SCHEDULES · EMAILS — UP TO 12 FILES
                           </p>
-                          <p className="mt-1.5 font-code text-[7.5px] tracking-[0.12em] text-ink-400">
+                          <p id="nr-files-storage" className="mt-1.5 text-[11px] leading-relaxed text-ink-600">
                             REAL FILES STORE IN CLOUDFLARE R2 · EDGE-GATED · 10 MB EACH
                           </p>
                           <button
                             type="button"
+                            aria-label="Browse tender source files"
+                            aria-describedby="nr-files-help nr-files-storage"
                             onClick={() => fileInputRef.current?.click()}
-                            className="mt-4 inline-flex h-10 items-center gap-2 rounded-lg bg-ink-950 px-4 font-code text-[9px] font-bold tracking-[0.14em] text-white transition-colors hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
+                            className="focus-brand mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg bg-ink-950 px-4 font-code text-[10.5px] font-bold tracking-[0.08em] text-white transition-colors hover:bg-brand-600"
                           >
                             <FileUp className="h-3.5 w-3.5" aria-hidden="true" />
                             BROWSE FILES
@@ -1847,10 +1890,10 @@ function NewRunModal({
                                 <span className="min-w-0 flex-1">
                                   <span className="block truncate text-[12px] font-medium text-ink-800">{d.name}</span>
                                   {d.note && (
-                                    <span className="mt-0.5 block truncate font-code text-[7.5px] tracking-[0.08em] text-ink-400">{d.note}</span>
+                                    <span className="mt-0.5 block truncate text-[11px] leading-relaxed text-ink-600">{d.note}</span>
                                   )}
                                 </span>
-                                <span className="shrink-0 font-code text-[8px] tracking-[0.08em] text-ink-400">{d.size}</span>
+                                <span className="shrink-0 font-code text-[10px] tracking-normal text-ink-600">{d.size}</span>
                                 <DocStatusChip status={d.status} />
                                 {d.storage && <StorageChip storage={d.storage} />}
                                 {d.key && d.ref && (
@@ -1870,7 +1913,7 @@ function NewRunModal({
                                         a.click();
                                       });
                                     }}
-                                    className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-ink-400 transition-colors hover:bg-brand-50 hover:text-brand-700"
+                                    className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-md text-ink-400 transition-colors hover:bg-brand-50 hover:text-brand-700"
                                   >
                                     <Download className="h-3.5 w-3.5" aria-hidden="true" />
                                   </button>
@@ -1883,7 +1926,7 @@ function NewRunModal({
                                     docsRef.current = docsRef.current.filter((item) => item.id !== d.id);
                                     setDocs(docsRef.current);
                                   }}
-                                  className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-ink-400 transition-colors hover:bg-brand-50 hover:text-brand-700"
+                                  className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-md text-ink-400 transition-colors hover:bg-brand-50 hover:text-brand-700"
                                 >
                                   <X className="h-3.5 w-3.5" aria-hidden="true" />
                                 </button>
@@ -1905,11 +1948,11 @@ function NewRunModal({
                   {step === 2 && (
                     <>
                       <div className="rounded-xl border border-brand-100 bg-brand-50/60 px-4 py-3">
-                        <p className="font-code text-[8px] font-bold tracking-[0.18em] text-brand-700">03 / REVIEW SCOPE</p>
+                        <p className="font-code text-[10px] font-bold tracking-[0.12em] text-brand-700">03 / REVIEW SCOPE</p>
                         <p className="mt-1 text-[12px] leading-relaxed text-ink-600">Choose the checks for this run. Page-level citations remain on for every finding.</p>
                       </div>
                       <div>
-                        <p className="font-code text-[9px] font-semibold tracking-[0.18em] text-ink-500">SCOPE OF REVIEW</p>
+                        <p className="font-code text-[10.5px] font-semibold tracking-[0.12em] text-ink-600">SCOPE OF REVIEW</p>
                         <ul className="mt-2.5 space-y-2">
                           {SCOPE_CHECKS.map((c) => {
                             const on = checks[c.id];
@@ -1951,12 +1994,12 @@ function NewRunModal({
                         <Lock className="h-3.5 w-3.5 shrink-0 text-ink-400" aria-hidden="true" />
                         <div className="min-w-0">
                           <p className="text-[12.5px] font-semibold text-ink-800">Page-level citations — always on</p>
-                          <p className="mt-0.5 font-code text-[8px] tracking-[0.14em] text-ink-400">
+                          <p className="mt-0.5 text-[11px] leading-relaxed text-ink-600">
                             EVERY CLAIM CARRIES A PAGE, CLAUSE OR REGISTRY ID. NO EXCEPTIONS.
                           </p>
                         </div>
                       </div>
-                      <p className="rounded-xl bg-paper px-4 py-3 text-center font-code text-[9px] font-bold tracking-[0.16em] text-ink-700">
+                      <p className="rounded-xl bg-paper px-4 py-3 text-center text-[12px] font-semibold leading-relaxed text-ink-800">
                         {docs.length} DOCUMENT{docs.length === 1 ? "" : "S"}
                         {cloudSynced > 0 ? ` · ${cloudSynced} R2` : ""} · {checksOn} CHECK{checksOn === 1 ? "" : "S"} · EST. {estMinutes} MIN
                       </p>
@@ -2016,16 +2059,16 @@ function NewRunModal({
                 </div>
               )}
               {step === 1 && docs.length === 0 && (
-                <p role="status" className="mt-2.5 text-center font-code text-[8px] tracking-[0.18em] text-brand-700">
+                <p role="status" className="mt-2.5 text-center text-[11.5px] font-medium leading-relaxed text-brand-800">
                   STAGE AT LEAST ONE DOCUMENT — DROP A FILE TO CONTINUE
                 </p>
               )}
               {step === 1 && docs.length > 0 && !canLeaveDocs && (
-                <p role="status" className="mt-2.5 text-center font-code text-[8px] tracking-[0.18em] text-brand-700">
+                <p role="status" className="mt-2.5 text-center text-[11.5px] font-medium leading-relaxed text-brand-800">
                   WAIT FOR EVERY DOCUMENT TO FINISH INDEXING BEFORE CONTINUING
                 </p>
               )}
-              <p className="mt-4 text-center font-code text-[7.5px] tracking-[0.16em] text-ink-400 sm:text-[8px] sm:tracking-[0.2em]">
+              <p className="mt-4 text-center text-[11.5px] leading-relaxed text-ink-600">
                 THE AGENT PREPARES THE FILE — THE COMMITTEE STILL AWARDS
               </p>
             </form>
@@ -2059,6 +2102,7 @@ function SidebarContent({
   onSignOut: () => void;
   onExit: () => void;
 }) {
+  const cycleSubpagesId = `mc-cycle-subpages-${useId().replace(/:/g, "")}`;
   return (
     <div className="flex h-full flex-col">
       <div className="relative flex items-center overflow-hidden px-5 pb-5 pt-6">
@@ -2077,7 +2121,7 @@ function SidebarContent({
         {navGroupsFor(user).map((group, gi) => (
           <div key={group.group} className={cn(gi > 0 && "mt-4", gi === 0 && "pt-1")}>
             <p className="flex items-center gap-2.5 px-3 pb-2">
-              <span className="font-code text-[8px] font-semibold uppercase tracking-[0.24em] text-ink-600">
+              <span className="font-code text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-400">
                 {group.group}
               </span>
               <span className="h-px flex-1 bg-white/[0.055]" aria-hidden="true" />
@@ -2090,7 +2134,7 @@ function SidebarContent({
                 /* Bound once so the nested render callbacks keep the narrowing. */
                 const subpages = item.subpages;
                 const itemClass = cn(
-                  "focus-brand group relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-[background-color,color] duration-200",
+                  "focus-brand group relative flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-[background-color,color] duration-200",
                   isActive
                     ? "bg-gradient-to-r from-white/[0.085] to-white/[0.035] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_1px_2px_rgba(0,0,0,0.35)] ring-1 ring-inset ring-white/[0.07]"
                     : "text-ink-400 hover:bg-white/[0.04] hover:text-ink-100"
@@ -2101,7 +2145,7 @@ function SidebarContent({
                       /* An item that lives at its own URL — leaving the workspace on purpose. */
                       <a href={item.href} className={itemClass}>
                         <Icon
-                          className="h-[15px] w-[15px] shrink-0 text-ink-500 transition-colors group-hover:text-ink-300"
+                          className="h-4 w-4 shrink-0 text-ink-400 transition-colors group-hover:text-ink-200"
                           aria-hidden="true"
                           strokeWidth={1.8}
                         />
@@ -2114,9 +2158,9 @@ function SidebarContent({
                       <button
                         type="button"
                         onClick={() => onNavigate(item.id as SectionId)}
-                        aria-current={isActive ? "true" : undefined}
+                        aria-current={isActive ? (item.subpages?.length ? "location" : "page") : undefined}
                         aria-expanded={item.subpages?.length ? isActive : undefined}
-                        aria-controls={item.subpages?.length ? "mc-cycle-subpages" : undefined}
+                        aria-controls={item.subpages?.length ? cycleSubpagesId : undefined}
                         className={itemClass}
                       >
                         {isActive && (
@@ -2128,8 +2172,8 @@ function SidebarContent({
                         )}
                         <Icon
                           className={cn(
-                            "h-[15px] w-[15px] shrink-0 transition-colors",
-                            isActive ? "text-brand-400" : "text-ink-500 group-hover:text-ink-300"
+                            "h-4 w-4 shrink-0 transition-colors",
+                            isActive ? "text-brand-400" : "text-ink-400 group-hover:text-ink-200"
                           )}
                           aria-hidden="true"
                           strokeWidth={1.8}
@@ -2140,10 +2184,10 @@ function SidebarContent({
                         {badge !== null && badge > 0 && (
                           <span
                             className={cn(
-                              "grid h-[18px] min-w-[18px] place-items-center rounded-full px-1.5 font-code text-[8.5px] font-bold tabular",
+                              "grid h-5 min-w-5 place-items-center rounded-full px-1.5 font-code text-[10px] font-bold tabular",
                               item.id === "mc-gates"
                                 ? "bg-brand-600 text-white shadow-[0_0_12px_rgba(232,56,42,0.45)]"
-                                : "bg-white/[0.09] text-ink-600 ring-1 ring-inset ring-white/10"
+                                : "bg-white/[0.09] text-ink-200 ring-1 ring-inset ring-white/10"
                             )}
                           >
                             {badge}
@@ -2159,7 +2203,7 @@ function SidebarContent({
                     )}
                     {!item.href && subpages?.length ? (
                       <ul
-                        id="mc-cycle-subpages"
+                        id={cycleSubpagesId}
                         className={cn("ml-[18px] mt-1.5 space-y-1 border-l border-white/[0.14] pl-2.5", !isActive && "hidden")}
                         aria-label="Tender Cycle pages"
                       >
@@ -2172,7 +2216,7 @@ function SidebarContent({
                           return (
                             <li key={page.id}>
                               {groupStartsHere ? (
-                                <p className="flex items-center gap-2 px-2 pb-1.5 pt-3 font-code text-[8px] font-bold tracking-[0.18em] text-ink-400">
+                                <p className="flex items-center gap-2 px-2 pb-1.5 pt-3 font-code text-[11px] font-bold tracking-[0.08em] text-ink-300">
                                   <span>{page.group}</span>
                                   <span className="h-px flex-1 bg-white/[0.1]" aria-hidden="true" />
                                 </p>
@@ -2182,7 +2226,7 @@ function SidebarContent({
                                 onClick={() => onNavigateCyclePage(page.id)}
                                 aria-current={pageActive ? "page" : undefined}
                                 className={cn(
-                                  "focus-brand group relative flex min-h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left transition-[background-color,color,box-shadow] duration-200",
+                                  "focus-brand group relative flex min-h-11 w-full items-center gap-2.5 rounded-lg px-2.5 text-left transition-[background-color,color,box-shadow] duration-200",
                                   pageActive
                                     ? "bg-gradient-to-r from-brand-500/[0.18] to-brand-500/[0.07] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] ring-1 ring-inset ring-brand-400/20"
                                     : "text-ink-300 hover:bg-white/[0.055] hover:text-white",
@@ -2196,14 +2240,14 @@ function SidebarContent({
                                 ) : null}
                                 <span
                                   className={cn(
-                                    "w-5 shrink-0 font-code text-[8.5px] font-bold tabular",
-                                    pageActive ? "text-brand-300" : "text-ink-400 group-hover:text-ink-200",
+                                  "w-6 shrink-0 font-code text-[10px] font-bold tabular",
+                                  pageActive ? "text-brand-300" : "text-ink-300 group-hover:text-white",
                                   )}
                                   aria-hidden="true"
                                 >
                                   {String(pageOrdinal).padStart(2, "0")}
                                 </span>
-                                <span className="truncate text-[12px] font-medium tracking-[-0.01em]">{page.label}</span>
+                                <span className="truncate text-[12.5px] font-medium tracking-[-0.01em]">{page.label}</span>
                                 {pageActive ? <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-brand-400 shadow-[0_0_8px_rgba(240,107,92,0.6)]" aria-hidden="true" /> : null}
                               </button>
                             </li>
@@ -2236,14 +2280,14 @@ function SidebarContent({
               )}
             />
           </span>
-          <span className="type-micro text-ink-500">
+          <span className="font-code text-[11px] font-semibold tracking-[0.1em] text-ink-400">
             {agentModeOf(agent) === "online"
               ? "Agent online"
               : agentModeOf(agent) === "linking"
                 ? "Agent linking"
                 : "Agent offline"}
           </span>
-          <span className="ml-auto type-micro text-ink-600">mcp · 3031</span>
+          <span className="ml-auto font-code text-[11px] font-semibold tracking-[0.04em] text-ink-400">Quorum service</span>
         </div>
         <div>
           <ThemeModeRow />
@@ -2258,7 +2302,7 @@ function SidebarContent({
           </span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[13px] font-semibold text-white">{user?.name ?? "Guest officer"}</span>
-            <span className="block truncate font-code text-[8px] tracking-[0.14em] text-ink-500">
+            <span className="block truncate font-code text-[10px] leading-snug tracking-[0.06em] text-ink-400">
               {user?.role ? `${ROLE_LABELS[user.role].toUpperCase()} · ${user.email.toUpperCase()}` : "NOT SIGNED IN"}
             </span>
           </span>
@@ -2267,7 +2311,7 @@ function SidebarContent({
             onClick={onSignOut}
             aria-label="Sign out"
             title="Sign out"
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-white/10 hover:text-white"
+            className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-white/10 hover:text-white"
           >
             <LogOut className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -2276,7 +2320,7 @@ function SidebarContent({
         <button
           type="button"
           onClick={onExit}
-          className="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-2 font-code text-[8.5px] font-semibold tracking-[0.22em] text-ink-500 transition-colors hover:text-white"
+          className="focus-brand mt-1 flex min-h-11 w-full items-center gap-2 rounded-lg px-2 py-2 font-code text-[11px] font-semibold tracking-[0.1em] text-ink-400 transition-colors hover:text-white"
         >
           <ArrowLeft className="h-3 w-3" aria-hidden="true" />
           BACK TO SITE
@@ -2351,9 +2395,14 @@ function RunRegister({
     return matches && inFilter && inWindow;
   });
 
-  /* Bids are a property of the register, not a column: the count rides with each
-     evaluation and the register header carries the live total. */
-  const totalBids = filtered.reduce((n, r) => n + (r.bids ?? 0), 0);
+  /* One tender, one bidder set: five reviews of the same pack are five runs but
+     still three bidders — so the header total is taken per tender, never per run. */
+  const biddersByTender = new Map<string, number>();
+  for (const r of filtered) {
+    if (r.bidders === null) continue;
+    biddersByTender.set(r.id, Math.max(biddersByTender.get(r.id) ?? 0, r.bidders));
+  }
+  const totalBidders = [...biddersByTender.values()].reduce((n, v) => n + v, 0);
 
   return (
     <section id="mc-runs" aria-labelledby="mc-runs-h" className="scroll-mt-24">
@@ -2362,14 +2411,14 @@ function RunRegister({
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.15, ease: EASE }}
-        className="overflow-hidden rounded-[12px] panel"
+        className="overflow-hidden rounded-[12px] panel dark:border-0 dark:shadow-[0_24px_60px_-42px_rgba(0,0,0,0.96)]"
       >
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-200/70 px-5 py-4 dark:border-white/10">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-200/70 px-5 py-4 dark:border-b-0">
           <div>
             <h2 id="mc-runs-h" className="type-title text-ink-950">
               Recent evaluations
-              <span className="ml-2 inline-flex translate-y-[-1px] items-center rounded-full border border-ink-200/70 bg-paper-2/80 px-2 py-0.5 align-middle font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-500 dark:border-white/10 dark:bg-white/[0.05] dark:text-ink-300">
-                {totalBids} BIDS
+              <span className="ml-2 inline-flex translate-y-[-1px] items-center rounded-full border border-ink-200/70 bg-paper-2/80 px-2 py-1 align-middle font-code text-[10px] font-bold tracking-[0.06em] text-ink-500 dark:border-0 dark:bg-white/[0.06] dark:text-ink-300">
+                {totalBidders} BIDDERS
               </span>
             </h2>
             <p className="mt-1 type-micro text-ink-400">
@@ -2380,7 +2429,7 @@ function RunRegister({
             data-tour="run-filters"
             role="group"
             aria-label="Filter evaluations"
-            className="flex items-center gap-1 rounded-full border border-ink-200/70 bg-paper-2/70 p-1 dark:border-white/10 dark:bg-white/[0.04]"
+            className="grid grid-cols-2 gap-1 rounded-2xl border border-ink-200/70 bg-paper-2/70 p-1 dark:border-0 dark:bg-white/[0.045] sm:flex sm:rounded-full"
           >
             {RUN_FILTERS.map((f) => (
               <button
@@ -2389,7 +2438,7 @@ function RunRegister({
                 onClick={() => onFilter(f.id)}
                 aria-pressed={filter === f.id}
                 className={cn(
-                  "focus-brand relative h-7 rounded-full px-3 font-code text-[8.5px] font-bold tracking-[0.14em] transition-colors duration-200",
+                  "focus-brand relative inline-flex h-11 items-center justify-center whitespace-nowrap rounded-full px-3 font-code text-[10px] font-bold tracking-[0.08em] transition-colors duration-200",
                   filter === f.id
                     ? "text-white"
                     : "text-ink-500 hover:text-ink-900 dark:text-ink-400 dark:hover:text-white"
@@ -2399,7 +2448,7 @@ function RunRegister({
                   <motion.span
                     layoutId="run-filter-ink"
                     aria-hidden="true"
-                    className="absolute inset-0 rounded-full bg-ink-950 dark:bg-white/10 dark:ring-1 dark:ring-white/10"
+                    className="absolute inset-0 rounded-full bg-ink-950 dark:bg-white/[0.11]"
                     transition={{ type: "spring", stiffness: 420, damping: 34, mass: 0.6 }}
                   />
                 )}
@@ -2411,10 +2460,10 @@ function RunRegister({
 
         {/* The register's own search — the top-bar search stays, but the
             section is usable on its own once the officer has scrolled here. */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-ink-200/70 px-5 py-3 dark:border-white/10">
+        <div className="flex flex-wrap items-center gap-2 border-b border-ink-200/70 px-5 py-3 dark:border-b-0">
           <label className="relative block w-full min-w-0 flex-1">
             <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400"
+              className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400 dark:text-[#a8adb7]"
               aria-hidden="true"
             />
             <input
@@ -2423,16 +2472,16 @@ function RunRegister({
               onChange={(e) => onQuery(e.target.value)}
               placeholder="Search by reference, title or buyer…"
               aria-label="Search recent evaluations by reference, title or buyer"
-              className="focus-brand h-9 w-full rounded-lg border border-ink-200/80 bg-[#fffdfb] pl-9 pr-3.5 text-[12.5px] text-ink-900 shadow-[inset_0_1px_1px_rgba(11,12,15,0.03)] outline-none transition-[border-color,background-color] duration-300 placeholder:text-ink-400 focus:border-ink-950 focus:ring-[3px] focus:ring-ink-950/[0.07] dark:border-white/[0.1] dark:bg-white/[0.04] dark:focus:border-white/35 dark:focus:ring-white/[0.06]"
+              className="focus-brand h-11 w-full rounded-lg border border-ink-200/80 bg-[#fffdfb] pl-9 pr-3.5 text-[12.5px] text-ink-900 shadow-[inset_0_1px_1px_rgba(11,12,15,0.03)] outline-none transition-[border-color,background-color] duration-300 placeholder:text-ink-400 focus:border-ink-950 focus:ring-[3px] focus:ring-ink-950/[0.07] dark:border-0 dark:bg-white/[0.035] dark:shadow-[inset_0_1px_3px_rgba(0,0,0,0.42)] dark:focus:bg-white/[0.055] dark:focus:ring-white/[0.09]"
             />
           </label>
-          <label className="relative inline-flex h-9 shrink-0 items-center">
+          <label className="relative inline-flex h-11 shrink-0 items-center">
             <span className="sr-only">Filter evaluations by date</span>
             <select
               value={dateWindow}
               onChange={(e) => setDateWindow(e.target.value as RunDateWindow)}
               aria-label="Filter evaluations by date"
-              className="focus-brand h-9 appearance-none rounded-lg border border-ink-200/80 bg-[#fffdfb] pl-3 pr-8 font-code text-[8px] font-bold tracking-[0.14em] text-ink-600 outline-none transition-colors focus:border-ink-950 focus:ring-[3px] focus:ring-ink-950/[0.07] dark:border-white/[0.1] dark:bg-white/[0.04] dark:text-ink-300 dark:focus:border-white/35 dark:focus:ring-white/[0.06]"
+              className="focus-brand h-11 appearance-none rounded-lg border border-ink-200/80 bg-[#fffdfb] pl-3 pr-8 font-code text-[10px] font-bold tracking-[0.08em] text-ink-600 outline-none transition-colors focus:border-ink-950 focus:ring-[3px] focus:ring-ink-950/[0.07] dark:border-0 dark:bg-white/[0.035] dark:text-ink-300 dark:focus:bg-white/[0.055] dark:focus:ring-white/[0.09]"
             >
               {RUN_DATE_WINDOWS.map((w) => (
                 <option key={w.id} value={w.id}>
@@ -2449,35 +2498,43 @@ function RunRegister({
             <button
               type="button"
               onClick={() => onQuery("")}
-              className="font-code text-[8px] font-bold tracking-[0.16em] text-ink-500 transition-colors hover:text-ink-950"
+              aria-label="Clear evaluation search"
+              className="focus-brand inline-flex h-11 items-center rounded-md px-2.5 font-code text-[10px] font-bold tracking-[0.08em] text-ink-500 transition-colors hover:text-ink-950"
             >
               CLEAR
             </button>
           )}
           <span
             aria-live="polite"
-            className="ml-auto shrink-0 font-code text-[8px] font-bold tracking-[0.16em] text-ink-400 tabular"
+            className="ml-auto shrink-0 font-code text-[10px] font-bold tracking-[0.08em] text-ink-400 tabular"
           >
             {filtered.length} OF {runs.length} RESULTS
           </span>
         </div>
 
         {/* Table */}
-        <div data-tour="run-rows" className="overflow-x-auto">
-          <table className="w-full min-w-[660px] border-collapse text-left">
-            <caption className="sr-only">Recent evaluations with their status, findings and citations</caption>
+        <HorizontalScrollRegion
+          label="Recent evaluations table"
+          hint="Swipe or scroll the table to see bidder, status and time columns."
+          hintClassName="sm:hidden"
+          data-tour="run-rows"
+        >
+          <table className="w-full min-w-[720px] border-collapse text-left">
+            <caption className="sr-only">Recent evaluations with their findings, bidder count, status, time and expandable details</caption>
             <thead>
-              <tr className="border-b border-ink-200/70 bg-paper-2/70 dark:border-white/10 dark:bg-white/[0.02]">
-                {["Evaluation", "Issues", "Sourced", "Status", "Time", ""].map((h, i) => (
+              <tr className="border-b border-ink-200/70 bg-paper-2/70 dark:border-b-0 dark:bg-white/[0.025]">
+                {["Evaluation", "Issues", "No. of bidders", "Status", "Time", "Details"].map((h, i) => (
                   <th
                     key={i}
                     scope="col"
                     className={cn(
                       "px-4 py-3 type-micro font-semibold text-ink-400",
-                      i === 0 && "pl-5",
-                      i === 5 && "w-10",
-                      (i === 1 || i === 2) && "text-right",
-                      i === 4 && "text-right"
+                      i === 0 && "pl-5 text-left",
+                      i === 1 && "w-[104px] text-center",
+                      i === 2 && "w-[168px] whitespace-nowrap text-center",
+                      i === 3 && "w-[186px] text-center",
+                      i === 4 && "w-[92px] text-center",
+                      i === 5 && "w-[88px] text-center"
                     )}
                   >
                     {h}
@@ -2487,42 +2544,31 @@ function RunRegister({
             </thead>
             <tbody>
               {filtered.map((run) => {
-                const isOpen = expanded === (run.uid ?? run.id);
+                const runKey = run.uid ?? run.id;
+                const detailsId = `evaluation-details-${encodeURIComponent(runKey)}`;
+                const isOpen = expanded === runKey;
                 const notesFor = notes[run.id] ?? [];
                 return (
-                  <Fragment key={run.uid ?? run.id}>
+                  <Fragment key={runKey}>
                     <tr
                       className={cn(
-                        "cursor-pointer border-b border-ink-100/70 transition-colors last:border-b-0 hover:bg-paper-2/60 dark:border-white/[0.06] dark:hover:bg-white/[0.02]",
-                        isOpen && "bg-paper-2/50 dark:bg-white/[0.02]"
+                        "cursor-pointer border-b border-ink-100/70 transition-colors last:border-b-0 hover:bg-paper-2/60 dark:border-b-0 dark:bg-white/[0.012] dark:hover:bg-white/[0.035]",
+                        isOpen && "bg-paper-2/50 dark:bg-white/[0.05]"
                       )}
-                      tabIndex={0}
-                      onClick={() => setExpanded(!isOpen ? run.uid ?? run.id : null)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          setExpanded(!isOpen ? run.uid ?? run.id : null);
-                        }
-                      }}
-                      aria-expanded={isOpen}
-                      aria-label={`${run.id} — ${run.title}. Toggle run details.`}
+                      onClick={() => setExpanded(!isOpen ? runKey : null)}
                     >
                       <td className="min-w-[260px] py-3.5 pl-5 pr-4 align-top">
                         <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-950">
-                          {run.id}
+                          {run.reference ?? run.id}
                           {run.attempt && run.attempt > 1 ? (
-                            <span className="ml-2 rounded bg-ink-100 px-1.5 py-0.5 text-[8.5px] tracking-[0.14em] text-ink-500">
+                              <span className="ml-2 rounded bg-ink-100 px-1.5 py-1 text-[10px] tracking-[0.04em] text-ink-500">
                               REVIEW {run.attempt}
                             </span>
                           ) : null}
                         </p>
                         <p className="mt-0.5 max-w-[440px] whitespace-normal break-words text-[12.5px] font-medium leading-snug text-ink-600">{run.title}</p>
-                        <span className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-ink-200/70 bg-paper-2/70 px-2 py-0.5 font-code text-[7px] font-bold tracking-[0.12em] text-ink-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-300">
-                          <span className="tabular text-[8px] text-ink-800 dark:text-white">{run.bids ?? 0}</span>
-                          BID{(run.bids ?? 0) === 1 ? "" : "S"}
-                        </span>
                       </td>
-                      <td className="px-4 py-3.5 text-right">
+                      <td className="px-4 py-3.5 text-center">
                         {run.findings > 0 ? (
                           <span className="inline-flex items-center gap-1.5 text-[13px] font-bold text-brand-700 tabular">
                             <CircleAlert className="h-3.5 w-3.5" aria-hidden="true" />
@@ -2532,29 +2578,41 @@ function RunRegister({
                           <span className="text-[13px] text-ink-400 tabular">0</span>
                         )}
                       </td>
-                      <td className="px-4 py-3.5 text-right text-[13px] font-semibold text-ink-800 tabular">
-                        {run.status === "running" || run.status === "queued" ? "—" : `${run.citations}/${run.findings}`}
+                      <td className="px-4 py-3.5 text-center text-[13px] font-semibold text-ink-800 tabular">
+                        {run.bidders !== null ? run.bidders : <span className="text-ink-400">—</span>}
                       </td>
-                      <td className="px-4 py-3.5">
+                      <td className="px-4 py-3.5 text-center">
                         <StatusChip status={run.status} />
                       </td>
-                      <td className="px-4 py-3.5 text-right font-code text-[9px] tracking-[0.12em] text-ink-500 tabular">
+                      <td className="px-4 py-3.5 text-center font-code text-[10px] tracking-[0.08em] text-ink-500 tabular">
                         {run.startedAt}
                       </td>
-                      <td className="pr-4">
-                        <ChevronDown
-                          className={cn(
-                            "h-4 w-4 text-ink-400 transition-transform duration-300",
-                            isOpen && "rotate-180 text-ink-600"
-                          )}
-                          aria-hidden="true"
-                        />
+                      <td className="pr-4 text-center">
+                        <button
+                          type="button"
+                          aria-expanded={isOpen}
+                          aria-controls={isOpen ? detailsId : undefined}
+                          aria-label={`${isOpen ? "Hide" : "Show"} details for ${run.reference ?? run.id}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setExpanded(!isOpen ? runKey : null);
+                          }}
+                          className="focus-brand inline-flex h-11 w-11 items-center justify-center rounded-lg text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-900 dark:text-ink-400 dark:hover:bg-white/[0.07] dark:hover:text-white"
+                        >
+                          <ChevronDown
+                            className={cn(
+                              "h-4 w-4 transition-transform duration-300",
+                              isOpen && "rotate-180"
+                            )}
+                            aria-hidden="true"
+                          />
+                        </button>
                       </td>
                     </tr>
                     {isOpen && (
-                      <tr className="border-b border-ink-100 bg-paper">
-                        <td colSpan={7} className="px-5 py-4">
-                          <div className="rounded-xl border border-ink-100 bg-white p-4">
+                      <tr id={detailsId} className="border-b border-ink-100 bg-paper dark:border-b-0 dark:bg-transparent">
+                        <td colSpan={6} className="px-5 py-4">
+                          <div className="rounded-xl border border-ink-100 bg-white p-4 dark:border-0 dark:bg-white/[0.025]">
                             {run.status === "running" || run.status === "queued" ? (
                               <p className="text-[13px] leading-relaxed text-ink-600">
                                 <span className="font-semibold text-ink-900">
@@ -2565,7 +2623,7 @@ function RunRegister({
                               </p>
                             ) : (
                               <>
-                                <p className="font-code text-[8.5px] font-semibold tracking-[0.2em] text-ink-400">
+                                <p className="font-code text-[10px] font-semibold tracking-[0.04em] text-ink-600">
                                   TOP ISSUES · {run.findings} FLAGGED · {run.citations} SOURCED · {run.unsourced} WITHOUT A SOURCE
                                 </p>
                                 <ul className="mt-2.5 flex flex-wrap gap-1.5">
@@ -2587,7 +2645,7 @@ function RunRegister({
                             )}
                             {/* A pack ingested at launch follows the run everywhere */}
                             {typeof run.docs === "number" && (
-                              <p className="mt-3 font-code text-[8px] tracking-[0.18em] text-ink-400">
+                              <p className="mt-3 font-code text-[10px] tracking-[0.04em] text-ink-600">
                                 PACK AT LAUNCH · {run.docs} DOCUMENT{run.docs === 1 ? "" : "S"} INDEXED · INGESTED BY QUORUM-AGENT
                               </p>
                             )}
@@ -2612,7 +2670,7 @@ function RunRegister({
                                     return;
                                   }
                                   onToast(
-                                    `SOURCED REPORT — ${run.id} · ${run.findings} FINDINGS · ${run.citations} CITATIONS · DOWNLOADING`
+                                    `SOURCED REPORT — ${run.reference ?? run.id} · ${run.findings} FINDINGS · ${run.citations} CITATIONS · DOWNLOADING`
                                   );
                                   fetch(`/api/runs/${encodeURIComponent(run.uid)}/report?XTransformPort=3031`)
                                     .then(async (res) => {
@@ -2622,16 +2680,16 @@ function RunRegister({
                                       const url = URL.createObjectURL(blob);
                                       const a = document.createElement("a");
                                       a.href = url;
-                                      a.download = m?.[1] ?? `quorum-report-${run.id}-${run.uid}.md`;
+                                      a.download = m?.[1] ?? `quorum-report-${run.reference ?? run.id}-${run.uid}.md`;
                                       document.body.appendChild(a);
                                       a.click();
                                       a.remove();
                                       URL.revokeObjectURL(url);
-                                      onToast(`REPORT DOWNLOADED — ${run.id}`);
+                                      onToast(`REPORT DOWNLOADED — ${run.reference ?? run.id}`);
                                     })
                                     .catch(() => onToast("REPORT FAILED — AGENT SERVICE UNREACHABLE"));
                                 }}
-                                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-ink-950 px-3 font-code text-[9px] font-bold tracking-[0.14em] text-white transition-colors hover:bg-brand-600"
+                                className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-ink-950 px-3 font-code text-[10px] font-bold tracking-[0.08em] text-white transition-colors hover:bg-brand-600"
                               >
                                 <Download className="h-3 w-3" aria-hidden="true" />
                                 SOURCED REPORT
@@ -2640,16 +2698,16 @@ function RunRegister({
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  const log = `quorum audit — ${run.id} — ${run.findings} findings · ${run.citations} citations · ${sealText(run)}`;
+                                  const log = `quorum audit — ${run.reference ?? run.id} — ${run.findings} findings · ${run.citations} citations · ${sealText(run)}`;
                                   if (navigator.clipboard?.writeText) navigator.clipboard.writeText(log).catch(() => undefined);
                                   onToast("AUDIT TRAIL COPIED TO CLIPBOARD");
                                 }}
-                                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-ink-200 px-3 font-code text-[9px] font-bold tracking-[0.14em] text-ink-600 transition-colors hover:border-ink-400 hover:text-ink-900"
+                                className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-ink-200 px-3 font-code text-[10px] font-bold tracking-[0.08em] text-ink-600 transition-colors hover:border-ink-400 hover:text-ink-900"
                               >
                                 <Copy className="h-3 w-3" aria-hidden="true" />
                                 COPY AUDIT TRAIL
                               </button>
-                              <span className="ml-auto font-code text-[8px] tracking-[0.16em] text-ink-400">
+                              <span className="ml-auto font-code text-[10px] tracking-[0.05em] text-ink-600">
                                 BUYER · {run.buyer.toUpperCase()}
                               </span>
                             </div>
@@ -2675,7 +2733,7 @@ function RunRegister({
                         onFilter("all");
                         setDateWindow("all");
                       }}
-                      className="mt-3 inline-flex h-8 items-center rounded-lg border border-ink-200 px-3.5 text-[12px] font-semibold text-ink-600 transition-colors hover:border-ink-400"
+                      className="mt-3 inline-flex h-11 items-center rounded-lg border border-ink-200 px-3.5 text-[12px] font-semibold text-ink-600 transition-colors hover:border-ink-400"
                     >
                       Clear search, filters & dates
                     </button>
@@ -2684,7 +2742,7 @@ function RunRegister({
               )}
             </tbody>
           </table>
-        </div>
+        </HorizontalScrollRegion>
       </motion.div>
     </section>
   );
@@ -2718,6 +2776,7 @@ function QuorumRoll({ quorum, onOpenRoll }: { quorum: CommitteeData | null; onOp
 
   return (
     <div
+      role="region"
       aria-label="Committee quorum roll call"
       className={cn(
         "border-b px-5 py-4",
@@ -2727,13 +2786,13 @@ function QuorumRoll({ quorum, onOpenRoll }: { quorum: CommitteeData | null; onOp
       )}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="flex items-center gap-1.5 font-code text-[8.5px] font-bold tracking-[0.18em] text-ink-500">
+        <p className="flex items-center gap-1.5 font-code text-[10px] font-bold tracking-[0.1em] text-ink-600">
           <Users className="h-3 w-3" aria-hidden="true" />
           QUORUM ROLL CALL
         </p>
         <span
           className={cn(
-            "tabular rounded-full border px-2.5 py-1 font-code text-[8px] font-bold tracking-[0.14em]",
+            "tabular rounded-full border px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em]",
             met
               ? "border-ink-950 bg-ink-950 text-white dark:border-white/20"
               : "border-brand-500/40 bg-white text-brand-700 dark:bg-brand-950/30 dark:text-brand-300"
@@ -2743,10 +2802,11 @@ function QuorumRoll({ quorum, onOpenRoll }: { quorum: CommitteeData | null; onOp
         </span>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-1.5" aria-hidden="true">
+      <div className="mt-3 flex flex-wrap items-center gap-1.5">
         {Array.from({ length: seats }).map((_, i) => (
           <span
             key={i}
+            aria-hidden="true"
             className={cn(
               "h-2.5 w-5 rounded-[2px] border",
               i < presentCount
@@ -2759,9 +2819,12 @@ function QuorumRoll({ quorum, onOpenRoll }: { quorum: CommitteeData | null; onOp
         ))}
         <span
           className={cn(
-            "ml-2 font-code text-[8px] font-bold tracking-[0.14em]",
+            "ml-2 font-code text-[10px] font-bold tracking-[0.06em]",
             met ? "text-ink-950 dark:text-white" : "text-brand-700 dark:text-brand-300"
           )}
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
         >
           {met ? "QUORUM PRESENT" : `${short} MORE NEEDED`}
         </span>
@@ -2777,7 +2840,7 @@ function QuorumRoll({ quorum, onOpenRoll }: { quorum: CommitteeData | null; onOp
           <button
             type="button"
             onClick={onOpenRoll}
-            className="inline-flex h-8 items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 font-code text-[8px] font-bold tracking-[0.14em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 dark:border-white/15 dark:bg-transparent dark:text-ink-300 dark:hover:border-white/40 dark:hover:text-white"
+            className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-2 font-code text-[10px] font-bold tracking-[0.06em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 dark:border-white/15 dark:bg-transparent dark:text-ink-300 dark:hover:border-white/40 dark:hover:text-white"
           >
             OPEN THE ROLL
             <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
@@ -2786,7 +2849,7 @@ function QuorumRoll({ quorum, onOpenRoll }: { quorum: CommitteeData | null; onOp
       </div>
 
       <details className="mt-2.5">
-        <summary className="cursor-pointer font-code text-[8px] font-bold tracking-[0.16em] text-ink-400 transition-colors hover:text-ink-700 dark:hover:text-ink-200">
+        <summary className="focus-brand inline-flex min-h-11 cursor-pointer items-center rounded-md px-1 font-code text-[10px] font-bold tracking-[0.06em] text-ink-600 transition-colors hover:text-ink-900 dark:text-ink-300 dark:hover:text-white">
           READ THE ROLL · {presentCount} PRESENT
         </summary>
         <ul className="mt-2 grid gap-1 sm:grid-cols-2">
@@ -2798,7 +2861,7 @@ function QuorumRoll({ quorum, onOpenRoll }: { quorum: CommitteeData | null; onOp
               <span className="min-w-0 truncate text-[11.5px] font-medium text-ink-800 dark:text-ink-100">{m.name}</span>
               <span
                 className={cn(
-                  "shrink-0 font-code text-[7px] font-bold tracking-[0.14em]",
+                  "shrink-0 font-code text-[10px] font-bold tracking-[0.06em]",
                   m.state === "EXCUSED"
                     ? "text-ink-400"
                     : m.state === "GAVEL"
@@ -2811,7 +2874,7 @@ function QuorumRoll({ quorum, onOpenRoll }: { quorum: CommitteeData | null; onOp
             </li>
           ))}
           {roll.length === 0 && (
-            <li className="font-code text-[8px] tracking-[0.14em] text-ink-400">NO MEMBERS ON THE ROLL</li>
+            <li className="text-[11px] leading-relaxed text-ink-600 dark:text-ink-400">No members are on the roll.</li>
           )}
         </ul>
       </details>
@@ -2911,7 +2974,7 @@ export function GateQueue({
           <span
             aria-live="polite"
             className={cn(
-              "inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 font-code text-[8.5px] font-bold tracking-[0.16em] tabular",
+              "inline-flex min-h-8 items-center gap-1.5 rounded-full border px-2.5 font-code text-[10px] font-bold tracking-[0.04em] tabular",
               queue.length === 0
                 ? "border-ink-950 bg-ink-950 text-white dark:border-white/15"
                 : "border-brand-500/40 bg-brand-500/[0.08] text-brand-700 dark:text-brand-300"
@@ -2932,7 +2995,7 @@ export function GateQueue({
         <div className="flex flex-wrap items-center gap-2 border-b border-ink-200/70 px-5 py-3 dark:border-white/10">
           <label className="relative block w-full min-w-0 flex-1">
             <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400"
+              className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400 dark:text-[#a8adb7]"
               aria-hidden="true"
             />
             <input
@@ -2941,21 +3004,21 @@ export function GateQueue({
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search by reference, title, supplier or office…"
               aria-label="Search approvals by reference, title, supplier or office"
-              className="focus-brand h-9 w-full rounded-lg border border-ink-200/80 bg-[#fffdfb] pl-9 pr-3.5 text-[12.5px] text-ink-900 shadow-[inset_0_1px_1px_rgba(11,12,15,0.03)] outline-none transition-[border-color,background-color] duration-300 placeholder:text-ink-400 focus:border-ink-950 focus:ring-[3px] focus:ring-ink-950/[0.07] dark:border-white/[0.1] dark:bg-white/[0.04] dark:focus:border-white/35 dark:focus:ring-white/[0.06]"
+              className="focus-brand h-11 w-full rounded-lg border border-ink-200/80 bg-[#fffdfb] pl-9 pr-3.5 text-base text-ink-900 shadow-[inset_0_1px_1px_rgba(11,12,15,0.03)] outline-none transition-[border-color,background-color] duration-300 placeholder:text-ink-400 focus:border-ink-950 focus:ring-[3px] focus:ring-ink-950/[0.07] dark:border-white/[0.1] dark:bg-white/[0.04] dark:focus:border-white/35 dark:focus:ring-white/[0.06]"
             />
           </label>
           {needle && (
             <button
               type="button"
               onClick={() => setQ("")}
-              className="font-code text-[8px] font-bold tracking-[0.16em] text-ink-500 transition-colors hover:text-ink-950"
+              className="focus-brand inline-flex min-h-11 items-center rounded-md px-3 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:text-ink-950"
             >
               CLEAR
             </button>
           )}
           <span
             aria-live="polite"
-            className="ml-auto shrink-0 font-code text-[8px] font-bold tracking-[0.16em] text-ink-400 tabular"
+            className="ml-auto shrink-0 font-code text-[10px] font-bold tracking-[0.06em] text-ink-600 tabular"
           >
             {visible.length} OF {queue.length} GATES
           </span>
@@ -2976,31 +3039,31 @@ export function GateQueue({
                 className="rounded-[10px] border border-ink-200/70 bg-paper p-4 transition-colors duration-300 hover:bg-white dark:border-white/10 dark:hover:bg-white/[0.03]"
               >
                 {g.status === "AWAITING_SECOND" ? (
-                  <p className="mb-3 rounded-md border border-amber-400/40 bg-amber-400/[0.1] px-2.5 py-1.5 font-code text-[8px] font-bold leading-relaxed tracking-[0.12em] text-amber-800 dark:text-amber-200">
+                <p className="mb-3 rounded-md border border-amber-400/40 bg-amber-400/[0.1] px-2.5 py-1.5 font-code text-[10px] font-bold leading-relaxed tracking-[0.06em] text-amber-900 dark:text-amber-200">
                     SECOND SIGNATURE REQUIRED — OPENED BY {String(g.firstApprover ?? "AN OFFICER").toUpperCase()}
                     {g.firstApprovalAt ? ` ${g.firstApprovalAt.toUpperCase()}` : ""}. A DIFFERENT OFFICER MUST COMPLETE IT.
                   </p>
                 ) : null}
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-code text-[9.5px] font-bold tracking-[0.1em] text-ink-950">{g.tender}</p>
+                    <p className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-950">{g.tender}</p>
                     <p className="mt-0.5 truncate text-[13.5px] font-semibold text-ink-800">{g.title}</p>
-                    <p className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-ink-950 px-2 py-0.5 font-code text-[7.5px] font-bold tracking-[0.14em] text-white">
+                    <p className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-ink-950 px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.04em] text-white">
                       <Stamp className="h-2.5 w-2.5" aria-hidden="true" />
                       {GATE_TOOL_LABEL[g.tool] ?? g.tool}
                       {g.requiredOffice ? ` · ${OFFICE_SHORT[g.requiredOffice] ?? g.requiredOffice}` : ""}
                     </p>
                   </div>
                   {g.flags > 0 && (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-50 px-2 py-1 font-code text-[8.5px] font-bold tracking-[0.1em] text-brand-700">
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-50 px-2 py-1 font-code text-[10px] font-bold tracking-[0.04em] text-brand-800">
                       <CircleAlert className="h-2.5 w-2.5" aria-hidden="true" />
                       {g.flags} {g.flags === 1 ? "FLAG" : "FLAGS"}
                     </span>
                   )}
                 </div>
-                <dl className="mt-3.5 grid grid-cols-2 gap-2 border-t border-ink-200/70 pt-3.5 font-code text-[8.5px] tracking-[0.12em] text-ink-500 dark:border-white/10">
+                <dl className="mt-3.5 grid grid-cols-2 gap-2 border-t border-ink-200/70 pt-3.5 font-code text-[10px] tracking-[0.04em] text-ink-700 dark:border-white/10 dark:text-ink-300">
                   <div>
-                    <dt className="text-ink-500">PROPOSED SUPPLIER</dt>
+                    <dt className="text-ink-600 dark:text-ink-300">PROPOSED SUPPLIER</dt>
                     <dd className="mt-0.5 font-semibold text-ink-800">{g.supplier}</dd>
                   </div>
                   <div>
@@ -3011,7 +3074,7 @@ export function GateQueue({
                   </div>
                 </dl>
                 {blocked && (
-                  <p className="mt-3.5 rounded-md border border-brand-200 bg-brand-50 px-2.5 py-1.5 font-code text-[8px] font-bold leading-relaxed tracking-[0.12em] text-brand-800 dark:border-brand-900 dark:bg-brand-950/40 dark:text-brand-200">
+                  <p className="mt-3.5 rounded-md border border-brand-200 bg-brand-50 px-2.5 py-1.5 font-code text-[10px] font-bold leading-relaxed tracking-[0.06em] text-brand-900 dark:border-brand-900 dark:bg-brand-950/40 dark:text-brand-200">
                     QUORUM SHORT — {short} MORE PRESENT NEEDED BEFORE THIS GATE CAN BE DECIDED
                   </p>
                 )}
@@ -3028,7 +3091,7 @@ export function GateQueue({
                           ? "A contract always has a contract value — record the award value before this is signed."
                           : undefined
                     }
-                    className="focus-brand inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full bg-brand-600 text-[12.5px] font-bold tracking-[0.02em] text-white shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_12px_26px_-14px_rgba(217,38,22,0.9)] transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="focus-brand inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-brand-600 text-[12.5px] font-bold tracking-[0.02em] text-white shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_12px_26px_-14px_rgba(217,38,22,0.9)] transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Stamp className="h-3.5 w-3.5" aria-hidden="true" />
                     {g.status === "AWAITING_SECOND" ? "Second signature" : "Award"}
@@ -3043,14 +3106,14 @@ export function GateQueue({
                           ? `Quorum not present — ${presentCount} of ${quorum?.required ?? 0}. Mark members PRESENT in Committee before deciding.`
                           : undefined
                       }
-                      className="focus-brand inline-flex h-10 flex-1 items-center justify-center rounded-full border border-ink-200/80 text-[12.5px] font-semibold text-ink-700 transition-colors hover:border-ink-400 hover:bg-white hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/12 dark:hover:bg-white/[0.04]"
+                      className="focus-brand inline-flex min-h-11 flex-1 items-center justify-center rounded-full border border-ink-200/80 text-[12.5px] font-semibold text-ink-700 transition-colors hover:border-ink-400 hover:bg-white hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/12 dark:hover:bg-white/[0.04]"
                     >
                       Return for review
                     </button>
                   ) : null}
                 </div>
                 ) : (
-                  <p className="mt-4 rounded-md border border-ink-200 bg-paper px-2.5 py-2 font-code text-[8px] font-bold leading-relaxed tracking-[0.12em] text-ink-500">
+                  <p className="mt-4 rounded-md border border-ink-200 bg-paper px-2.5 py-2 font-code text-[10px] font-bold leading-relaxed tracking-[0.04em] text-ink-700 dark:border-white/15 dark:bg-white/[0.03] dark:text-ink-300">
                     READ-ONLY — YOUR WORKSPACE ROLE CANNOT SIGN THIS GATE
                   </p>
                 )}
@@ -3078,7 +3141,7 @@ export function GateQueue({
           )}
 
           {queue.length > 0 && visible.length === 0 && (
-            <p className="rounded-xl border border-dashed border-ink-200 px-4 py-10 text-center font-code text-[8.5px] font-bold tracking-[0.16em] text-ink-400 dark:border-white/10">
+            <p className="rounded-xl border border-dashed border-ink-200 px-4 py-10 text-center font-code text-[10px] font-bold tracking-[0.06em] text-ink-600 dark:border-white/10 dark:text-ink-300">
               NO GATE MATCHES “{q.trim().toUpperCase()}”
             </p>
           )}
@@ -3096,7 +3159,7 @@ export function GateQueue({
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.35, ease: EASE }}
-                  className="flex items-center justify-between gap-2 font-code text-[8.5px] tracking-[0.12em]"
+                  className="flex items-center justify-between gap-2 font-code text-[10px] tracking-[0.04em]"
                 >
                   <button
                     type="button"
@@ -3115,7 +3178,7 @@ export function GateQueue({
                       })
                     }
                     title="Open the decision receipt — the appended signature and its seal"
-                    className="group inline-flex min-w-0 items-center gap-1.5 rounded text-left transition-colors hover:text-ink-950"
+                    className="focus-brand group inline-flex min-h-11 min-w-0 items-center gap-1.5 rounded px-1 text-left transition-colors hover:text-ink-950"
                   >
                     <span className="font-bold text-ink-800 group-hover:text-ink-950">{row.tender}</span>
                     {row.hand && <PenLine className="h-2.5 w-2.5 shrink-0 text-brand-600" aria-hidden="true" />}
@@ -3130,7 +3193,7 @@ export function GateQueue({
               ))}
             </AnimatePresence>
             {visibleLedger.length === 0 && (
-              <li className="font-code text-[8.5px] tracking-[0.12em] text-ink-400">
+              <li className="font-code text-[10px] tracking-[0.04em] text-ink-600 dark:text-ink-300">
                 {ledger.length === 0 ? "NO DECISIONS YET" : `NO DECISION MATCHES “${q.trim().toUpperCase()}”`}
               </li>
             )}
@@ -3325,8 +3388,8 @@ function useOcpRegistry() {
   return { data, failed, reload, setData };
 }
 
-/* The portal switch — the committee turns a source off and on. A real
-   switch: role, checked state, keyboard focus, and a knob that moves. */
+/* A portal control can be mixed at country level, so expose checkbox state
+   while keeping a compact switch track inside a full touch-sized hit area. */
 function PortalSwitch({
   on,
   mixed,
@@ -3344,8 +3407,9 @@ function PortalSwitch({
 }) {
   return (
     <span
-      role="switch"
+      role="checkbox"
       aria-checked={mixed ? "mixed" : on}
+      aria-disabled={busy || undefined}
       aria-label={ariaLabel}
       title={title}
       tabIndex={busy ? -1 : 0}
@@ -3361,23 +3425,29 @@ function PortalSwitch({
         }
       }}
       className={cn(
-        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border align-middle transition-colors duration-200",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/30 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
-        mixed ? "border-ink-950 bg-white" : on ? "border-ink-950 bg-ink-950" : "border-ink-300 bg-white",
+        "relative inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full align-middle",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/30 focus-visible:ring-offset-2 focus-visible:ring-offset-paper dark:focus-visible:ring-offset-night",
         busy && "cursor-wait opacity-60",
       )}
     >
       <span
         aria-hidden="true"
         className={cn(
-          "block h-3.5 w-3.5 rounded-full shadow-[0_1px_2px_rgba(11,12,15,0.35)] transition-all duration-200",
-          mixed
-            ? "mx-auto translate-x-0 bg-ink-950"
-            : on
-              ? "ml-[18px] bg-white"
-              : "ml-[3px] bg-ink-400",
+          "relative inline-flex h-5 w-9 items-center rounded-full border transition-colors duration-200",
+          mixed ? "border-ink-950 bg-white" : on ? "border-ink-950 bg-ink-950" : "border-ink-300 bg-white",
         )}
-      />
+      >
+        <span
+          className={cn(
+            "block h-3.5 w-3.5 rounded-full shadow-[0_1px_2px_rgba(11,12,15,0.35)] transition-all duration-200",
+            mixed
+              ? "mx-auto translate-x-0 bg-ink-950"
+              : on
+                ? "ml-[18px] bg-white"
+                : "ml-[3px] bg-ink-400",
+          )}
+        />
+      </span>
     </span>
   );
 }
@@ -3421,29 +3491,29 @@ function OcpDatasetRow({
   ).filter((entry): entry is [string, number] => (entry[1] ?? 0) > 0);
   const files = d.downloads.map((x) => (x.size ? `${x.format} ${x.size}` : x.format)).join(" · ");
   const linkClass =
-    "inline-flex items-center gap-1 rounded-md border border-ink-200 px-2 py-1 font-code text-[7px] font-bold tracking-[0.14em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950";
+    "focus-brand inline-flex min-h-11 items-center gap-1 rounded-md border border-ink-200 px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.04em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950";
   return (
     <li className="border-t border-ink-100 px-5 py-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-code text-[9.5px] font-bold tracking-[0.1em] text-ink-950">{d.publisher}</span>
+            <span className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-950">{d.publisher}</span>
             <span
               className={cn(
-                "rounded-full px-2 py-0.5 font-code text-[7px] font-bold tracking-[0.14em] text-white",
+                "rounded-full px-2 py-1 font-code text-[10px] font-bold tracking-[0.02em] text-white",
                 d.stale ? "bg-brand-600" : "bg-ink-950"
               )}
             >
               {d.stale ? "NO LONGER UPDATED" : "UPDATING"}
             </span>
             {!enabled && (
-              <span className="rounded-full bg-ink-500 px-2 py-0.5 font-code text-[7px] font-bold tracking-[0.14em] text-white">
+              <span className="rounded-full bg-ink-500 px-2 py-1 font-code text-[10px] font-bold tracking-[0.02em] text-white">
                 OFF
               </span>
             )}
           </div>
           {override && (
-            <p className="mt-0.5 font-code text-[7px] tracking-[0.16em] text-ink-400">
+            <p className="mt-1 font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600 dark:text-ink-300">
               {enabled ? "IN USE" : "NOT READ BY THE AGENT"} — SET BY {override.by.toUpperCase() || "UNKNOWN"} · {codeStamp(override.at).toUpperCase()}
             </p>
           )}
@@ -3463,14 +3533,14 @@ function OcpDatasetRow({
         )}
       </div>
       <div className={cn(!enabled && "opacity-55")} aria-disabled={!enabled}>
-        <p className="mt-1 font-code text-[7.5px] leading-[1.9] tracking-[0.14em] text-ink-400">
+        <p className="mt-1 font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600 dark:text-ink-300">
           RECORD {d.coverageFrom} → {d.coverageTo}
           {d.updateFrequency ? ` · ${d.updateFrequency.toUpperCase()}` : ""}
           {" · "}RETRIEVED {d.lastRetrieved || "NOT STATED"}
           {d.retrievedNote ? ` (${d.retrievedNote})` : ""}
           {d.ocidPrefix ? ` · ${d.ocidPrefix}` : ""}
         </p>
-        <p className="mt-0.5 font-code text-[7.5px] leading-[1.9] tracking-[0.14em] text-ink-400">
+        <p className="mt-1 font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600 dark:text-ink-300">
           {!d.license
             ? "LICENCE — NOT STATED ON THE REGISTRY"
             : licenceIsUrl
@@ -3479,23 +3549,23 @@ function OcpDatasetRow({
           {files ? ` · ${files.toUpperCase()}` : ""}
         </p>
         {counts.length > 0 && (
-          <p className="mt-0.5 font-code text-[7.5px] leading-[1.9] tracking-[0.14em] text-ink-500">
+          <p className="mt-1 font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-700 dark:text-ink-300">
             {counts.map(([k, n]) => `${k} ${n.toLocaleString("en-US")}`).join(" · ")}
           </p>
         )}
-        <p className="mt-0.5 font-code text-[7.5px] leading-[1.9] tracking-[0.14em]">
+        <p className="mt-1 font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-700 dark:text-ink-300">
           {link ? (
             link.registry.ok ? (
               <>
                 <span className="font-bold text-ink-950">LINKED</span>
-                <span className="text-ink-400">
+                <span className="text-ink-600 dark:text-ink-300">
                   {" "}
                   {codeStamp(link.checkedAt)} · REGISTRY HTTP {link.registry.status} ·{" "}
                   {Math.max(1, Math.round(link.registry.bytes / 1024))} KB READ · FIRST OCDS RELEASE{" "}
                   {link.registry.ocid} ·{" "}
                 </span>
                 {link.portal.ok ? (
-                  <span className="text-ink-400">PORTAL HTTP {link.portal.status}</span>
+                <span className="text-ink-600 dark:text-ink-300">PORTAL HTTP {link.portal.status}</span>
                 ) : (
                   <span className="text-brand-700">
                     PORTAL {(link.portal.error ?? "UNREACHABLE").toUpperCase()}
@@ -3508,7 +3578,7 @@ function OcpDatasetRow({
               </span>
             )
           ) : (
-            <span className="text-ink-400">NOT YET CONNECTED — USE THE CONNECT BUTTON AT THE TOP OF THIS CARD</span>
+            <span className="text-ink-600 dark:text-ink-300">NOT YET CONNECTED — USE THE CONNECT BUTTON AT THE TOP OF THIS CARD</span>
           )}
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -3592,7 +3662,7 @@ function RegistryCountries({
 
   if (visible.length === 0) {
     return (
-      <p className="px-5 py-6 font-code text-[8px] tracking-[0.18em] text-ink-400">{emptyNote}</p>
+      <p className="px-5 py-6 font-code text-[10px] tracking-[0.06em] text-ink-600 dark:text-ink-300">{emptyNote}</p>
     );
   }
 
@@ -3627,7 +3697,7 @@ function RegistryCountries({
                 type="button"
                 onClick={() => setOpenCountry(open ? null : c.country)}
                 aria-expanded={open}
-                className="flex min-w-0 flex-1 flex-wrap items-center gap-3 text-left transition-colors hover:bg-sand/50"
+                className="focus-brand flex min-h-11 min-w-0 flex-1 flex-wrap items-center gap-3 text-left transition-colors hover:bg-sand/50"
               >
                 <span
                   className={cn(
@@ -3646,12 +3716,12 @@ function RegistryCountries({
                     >
                       {c.country.toUpperCase()}
                     </span>
-                    <span className="rounded border border-ink-200 px-1 py-px font-code text-[7px] tracking-[0.16em] text-ink-400">
+                    <span className="rounded border border-ink-200 px-1.5 py-1 font-code text-[10px] tracking-[0.02em] text-ink-600 dark:border-white/15 dark:text-ink-300">
                       {c.iso}
                     </span>
                     <span
                       className={cn(
-                        "rounded-full px-2 py-0.5 font-code text-[7px] font-bold tracking-[0.16em] text-white",
+                        "rounded-full px-2 py-1 font-code text-[10px] font-bold tracking-[0.02em] text-white",
                         status === "UPDATING" ? "bg-ink-950" : "bg-ink-400",
                       )}
                       title={
@@ -3665,12 +3735,12 @@ function RegistryCountries({
                       {status}
                     </span>
                     {offInCountry > 0 && (
-                      <span className="rounded-full bg-ink-500 px-2 py-0.5 font-code text-[7px] font-bold tracking-[0.16em] text-white">
+                      <span className="rounded-full bg-ink-500 px-2 py-1 font-code text-[10px] font-bold tracking-[0.02em] text-white">
                         {offInCountry === rows.length ? "ALL OFF" : `${offInCountry} OFF`}
                       </span>
                     )}
                   </span>
-                  <span className="mt-1 block font-code text-[7.5px] tracking-[0.18em] text-ink-400">
+                  <span className="mt-1 block font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600 dark:text-ink-300">
                     {c.datasets} {c.datasets === 1 ? "DATASET" : "DATASETS"} · {c.publishers.length}{" "}
                     {c.publishers.length === 1 ? "PUBLISHER" : "PUBLISHERS"} · RECORD {c.coverageFrom} →{" "}
                     {c.coverageTo} · RETRIEVED {c.lastRetrieved || "NOT STATED"}
@@ -3729,75 +3799,6 @@ function RegistryCountries({
   );
 }
 
-function PortalSync() {
-  const { data, failed } = useOcpRegistry();
-  const countries = data?.countries ?? [];
-  const datasets = data?.datasets ?? [];
-  const links = data?.links.links ?? {};
-  const linkedByCountry = new Map<string, number>();
-  for (const d of datasets) {
-    if (links[String(d.publicationId)]?.registry.ok) {
-      linkedByCountry.set(d.country, (linkedByCountry.get(d.country) ?? 0) + 1);
-    }
-  }
-  return (
-    <div className="rounded-[12px] panel p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
-      <div className="flex items-center justify-between">
-        <h3 className="font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">Connected portals</h3>
-        <span className="type-micro text-ink-400">
-          {data
-            ? `${countries.length} countries · ${datasets.length} datasets`
-            : failed
-              ? "Registry unreachable"
-              : "Reading the registry…"}
-        </span>
-      </div>
-      {data ? (
-        <ul className="mt-4 space-y-3">
-          {countries.map((c) => (
-            <li key={c.country} className="flex items-start gap-3">
-              <span
-                className={cn("mt-1 h-1.5 w-1.5 shrink-0 rounded-full", c.stale > 0 ? "bg-brand-600" : "bg-ink-950")}
-                aria-hidden="true"
-              />
-              <span className="min-w-0 flex-1">
-                <span className="flex items-baseline justify-between gap-2">
-                  <span className="truncate type-micro text-ink-800">{c.country}</span>
-                  <span className="shrink-0 type-micro text-ink-400 tabular">
-                    retr. {c.lastRetrieved || "not stated"}
-                  </span>
-                </span>
-                <span className="mt-1 block type-micro text-ink-400 tabular">
-                  {c.datasets} {c.datasets === 1 ? "dataset" : "datasets"}
-                  {(linkedByCountry.get(c.country) ?? 0) > 0 ? ` · ${linkedByCountry.get(c.country)} linked` : ""}
-                  {c.stale > 0 ? ` · ${c.stale} not updated` : ""}
-                </span>
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="mt-4 font-code text-[8.5px] leading-[1.9] tracking-[0.16em] text-ink-400">
-          {failed
-            ? "THE OCP DATA REGISTRY SNAPSHOT COULD NOT BE READ — SIDECAR OFFLINE"
-            : "READING THE OCP DATA REGISTRY…"}
-        </p>
-      )}
-      <p className="mt-4 font-code text-[7px] leading-[1.8] tracking-[0.14em] text-ink-400">
-        {data
-          ? `OCP DATA REGISTRY · RETRIEVED ${codeDate(data.source.retrieved)}`
-          : "OCP DATA REGISTRY · data.open-contracting.org"}
-      </p>
-      <div className="mt-4 flex items-center gap-2.5 rounded-[10px] border border-ink-200/70 bg-sand/70 px-3.5 py-3 dark:border-white/10">
-        <ShieldCheck className="h-4 w-4 shrink-0 text-brand-700" aria-hidden="true" />
-        <p className="type-micro leading-[1.9] text-ink-600">
-          Activity log locked against edits · can run on your own servers
-        </p>
-      </div>
-    </div>
-  );
-}
-
 /* ── Shared view furniture ───────────────────────────────────────────────── */
 
 function ViewShell({
@@ -3842,7 +3843,7 @@ function DeskStatus({ tone, children }: { tone: "live" | "clear" | "idle"; child
   return (
     <span
       className={cn(
-        "inline-flex h-8 items-center gap-2 rounded-full border px-3 font-code text-[8.5px] font-bold tracking-[0.16em]",
+        "inline-flex h-8 items-center gap-2 rounded-full border px-3 font-code text-[10px] font-bold tracking-[0.06em]",
         tone === "live" &&
           "border-brand-500/35 bg-brand-500/[0.06] text-brand-700 dark:border-brand-500/40 dark:text-brand-300",
         tone === "clear" &&
@@ -3895,12 +3896,12 @@ function StageStrip({
         <div className="flex flex-wrap items-center gap-3">
           {search}
           {meta ? (
-            <div className="font-code text-[8.5px] font-bold tracking-[0.16em] text-ink-400 tabular">{meta}</div>
+            <div className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-600 tabular">{meta}</div>
           ) : null}
         </div>
       </div>
       {items.length === 0 ? (
-        <p className="border-t border-ink-100/80 px-5 py-5 font-code text-[8.5px] font-bold tracking-[0.16em] text-ink-400 dark:border-white/[0.06]">
+        <p className="border-t border-ink-100/80 px-5 py-5 text-[11px] leading-relaxed text-ink-600 dark:border-white/[0.06] dark:text-ink-400">
           NO OFFICE MATCHES THIS SEARCH
         </p>
       ) : (
@@ -3926,12 +3927,12 @@ function StageStrip({
                 >
                   {item.count}
                 </p>
-                <span className="font-code text-[8px] font-bold tracking-[0.08em] text-ink-400 tabular">
+                <span className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-500 tabular">
                   {share}%
                 </span>
               </div>
-              <p className="eyebrow mt-2 text-[8px] tracking-[0.16em]">{item.label.toUpperCase()}</p>
-              <p className="mt-1 truncate text-[10.5px] leading-tight text-ink-400">{item.caption}</p>
+              <p className="eyebrow mt-2">{item.label.toUpperCase()}</p>
+              <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-ink-600 dark:text-ink-400">{item.caption}</p>
               <div className="mt-auto pt-3" aria-hidden="true">
                 <span className="block h-[2px] overflow-hidden rounded-full bg-ink-100 dark:bg-white/[0.08]">
                   <motion.span
@@ -3966,7 +3967,7 @@ function StandingRuleCard() {
       />
       <div className="relative">
         <h3 className="type-title">The standing rule</h3>
-        <p className="mt-3 font-code text-[9px] leading-[2] tracking-[0.16em] text-ink-300">
+        <p className="mt-3 font-code text-[10px] leading-[1.7] tracking-[0.08em] text-ink-400">
           QUORUM PREPARES THE FILE.
           <br />
           IT NEVER AWARDS THE TENDER.
@@ -3975,7 +3976,7 @@ function StandingRuleCard() {
         </p>
         <a
           href="/docs#docs-safeguards"
-          className="mt-4 inline-flex items-center gap-1.5 font-code text-[8.5px] font-bold tracking-[0.2em] text-ink-300 transition-colors hover:text-white"
+          className="focus-brand mt-4 inline-flex min-h-11 items-center gap-1.5 font-code text-[10px] font-bold tracking-[0.06em] text-ink-300 transition-colors hover:text-white"
         >
           READ THE RULES
           <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
@@ -3997,7 +3998,7 @@ function NewRunCard({ onNewRun }: { onNewRun: () => void }) {
         <button
           type="button"
           onClick={onNewRun}
-          className="mt-4 inline-flex h-9 items-center gap-1.5 rounded-lg bg-brand-600 px-4 font-code text-[9px] font-bold tracking-[0.18em] text-white transition-colors hover:bg-brand-700"
+          className="focus-brand mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-brand-600 px-4 font-code text-[10px] font-bold tracking-[0.04em] text-white transition-colors hover:bg-brand-700"
         >
           <Plus className="h-3.5 w-3.5" aria-hidden="true" />
           QUEUE A RUN
@@ -4018,7 +4019,7 @@ function GavelProtocolCard() {
           "AWARD OR RETURN — BY NAMED HUMANS",
           "THE LEDGER LOGS IT, PERMANENTLY",
         ].map((step, i) => (
-          <li key={step} className="flex gap-3 font-code text-[8.5px] tracking-[0.16em] text-ink-600">
+          <li key={step} className="flex gap-3 font-code text-[10px] tracking-[0.04em] text-ink-700">
             <span className="shrink-0 font-bold text-brand-600">0{i + 1}</span>
             {step}
           </li>
@@ -4064,13 +4065,13 @@ function buildFindingRows(
 function FindingStatusChip({ status }: { status: FindingStatus }) {
   if (status === "OPEN")
     return (
-      <span className="inline-flex items-center rounded-full border border-brand-200 bg-brand-50 px-2.5 py-1 font-code text-[8.5px] font-bold tracking-[0.16em] text-brand-800">
+      <span className="inline-flex min-h-6 items-center rounded-full border border-brand-200 bg-brand-50 px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.04em] text-brand-900">
         OPEN
       </span>
     );
   if (status === "RE-CHECK")
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-600 px-2.5 py-1 font-code text-[8.5px] font-bold tracking-[0.16em] text-white">
+      <span className="inline-flex min-h-6 items-center gap-1.5 rounded-full bg-brand-600 px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.04em] text-white">
         <span className="relative flex h-1.5 w-1.5">
           <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-white" aria-hidden="true" />
           <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" aria-hidden="true" />
@@ -4079,7 +4080,7 @@ function FindingStatusChip({ status }: { status: FindingStatus }) {
       </span>
     );
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-ink-950 px-2.5 py-1 font-code text-[8.5px] font-bold tracking-[0.16em] text-white">
+    <span className="inline-flex min-h-6 items-center gap-1 rounded-full bg-ink-950 px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.04em] text-white">
       <CircleCheck className="h-2.5 w-2.5" aria-hidden="true" />
       CLEARED
     </span>
@@ -4107,7 +4108,7 @@ function FindingsView({ rows, onOpenRun }: { rows: FindingRow[]; onOpenRun: () =
             <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 px-5 py-4">
               <div>
                 <h2 className="font-display text-[17px] font-black tracking-[-0.01em] text-ink-950">All findings</h2>
-                <p className="mt-0.5 font-code text-[8.5px] tracking-[0.2em] text-ink-400">
+                <p className="mt-1 font-code text-[10px] tracking-[0.04em] text-ink-600">
                   {rows.length} FLAGS · {open} OPEN · {rows.filter((x) => !x.src).length} UNSOURCED
                 </p>
               </div>
@@ -4119,7 +4120,7 @@ function FindingsView({ rows, onOpenRun }: { rows: FindingRow[]; onOpenRun: () =
                     onClick={() => setF(k)}
                     aria-pressed={f === k}
                     className={cn(
-                      "h-7 rounded-full border px-3 font-code text-[8.5px] font-bold tracking-[0.14em] transition-all",
+                      "min-h-11 rounded-full border px-3 font-code text-[10px] font-bold tracking-[0.06em] transition-all",
                       f === k
                         ? "border-ink-950 bg-ink-950 text-white"
                         : "border-ink-200 bg-white text-ink-500 hover:border-ink-400"
@@ -4130,7 +4131,13 @@ function FindingsView({ rows, onOpenRun }: { rows: FindingRow[]; onOpenRun: () =
                 ))}
               </div>
             </header>
-            <div data-tour="findings-rows" className="max-h-[520px] overflow-y-auto [scrollbar-width:thin]">
+            <HorizontalScrollRegion
+              label="Findings table"
+              hint="Swipe or scroll the table to see source and run details."
+              hintClassName="sm:hidden"
+              data-tour="findings-rows"
+              className="max-h-[520px] overflow-y-auto [scrollbar-width:thin]"
+            >
               <table className="w-full min-w-[620px] border-collapse text-left">
                 <caption className="sr-only">Findings — every flag with its class, status and source</caption>
                 <thead className="sticky top-0 z-10 bg-paper/95 backdrop-blur">
@@ -4139,7 +4146,7 @@ function FindingsView({ rows, onOpenRun }: { rows: FindingRow[]; onOpenRun: () =
                       <th
                         key={h}
                         scope="col"
-                        className="px-4 py-2.5 font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400 first:pl-5 first:pr-4 last:pr-5"
+                        className="px-4 py-2.5 font-code text-[10px] font-semibold tracking-[0.1em] text-ink-500 first:pl-5 first:pr-4 last:pr-5"
                       >
                         {h}
                       </th>
@@ -4166,15 +4173,15 @@ function FindingsView({ rows, onOpenRun }: { rows: FindingRow[]; onOpenRun: () =
                         <p className="mt-0.5 truncate text-[11.5px] text-ink-400">{row.tender}</p>
                       </td>
                       <td className="px-4">
-                        <span className="inline-flex rounded-md border border-ink-200 bg-white px-2 py-1 font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-600">
+                        <span className="inline-flex min-h-6 items-center rounded-md border border-ink-200 bg-white px-2 py-1 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700">
                           {row.cls}
                         </span>
                       </td>
                       <td className="px-4">
                         <FindingStatusChip status={row.status} />
                       </td>
-                      <td className="px-4 font-code text-[8.5px] tracking-[0.1em] text-ink-500">{row.src}</td>
-                      <td className="py-3.5 pr-5 font-code text-[9.5px] font-bold tracking-[0.06em] text-ink-950">{row.run}</td>
+                      <td className="px-4 font-code text-[10px] tracking-[0.04em] text-ink-600">{row.src}</td>
+                      <td className="py-3.5 pr-5 font-code text-[10px] font-bold tracking-[0.04em] text-ink-950">{row.run}</td>
                     </tr>
                   ))}
                   {filtered.length === 0 && (
@@ -4186,7 +4193,7 @@ function FindingsView({ rows, onOpenRun }: { rows: FindingRow[]; onOpenRun: () =
                   )}
                 </tbody>
               </table>
-            </div>
+            </HorizontalScrollRegion>
           </div>
         </div>
         <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
@@ -4194,7 +4201,7 @@ function FindingsView({ rows, onOpenRun }: { rows: FindingRow[]; onOpenRun: () =
             <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
             <div className="relative">
               <h3 className="font-display text-[15px] font-black tracking-[-0.01em]">The invariant</h3>
-              <p className="mt-3 font-code text-[9px] leading-[2] tracking-[0.16em] text-ink-300">
+              <p className="mt-3 font-code text-[10px] leading-[1.7] tracking-[0.08em] text-ink-400">
                 0 UNSOURCED CLAIMS.
                 <br />
                 EVERY FLAG CARRIES A PAGE,
@@ -4212,14 +4219,14 @@ function FindingsView({ rows, onOpenRun }: { rows: FindingRow[]; onOpenRun: () =
                 .sort((a, b) => b[1] - a[1])
                 .map(([cls, n]) => (
                   <li key={cls} className="flex items-center gap-3">
-                    <span className="w-[96px] shrink-0 font-code text-[8px] font-bold tracking-[0.16em] text-ink-600">{cls}</span>
+                    <span className="w-[96px] shrink-0 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700">{cls}</span>
                     <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-ink-100">
                       <span
                         className="block h-full rounded-full bg-brand-500"
                         style={{ width: `${rows.length > 0 ? (n / rows.length) * 100 : 0}%` }}
                       />
                     </span>
-                    <span className="w-6 text-right font-code text-[9px] font-bold text-ink-800 tabular">{n}</span>
+                    <span className="w-6 text-right font-code text-[10px] font-bold text-ink-800 tabular">{n}</span>
                   </li>
                 ))}
             </ul>
@@ -4244,7 +4251,7 @@ function sealText(run: Pick<McRun, "seal">): string {
    seal is the sidecar's receipt hash. Nothing is estimated. */
 function packMarkdown(run: McRun, findings: SeedFinding[], verdict: "AWARDED" | "RETURNED" | null): string {
   const lines = [
-    `# Quorum — committee pack · ${run.id}`,
+    `# Quorum — committee pack · ${run.reference ?? run.id}`,
     "",
     `- Run record: ${run.uid ?? run.id}`,
     `- Status: SEALED${verdict ? ` · ${verdict}` : " AT THE GATE"}`,
@@ -4300,23 +4307,7 @@ function PackPreviewModal({
   }, [run, onClose]);
 
   /* Tab stays inside the dialog. */
-  const trapTab = (e: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (e.key !== "Tab") return;
-    const nodes = Array.from(
-      cardRef.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? [],
-    );
-    if (nodes.length === 0) return;
-    const first = nodes[0];
-    const last = nodes[nodes.length - 1];
-    const active = document.activeElement;
-    if (e.shiftKey && (active === first || !cardRef.current?.contains(active))) {
-      e.preventDefault();
-      last.focus();
-    } else if (!e.shiftKey && active === last) {
-      e.preventDefault();
-      first.focus();
-    }
-  };
+  const trapTab = (e: ReactKeyboardEvent<HTMLDivElement>) => trapTabFocus(e, cardRef.current);
 
   const rows = useMemo(() => (run ? findings.filter((f) => f.run === run.id) : []), [run, findings]);
   const shown = rows.slice(0, 5);
@@ -4348,7 +4339,7 @@ function PackPreviewModal({
           >
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="font-code text-[8px] font-semibold tracking-[0.24em] text-ink-400">REPORT PACK · DRAFT PREVIEW</p>
+                <p className="font-code text-[10px] font-semibold tracking-[0.18em] text-ink-400">REPORT PACK · DRAFT PREVIEW</p>
                 <h3 id="pack-preview-title" className="mt-1 font-display text-[22px] font-black tracking-[-0.015em] text-ink-950">
                   Committee pack — draft
                 </h3>
@@ -4362,7 +4353,7 @@ function PackPreviewModal({
                 type="button"
                 onClick={onClose}
                 aria-label="Close the preview"
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-paper hover:text-ink-900"
+                className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-lg text-ink-500 transition-colors hover:bg-paper hover:text-ink-900"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -4382,19 +4373,19 @@ function PackPreviewModal({
                     <span className="grid h-6 w-6 place-items-center rounded-md bg-ink-950 font-display text-[10px] font-black text-white">
                       Q
                     </span>
-                    <p className="font-code text-[8.5px] font-bold tracking-[0.22em] text-ink-950">
+                    <p className="font-code text-[10px] font-bold tracking-[0.16em] text-ink-950">
                       QUORUM · PROCUREMENT REVIEW
                     </p>
                   </div>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-2.5 py-1 font-code text-[7.5px] font-bold tracking-[0.16em] text-ink-600">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">
                     <Lock className="h-2.5 w-2.5" aria-hidden="true" />
                     UNSEALED · PENDING GATE
                   </span>
                 </div>
 
-                <p className="mt-4 font-code text-[8px] tracking-[0.2em] text-ink-400">TENDER</p>
-                <p className="mt-1 font-display text-[24px] font-black tracking-[-0.02em] text-ink-950">{run.id}</p>
-                <p className="mt-1 font-code text-[8.5px] tracking-[0.14em] text-ink-500">
+                <p className="mt-4 font-code text-[10px] tracking-[0.14em] text-ink-400">TENDER</p>
+                <p className="mt-1 font-display text-[24px] font-black tracking-[-0.02em] text-ink-950">{run.reference ?? run.id}</p>
+                <p className="mt-1 font-code text-[10px] tracking-[0.08em] text-ink-500">
                   RUN {run.uid ?? run.id} · STARTED {run.startedAt} · PREPARED FOR THE COMMITTEE
                 </p>
 
@@ -4406,17 +4397,17 @@ function PackPreviewModal({
                     { k: "SEAL", v: run.seal ? `${run.seal.slice(0, 10)}…` : "PENDING", tone: "text-ink-950" },
                   ].map((cell) => (
                     <div key={cell.k}>
-                      <dt className="font-code text-[7.5px] tracking-[0.18em] text-ink-400">{cell.k}</dt>
+                      <dt className="font-code text-[10px] tracking-[0.1em] text-ink-500">{cell.k}</dt>
                       <dd className={cn("mt-1 text-[14px] font-bold tabular", cell.tone)}>{cell.v}</dd>
                     </div>
                   ))}
                 </dl>
-                <p className="mt-3 font-code text-[8px] tracking-[0.14em] text-ink-400">
+                <p className="mt-3 font-code text-[10px] leading-relaxed tracking-[0.06em] text-ink-500">
                   {sealText(run).toUpperCase()}
                   {run.sealedBy ? ` · BY ${run.sealedBy.toUpperCase()}` : ""}
                 </p>
 
-                <p className="mt-5 font-code text-[8.5px] font-bold tracking-[0.22em] text-ink-950">THE PACK BINDS</p>
+                <p className="mt-5 font-code text-[10px] font-bold tracking-[0.14em] text-ink-950">THE PACK BINDS</p>
                 <ul className="mt-2.5 space-y-2">
                   {[
                     {
@@ -4441,7 +4432,7 @@ function PackPreviewModal({
                     },
                   ].map((item) => (
                     <li key={item.n} className="flex items-baseline gap-2.5">
-                      <span className="font-code text-[8px] font-bold tracking-[0.14em] text-ink-400">{item.n}</span>
+                      <span className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">{item.n}</span>
                       <span className="min-w-0">
                         <span className="text-[12.5px] font-semibold text-ink-900">{item.t}</span>
                         <span className="text-[12px] text-ink-500"> — {item.d}</span>
@@ -4450,31 +4441,31 @@ function PackPreviewModal({
                   ))}
                 </ul>
 
-                <p className="mt-5 font-code text-[8.5px] font-bold tracking-[0.22em] text-ink-950">
+                <p className="mt-5 font-code text-[10px] font-bold tracking-[0.14em] text-ink-950">
                   FIRST FINDINGS, AS THEY&apos;LL SEAL
                 </p>
                 <ul className="mt-2.5 space-y-2.5">
                   {shown.map((f, i) => (
                     <li key={`${f.run}-${i}`} className="flex gap-2.5">
-                      <span className="mt-px inline-flex h-fit shrink-0 rounded-md border border-ink-200 bg-white px-2 py-1 font-code text-[7px] font-bold tracking-[0.14em] text-ink-600">
+                      <span className="mt-px inline-flex h-fit shrink-0 rounded-md border border-ink-200 bg-white px-2 py-1 font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">
                         {f.cls}
                       </span>
                       <span className="min-w-0">
                         <span className="block text-[12px] leading-snug text-ink-800">{f.note}</span>
-                        <span className="mt-0.5 block font-code text-[7.5px] tracking-[0.12em] text-ink-400">
+                        <span className="mt-1 block break-words font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-500">
                           {f.src || "NO SOURCE ON FILE"}
                         </span>
                       </span>
                     </li>
                   ))}
                   {rows.length === 0 && (
-                    <li className="font-code text-[8.5px] tracking-[0.16em] text-ink-400">
+                    <li className="font-code text-[10px] tracking-[0.08em] text-ink-500">
                       FINDING DETAIL BINDS AT SEAL TIME
                     </li>
                   )}
                 </ul>
                 {rows.length > shown.length && (
-                  <p className="mt-2.5 font-code text-[8px] tracking-[0.16em] text-ink-400">
+                  <p className="mt-2.5 font-code text-[10px] tracking-[0.08em] text-ink-500">
                     + {rows.length - shown.length} MORE FINDINGS — ALL BOUND IN THE SEALED PACK
                   </p>
                 )}
@@ -4485,7 +4476,7 @@ function PackPreviewModal({
                       <Lock className="h-3.5 w-3.5" aria-hidden="true" />
                     </span>
                     <div>
-                      <p className="font-code text-[8.5px] font-bold tracking-[0.18em] text-ink-950">EXPORT LOCKED</p>
+                      <p className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-950">EXPORT LOCKED</p>
                       <p className="mt-0.5 text-[11.5px] leading-snug text-ink-500">
                         Seals the moment the committee signs at the gate.
                       </p>
@@ -4494,7 +4485,7 @@ function PackPreviewModal({
                   <button
                     type="button"
                     disabled
-                    className="inline-flex h-8 cursor-not-allowed items-center gap-1.5 rounded-lg border border-ink-100 px-3 font-code text-[8px] font-bold tracking-[0.16em] text-ink-400"
+                    className="inline-flex min-h-11 cursor-not-allowed items-center gap-1.5 rounded-lg border border-ink-100 px-3 font-code text-[10px] font-bold tracking-[0.06em] text-ink-500"
                   >
                     <Lock className="h-3 w-3" aria-hidden="true" />
                     UNLOCKS ON SIGNATURE
@@ -4515,7 +4506,7 @@ function PackPreviewModal({
                       onClose();
                       onOpenApprovals();
                     }}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-ink-200 px-3.5 font-code text-[8.5px] font-bold tracking-[0.16em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950"
+                    className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-ink-200 px-3.5 font-code text-[10.5px] font-bold tracking-[0.06em] text-ink-800 transition-colors hover:border-ink-950 hover:text-ink-950"
                   >
                     GO TO APPROVALS
                     <ArrowRight className="h-3 w-3" aria-hidden="true" />
@@ -4524,7 +4515,7 @@ function PackPreviewModal({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="inline-flex h-9 items-center rounded-xl bg-ink-950 px-4 font-code text-[8.5px] font-bold tracking-[0.16em] text-white transition-colors hover:bg-brand-600"
+                  className="focus-brand inline-flex min-h-11 items-center rounded-xl bg-ink-950 px-4 font-code text-[10.5px] font-bold tracking-[0.06em] text-white transition-colors hover:bg-brand-600"
                 >
                   CLOSE PREVIEW
                 </button>
@@ -4612,14 +4603,14 @@ function ReportPacksView({
           <button
             type="button"
             onClick={queueBinding}
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-4 font-code text-[9px] font-bold tracking-[0.18em] text-white transition-colors hover:bg-brand-700"
+            className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-4 font-code text-[10px] font-bold tracking-[0.06em] text-white transition-colors hover:bg-brand-700"
           >
             <Files className="h-3.5 w-3.5" aria-hidden="true" />
             QUEUE BINDING
           </button>
         </div>
         {binding && (
-          <p className="relative mt-3 border-t border-white/10 pt-2.5 font-code text-[8px] tracking-[0.16em] text-ink-400">
+          <p className="relative mt-3 border-t border-white/10 pt-2.5 font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-300">
             BINDING QUEUED {new Date(binding.queuedAt).toLocaleString().toUpperCase()}
             {binding.by ? ` · BY ${binding.by.toUpperCase()}` : ""} · RECORDED IN THE AUDIT LOG
           </p>
@@ -4646,9 +4637,9 @@ function ReportPacksView({
               className="flex flex-col rounded-[12px] panel p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]"
             >
               <div className="flex items-center justify-between gap-3">
-                <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-950">{run.id}</p>
+                <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-950">{run.reference ?? run.id}</p>
                 {assembling ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 font-code text-[8px] font-bold tracking-[0.16em] text-brand-700">
+                  <span className="inline-flex min-h-6 items-center gap-1.5 rounded-full bg-brand-50 px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em] text-brand-800">
                     <span className="relative flex h-1.5 w-1.5">
                       <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-brand-500" aria-hidden="true" />
                       <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-600" aria-hidden="true" />
@@ -4656,14 +4647,14 @@ function ReportPacksView({
                     ASSEMBLING
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-ink-950 px-2.5 py-1 font-code text-[8px] font-bold tracking-[0.16em] text-white">
+                  <span className="inline-flex min-h-6 items-center gap-1 rounded-full bg-ink-950 px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em] text-white">
                     <CircleCheck className="h-2.5 w-2.5" aria-hidden="true" />
                     SEALED
                   </span>
                 )}
               </div>
               <p className="mt-1.5 truncate text-[13.5px] font-semibold text-ink-700">{run.title}</p>
-              <dl className="mt-4 grid grid-cols-3 gap-2 border-y border-ink-100 py-3 font-code text-[8px] tracking-[0.14em]">
+              <dl className="mt-4 grid grid-cols-3 gap-2 border-y border-ink-100 py-3 font-code text-[10px] tracking-[0.05em]">
                 <div>
                   <dt className="text-ink-500">FINDINGS</dt>
                   <dd className="mt-1 text-[13px] font-bold text-ink-950 tabular">{run.findings}</dd>
@@ -4677,7 +4668,7 @@ function ReportPacksView({
                   <dd className="mt-1 text-[13px] font-bold text-brand-700 tabular">{run.unsourced}</dd>
                 </div>
               </dl>
-              <p className="mt-3 font-code text-[7.5px] leading-[1.9] tracking-[0.14em] text-ink-400">
+              <p className="mt-3 font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600">
                 {sealText(run).toUpperCase()}
                 {decision && (
                   <>
@@ -4692,7 +4683,7 @@ function ReportPacksView({
                     type="button"
                     onClick={() => setPreview(run)}
                     aria-haspopup="dialog"
-                    className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg border border-ink-200 px-3 font-code text-[8.5px] font-bold tracking-[0.14em] text-ink-500 transition-colors hover:border-ink-400 hover:text-ink-800"
+                    className="focus-brand inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg border border-ink-200 px-3 font-code text-[10.5px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-400 hover:text-ink-900"
                   >
                     <Eye className="h-3 w-3" aria-hidden="true" />
                     PREVIEW ONLY
@@ -4702,12 +4693,12 @@ function ReportPacksView({
                     type="button"
                     onClick={() => {
                       downloadText(
-                        `quorum-${run.id.replace(/[^\w-]+/g, "-")}-pack.md`,
+                        `quorum-${(run.reference ?? run.id).replace(/[^\w-]+/g, "-")}-pack.md`,
                         packMarkdown(run, packFindings, v ?? null),
                       );
-                      onToast(`PACK DOWNLOADED — ${run.id} · MARKDOWN + AUDIT HASH`);
+                      onToast(`PACK DOWNLOADED — ${run.reference ?? run.id} · MARKDOWN + AUDIT HASH`);
                     }}
-                    className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg bg-ink-950 px-3 font-code text-[8.5px] font-bold tracking-[0.14em] text-white transition-colors hover:bg-brand-600"
+                    className="focus-brand inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg bg-ink-950 px-3 font-code text-[10.5px] font-bold tracking-[0.06em] text-white transition-colors hover:bg-brand-600"
                   >
                     <Download className="h-3 w-3" aria-hidden="true" />
                     DOWNLOAD PACK
@@ -4717,11 +4708,11 @@ function ReportPacksView({
                   type="button"
                   onClick={() => {
                     if (navigator.clipboard?.writeText)
-                      navigator.clipboard.writeText(`quorum audit — ${run.id} — ${sealText(run)}`).catch(() => undefined);
+                      navigator.clipboard.writeText(`quorum audit — ${run.reference ?? run.id} — ${sealText(run)}`).catch(() => undefined);
                     onToast("AUDIT TRAIL COPIED TO CLIPBOARD");
                   }}
-                  aria-label={`Copy audit trail for ${run.id}`}
-                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-ink-200 text-ink-500 transition-colors hover:border-ink-400 hover:text-ink-900"
+                  aria-label={`Copy audit trail for ${run.reference ?? run.id}`}
+                  className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-ink-200 text-ink-600 transition-colors hover:border-ink-400 hover:text-ink-950"
                 >
                   <Copy className="h-3 w-3" aria-hidden="true" />
                 </button>
@@ -4776,7 +4767,7 @@ function RequestsPanel({ requests }: { requests: SourceRequestRow[] }) {
       <header className="flex items-center justify-between gap-3 border-b border-ink-100 px-5 py-4">
         <div>
           <h2 className="font-display text-[17px] font-black tracking-[-0.01em] text-ink-950">Source requests</h2>
-          <p className="mt-0.5 font-code text-[8.5px] tracking-[0.2em] text-ink-400">
+          <p className="mt-0.5 font-code text-[10px] tracking-[0.08em] text-ink-600">
             {requests.filter((r) => r.status === "PENDING").length} PENDING · {requests.length} FILED
           </p>
         </div>
@@ -4786,14 +4777,14 @@ function RequestsPanel({ requests }: { requests: SourceRequestRow[] }) {
           <li key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-ink-100 px-5 py-3.5 last:border-b-0">
             <span className="min-w-0 w-full sm:w-auto sm:flex-1">
               <span className="block truncate font-code text-[10px] font-bold tracking-[0.12em] text-ink-950">{r.name}</span>
-              <span className="mt-0.5 block font-code text-[7.5px] tracking-[0.18em] text-ink-400">
+              <span className="mt-0.5 block font-code text-[10px] tracking-[0.05em] text-ink-600">
                 {r.kind} · BY {r.requestedBy.toUpperCase()} · {clockOf(r.createdAt).toUpperCase()}
               </span>
             </span>
             {r.note && <span className="min-w-0 flex-1 truncate text-[12px] text-ink-500 sm:max-w-[320px] sm:flex-none">{r.note}</span>}
             <span
               className={cn(
-                "shrink-0 rounded-full px-2.5 py-1 font-code text-[8px] font-bold tracking-[0.16em]",
+                "inline-flex min-h-6 shrink-0 items-center rounded-full px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em]",
                 r.status === "PENDING" ? "bg-brand-600 text-white" : "bg-ink-950 text-white"
               )}
             >
@@ -4844,6 +4835,34 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
   const [reqError, setReqError] = useState("");
   const [reqBusy, setReqBusy] = useState(false);
   const reqNameRef = useRef<HTMLInputElement | null>(null);
+  const reqDialogRef = useRef<HTMLDivElement | null>(null);
+  const reqReturnFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (reqOpen) {
+      const active = document.activeElement;
+      reqReturnFocusRef.current = active instanceof HTMLElement ? active : null;
+      requestAnimationFrame(() => reqNameRef.current?.focus());
+      return;
+    }
+    const target = reqReturnFocusRef.current;
+    reqReturnFocusRef.current = null;
+    if (target?.isConnected) requestAnimationFrame(() => target.focus());
+  }, [reqOpen]);
+
+  useEffect(() => {
+    if (!reqOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || reqBusy) return;
+      const focusedModal = document.activeElement?.closest('[role="dialog"][aria-modal="true"]');
+      if (focusedModal && focusedModal !== reqDialogRef.current) return;
+      setReqOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [reqOpen, reqBusy]);
+
+  const trapReqTab = (event: ReactKeyboardEvent<HTMLDivElement>) => trapTabFocus(event, reqDialogRef.current);
 
   /* The committee's switch — one place, one truth. Optimistic on purpose:
      the row moves the instant it is clicked, the sidecar's saved state
@@ -4990,11 +5009,8 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
         <button
           type="button"
           data-tour="sources-request-btn"
-          onClick={() => {
-            setReqOpen(true);
-            requestAnimationFrame(() => reqNameRef.current?.focus());
-          }}
-          className="inline-flex h-10 items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 font-code text-[9px] font-bold tracking-[0.18em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950"
+          onClick={() => setReqOpen(true)}
+          className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950"
         >
           <Plus className="h-3.5 w-3.5" aria-hidden="true" />
           REQUEST A SOURCE
@@ -5010,8 +5026,8 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
             transition={{ duration: 0.5, delay: 0.05 * i, ease: EASE }}
             className="rounded-[12px] panel p-4 shadow-[0_1px_2px_rgba(11,12,15,0.04)]"
           >
-            <p className="font-code text-[9.5px] font-bold tracking-[0.18em] text-ink-900">{s}</p>
-            <p className="mt-1.5 font-code text-[7px] tracking-[0.18em] text-ink-400">STANDARD {String(i + 1).padStart(2, "0")}</p>
+            <p className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-900">{s}</p>
+            <p className="mt-1.5 font-code text-[10px] tracking-[0.06em] text-ink-500">STANDARD {String(i + 1).padStart(2, "0")}</p>
           </motion.div>
         ))}
       </div>
@@ -5023,7 +5039,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
             <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 px-5 py-4">
               <div>
                 <h2 className="font-display text-[17px] font-black tracking-[-0.01em] text-ink-950">Connected portals — Africa</h2>
-                <p className="mt-0.5 font-code text-[8.5px] tracking-[0.2em] text-ink-400">
+                <p className="mt-0.5 font-code text-[10px] tracking-[0.08em] text-ink-600">
                   {registry
                     ? `${registry.countries.length} COUNTRIES · ${registry.datasets.length} DATASETS · ${linkedCount}/${registry.datasets.length} LINKED · ${
                         registry.datasets.filter((d) => d.stale).length
@@ -5034,7 +5050,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
                 </p>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
-                <span className="inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white px-3 py-1.5 font-code text-[8px] font-semibold tracking-[0.18em] text-ink-600">
+                <span className="inline-flex min-h-8 items-center gap-2 rounded-full border border-ink-200 bg-white px-3 py-1.5 font-code text-[10px] font-semibold tracking-[0.05em] text-ink-700">
                   <span className="h-1.5 w-1.5 rounded-full bg-ink-950" aria-hidden="true" />
                   OCP REGISTRY{registry ? ` · ${codeDate(registry.source.retrieved)}` : ""}
                 </span>
@@ -5042,7 +5058,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
                   type="button"
                   onClick={() => void refreshNow()}
                   disabled={refreshing || Boolean(refresh?.running)}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 font-code text-[8px] font-bold tracking-[0.16em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 font-code text-[10.5px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-50"
                   title="Refresh the OCP registry snapshot now — the source pages are read again and the new record is saved"
                 >
                   <RefreshCw
@@ -5055,7 +5071,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
                   type="button"
                   onClick={() => void connectDatasets(datasets.filter((d) => enabledOf(d.publicationId)).map((d) => d.publicationId))}
                   disabled={!registry || connecting || rechecking !== null || disabledCount === datasets.length}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 font-code text-[8px] font-bold tracking-[0.16em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 font-code text-[10.5px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-50"
                   title={
                     disabledCount === datasets.length
                       ? "Every portal is switched off — turn one on and the connection pass can run again"
@@ -5077,13 +5093,13 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
             </header>
             {registryFailed && !registry ? (
               <div className="flex flex-wrap items-center gap-3 px-5 py-5">
-                <p className="min-w-0 flex-1 font-code text-[8.5px] leading-[1.9] tracking-[0.16em] text-ink-400">
+                <p className="min-w-0 flex-1 font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600">
                   THE OCP DATA REGISTRY SNAPSHOT COULD NOT BE READ — THE quorum-mcp SIDECAR IS NOT RESPONDING
                 </p>
                 <button
                   type="button"
                   onClick={reloadRegistry}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-ink-200 px-3 font-code text-[8px] font-bold tracking-[0.16em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950"
+                  className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-ink-200 px-3 font-code text-[10.5px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950"
                 >
                   <RefreshCw className="h-3 w-3" aria-hidden="true" />
                   RETRY
@@ -5103,7 +5119,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
               />
             )}
             <footer className="border-t border-ink-100 bg-sand px-5 py-3.5">
-              <p className="font-code text-[7px] leading-[2] tracking-[0.14em] text-ink-500">
+              <p className="font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600">
                 READ FROM THE OCP DATA REGISTRY ·{" "}
                 <a
                   href="https://data.open-contracting.org/en/search/"
@@ -5138,7 +5154,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
             <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 px-5 py-4">
               <div>
                 <h2 className="font-display text-[17px] font-black tracking-[-0.01em] text-ink-950">Global jurisdictions</h2>
-                <p className="mt-0.5 font-code text-[8.5px] tracking-[0.2em] text-ink-400">
+                <p className="mt-0.5 font-code text-[10px] tracking-[0.08em] text-ink-600">
                   {registry
                     ? `${globalCountries.length} COUNTRIES · ${globalDatasets.length} DATASETS · ${globalLinkedCount}/${globalDatasets.length} LINKED · ${
                         globalDatasets.filter((d) => d.stale).length
@@ -5149,7 +5165,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
                 </p>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
-                <span className="inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white px-3 py-1.5 font-code text-[8px] font-semibold tracking-[0.18em] text-ink-600">
+                <span className="inline-flex min-h-8 items-center gap-2 rounded-full border border-ink-200 bg-white px-3 py-1.5 font-code text-[10px] font-semibold tracking-[0.05em] text-ink-700">
                   <span className="h-1.5 w-1.5 rounded-full bg-ink-950" aria-hidden="true" />
                   NON-AFRICAN{global ? ` · ${codeDate(global.source.retrieved)}` : ""}
                 </span>
@@ -5157,7 +5173,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
                   type="button"
                   onClick={() => void connectDatasets(globalDatasets.filter((d) => enabledOf(d.publicationId)).map((d) => d.publicationId))}
                   disabled={!registry || connecting || rechecking !== null || globalDisabledCount === globalDatasets.length}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 font-code text-[8px] font-bold tracking-[0.16em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 font-code text-[10.5px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-50"
                   title={
                     globalDisabledCount === globalDatasets.length
                       ? "Every global portal is switched off — turn one on and the connection pass can run again"
@@ -5179,22 +5195,22 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
             </header>
             {registryFailed && !registry ? (
               <div className="flex flex-wrap items-center gap-3 px-5 py-5">
-                <p className="min-w-0 flex-1 font-code text-[8.5px] leading-[1.9] tracking-[0.16em] text-ink-400">
+                <p className="min-w-0 flex-1 font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600">
                   THE GLOBAL SNAPSHOT COULD NOT BE READ — THE quorum-mcp SIDECAR IS NOT RESPONDING
                 </p>
                 <button
                   type="button"
                   onClick={reloadRegistry}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-ink-200 px-3 font-code text-[8px] font-bold tracking-[0.16em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950"
+                  className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-ink-200 px-3 font-code text-[10.5px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950"
                 >
                   <RefreshCw className="h-3 w-3" aria-hidden="true" />
                   RETRY
                 </button>
               </div>
             ) : !registry ? (
-              <p className="px-5 py-6 font-code text-[8.5px] tracking-[0.16em] text-ink-400">READING THE OCP DATA REGISTRY…</p>
+              <p className="px-5 py-6 font-code text-[10px] tracking-[0.04em] text-ink-600">READING THE OCP DATA REGISTRY…</p>
             ) : globalDatasets.length === 0 ? (
-              <p className="px-5 py-6 font-code text-[8.5px] tracking-[0.16em] text-ink-400">NO GLOBAL SNAPSHOT IS PRESENT — REFRESH THE REGISTRY</p>
+              <p className="px-5 py-6 font-code text-[10px] tracking-[0.04em] text-ink-600">NO GLOBAL SNAPSHOT IS PRESENT — REFRESH THE REGISTRY</p>
             ) : (
               <>
                 <div className="border-b border-ink-100 px-5 py-3">
@@ -5209,7 +5225,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
                       onChange={(e) => setGlobalQuery(e.target.value)}
                       placeholder={`Filter ${globalCountries.length} countries or publishers…`}
                       aria-label="Filter global jurisdictions"
-                      className="focus-brand h-9 w-full rounded-xl border border-ink-200 bg-white pl-9 pr-3 text-[12.5px] text-ink-900 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
+                      className="focus-brand h-11 w-full rounded-xl border border-ink-200 bg-white pl-9 pr-3 text-[14px] text-ink-900 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
                     />
                   </label>
                 </div>
@@ -5231,7 +5247,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
               </>
             )}
             <footer className="border-t border-ink-100 bg-sand px-5 py-3.5">
-              <p className="font-code text-[7px] leading-[2] tracking-[0.14em] text-ink-500">
+              <p className="font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600">
                 SAME OCP RETRIEVAL AS THE AFRICAN DESK ·{" "}
                 {global ? `${global.source.scope.toUpperCase()} · RETRIEVED ${codeDate(global.source.retrieved)}` : "READ FROM THE OCP DATA REGISTRY"}
                 <br />
@@ -5252,7 +5268,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
           </div>
           <div className="flex items-start gap-3 rounded-[10px] border border-ink-100 bg-sand p-5">
             <ShieldCheck className="h-4 w-4 shrink-0 text-brand-700" aria-hidden="true" />
-            <p className="font-code text-[7.5px] leading-[1.9] tracking-[0.14em] text-ink-600">
+              <p className="font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600">
               AUDIT LOGS sha256-SEALED · ON-PREM READY · NO TRACKERS
             </p>
           </div>
@@ -5272,17 +5288,20 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
             }}
           >
             <motion.div
+              ref={reqDialogRef}
               role="dialog"
               aria-modal="true"
               aria-labelledby="req-source-title"
+              tabIndex={-1}
               initial={{ opacity: 0, y: 22, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12, scale: 0.98 }}
               transition={{ duration: 0.28, ease: EASE }}
               className="w-full max-w-lg rounded-[12px] panel panel-lift p-6 sm:p-8"
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={trapReqTab}
             >
-              <p className="flex items-center gap-2.5 font-code text-[9px] font-semibold uppercase tracking-[0.28em] text-ink-500">
+              <p className="flex items-center gap-2.5 font-code text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-500">
                 <span className="inline-block h-[2px] w-6 bg-brand-600" aria-hidden="true" />
                 REQUEST A SOURCE
               </p>
@@ -5300,7 +5319,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
                 }}
               >
                 <div>
-                  <label htmlFor="req-name" className="mb-1.5 block font-code text-[9px] font-semibold tracking-[0.18em] text-ink-500">
+                  <label htmlFor="req-name" className="mb-1.5 block font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">
                     SOURCE NAME <span className="text-brand-600" aria-hidden="true">*</span>
                   </label>
                   <input
@@ -5320,30 +5339,32 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
                   />
                 </div>
                 <div>
-                  <label htmlFor="req-kind" className="mb-1.5 block font-code text-[9px] font-semibold tracking-[0.18em] text-ink-500">
-                    KIND
-                  </label>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="group" aria-label="Source kind">
-                    {["NATIONAL PORTAL", "REGISTRY", "DATA SOURCE"].map((k) => (
-                      <button
-                        key={k}
-                        type="button"
-                        onClick={() => setReqKind(k)}
-                        aria-pressed={reqKind === k}
-                        className={cn(
-                          "flex min-h-10 items-center justify-center rounded-xl border px-2 font-code text-[9px] font-bold tracking-[0.12em] transition-all",
-                          reqKind === k
-                            ? "border-ink-950 bg-ink-950 text-white"
-                            : "border-ink-200 bg-white text-ink-500 hover:border-ink-400"
-                        )}
-                      >
-                        {k}
-                      </button>
-                    ))}
-                  </div>
+                  <fieldset className="min-w-0 border-0 p-0">
+                    <legend className="mb-1.5 block font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">
+                      KIND
+                    </legend>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      {["NATIONAL PORTAL", "REGISTRY", "DATA SOURCE"].map((k) => (
+                        <button
+                          key={k}
+                          type="button"
+                          onClick={() => setReqKind(k)}
+                          aria-pressed={reqKind === k}
+                          className={cn(
+                            "focus-brand flex min-h-11 items-center justify-center rounded-xl border px-2 font-code text-[10px] font-bold tracking-[0.04em] transition-all",
+                            reqKind === k
+                              ? "border-ink-950 bg-ink-950 text-white"
+                              : "border-ink-200 bg-white text-ink-700 hover:border-ink-400"
+                          )}
+                        >
+                          {k}
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
                 </div>
                 <div>
-                  <label htmlFor="req-note" className="mb-1.5 block font-code text-[9px] font-semibold tracking-[0.18em] text-ink-500">
+                  <label htmlFor="req-note" className="mb-1.5 block font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">
                     NOTE
                   </label>
                   <textarea
@@ -5366,14 +5387,14 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
                     onClick={() => {
                       if (!reqBusy) setReqOpen(false);
                     }}
-                    className="inline-flex h-10 items-center rounded-xl border border-ink-200 px-4 font-code text-[9px] font-bold tracking-[0.14em] text-ink-600 transition-colors hover:border-ink-900 hover:text-ink-950"
+                    className="focus-brand inline-flex min-h-11 items-center rounded-xl border border-ink-200 px-4 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-900 hover:text-ink-950"
                   >
                     CANCEL
                   </button>
                   <button
                     type="submit"
                     disabled={reqBusy}
-                    className="inline-flex h-10 items-center gap-2 rounded-xl bg-ink-950 px-5 font-code text-[9px] font-bold tracking-[0.14em] text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-xl bg-ink-950 px-5 font-code text-[10px] font-bold tracking-[0.06em] text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {reqBusy ? "FILING…" : "FILE REQUEST"}
                   </button>
@@ -5425,14 +5446,14 @@ function AwardLedgerView({
                 transition={{ duration: 0.5, delay: 0.05 * i, ease: EASE }}
                 className="rounded-[12px] panel p-4 shadow-[0_1px_2px_rgba(11,12,15,0.04)]"
               >
-                <p className="font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400">{s.label}</p>
+                <p className="font-code text-[10px] font-semibold tracking-[0.08em] text-ink-600">{s.label}</p>
                 <p className="mt-2 font-display text-[28px] font-black leading-none tracking-[-0.02em] tabular">{s.value}</p>
               </motion.div>
             ))}
           </div>
 
           <div data-tour="ledger-rows" className="overflow-hidden rounded-[12px] panel shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
-            <div className="overflow-x-auto">
+            <HorizontalScrollRegion label="Award history table">
               <table className="w-full min-w-[640px] border-collapse text-left">
                 <caption className="sr-only">Award History — decisions signed at the approval gate</caption>
                 <thead>
@@ -5441,7 +5462,7 @@ function AwardLedgerView({
                       <th
                         key={h}
                         scope="col"
-                        className="px-4 py-2.5 font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400 first:pl-5 first:pr-4 last:pr-5"
+                        className="px-4 py-2.5 font-code text-[10px] font-semibold tracking-[0.1em] text-ink-500 first:pl-5 first:pr-4 last:pr-5"
                       >
                         {h}
                       </th>
@@ -5475,7 +5496,7 @@ function AwardLedgerView({
                       <td className="px-4">
                         <span
                           className={cn(
-                            "inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-code text-[8.5px] font-bold tracking-[0.16em]",
+                            "inline-flex min-h-6 items-center gap-1 rounded-full px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em]",
                             row.action === "AWARDED"
                               ? "bg-ink-950 text-white"
                               : "border border-brand-200 bg-brand-50 text-brand-800"
@@ -5490,15 +5511,15 @@ function AwardLedgerView({
                         </span>
                       </td>
                       <td className="px-4 text-[13px] font-semibold text-ink-700">{row.by}</td>
-                      <td className="py-3.5 pr-4 font-code text-[8.5px] tracking-[0.12em] text-ink-400">{row.at}</td>
+                      <td className="py-3.5 pr-4 font-code text-[10px] tracking-[0.04em] text-ink-600">{row.at}</td>
                       <td className="py-3.5 pr-5">
                         {row.hand ? (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-brand-200 bg-brand-50 px-2 py-0.5 font-code text-[7.5px] font-bold tracking-[0.14em] text-brand-800">
+                          <span className="inline-flex min-h-6 items-center gap-1 rounded-full border border-brand-200 bg-brand-50 px-2 py-0.5 font-code text-[10px] font-bold tracking-[0.06em] text-brand-800">
                             <PenLine className="h-2.5 w-2.5" aria-hidden="true" />
                             APPENDED
                           </span>
                         ) : (
-                          <span className="font-code text-[8.5px] tracking-[0.14em] text-ink-300">—</span>
+                        <span className="font-code text-[10px] tracking-[0.04em] text-ink-500">—</span>
                         )}
                       </td>
                     </tr>
@@ -5512,7 +5533,7 @@ function AwardLedgerView({
                   )}
                 </tbody>
               </table>
-            </div>
+            </HorizontalScrollRegion>
           </div>
         </div>
 
@@ -5521,7 +5542,7 @@ function AwardLedgerView({
             <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
             <div className="relative">
               <h3 className="font-display text-[15px] font-black tracking-[-0.01em]">The gavel has no autoplay</h3>
-              <p className="mt-3 font-code text-[9px] leading-[2] tracking-[0.16em] text-ink-300">
+              <p className="mt-3 font-code text-[10px] leading-[1.7] tracking-[0.08em] text-ink-400">
                 EVERY LINE CARRIES A NAME
                 <br />
                 AND A TIMESTAMP.
@@ -5679,6 +5700,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
      member may summon, admit and write minutes (manage_meetings) without
      being able to change who holds a seat. */
   const canManageRegister = canDo(user?.role, "manage_committee");
+  const reduceMotion = useReducedMotion();
   const [data, setData] = useState<CommitteeData | null>(null);
   const [loadErr, setLoadErr] = useState(false);
   const [summoning, setSummoning] = useState(false);
@@ -5715,6 +5737,35 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
   const notesRef = useRef("");
   const deskRef = useRef<HTMLDivElement | null>(null);
   const closeArmRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const memberDialogRef = useRef<HTMLDivElement | null>(null);
+  const memberNameRef = useRef<HTMLInputElement | null>(null);
+  const memberReturnFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (memberOpen) {
+      const active = document.activeElement;
+      memberReturnFocusRef.current = active instanceof HTMLElement ? active : null;
+      requestAnimationFrame(() => memberNameRef.current?.focus());
+      return;
+    }
+    const target = memberReturnFocusRef.current;
+    memberReturnFocusRef.current = null;
+    if (target?.isConnected) requestAnimationFrame(() => target.focus());
+  }, [memberOpen]);
+
+  useEffect(() => {
+    if (!memberOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || memberBusy) return;
+      const focusedModal = document.activeElement?.closest('[role="dialog"][aria-modal="true"]');
+      if (focusedModal && focusedModal !== memberDialogRef.current) return;
+      setMemberOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [memberOpen, memberBusy]);
+
+  const trapMemberTab = (event: ReactKeyboardEvent<HTMLDivElement>) => trapTabFocus(event, memberDialogRef.current);
 
   const load = useCallback(() => {
     let alive = true;
@@ -5780,7 +5831,8 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
       if (d.minted) {
         setTab("desk");
         window.setTimeout(() => {
-          deskRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+          document.getElementById("committee-pane-desk")?.focus({ preventScroll: true });
+          deskRef.current?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
         }, 180);
       }
     } catch {
@@ -6043,6 +6095,26 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
     );
   }
   const youSeatIndex = roll.findIndex((m) => m.you); /* the gavel's square on the quorum grid */
+  const vacantSeatCount = data ? Math.max(0, data.seats - roll.length) : 0;
+  const attendanceNeeded = data ? Math.max(0, data.required - data.present) : 0;
+  const committeeTabs: { id: CommitteeTab; label: string; mobileLabel: string; icon: LucideIcon }[] = [
+    { id: "roll", label: "Roll call", mobileLabel: "Roll", icon: Users },
+    { id: "quorum", label: "Quorum", mobileLabel: "Quorum", icon: Scale },
+    { id: "desk", label: "Sitting desk", mobileLabel: "Desk", icon: FileText },
+  ];
+  const handleCommitteeTabKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const current = committeeTabs.findIndex((item) => item.id === tab);
+    let next = current;
+    if (event.key === "ArrowRight") next = (current + 1) % committeeTabs.length;
+    else if (event.key === "ArrowLeft") next = (current - 1 + committeeTabs.length) % committeeTabs.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = committeeTabs.length - 1;
+    else return;
+    event.preventDefault();
+    const nextTab = committeeTabs[next].id;
+    setTab(nextTab);
+    requestAnimationFrame(() => document.getElementById(`committee-tab-${nextTab}`)?.focus());
+  };
 
   return (
     <ViewShell
@@ -6061,7 +6133,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
               setMeetErr(null);
               setMeetOpen(true);
             }}
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-ink-950 px-4 font-code text-[9px] font-bold tracking-[0.18em] text-white transition-colors hover:bg-brand-600"
+            className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-xl bg-ink-950 px-4 font-code text-[10px] font-bold tracking-[0.12em] text-white transition-colors hover:bg-brand-600"
           >
             <CalendarPlus className="h-3.5 w-3.5" aria-hidden="true" />
             SCHEDULE MEETING
@@ -6073,7 +6145,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                 setMemberErr(null);
                 setMemberOpen(true);
               }}
-              className="inline-flex h-10 items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 font-code text-[9px] font-bold tracking-[0.18em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950"
+              className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 font-code text-[10px] font-bold tracking-[0.12em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950"
             >
               <UserPlus className="h-3.5 w-3.5" aria-hidden="true" />
               REGISTER A MEMBER
@@ -6084,9 +6156,48 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
     >
       <div className="grid grid-cols-1 gap-4 sm:gap-6">
         <div
+          role="tablist"
+          aria-label="Committee views"
+          onKeyDown={handleCommitteeTabKeyDown}
+          className="flex w-full gap-1 overflow-x-auto rounded-xl border border-ink-200/70 bg-ink-50/80 p-1 dark:border-white/10 dark:bg-white/[0.035] sm:w-fit"
+        >
+          {committeeTabs.map(({ id, label, mobileLabel, icon: Icon }) => {
+            const selected = tab === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                id={`committee-tab-${id}`}
+                aria-selected={selected}
+                aria-controls={`committee-pane-${id}`}
+                tabIndex={selected ? 0 : -1}
+                onClick={() => setTab(id)}
+                className={cn(
+                  "focus-brand inline-flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-2.5 text-[12px] font-semibold transition-colors sm:flex-none sm:px-4 sm:text-[13px]",
+                  selected
+                    ? "bg-white text-ink-950 shadow-[0_1px_3px_rgba(11,12,15,0.12)] dark:bg-white/[0.1] dark:text-white dark:shadow-none dark:ring-1 dark:ring-inset dark:ring-white/[0.14]"
+                    : "text-ink-600 hover:bg-white/70 hover:text-ink-950 dark:text-ink-400 dark:hover:bg-white/[0.05] dark:hover:text-white"
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span className="sm:hidden">{mobileLabel}</span>
+                <span className="hidden sm:inline">{label}</span>
+                {id === "desk" && data?.sitting?.status === "OPEN" ? (
+                  <>
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-brand-600" aria-hidden="true" />
+                    <span className="sr-only">Open sitting</span>
+                  </>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+        <div
           id="committee-pane-roll"
           role="tabpanel"
           aria-labelledby="committee-tab-roll"
+          tabIndex={tab === "roll" ? 0 : -1}
           className={cn("min-w-0", tab !== "roll" && "hidden")}
         >
           {loadErr ? (
@@ -6094,13 +6205,13 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
               <p className="font-code text-[10px] font-bold tracking-[0.22em] text-ink-500">
                 COMMITTEE ROLL UNAVAILABLE
               </p>
-              <p className="mt-2 font-code text-[8px] tracking-[0.18em] text-ink-400">
+              <p className="mt-2 font-code text-[10px] leading-relaxed tracking-[0.08em] text-ink-500">
                 THE RECORD COULD NOT BE READ — NOTHING IS SHOWN RATHER THAN GUESSED
               </p>
               <button
                 type="button"
                 onClick={load}
-                className="mt-4 inline-flex h-9 items-center rounded-xl border border-ink-200 bg-white px-4 font-code text-[9px] font-bold tracking-[0.18em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950"
+                className="focus-brand mt-4 inline-flex min-h-11 items-center rounded-xl border border-ink-200 bg-white px-4 font-code text-[10px] font-bold tracking-[0.12em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950"
               >
                 RE-READ THE ROLL
               </button>
@@ -6118,13 +6229,17 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                 minted twice. */}
             <div className="mb-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-4 rounded-[12px] panel px-5 py-4 sm:mb-6">
               <div className="min-w-0">
-                <p className="font-code text-[9px] font-bold tracking-[0.22em] text-ink-950">
-                  CONVENING — {roll.length} OF {data.seats} PRESENT
+                <p className="font-code text-[10.5px] font-bold tracking-[0.16em] text-ink-950">
+                  CONVENING — {data.present} OF {data.seats} PRESENT
                 </p>
-                <p className="mt-1 text-[12.5px] leading-snug text-ink-500">
-                  {data.open > 0
-                    ? `${data.open} seat${data.open === 1 ? " still stands" : "s still stand"} open — the summons goes out, the roll fills.`
-                    : "Quorum is present — the sitting can proceed."}
+                <p className="mt-1 text-[14px] leading-snug text-ink-600">
+                  {attendanceNeeded > 0 && data.open === 0
+                    ? `The required quorum of ${data.required} exceeds the ${data.seats} available seats. Review Committee settings.`
+                    : attendanceNeeded > 0
+                      ? `${attendanceNeeded} more member${attendanceNeeded === 1 ? "" : "s"} needed to reach quorum; ${data.open} seat${data.open === 1 ? " remains" : "s remain"} open.`
+                      : data.open > 0
+                        ? `Quorum met with ${data.present} present; ${data.open} seat${data.open === 1 ? " remains" : "s remain"} open.`
+                        : "Quorum met — every seat is present."}
                 </p>
               </div>
               <div className="flex items-center gap-4">
@@ -6135,8 +6250,8 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                       title={i < roll.length ? "Seat taken" : "Seat open"}
                       className={cn(
                         "h-2.5 w-2.5 rounded-[3px]",
-                        i < roll.length
-                          ? i === 0
+                        i < data.present
+                          ? i === youSeatIndex
                             ? "bg-brand-500"
                             : "bg-ink-950"
                           : "border border-dashed border-ink-300"
@@ -6148,7 +6263,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                   type="button"
                   onClick={() => void summon()}
                   disabled={summoning}
-                  className="inline-flex h-10 shrink-0 items-center rounded-xl bg-ink-950 px-4 font-code text-[9px] font-bold tracking-[0.18em] text-white transition-colors hover:bg-brand-600 disabled:opacity-50"
+                  className="focus-brand inline-flex min-h-11 shrink-0 items-center rounded-xl bg-ink-950 px-4 font-code text-[10px] font-bold tracking-[0.12em] text-white transition-colors hover:bg-brand-600 disabled:opacity-50"
                 >
                   {summoning ? "SUMMONING…" : "SUMMON THE SITTING"}
                 </button>
@@ -6168,11 +6283,11 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
               {roll.map((m, i) => (
                 <motion.div
                   key={m.name}
-                  initial={{ opacity: 0, y: 18 }}
+                  initial={reduceMotion ? false : { opacity: 0, y: 18 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.05 * i, ease: EASE }}
+                  transition={{ duration: reduceMotion ? 0 : 0.5, delay: reduceMotion ? 0 : 0.05 * i, ease: EASE }}
                   className={cn(
-                    "rounded-[10px] border bg-white p-4 shadow-[0_1px_2px_rgba(11,12,15,0.04)]",
+                    "rounded-[12px] border bg-white p-4 shadow-[0_1px_2px_rgba(11,12,15,0.04)] transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-18px_rgba(11,12,15,0.3)] motion-reduce:transform-none motion-reduce:transition-none",
                     m.you ? "border-brand-300 ring-2 ring-brand-600/15" : m.excused ? "border-ink-100 bg-ink-50/50" : "border-ink-100"
                   )}
                 >
@@ -6188,12 +6303,12 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                     </span>
                     <div className="min-w-0">
                       <p className="truncate text-[13.5px] font-semibold text-ink-950">{m.name}</p>
-                      <p className="mt-0.5 font-code text-[7px] tracking-[0.18em] text-ink-400">{m.role}</p>
+                      <p className="mt-1 text-[11px] font-medium leading-snug text-ink-600">{m.role}</p>
                     </div>
                   </div>
                   <span
                     className={cn(
-                      "mt-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-code text-[8px] font-bold tracking-[0.16em]",
+                      "mt-3 inline-flex min-h-7 items-center gap-1.5 rounded-full px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.08em]",
                       m.you
                         ? "bg-brand-600 text-white"
                         : m.excused
@@ -6216,12 +6331,12 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                     )}
                   </span>
                   {canManageRegister && !m.you && m.id && (
-                    <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-2 border-t border-ink-100 pt-2.5">
+                    <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-2 border-t border-ink-100 pt-3">
                       <select
                         value={m.office ?? ""}
                         onChange={(e) => void setMemberFlag(m.id!, { office: e.target.value || undefined })}
                         aria-label={`Office of ${m.name}`}
-                        className="h-7 min-w-0 flex-1 rounded-lg border border-ink-200 bg-white px-1.5 font-code text-[7.5px] font-bold tracking-[0.12em] text-ink-600"
+                        className="focus-brand h-11 min-w-0 flex-1 rounded-lg border border-ink-200 bg-white px-2 font-code text-[10px] font-bold tracking-[0.04em] text-ink-700"
                       >
                         <option value="">OFFICE…</option>
                         {MEMBER_OFFICES.map((o) => (
@@ -6233,7 +6348,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                       <button
                         type="button"
                         onClick={() => void setMemberFlag(m.id!, { status: m.excused ? "PRESENT" : "EXCUSED" })}
-                        className="whitespace-nowrap font-code text-[7px] font-bold tracking-[0.16em] text-ink-500 transition-colors hover:text-ink-950"
+                        className="focus-brand inline-flex min-h-11 items-center rounded-md px-1 whitespace-nowrap font-code text-[10px] font-bold tracking-[0.06em] text-ink-600 transition-colors hover:text-ink-950"
                       >
                         {m.excused ? "RETURN TO THE ROLL" : "EXCUSE"}
                       </button>
@@ -6242,7 +6357,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                         type="button"
                         onClick={() => void removeMember(m.id!)}
                         className={cn(
-                          "whitespace-nowrap font-code text-[7px] font-bold tracking-[0.16em] transition-colors",
+                          "focus-brand inline-flex min-h-11 items-center rounded-md px-1 whitespace-nowrap font-code text-[10px] font-bold tracking-[0.06em] transition-colors",
                           armRemove === m.id ? "text-brand-600" : "text-ink-500 hover:text-brand-600"
                         )}
                       >
@@ -6252,25 +6367,41 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                   )}
                 </motion.div>
               ))}
-              {Array.from({ length: data.open }).map((_, i) => (
+              {Array.from({ length: vacantSeatCount }).map((_, i) => (
                 <motion.div
                   key={`open-${i}`}
-                  initial={{ opacity: 0 }}
+                  initial={reduceMotion ? false : { opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ duration: 0.5, delay: 0.3 + 0.05 * i, ease: EASE }}
-                  className="grid place-items-center rounded-[10px] border border-dashed border-ink-200 p-4 text-center"
+                  transition={{ duration: reduceMotion ? 0 : 0.5, delay: reduceMotion ? 0 : 0.3 + 0.05 * i, ease: EASE }}
+                  role="group"
+                  aria-label={`Seat ${roll.length + i + 1}, unassigned`}
+                  className="grid min-h-24 place-items-center rounded-[12px] border border-dashed border-ink-200 bg-ink-50/70 p-3 text-center transition-colors hover:border-ink-300 hover:bg-ink-50 motion-reduce:transition-none dark:ring-1 dark:ring-inset dark:ring-white/10"
                 >
                   <div>
-                    {/* Numbered voids — each open seat knows its place at the
-                        table; the gavel tick in the strip is seat one. */}
+                    {/* Only genuinely unassigned seats appear as vacancies;
+                        excused members still occupy their numbered seat. */}
                     <span
-                      className="mx-auto grid h-9 w-9 place-items-center rounded-full border border-dashed border-ink-300 font-code text-[10px] font-bold text-ink-400"
+                      className="mx-auto grid h-9 w-9 place-items-center rounded-full border border-dashed border-ink-300 font-code text-[11px] font-bold text-ink-500"
                       aria-hidden="true"
                     >
                       {roll.length + i + 1}
                     </span>
-                    <p className="mt-2.5 font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400">SEAT OPEN</p>
-                    <p className="mt-1 font-code text-[7px] tracking-[0.18em] text-ink-400">AWAITS THE QUORUM CALL</p>
+                    <p className="mt-2 font-code text-[10px] font-bold tracking-[0.12em] text-ink-600">UNASSIGNED SEAT</p>
+                    {canManageRegister ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMemberErr(null);
+                          setMemberOpen(true);
+                        }}
+                        className="focus-brand mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 text-[11px] font-semibold text-ink-700 transition-colors hover:border-brand-300 hover:text-brand-700"
+                      >
+                        <UserPlus className="h-3.5 w-3.5" aria-hidden="true" />
+                        Register member
+                      </button>
+                    ) : (
+                      <p className="mt-1 text-[11px] text-ink-500">No member is assigned here.</p>
+                    )}
                   </div>
                 </motion.div>
               ))}
@@ -6283,6 +6414,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
           id="committee-pane-quorum"
           role="tabpanel"
           aria-labelledby="committee-tab-quorum"
+          tabIndex={tab === "quorum" ? 0 : -1}
           className={cn("grid content-start gap-4 sm:gap-6", tab === "quorum" && "max-w-xl", tab !== "quorum" && "hidden")}
         >
           <div data-tour="committee-quorum" className="relative overflow-hidden rounded-[12px] border border-ink-950 bg-night p-5 text-white shadow-[0_22px_55px_rgba(11,12,15,0.3)]">
@@ -6319,7 +6451,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                 The minimum of members a committee needs before an award becomes lawful — the mark on the door is that
                 threshold, drawn.
               </p>
-              <p className="mt-4 font-code text-[8px] tracking-[0.18em] text-ink-400">
+              <p className="mt-4 font-code text-[10px] tracking-[0.1em] text-ink-300">
                 {data
                   ? `PRESENT TODAY ${data.present} · OPEN ${data.open} · A SITTING REQUIRES ${data.required}`
                   : "READING THE COMMITTEE RECORD…"}
@@ -6332,12 +6464,12 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
             data-tour="committee-summon"
             onClick={summon}
             disabled={!data || summoning}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-ink-200 bg-white px-4 font-code text-[9px] font-bold tracking-[0.18em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-50"
+            className="focus-brand inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-ink-200 bg-white px-4 font-code text-[10px] font-bold tracking-[0.12em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {summoning ? "ISSUING SUMMONS…" : "SUMMON THE SITTING"}
           </button>
           {data?.lastSummonsAt && (
-            <p className="text-center font-code text-[8px] tracking-[0.18em] text-ink-400">
+            <p className="text-center font-code text-[10px] tracking-[0.1em] text-ink-500">
               LAST SUMMONS {summonsClock(data.lastSummonsAt)} · RECORDED IN THE COMMITTEE REGISTER
             </p>
           )}
@@ -6352,15 +6484,16 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
         id="committee-pane-desk"
         role="tabpanel"
         aria-labelledby="committee-tab-desk"
+        tabIndex={tab === "desk" ? 0 : -1}
         className={cn(tab !== "desk" && "hidden")}
       >
       <div id="mc-sitting-desk" ref={deskRef} className="mt-4 scroll-mt-24 sm:mt-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="flex items-center gap-2.5 font-code text-[9px] font-bold uppercase tracking-[0.26em] text-ink-500">
+          <p className="flex items-center gap-2.5 font-code text-[10px] font-bold uppercase tracking-[0.14em] text-ink-500">
             <span className="inline-block h-[2px] w-6 bg-brand-600" aria-hidden="true" />
             The sitting room
           </p>
-          <span className="inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white px-3 py-1.5 font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-500">
+          <span className="inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white px-3 py-1.5 font-code text-[10px] font-bold tracking-[0.06em] text-ink-500">
             <Video className="h-3 w-3 text-brand-600" aria-hidden="true" />
             OPEN-SOURCE VIDEO · JITSI MEET
           </span>
@@ -6368,7 +6501,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
 
         {data && !deskSitting && (
           <div className="mt-3 rounded-[10px] border border-dashed border-ink-200 bg-white/60 p-6 text-center sm:p-10">
-            <p className="font-code text-[9px] font-bold tracking-[0.24em] text-ink-500">NO SITTING HAS BEEN SUMMONED</p>
+            <p className="font-code text-[10px] font-bold tracking-[0.14em] text-ink-500">NO SITTING HAS BEEN SUMMONED</p>
             <p className="mx-auto mt-2 max-w-xl text-[13px] leading-relaxed text-ink-500">
               A summons mints the room — a fresh, unlisted Jitsi address that no other meeting has ever used — and
               opens the minutes on this desk. The door list is written from the committee register and nothing else:
@@ -6379,20 +6512,20 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                 value={agenda}
                 onChange={(e) => setAgenda(e.target.value)}
                 placeholder="Agenda — optional, e.g. 'Award decision: GRZ/2026/041'"
-                className="h-10 min-w-0 flex-1 rounded-xl border border-ink-200 bg-white px-3.5 text-[12.5px] text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950"
+                className="h-11 min-w-0 flex-1 rounded-xl border border-ink-200 bg-white px-3.5 text-[14px] text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950"
                 aria-label="Optional agenda for the sitting"
               />
               <button
                 type="button"
                 onClick={() => void summon()}
                 disabled={summoning}
-                className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 font-code text-[9px] font-bold tracking-[0.18em] text-white shadow-[0_10px_26px_rgba(217,38,22,0.28)] transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="focus-brand inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 font-code text-[10px] font-bold tracking-[0.06em] text-white shadow-[0_10px_26px_rgba(217,38,22,0.28)] transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Video className="h-3.5 w-3.5" aria-hidden="true" />
                 {summoning ? "MINTING THE ROOM…" : "SUMMON & MINT THE ROOM"}
               </button>
             </div>
-            <p className="mt-3 font-code text-[7.5px] tracking-[0.18em] text-ink-400">
+            <p className="mt-3 font-code text-[10px] leading-relaxed tracking-[0.06em] text-ink-500">
               THE OFFICER HOLDS THE GAVEL AND IS ADMITTED AT THE SUMMONS · THE MINUTES OPEN WITH THE ROOM
             </p>
           </div>
@@ -6402,7 +6535,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
           <>
             {!openSitting ? (
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-[12px] panel px-4 py-3">
-                <p className="font-code text-[8px] font-bold tracking-[0.18em] text-ink-500">
+                <p className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-700">
                   NO SITTING IS OPEN — THE DESK SHOWS A SEALED RECORD
                 </p>
                 <div className="flex min-w-0 items-center gap-2">
@@ -6410,14 +6543,14 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                     value={agenda}
                     onChange={(e) => setAgenda(e.target.value)}
                     placeholder="Agenda (optional)"
-                    className="h-9 w-48 min-w-0 rounded-lg border border-ink-200 bg-white px-3 text-[12px] text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950"
+                    className="focus-brand h-11 w-48 min-w-0 rounded-lg border border-ink-200 bg-white px-3 text-[14px] text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950"
                     aria-label="Optional agenda for the next sitting"
                   />
                   <button
                     type="button"
                     onClick={() => void summon()}
                     disabled={summoning}
-                    className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg bg-brand-600 px-4 font-code text-[8px] font-bold tracking-[0.18em] text-white transition-colors hover:bg-brand-700 disabled:opacity-60"
+                    className="focus-brand inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg bg-brand-600 px-4 font-code text-[10px] font-bold tracking-[0.04em] text-white transition-colors hover:bg-brand-700 disabled:opacity-60"
                   >
                     <Video className="h-3.5 w-3.5" aria-hidden="true" />
                     {summoning ? "MINTING…" : "SUMMON A NEW SITTING"}
@@ -6426,13 +6559,13 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
               </div>
             ) : deskSitting.id !== openSitting.id ? (
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-[12px] panel px-4 py-3">
-                <p className="font-code text-[8px] font-bold tracking-[0.18em] text-ink-500">
+                <p className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">
                   READING HISTORY — A SITTING IS OPEN
                 </p>
                 <button
                   type="button"
                   onClick={() => setSelectedId(null)}
-                  className="font-code text-[8px] font-bold tracking-[0.18em] text-brand-600 transition-colors hover:text-brand-700"
+                  className="focus-brand inline-flex min-h-11 items-center font-code text-[10px] font-bold tracking-[0.06em] text-brand-700 transition-colors hover:text-brand-800"
                 >
                   BACK TO THE OPEN SITTING →
                 </button>
@@ -6446,12 +6579,12 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                   <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
                   <div className="relative">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <p className="font-code text-[8px] font-semibold tracking-[0.24em] text-ink-400">
+                      <p className="font-code text-[10px] font-semibold tracking-[0.1em] text-ink-300">
                         {deskSitting.status === "OPEN" ? "THE ROOM IS OPEN" : "THE ROOM IS RETIRED"}
                       </p>
                       <span
                         className={cn(
-                          "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-code text-[7.5px] font-bold tracking-[0.16em]",
+                          "inline-flex min-h-6 items-center gap-1.5 rounded-full px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em]",
                           deskSitting.status === "OPEN" ? "bg-brand-600 text-white" : "border border-white/20 text-ink-300"
                         )}
                       >
@@ -6483,7 +6616,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                       </span>
                     </div>
                     {deskSitting.agenda && (
-                      <p className="mt-3 font-code text-[8px] tracking-[0.16em] text-ink-400">
+                      <p className="mt-3 font-code text-[10px] tracking-[0.04em] text-ink-300">
                         AGENDA — {deskSitting.agenda.toUpperCase()}
                       </p>
                     )}
@@ -6514,7 +6647,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                         {copied ? "Copied" : "Copy the link"}
                       </button>
                     </div>
-                    <p className="mt-3.5 font-code text-[7.5px] leading-[2] tracking-[0.16em] text-ink-400">
+                    <p className="mt-3.5 font-code text-[10px] leading-relaxed tracking-[0.06em] text-ink-500">
                       JITSI MEET · FREE & OPEN SOURCE (APACHE-2.0) · NO ACCOUNT, NO INSTALL · MINTED FOR THIS SITTING ONLY
                       {deskSitting.status === "OPEN" && <> · SUMMONED BY {deskSitting.summonedBy.toUpperCase()}</>}
                     </p>
@@ -6525,13 +6658,13 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                   <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 px-5 py-4">
                     <div>
                       <h3 className="font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">The minutes — captured here</h3>
-                      <p className="mt-0.5 font-code text-[7.5px] tracking-[0.18em] text-ink-400">
+                      <p className="mt-0.5 font-code text-[10px] tracking-[0.06em] text-ink-500">
                         WRITTEN FROM THE DESK · EVERY SAVE LANDS IN THE RECORD
                       </p>
                     </div>
                     <span
                       className={cn(
-                        "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 font-code text-[7.5px] font-bold tracking-[0.16em]",
+                        "inline-flex min-h-8 items-center gap-1.5 rounded-full px-3 py-1.5 font-code text-[10px] font-bold tracking-[0.06em]",
                         notesState === "error"
                           ? "border border-brand-200 bg-brand-50 text-brand-700"
                           : notesState === "idle" && notesSavedAt
@@ -6575,7 +6708,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                       aria-label="The minutes of the sitting"
                     />
                     <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                      <p className="font-code text-[7.5px] tracking-[0.18em] text-ink-400">
+                  <p className="font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600">
                         {notesDraft.trim().length > 0 ? `${notesDraft.trim().length.toLocaleString()} CHARS · ` : ""}
                         {deskSitting.notesUpdatedAt
                           ? `LAST WRITTEN ${summonsClock(deskSitting.notesUpdatedAt)} BY ${(deskSitting.notesUpdatedBy ?? "—").toUpperCase()}`
@@ -6586,7 +6719,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                           <button
                             type="button"
                             onClick={() => void flushNotes()}
-                            className="inline-flex h-9 items-center gap-2 rounded-lg border border-ink-200 bg-white px-3.5 font-code text-[8px] font-bold tracking-[0.16em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950"
+                            className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg border border-ink-200 bg-white px-3.5 font-code text-[10px] font-bold tracking-[0.04em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950"
                           >
                             SAVE NOW
                           </button>
@@ -6594,7 +6727,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                         <button
                           type="button"
                           onClick={downloadMinutes}
-                          className="inline-flex h-9 items-center gap-2 rounded-lg border border-ink-200 bg-white px-3.5 font-code text-[8px] font-bold tracking-[0.16em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950"
+                          className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg border border-ink-200 bg-white px-3.5 font-code text-[10px] font-bold tracking-[0.04em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950"
                         >
                           <Download className="h-3.5 w-3.5" aria-hidden="true" />
                           DOWNLOAD .MD
@@ -6604,7 +6737,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                             type="button"
                             onClick={() => void closeSitting()}
                             className={cn(
-                              "inline-flex h-9 items-center gap-2 rounded-lg px-3.5 font-code text-[8px] font-bold tracking-[0.16em] transition-colors",
+                              "focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg px-3.5 font-code text-[10px] font-bold tracking-[0.04em] transition-colors",
                               confirmClose
                                 ? "bg-brand-600 text-white hover:bg-brand-700"
                                 : "border border-ink-200 bg-white text-ink-600 hover:border-ink-950 hover:text-ink-950"
@@ -6626,7 +6759,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                   <header className="border-b border-ink-100 px-5 py-4">
                     <div className="flex items-center justify-between gap-3">
                       <h3 className="font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">The door</h3>
-                      <span className="font-code text-[8px] font-bold tracking-[0.18em] text-ink-500">
+                      <span className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-700">
                         {deskSitting.attendance.filter((a) => a.admitted).length}/{deskSitting.attendance.length} ADMITTED
                       </span>
                     </div>
@@ -6640,7 +6773,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                       <li key={a.memberId} className="flex items-center gap-3 px-4 py-3">
                         <span
                           className={cn(
-                            "grid h-9 w-9 shrink-0 place-items-center rounded-full font-code text-[9px] font-bold text-white",
+                            "grid h-9 w-9 shrink-0 place-items-center rounded-full font-code text-[10px] font-bold text-white",
                             a.expected === "OFFICER" ? "bg-brand-600" : "bg-ink-950"
                           )}
                           aria-hidden="true"
@@ -6649,7 +6782,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                         </span>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[12.5px] font-semibold text-ink-950">{a.name}</p>
-                          <p className="mt-0.5 flex flex-wrap items-center gap-1.5 font-code text-[7px] tracking-[0.16em] text-ink-400">
+                          <p className="mt-0.5 flex flex-wrap items-center gap-1.5 font-code text-[10px] tracking-[0.04em] text-ink-600">
                             <span className="truncate">{a.expected === "OFFICER" ? "PROCUREMENT OFFICER" : a.role}</span>
                             {a.expected === "EXCUSED" && (
                               <span className="rounded-full border border-ink-200 px-1.5 py-0.5">EXCUSED</span>
@@ -6665,7 +6798,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                             onClick={() => void admit(a.memberId, !a.admitted)}
                             disabled={admitBusy === a.memberId}
                             className={cn(
-                              "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-3 font-code text-[7.5px] font-bold tracking-[0.16em] transition-colors disabled:cursor-wait",
+                              "focus-brand inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-3 font-code text-[10px] font-bold tracking-[0.06em] transition-colors disabled:cursor-wait",
                               a.admitted
                                 ? "bg-ink-950 text-white hover:bg-ink-800"
                                 : "border border-ink-200 bg-white text-ink-500 hover:border-ink-950 hover:text-ink-950"
@@ -6677,7 +6810,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                         ) : (
                           <span
                             className={cn(
-                              "shrink-0 rounded-full px-2.5 py-1 font-code text-[7.5px] font-bold tracking-[0.16em]",
+                              "inline-flex min-h-6 shrink-0 items-center rounded-full px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em]",
                               a.admitted ? "bg-ink-50 text-ink-700" : "border border-ink-200 text-ink-500"
                             )}
                           >
@@ -6687,13 +6820,13 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                       </li>
                     ))}
                     {deskSitting.attendance.length === 0 && (
-                      <li className="px-5 py-6 text-center font-code text-[8px] tracking-[0.18em] text-ink-400">
+                      <li className="px-5 py-6 text-center font-code text-[10px] tracking-[0.04em] text-ink-600">
                         THE REGISTER IS EMPTY — REGISTER THE MEMBERS AND THEY APPEAR AT THE DOOR
                       </li>
                     )}
                   </ul>
                   <footer className="border-t border-ink-100 bg-paper/70 px-5 py-3">
-                    <p className="font-code text-[7.5px] leading-[2] tracking-[0.16em] text-ink-400">
+                    <p className="font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600">
                       A JITSI ROOM CANNOT VERIFY IDENTITIES BY ITSELF — THIS DOOR IS THE VERIFICATION. ADMIT ONLY
                       REGISTERED NAMES; ANY STRANGER IN THE ROOM IS NOT OF THIS COMMITTEE.
                     </p>
@@ -6705,8 +6838,8 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
             {data.sittings.length > 1 && (
               <div className="mt-4 overflow-hidden rounded-[12px] panel sm:mt-5">
                 <header className="flex items-center justify-between gap-3 border-b border-ink-100 px-5 py-3.5">
-                  <h3 className="font-code text-[9px] font-bold tracking-[0.22em] text-ink-500">THE SITTING REGISTER</h3>
-                  <span className="font-code text-[7.5px] tracking-[0.18em] text-ink-400">{data.sittings.length} MOST RECENT</span>
+                  <h3 className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">THE SITTING REGISTER</h3>
+                  <span className="font-code text-[10px] tracking-[0.04em] text-ink-600">{data.sittings.length} MOST RECENT</span>
                 </header>
                 <ul className="divide-y divide-ink-100">
                   {data.sittings.map((s) => (
@@ -6722,16 +6855,16 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                           deskSitting.id === s.id && "bg-paper"
                         )}
                       >
-                        <span className="font-code text-[8px] font-bold tracking-[0.16em] text-ink-400">
+                        <span className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">
                           {dayOf(s.summonedAt).toUpperCase()}
                         </span>
                         <span className="text-[12.5px] font-semibold text-ink-950">{s.title}</span>
-                        <span className="font-code text-[7.5px] tracking-[0.16em] text-ink-400">
+                        <span className="font-code text-[10px] tracking-[0.04em] text-ink-600">
                           {s.attendance.filter((a) => a.admitted).length} ADMITTED · {s.notes.trim().length.toLocaleString()} CHARS
                         </span>
                         <span
                           className={cn(
-                            "ml-auto shrink-0 rounded-full px-2.5 py-1 font-code text-[7.5px] font-bold tracking-[0.16em]",
+                            "ml-auto inline-flex min-h-6 shrink-0 items-center rounded-full px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em]",
                             s.status === "OPEN" ? "bg-brand-600 text-white" : "border border-ink-200 text-ink-500"
                           )}
                         >
@@ -6776,22 +6909,25 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
             onClick={() => {
               if (!memberBusy) setMemberOpen(false);
             }}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Add a committee member"
           >
             <motion.div
+              ref={memberDialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="committee-member-dialog-title"
+              tabIndex={-1}
               initial={{ opacity: 0, y: 18, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12 }}
               transition={{ duration: 0.28, ease: EASE }}
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={trapMemberTab}
               className="w-full max-w-lg rounded-[12px] panel panel-lift p-5 sm:p-7"
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="font-code text-[8px] font-semibold tracking-[0.24em] text-ink-400">THE COMMITTEE REGISTER</p>
-                  <h3 className="mt-1 font-display text-[20px] font-black tracking-[-0.015em] text-ink-950">
+                  <p className="font-code text-[10px] font-semibold tracking-[0.12em] text-ink-600">The committee register</p>
+                  <h3 id="committee-member-dialog-title" className="mt-1 font-display text-[20px] font-black tracking-[-0.015em] text-ink-950">
                     Register a member<span className="text-brand-600">.</span>
                   </h3>
                   <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-500">
@@ -6805,39 +6941,40 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                     if (!memberBusy) setMemberOpen(false);
                   }}
                   aria-label="Close without saving"
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-paper hover:text-ink-900"
+                  className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-lg text-ink-500 transition-colors hover:bg-paper hover:text-ink-900"
                 >
                   <X className="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
               <div className="mt-5 grid grid-cols-1 gap-3">
                 <label className="block">
-                  <span className="font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-400">FULL NAME</span>
+                  <span className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-700">Full name</span>
                   <input
+                    ref={memberNameRef}
                     value={memberDraft.name}
                     onChange={(e) => setMemberDraft((d) => ({ ...d, name: e.target.value }))}
                     placeholder="e.g. Mwansa Chileshe"
-                    className="mt-1.5 h-10 w-full rounded-xl border border-ink-200 bg-white px-3.5 text-[13px] text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950"
+                    className="focus-brand mt-1.5 h-11 w-full rounded-xl border border-ink-200 bg-white px-3.5 text-[13px] text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950 dark:border-white/15 dark:bg-[#0b0d12] dark:text-white dark:placeholder:text-ink-500"
                   />
                 </label>
                 <label className="block">
-                  <span className="font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-400">ACTIVE WORKSPACE ACCOUNT EMAIL</span>
+                  <span className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-700">Active workspace account email</span>
                   <input
                     type="email"
                     value={memberDraft.email}
                     onChange={(e) => setMemberDraft((d) => ({ ...d, email: e.target.value }))}
                     placeholder="member@organisation.gov.zm"
-                    className="mt-1.5 h-10 w-full rounded-xl border border-ink-200 bg-white px-3.5 text-[13px] text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950"
+                    className="focus-brand mt-1.5 h-11 w-full rounded-xl border border-ink-200 bg-white px-3.5 text-[13px] text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950 dark:border-white/15 dark:bg-[#0b0d12] dark:text-white dark:placeholder:text-ink-500"
                   />
-                  <span className="mt-1 block text-[11px] text-ink-500">This links their signed-in account to their committee seat for declarations and evaluation records.</span>
+                  <span className="mt-1 block text-[11.5px] leading-relaxed text-ink-600">This links their signed-in account to their committee seat for declarations and evaluation records.</span>
                 </label>
                 <label className="block">
-                  <span className="font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-400">ROLE ON THE COMMITTEE</span>
+                  <span className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-700">Role on the committee</span>
                   <input
                     value={memberDraft.role}
                     onChange={(e) => setMemberDraft((d) => ({ ...d, role: e.target.value }))}
                     placeholder="e.g. DIRECTOR OF PROCUREMENT · FINANCE"
-                    className="mt-1.5 h-10 w-full rounded-xl border border-ink-200 bg-white px-3.5 text-[13px] text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950"
+                    className="focus-brand mt-1.5 h-11 w-full rounded-xl border border-ink-200 bg-white px-3.5 text-[13px] text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950 dark:border-white/15 dark:bg-[#0b0d12] dark:text-white dark:placeholder:text-ink-500"
                   />
                 </label>
                 <label className="flex items-center gap-2.5 rounded-xl border border-ink-100 bg-paper/60 px-3.5 py-3">
@@ -6856,7 +6993,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                 </p>
               )}
               <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-                <p className="font-code text-[7.5px] tracking-[0.16em] text-ink-400">IT IS A WRITE — THE ROSTER CHANGES FOR REAL</p>
+                <p className="text-[11px] leading-relaxed text-ink-600">Adding a member updates the committee register.</p>
                 <button
                   type="button"
                   onClick={() => void addMember()}
@@ -6915,22 +7052,22 @@ function WorkspaceRoleMatrix() {
   return (
     <section className="overflow-hidden rounded-xl border border-ink-100 bg-paper/60" aria-labelledby="workspace-role-matrix-heading">
       <div className="border-b border-ink-100 px-4 py-3">
-        <p className="font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400">ACCESS BY ROLE</p>
+        <p className="font-code text-[10px] font-semibold tracking-[0.08em] text-ink-600">ACCESS BY ROLE</p>
         <h4 id="workspace-role-matrix-heading" className="mt-1 text-[13px] font-bold text-ink-950">Workspace permission matrix</h4>
         <p className="mt-1 text-[11px] leading-relaxed text-ink-500">
           These permissions are enforced by the server for the role on the authenticated account. Gate signatures also
           require the right statutory office, roster status and any required step-up authentication.
         </p>
       </div>
-      <div className="overflow-x-auto">
+      <HorizontalScrollRegion label="Workspace role capability matrix">
         <table className="w-full min-w-[980px] border-collapse text-left">
           <thead>
             <tr className="border-b border-ink-100 bg-paper/80">
-              <th scope="col" className="sticky left-0 z-10 min-w-[280px] bg-paper px-4 py-3 font-code text-[8px] font-bold tracking-[0.14em] text-ink-400">CAPABILITY</th>
+              <th scope="col" className="sticky left-0 z-10 min-w-[280px] bg-paper px-4 py-3 font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">CAPABILITY</th>
               {WORKSPACE_ROLE_ORDER.map((role) => (
                 <th key={role} scope="col" className="min-w-[120px] px-3 py-3 text-center">
-                  <span className="block font-code text-[8px] font-bold tracking-[0.13em] text-ink-700">{ROLE_LABELS[role].toUpperCase()}</span>
-                  <span className="mt-1 block max-w-[155px] text-[9px] font-normal leading-snug text-ink-400">{ROLE_DESCRIPTIONS[role]}</span>
+                  <span className="block font-code text-[10px] font-bold tracking-[0.06em] text-ink-800">{ROLE_LABELS[role].toUpperCase()}</span>
+                  <span className="mt-1 block max-w-[155px] text-[10px] font-normal leading-snug text-ink-600">{ROLE_DESCRIPTIONS[role]}</span>
                 </th>
               ))}
             </tr>
@@ -6940,7 +7077,7 @@ function WorkspaceRoleMatrix() {
               <tr key={capability.key} className="border-b border-ink-100 last:border-0">
                 <th scope="row" className="sticky left-0 z-10 bg-paper px-4 py-2.5 align-top">
                   <span className="block text-[10.5px] font-semibold text-ink-800">{capability.label}</span>
-                  <span className="mt-0.5 block max-w-[340px] text-[9.5px] font-normal leading-snug text-ink-400">{capability.description}</span>
+                  <span className="mt-1 block max-w-[340px] text-[10.5px] font-normal leading-snug text-ink-500">{capability.description}</span>
                 </th>
                 {WORKSPACE_ROLE_ORDER.map((role) => {
                   const granted = canDo(role, capability.key);
@@ -6949,7 +7086,7 @@ function WorkspaceRoleMatrix() {
                       <span
                         aria-label={`${ROLE_LABELS[role]} ${granted ? "can" : "cannot"} ${capability.label}`}
                         className={cn(
-                          "inline-grid h-5 min-w-5 place-items-center rounded-full border px-1 font-code text-[9px] font-bold",
+                          "inline-grid h-5 min-w-5 place-items-center rounded-full border px-1 font-code text-[10px] font-bold",
                           granted
                             ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/[0.08] dark:text-emerald-300"
                             : "border-ink-100 bg-paper text-ink-300 dark:border-white/8 dark:bg-white/[0.02] dark:text-ink-500",
@@ -6964,7 +7101,7 @@ function WorkspaceRoleMatrix() {
             ))}
           </tbody>
         </table>
-      </div>
+      </HorizontalScrollRegion>
     </section>
   );
 }
@@ -7062,7 +7199,7 @@ function TeamMembersSection({
   };
 
   const cardClass = "rounded-[12px] panel p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]";
-  const labelClass = "font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400";
+  const labelClass = "font-code text-[10px] font-semibold tracking-[0.12em] text-ink-600";
   const titleClass = "mt-1.5 font-display text-[15px] font-black tracking-[-0.01em] text-ink-950";
 
   return (
@@ -7077,7 +7214,7 @@ function TeamMembersSection({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-paper px-3 py-1.5 font-code text-[8px] font-bold tracking-[0.14em] text-ink-500">
+            <span className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-ink-200 bg-paper px-3 py-1.5 font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">
             <Users className="h-3 w-3" aria-hidden="true" />
             {data ? `${data.members.length} MEMBER${data.members.length === 1 ? "" : "S"}` : "INVITATIONS"}
           </span>
@@ -7085,7 +7222,7 @@ function TeamMembersSection({
             <button
               type="button"
               onClick={onOpenOversight}
-              className="inline-flex items-center gap-1.5 rounded-full border border-ink-950 bg-ink-950 px-3 py-1.5 font-code text-[8px] font-bold tracking-[0.14em] text-white transition-colors hover:bg-ink-800"
+              className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg border border-ink-950 bg-ink-950 px-4 py-2 font-code text-[10.5px] font-bold tracking-[0.08em] text-white transition-colors hover:bg-ink-800"
             >
               <Scale className="h-3 w-3" aria-hidden="true" />
               OPEN OVERSIGHT
@@ -7097,7 +7234,7 @@ function TeamMembersSection({
                daily flow. */
             <a
               href="/admin"
-              className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-paper px-3 py-1.5 font-code text-[8px] font-bold tracking-[0.14em] text-ink-600 transition-colors hover:border-ink-400 hover:text-ink-950"
+              className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg border border-ink-200 bg-paper px-4 py-2 font-code text-[10.5px] font-bold tracking-[0.08em] text-ink-700 transition-colors hover:border-ink-400 hover:text-ink-950"
             >
               <Gauge className="h-3 w-3" aria-hidden="true" />
               CONTROL ROOM
@@ -7123,18 +7260,18 @@ function TeamMembersSection({
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-[13px] font-semibold text-ink-950">{m.name}</p>
-              <p className="truncate font-code text-[8px] tracking-[0.12em] text-ink-500">{m.email.toUpperCase()}</p>
+              <p className="truncate text-[11px] text-ink-600">{m.email}</p>
             </div>
-            <span className="rounded-full border border-ink-200 bg-white px-2.5 py-1 font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-600">
+            <span className="rounded-full border border-ink-200 bg-white px-2.5 py-1.5 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700">
               {ROLE_LABELS[m.role].toUpperCase()}
             </span>
             {m.status === "SUSPENDED" && (
-              <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 font-code text-[7.5px] font-bold tracking-[0.14em] text-red-700">
+              <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-1.5 font-code text-[10px] font-bold tracking-[0.06em] text-red-800">
                 SUSPENDED
               </span>
             )}
             {m.currentAccount && (
-              <span className="rounded-full border border-ink-100 bg-paper px-2.5 py-1 font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-400">
+              <span className="rounded-full border border-ink-100 bg-paper px-2.5 py-1.5 font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">
                 YOU
               </span>
             )}
@@ -7145,7 +7282,7 @@ function TeamMembersSection({
       {/* Invite composer — only the roles that may write people access */}
       {user && data?.canManage && (
         <div className="mt-5 rounded-xl border border-ink-100 bg-paper/60 p-4">
-          <p className="font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400">INVITE A TEAMMATE</p>
+          <p className="font-code text-[10px] font-semibold tracking-[0.12em] text-ink-600">Invite a teammate</p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <input
               type="email"
@@ -7153,13 +7290,13 @@ function TeamMembersSection({
               onChange={(e) => setInviteEmail(e.target.value)}
               placeholder="colleague@authority.go.ke"
               aria-label="Colleague email"
-              className="h-10 min-w-0 flex-1 rounded-lg border border-ink-200 bg-white px-3 text-[13px] text-ink-950 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-400"
+              className="focus-brand h-11 min-w-0 flex-1 rounded-lg border border-ink-200 bg-white px-3 text-[13px] text-ink-950 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-400 dark:border-white/15 dark:bg-[#0b0d12] dark:text-white dark:placeholder:text-ink-500"
             />
             <select
               value={inviteRole}
               onChange={(e) => setInviteRole(e.target.value as AssignableRole)}
               aria-label="Workspace role"
-              className="h-10 rounded-lg border border-ink-200 bg-white px-3 font-code text-[9px] font-bold tracking-[0.14em] text-ink-700 outline-none"
+              className="focus-brand h-11 rounded-lg border border-ink-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700 outline-none dark:border-white/15 dark:bg-[#0b0d12] dark:text-ink-200"
             >
               {(data.actorRole === "OWNER" ? ASSIGNABLE_ROLES : ASSIGNABLE_ROLES.filter((role) => role !== "ADMIN")).map(
                 (role) => (
@@ -7173,7 +7310,7 @@ function TeamMembersSection({
               type="button"
               onClick={invite}
               disabled={busy}
-              className="inline-flex h-10 items-center gap-2 rounded-lg bg-ink-950 px-4 font-code text-[9px] font-bold tracking-[0.16em] text-white transition-colors hover:bg-ink-800 disabled:opacity-60"
+              className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg bg-ink-950 px-4 py-2 font-code text-[10.5px] font-bold tracking-[0.08em] text-white transition-colors hover:bg-ink-800 disabled:opacity-60"
             >
               <Plus className="h-3.5 w-3.5" aria-hidden="true" />
               {busy ? "CREATING…" : "CREATE INVITE"}
@@ -7195,7 +7332,7 @@ function TeamMembersSection({
               <button
                 type="button"
                 onClick={copyCode}
-                className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-white px-3 py-1 font-code text-[8px] font-bold tracking-[0.14em] text-brand-800 transition-colors hover:bg-brand-100"
+                className="focus-brand ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-brand-200 bg-white px-3 py-2 font-code text-[10px] font-bold tracking-[0.06em] text-brand-800 transition-colors hover:bg-brand-100"
               >
                 <Copy className="h-3 w-3" aria-hidden="true" />
                 {copied ? "COPIED" : "COPY CODE"}
@@ -7208,16 +7345,16 @@ function TeamMembersSection({
       {/* Pending invites — shared codes, whoever from accounts */}
       {data && data.invites.length > 0 && (
         <div className="mt-4">
-          <p className="font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400">PENDING INVITATIONS</p>
+          <p className="font-code text-[10px] font-semibold tracking-[0.12em] text-ink-600">Pending invitations</p>
           <ul className="mt-2">
             {data.invites.map((inv) => (
               <li key={inv.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-ink-100 bg-paper/60 px-4 py-3">
                 <span className="font-code text-[11px] font-bold tracking-[0.16em] text-ink-950">{inv.code ?? "———"}</span>
-                <span className="rounded-full border border-ink-100 bg-white px-2 py-0.5 font-code text-[7.5px] font-bold tracking-[0.12em] text-ink-500">
+            <span className="rounded-full border border-ink-100 bg-white px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.04em] text-ink-700">
                   {inv.role}
                 </span>
                 {inv.email && <span className="truncate text-[11.5px] text-ink-400">for {inv.email}</span>}
-                <span className="truncate text-[10px] text-ink-400">
+                <span className="truncate text-[11px] text-ink-600">
                   {inv.status === "CLAIMED"
                     ? `claimed by ${inv.claimedByEmail ?? "a member"}`
                     : inv.status === "REVOKED"
@@ -7236,7 +7373,7 @@ function TeamMembersSection({
                   <button
                     type="button"
                     onClick={() => revoke(inv.id)}
-                    className="ml-auto rounded-full border border-ink-200 px-2.5 py-1 font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-500 transition-colors hover:border-brand-200 hover:text-brand-800"
+                    className="focus-brand ml-auto inline-flex min-h-11 items-center rounded-lg border border-ink-200 px-3 py-2 font-code text-[10px] font-bold tracking-[0.06em] text-ink-600 transition-colors hover:border-brand-200 hover:text-brand-800"
                   >
                     REVOKE
                   </button>
@@ -7275,10 +7412,10 @@ function GuardPills<T extends string>({
           aria-pressed={value === o}
           disabled={disabled}
           className={cn(
-            "h-8 rounded-full border px-3.5 font-code text-[8.5px] font-bold tracking-[0.14em] transition-all",
+            "focus-brand inline-flex min-h-11 items-center rounded-full border px-3.5 font-code text-[10px] font-bold tracking-[0.04em] transition-all",
             value === o
               ? "border-ink-950 bg-ink-950 text-white"
-              : "border-ink-200 bg-white text-ink-500 hover:border-ink-400",
+              : "border-ink-200 bg-white text-ink-700 hover:border-ink-400",
             disabled && "cursor-not-allowed opacity-55 hover:border-ink-200"
           )}
         >
@@ -7317,7 +7454,7 @@ function SettingsView({
   ];
 
   const cardClass = "rounded-[12px] panel p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]";
-  const labelClass = "font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400";
+  const labelClass = "font-code text-[10px] font-semibold tracking-[0.08em] text-ink-600";
   const titleClass = "mt-1.5 font-display text-[15px] font-black tracking-[-0.01em] text-ink-950";
 
   return (
@@ -7339,11 +7476,11 @@ function SettingsView({
             </span>
             <div className="min-w-0">
               <p className="truncate text-[15px] font-semibold text-ink-950">{user?.name ?? "Guest officer"}</p>
-              <p className="truncate font-code text-[9px] tracking-[0.14em] text-ink-500">
+              <p className="truncate font-code text-[10px] tracking-[0.06em] text-ink-600">
                 {(user?.email ?? "NOT SIGNED IN").toUpperCase()}
               </p>
               {user?.role ? (
-                <span className="mt-2 inline-flex rounded-full border border-brand-200 bg-brand-50 px-2.5 py-1 font-code text-[8px] font-bold tracking-[0.14em] text-brand-800 dark:border-brand-400/25 dark:bg-brand-400/[0.08] dark:text-brand-300">
+                <span className="mt-2 inline-flex min-h-6 items-center rounded-full border border-brand-200 bg-brand-50 px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em] text-brand-800 dark:border-brand-400/25 dark:bg-brand-400/[0.08] dark:text-brand-300">
                   {ROLE_LABELS[user.role].toUpperCase()}
                 </span>
               ) : null}
@@ -7361,7 +7498,7 @@ function SettingsView({
           <button
             type="button"
             onClick={onSignOut}
-            className="mt-5 inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-4 py-2 font-code text-[9px] font-bold tracking-[0.16em] text-brand-800 transition-colors hover:bg-brand-100"
+            className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-4 font-code text-[10px] font-bold tracking-[0.08em] text-brand-800 transition-colors hover:bg-brand-100"
           >
             <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
             SIGN OUT
@@ -7383,7 +7520,7 @@ function SettingsView({
           <dl className="mt-5 grid grid-cols-1 divide-y divide-ink-100 sm:grid-cols-2 sm:divide-y-0">
             {connection.map((row) => (
               <div key={row.label} className="flex items-center justify-between gap-4 border-ink-100 py-3 sm:border-b sm:pr-4">
-                <dt className="font-code text-[9px] tracking-[0.16em] text-ink-500">{row.label.toUpperCase()}</dt>
+                <dt className="font-code text-[10px] tracking-[0.08em] text-ink-600">{row.label.toUpperCase()}</dt>
                 <dd className="text-right font-code text-[10px] font-bold tracking-[0.08em] text-ink-950">{row.value}</dd>
               </div>
             ))}
@@ -7447,7 +7584,7 @@ const WALKTHROUGH: WalkthroughChapter[] = [
     title: "Launch an evaluation",
     summary: "A run is one tender reviewed end to end. The wizard takes three steps and never starts until you confirm the scope.",
     steps: [
-      "Details: enter the tender reference and the published title exactly as it appears, then pick the source format (OCDS, PDF pack or email bag).",
+      "Details: Quorum assigns the system reference. Add the published tender title and choose the source format (OCDS, PDF pack or email bag).",
       "Documents: drop up to 12 files. Each one moves from RECEIVED to PARSING to INDEXED before you can continue. Real uploads also mirror to cloud storage, or stay in the local vault.",
       "Scope: choose which checks the review runs. Page-level citations stay on for every finding.",
       "Launch: the evaluation is queued and you land on Evaluations, where it goes live.",
@@ -7856,7 +7993,7 @@ function WalkthroughView({
                 aria-label={`Start the guided walkthrough — ${ch.title}`}
                 className="group flex w-full items-center gap-3 rounded-xl border border-ink-100 bg-white px-4 py-3 text-left transition-colors hover:border-brand-500/60"
               >
-                <span className="font-code text-[9px] font-bold tracking-[0.14em] text-brand-700">{String(i + 1).padStart(2, "0")}</span>
+                <span className="font-code text-[10px] font-bold tracking-[0.08em] text-brand-700">{String(i + 1).padStart(2, "0")}</span>
                 <Icon className="h-3.5 w-3.5 shrink-0 text-ink-400" aria-hidden="true" />
                 <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-ink-900">{ch.title}</span>
                 {done.includes(i) ? (
@@ -7886,7 +8023,7 @@ function WalkthroughView({
                     <Icon className="h-4.5 w-4.5" />
                   </span>
                   <div className="min-w-0">
-                    <p className="flex items-center gap-2 font-code text-[8.5px] font-bold tracking-[0.22em] text-brand-700">
+                    <p className="flex items-center gap-2 font-code text-[10px] font-bold tracking-[0.08em] text-brand-700">
                       CHAPTER {no}
                       {done.includes(i) && (
                         <span className="inline-flex items-center gap-1 text-ink-400">
@@ -7903,7 +8040,7 @@ function WalkthroughView({
                   <button
                     type="button"
                     onClick={() => onTour(i)}
-                    className="inline-flex h-9 items-center gap-2 rounded-lg bg-brand-600 px-4 font-code text-[9px] font-bold tracking-[0.12em] text-white shadow-[0_8px_20px_rgba(217,38,22,0.24)] transition-all hover:-translate-y-0.5 hover:bg-brand-700"
+                    className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg bg-brand-600 px-4 font-code text-[10px] font-bold tracking-[0.04em] text-white shadow-[0_8px_20px_rgba(217,38,22,0.24)] transition-all hover:-translate-y-0.5 hover:bg-brand-700"
                   >
                     <Play className="h-3 w-3" aria-hidden="true" />
                     START GUIDED TOUR
@@ -7911,7 +8048,7 @@ function WalkthroughView({
                   {ch.href ? (
                     <a
                       href={ch.href}
-                      className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-ink-200 px-3.5 font-code text-[9px] font-bold tracking-[0.12em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950"
+                      className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-ink-200 px-3.5 font-code text-[10px] font-bold tracking-[0.04em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950"
                     >
                       OPEN DOCUMENTATION
                       <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
@@ -7920,7 +8057,7 @@ function WalkthroughView({
                     <button
                       type="button"
                       onClick={() => (ch.launch ? onNewRun() : ch.section && onOpen(ch.section))}
-                      className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-ink-200 px-3.5 font-code text-[9px] font-bold tracking-[0.12em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950"
+                      className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-ink-200 px-3.5 font-code text-[10px] font-bold tracking-[0.04em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950"
                     >
                       {ch.launch
                         ? "LAUNCH AN EVALUATION"
@@ -7936,7 +8073,7 @@ function WalkthroughView({
               <ol className="mt-5 space-y-2.5 border-t border-ink-100 pt-5">
                 {ch.steps.map((step, s) => (
                   <li key={s} className="flex gap-3 text-[13px] leading-relaxed text-ink-700">
-                    <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border border-ink-200 font-code text-[8px] font-bold text-ink-500">
+                    <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border border-ink-200 font-code text-[10px] font-bold text-ink-600">
                       {s + 1}
                     </span>
                     <span className="min-w-0">{step}</span>
@@ -7945,7 +8082,7 @@ function WalkthroughView({
               </ol>
 
               <p className="mt-5 rounded-xl bg-paper px-4 py-3 text-[12.5px] leading-relaxed text-ink-600">
-                <span className="mr-2 font-code text-[8.5px] font-bold tracking-[0.16em] text-brand-700">TIP</span>
+                <span className="mr-2 font-code text-[10px] font-bold tracking-[0.06em] text-brand-800">TIP</span>
                 {ch.tip}
               </p>
             </article>
@@ -8106,7 +8243,7 @@ function SupplierStatusChip({ status }: { status: SupplierStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-code text-[8.5px] font-bold tracking-[0.16em]",
+        "inline-flex min-h-6 items-center gap-1.5 rounded-full border px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em]",
         tone,
       )}
     >
@@ -8133,7 +8270,7 @@ function SupplierRowAction({
       onClick={onClick}
       title={title}
       className={cn(
-        "rounded-md px-2 py-1 font-code text-[8px] font-bold tracking-[0.12em] transition-colors",
+        "focus-brand inline-flex min-h-11 items-center justify-center rounded-md px-3 py-1 font-code text-[10px] font-bold tracking-[0.06em] transition-colors",
         tone === "confirm" ? "bg-brand-600 text-white hover:bg-brand-700" : "",
         tone === "danger" ? "text-brand-700 hover:bg-brand-50" : "",
         tone === "default" ? "text-ink-500 hover:bg-paper hover:text-ink-900" : "",
@@ -8174,7 +8311,7 @@ function useSuppliers() {
 function SupplierField({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
     <label className="block min-w-0">
-      <span className="mb-1.5 block font-code text-[8px] font-semibold tracking-[0.2em] text-ink-400">{label}</span>
+      <span className="mb-1.5 block font-code text-[10px] font-semibold tracking-[0.08em] text-ink-600">{label}</span>
       {children}
       {hint && <span className="mt-1 block text-[10.5px] leading-snug text-ink-400">{hint}</span>}
     </label>
@@ -8309,7 +8446,7 @@ function SupplierFormFields({
       </div>
 
       <div>
-        <p className="mb-2 font-code text-[8px] font-semibold tracking-[0.2em] text-ink-400">SUPPLY CATEGORIES</p>
+        <p className="mb-2 font-code text-[10px] font-semibold tracking-[0.08em] text-ink-600">SUPPLY CATEGORIES</p>
         <div className="flex flex-wrap gap-1.5">
           {SUPPLIER_CATEGORIES.map((c) => {
             const on = draft.categories.includes(c);
@@ -8320,7 +8457,7 @@ function SupplierFormFields({
                 aria-pressed={on}
                 onClick={() => toggleCategory(c)}
                 className={cn(
-                  "rounded-full border px-3 py-1.5 font-code text-[8.5px] font-semibold tracking-[0.1em] transition-colors",
+                  "focus-brand inline-flex min-h-11 items-center rounded-full border px-3 py-1.5 font-code text-[10px] font-semibold tracking-[0.04em] transition-colors",
                   on
                     ? "border-ink-950 bg-ink-950 text-white"
                     : "border-ink-200 bg-white text-ink-500 hover:border-ink-400 hover:text-ink-800",
@@ -8464,25 +8601,7 @@ function AddSupplierModal({
   }, [open, busy, onClose]);
 
   /* Tab stays inside the dialog. */
-  const trapTab = (e: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (e.key !== "Tab") return;
-    const nodes = Array.from(
-      cardRef.current?.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      ) ?? [],
-    );
-    if (nodes.length === 0) return;
-    const first = nodes[0];
-    const last = nodes[nodes.length - 1];
-    const active = document.activeElement;
-    if (e.shiftKey && (active === first || !cardRef.current?.contains(active))) {
-      e.preventDefault();
-      last.focus();
-    } else if (!e.shiftKey && active === last) {
-      e.preventDefault();
-      first.focus();
-    }
-  };
+  const trapTab = (e: ReactKeyboardEvent<HTMLDivElement>) => trapTabFocus(e, cardRef.current);
 
   const alreadyOn = (e: ZppaRollEntry) => {
     const reg = e.regNo.replace(/\D/g, "");
@@ -8504,7 +8623,7 @@ function AddSupplierModal({
     }));
     setPicked(e);
     setRollOpen(false);
-    cardRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    cardRef.current?.scrollTo({ top: 0, behavior: preferredScrollBehavior() });
   };
 
   const register = async () => {
@@ -8592,7 +8711,7 @@ function AddSupplierModal({
                   )
                 }
                 className={cn(
-                  "rounded-full border px-3.5 py-2 font-code text-[9px] font-semibold tracking-[0.1em] transition-colors",
+                  "min-h-11 rounded-full border px-3.5 font-code text-[10px] font-semibold tracking-[0.05em] transition-colors",
                   selected
                     ? "border-ink-950 bg-ink-950 text-white"
                     : "border-ink-200 bg-white text-ink-500 hover:border-ink-400 hover:text-ink-800",
@@ -8683,7 +8802,7 @@ function AddSupplierModal({
           >
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="font-code text-[8px] font-semibold tracking-[0.24em] text-ink-400">INTAKE</p>
+                <p className="font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">INTAKE</p>
                 <h3 id="add-supplier-title" className="mt-1 font-display text-[22px] font-black tracking-[-0.015em] text-ink-950">
                   Add supplier
                 </h3>
@@ -8697,7 +8816,7 @@ function AddSupplierModal({
                   if (!busy) onClose();
                 }}
                 aria-label="Close without adding"
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-paper hover:text-ink-900"
+                className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-lg text-ink-500 transition-colors hover:bg-paper hover:text-ink-900"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -8705,10 +8824,10 @@ function AddSupplierModal({
 
             <div className="mt-6" aria-label="Supplier intake progress">
               <div className="mb-2 flex items-center justify-between gap-3">
-                <span className="font-code text-[8px] font-bold tracking-[0.18em] text-brand-700">
+                <span className="font-code text-[10px] font-bold tracking-[0.04em] text-brand-800">
                   {currentStep.section}
                 </span>
-                <span className="font-code text-[8px] tracking-[0.14em] text-ink-400">
+                <span className="font-code text-[10px] tracking-[0.04em] text-ink-600">
                   {String(activeStep + 1).padStart(2, "0")} / {String(SUPPLIER_INTAKE_STEPS.length).padStart(2, "0")}
                 </span>
               </div>
@@ -8739,13 +8858,13 @@ function AddSupplierModal({
                 type="button"
                 onClick={() => setRollOpen((v) => !v)}
                 aria-expanded={rollOpen}
-                className="flex w-full items-center gap-3 px-4 py-3 text-left"
+                className="focus-brand flex min-h-11 w-full items-center gap-3 px-4 py-3 text-left"
               >
                 <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-ink-950 text-white">
                   <Library className="h-4 w-4" aria-hidden="true" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block font-code text-[9px] font-bold tracking-[0.18em] text-ink-900">
+                  <span className="block font-code text-[10px] font-bold tracking-[0.04em] text-ink-900">
                     PICK FROM THE ZPPA RECORD
                   </span>
                   <span className="mt-0.5 block text-[11.5px] leading-snug text-ink-500">
@@ -8763,7 +8882,7 @@ function AddSupplierModal({
               {rollOpen && (
                 <div className="border-t border-ink-100 px-4 pb-3.5 pt-3">
                   {rollLoading && (
-                    <p className="py-4 text-center font-code text-[8.5px] tracking-[0.18em] text-ink-400">
+                    <p className="py-4 text-center font-code text-[10px] tracking-[0.04em] text-ink-600">
                       READING THE RECORD…
                     </p>
                   )}
@@ -8776,7 +8895,7 @@ function AddSupplierModal({
                       <button
                         type="button"
                         onClick={loadRoll}
-                        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 font-code text-[8px] font-bold tracking-[0.16em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950"
+                        className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 font-code text-[10.5px] font-bold tracking-[0.06em] text-ink-800 transition-colors hover:border-ink-950 hover:text-ink-950"
                       >
                         <RefreshCw className="h-3 w-3" aria-hidden="true" />
                         RETRY
@@ -8797,7 +8916,7 @@ function AddSupplierModal({
                           onChange={(e) => setRollQuery(e.target.value)}
                           placeholder="Search by firm or PACRA number…"
                           aria-label="Search the ZPPA record"
-                          className="h-9 w-full rounded-xl border border-ink-200 bg-white pl-9 pr-3 text-[12.5px] text-ink-900 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
+                          className="focus-brand h-11 w-full rounded-xl border border-ink-200 bg-white pl-9 pr-3 text-[14px] text-ink-900 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
                         />
                       </label>
 
@@ -8811,23 +8930,23 @@ function AddSupplierModal({
                                 disabled={on}
                                 onClick={() => applyRoll(e)}
                                 className={cn(
-                                  "flex w-full items-start justify-between gap-3 px-3.5 py-2.5 text-left transition-colors",
+                                  "focus-brand flex min-h-11 w-full items-start justify-between gap-3 px-3.5 py-2.5 text-left transition-colors",
                                   on ? "cursor-default opacity-60" : "hover:bg-paper",
                                 )}
                               >
                                 <span className="min-w-0">
                                   <span className="block truncate text-[12.5px] font-semibold text-ink-900">{e.name}</span>
-                                  <span className="mt-0.5 block font-code text-[8px] tracking-[0.14em] text-ink-400">
+                                  <span className="mt-1 block font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600">
                                     PACRA {e.regNo} · {PLURAL(e.awards, "AWARD", "AWARDS")} · {PLURAL(e.tenders, "TENDER", "TENDERS")}
                                     {e.since ? ` · ON RECORD SINCE ${e.since}` : ""}
                                   </span>
                                 </span>
                                 {on ? (
-                                  <span className="mt-0.5 inline-flex shrink-0 rounded-full border border-ink-200 bg-paper px-2 py-0.5 font-code text-[7.5px] font-bold tracking-[0.12em] text-ink-500">
+                                  <span className="mt-0.5 inline-flex min-h-7 shrink-0 items-center rounded-full border border-ink-200 bg-paper px-2.5 py-0.5 font-code text-[10px] font-bold tracking-[0.03em] text-ink-700">
                                     ALREADY ON FILE
                                   </span>
                                 ) : (
-                                  <span className="mt-0.5 inline-flex shrink-0 items-center gap-1 font-code text-[7.5px] font-bold tracking-[0.12em] text-brand-700">
+                                  <span className="mt-0.5 inline-flex shrink-0 items-center gap-1 font-code text-[10px] font-bold tracking-[0.04em] text-brand-800">
                                     USE
                                     <ArrowRight className="h-3 w-3" aria-hidden="true" />
                                   </span>
@@ -8843,7 +8962,7 @@ function AddSupplierModal({
                         )}
                       </ul>
 
-                      <p className="mt-2 font-code text-[7.5px] leading-[1.9] tracking-[0.14em] text-ink-400">
+                      <p className="mt-2 font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600">
                         SOURCE — {roll.source.authority.toUpperCase()} · VIA OPEN CONTRACTING PARTNERSHIP ·{" "}
                         {roll.source.license}
                         <br />
@@ -8859,10 +8978,10 @@ function AddSupplierModal({
             {/* What the record already knew — still every field the officer's */}
             {picked && (
               <div className="mt-4 rounded-xl border border-ink-100 border-l-2 border-l-brand-600 bg-paper px-4 py-3">
-                <p className="font-code text-[8.5px] font-bold tracking-[0.16em] text-ink-900">
+                <p className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-900">
                   FILLED FROM THE ZPPA RECORD
                 </p>
-                <p className="mt-1 font-code text-[8px] tracking-[0.14em] text-ink-600">
+                <p className="mt-1 font-code text-[10px] tracking-[0.04em] text-ink-700">
                   {PLURAL(picked.awards, "AWARD", "AWARDS")} · {PLURAL(picked.tenders, "TENDER", "TENDERS")}
                   {picked.valueZMW ? ` · ZMW ${picked.valueZMW.toLocaleString("en-GB")} WON` : ""}
                   {picked.since ? ` · ON RECORD SINCE ${picked.since}` : ""}
@@ -8873,7 +8992,7 @@ function AddSupplierModal({
                     {shortDateOf(picked.latest.date)}
                   </p>
                 )}
-                <p className="mt-1.5 font-code text-[7.5px] leading-[1.9] tracking-[0.14em] text-ink-400">
+                <p className="mt-1.5 font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600">
                   EVERY FIELD IS STILL YOURS TO CORRECT — THE RECORD SUGGESTS, THE OFFICER CONFIRMS.
                 </p>
               </div>
@@ -8889,7 +9008,7 @@ function AddSupplierModal({
               aria-live="polite"
               className="mt-7 min-h-[190px]"
             >
-              <p className="font-code text-[8px] font-semibold tracking-[0.2em] text-ink-400">
+              <p className="font-code text-[10px] font-semibold tracking-[0.04em] text-ink-600">
                 {currentStep.section} · QUESTION {String(activeStep + 1).padStart(2, "0")}
               </p>
               <h4 className="mt-2 font-display text-[21px] font-black tracking-[-0.02em] text-ink-950 sm:text-[25px]">
@@ -8917,7 +9036,7 @@ function AddSupplierModal({
             )}
 
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-ink-100 pt-5">
-            <p className="max-w-[220px] font-code text-[7.5px] leading-[2] tracking-[0.16em] text-ink-400 sm:max-w-none">
+            <p className="max-w-[220px] font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600 sm:max-w-none">
               WRITTEN VIA quorum-mcp · {(firstName || "unknown").toUpperCase()} IS THE RECORDED ACTOR
             </p>
             <div className="ml-auto flex items-center gap-2">
@@ -8926,7 +9045,7 @@ function AddSupplierModal({
                   type="button"
                   onClick={goBack}
                   disabled={busy}
-                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 font-code text-[9px] font-bold tracking-[0.14em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:opacity-60"
+                    className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 font-code text-[10.5px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:opacity-60"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
                   BACK
@@ -8939,7 +9058,7 @@ function AddSupplierModal({
                       type="button"
                       onClick={advanceStep}
                       disabled={busy}
-                      className="inline-flex h-10 items-center rounded-xl px-3 font-code text-[8px] font-bold tracking-[0.12em] text-ink-500 transition-colors hover:text-ink-950 disabled:opacity-60"
+                      className="focus-brand inline-flex min-h-11 items-center rounded-xl px-3 font-code text-[10.5px] font-bold tracking-[0.06em] text-ink-600 transition-colors hover:text-ink-950 disabled:opacity-60"
                     >
                       SKIP
                     </button>
@@ -8948,7 +9067,7 @@ function AddSupplierModal({
                     type="button"
                     onClick={advanceStep}
                     disabled={busy}
-                    className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-5 font-code text-[9px] font-bold tracking-[0.14em] text-white shadow-[0_10px_26px_rgba(217,38,22,0.28)] transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-5 font-code text-[10.5px] font-bold tracking-[0.06em] text-white shadow-[0_10px_26px_rgba(217,38,22,0.28)] transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     CONTINUE
                     <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -8959,7 +9078,7 @@ function AddSupplierModal({
                   type="button"
                   onClick={() => void register()}
                   disabled={busy}
-                  className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-5 text-[13px] font-semibold text-white shadow-[0_10px_26px_rgba(217,38,22,0.28)] transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-5 text-[13px] font-semibold text-white shadow-[0_10px_26px_rgba(217,38,22,0.28)] transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <UserPlus className="h-4 w-4" aria-hidden="true" />
                   {busy ? "Writing to the register…" : "Add supplier"}
@@ -8986,6 +9105,9 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
   const [editError, setEditError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
+  const editDialogRef = useRef<HTMLDivElement | null>(null);
+  const editCloseRef = useRef<HTMLButtonElement | null>(null);
+  const editOpenerRef = useRef<HTMLElement | null>(null);
 
   const q = search.trim().toLowerCase();
   const filtered = useMemo(
@@ -9025,11 +9147,28 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
   useEffect(() => {
     if (!editing) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !editBusy) setEditing(null);
+      if (e.key !== "Escape" || editBusy) return;
+      const focusedModal = document.activeElement?.closest('[role="dialog"][aria-modal="true"]');
+      if (focusedModal && focusedModal !== editDialogRef.current) return;
+      setEditing(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [editing, editBusy]);
+
+  useEffect(() => {
+    if (editing) {
+      const active = document.activeElement;
+      editOpenerRef.current = active instanceof HTMLElement ? active : null;
+      requestAnimationFrame(() => editCloseRef.current?.focus());
+      return;
+    }
+    const target = editOpenerRef.current;
+    editOpenerRef.current = null;
+    if (target?.isConnected) requestAnimationFrame(() => target.focus());
+  }, [editing]);
+
+  const trapEditTab = (event: ReactKeyboardEvent<HTMLDivElement>) => trapTabFocus(event, editDialogRef.current);
 
   /* The intake is a modal over the roll — opened from the header or the
      empty state; focus returns to whatever opened it when it closes. */
@@ -9133,7 +9272,7 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
       sub="Every bidder the platform knows — held with the registration detail Zambia's regime asks a bidder to carry: PACRA number, ZRA tax clearance, sector registration. The agent reads this roll when it checks a bid; you keep it true. New entries can start straight off the published ZPPA e-GP record."
       action={
         <div className="flex flex-wrap items-center gap-3">
-          <span className="inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white px-3 py-1.5 font-code text-[8px] font-semibold tracking-[0.18em] text-ink-600">
+          <span className="inline-flex min-h-8 items-center gap-2 rounded-full border border-ink-200 bg-white px-3 py-1.5 font-code text-[10px] font-semibold tracking-[0.04em] text-ink-700">
             <span className="relative flex h-1.5 w-1.5">
               {reachable === true && (
                 <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-brand-500" aria-hidden="true" />
@@ -9154,7 +9293,7 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
             type="button"
             data-tour="suppliers-add"
             onClick={openAdd}
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-4 font-code text-[9px] font-bold tracking-[0.18em] text-white shadow-[0_10px_26px_rgba(217,38,22,0.28)] transition-colors hover:bg-brand-700"
+            className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-4 font-code text-[10px] font-bold tracking-[0.04em] text-white shadow-[0_10px_26px_rgba(217,38,22,0.28)] transition-colors hover:bg-brand-700"
           >
             <UserPlus className="h-3.5 w-3.5" aria-hidden="true" />
             REGISTER A SUPPLIER
@@ -9170,7 +9309,7 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="font-display text-[17px] font-black tracking-[-0.01em] text-ink-950">On the list</h2>
-                  <p className="mt-0.5 font-code text-[8.5px] tracking-[0.2em] text-ink-400">
+                  <p className="mt-1 font-code text-[10px] tracking-[0.04em] text-ink-600">
                     {counts.total} SUPPLIER{counts.total === 1 ? "" : "S"} · {filtered.length} SHOWN
                   </p>
                 </div>
@@ -9185,25 +9324,24 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Name, TIN, registration…"
                     aria-label="Search suppliers"
-                    className="h-9 w-52 rounded-full border border-ink-200 bg-paper pl-9 pr-3 text-[12.5px] text-ink-900 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
+                    className="focus-brand h-11 w-52 rounded-full border border-ink-200 bg-paper pl-9 pr-3 text-[14px] text-ink-900 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
                   />
                 </label>
               </div>
-              <div data-tour="suppliers-filters" className="mt-3 flex flex-wrap gap-1.5" role="tablist" aria-label="Filter by status">
+              <div data-tour="suppliers-filters" className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label="Filter suppliers by status">
                 {statusTabs.map((t) => {
                   const on = statusFilter === t.id;
                   return (
                     <button
                       key={t.id}
                       type="button"
-                      role="tab"
-                      aria-selected={on}
+                      aria-pressed={on}
                       onClick={() => setStatusFilter(t.id)}
                       className={cn(
-                        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-code text-[8px] font-bold tracking-[0.14em] transition-colors",
+                        "focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 py-1.5 font-code text-[10px] font-bold tracking-[0.04em] transition-colors",
                         on
                           ? "border-ink-950 bg-ink-950 text-white"
-                          : "border-ink-200 bg-white text-ink-500 hover:border-ink-400 hover:text-ink-800",
+                          : "border-ink-200 bg-white text-ink-700 hover:border-ink-400 hover:text-ink-900",
                       )}
                     >
                       {t.label}
@@ -9214,7 +9352,7 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
               </div>
             </header>
 
-            <div className="overflow-x-auto">
+            <HorizontalScrollRegion label="Supplier register table">
               <table className="w-full min-w-[880px] border-collapse text-left" aria-label="Supplier register">
                 <thead>
                   <tr className="border-b border-ink-100 bg-paper">
@@ -9223,7 +9361,7 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
                         key={h}
                         scope="col"
                         className={cn(
-                          "px-5 py-3 font-code text-[8px] font-bold tracking-[0.18em] text-ink-500",
+                          "px-5 py-3 font-code text-[10px] font-bold tracking-[0.04em] text-ink-700",
                           h === "ACTIONS" && "text-right",
                         )}
                       >
@@ -9239,29 +9377,29 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
                       <tr key={s.id} className="border-b border-ink-100 last:border-b-0 hover:bg-paper/60">
                         <td className="px-5 py-4 align-top">
                           <p className="text-[13.5px] font-semibold leading-snug text-ink-950">{s.name}</p>
-                          <p className="mt-1 font-code text-[8.5px] tracking-[0.14em] text-ink-400">
+                          <p className="mt-1 font-code text-[10px] tracking-[0.04em] text-ink-600">
                             REG {s.registrationNo}
                           </p>
-                          <p className="mt-1 font-code text-[7.5px] tracking-[0.14em] text-ink-400">
+                          <p className="mt-1 font-code text-[10px] tracking-[0.04em] text-ink-600">
                             ADDED BY {(s.addedBy || "—").toUpperCase()} · {shortDateOf(s.createdAt)}
                           </p>
                         </td>
                         <td className="px-5 py-4 align-top">
-                          <p className="font-code text-[9px] tracking-[0.12em] text-ink-600">
+                          <p className="font-code text-[10px] tracking-[0.06em] text-ink-600">
                             PIN {s.taxPin || "—"}
                           </p>
-                          <p className="mt-1 font-code text-[9px] tracking-[0.12em] text-ink-600">
+                          <p className="mt-1 font-code text-[10px] tracking-[0.06em] text-ink-600">
                             TC {s.taxClearanceNo || "—"}
                           </p>
                           {s.taxClearanceExpiry && (
-                            <p className="mt-1 font-code text-[8px] tracking-[0.12em] text-ink-400">
+                            <p className="mt-1 font-code text-[10px] tracking-[0.04em] text-ink-600">
                               EXP {shortDateOf(s.taxClearanceExpiry)}
                             </p>
                           )}
                           {standing && (
                             <span
                               className={cn(
-                                "mt-1.5 inline-flex rounded-full border px-2 py-0.5 font-code text-[7.5px] font-bold tracking-[0.12em]",
+                                "mt-1.5 inline-flex min-h-7 items-center rounded-full border px-2.5 py-0.5 font-code text-[10px] font-bold tracking-[0.03em]",
                                 standing.tone,
                               )}
                             >
@@ -9270,7 +9408,7 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
                           )}
                         </td>
                         <td className="px-5 py-4 align-top">
-                          <p className="font-code text-[9px] tracking-[0.12em] text-ink-600">
+                          <p className="font-code text-[10px] tracking-[0.06em] text-ink-600">
                             {s.regulator ? `${s.regulator} · ${s.regulatorNo || "—"}` : "NOT REQUIRED"}
                           </p>
                           {s.categories.length > 0 && (
@@ -9278,7 +9416,7 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
                               {s.categories.map((c) => (
                                 <span
                                   key={c}
-                                  className="rounded-full border border-ink-200 bg-white px-2 py-0.5 font-code text-[7.5px] tracking-[0.08em] text-ink-500"
+                                  className="rounded-full border border-ink-200 bg-white px-2 py-0.5 font-code text-[10px] tracking-[0.02em] text-ink-700"
                                 >
                                   {c.toUpperCase()}
                                 </span>
@@ -9289,7 +9427,7 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
                         <td className="px-5 py-4 align-top">
                           <p className="text-[12px] font-medium text-ink-800">{s.contactName || "—"}</p>
                           <p className="mt-1 text-[11px] text-ink-500">{s.email || "—"}</p>
-                          <p className="mt-0.5 font-code text-[9px] tracking-[0.08em] text-ink-500">{s.phone || "—"}</p>
+                          <p className="mt-0.5 font-code text-[10px] tracking-[0.04em] text-ink-600">{s.phone || "—"}</p>
                         </td>
                         <td className="px-5 py-4 align-top">
                           <SupplierStatusChip status={s.status} />
@@ -9301,7 +9439,7 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
                               onClick={() => openEdit(s)}
                               title={`Edit ${s.name}`}
                               aria-label={`Edit ${s.name}`}
-                              className="grid h-8 w-8 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-paper hover:text-ink-900"
+                              className="focus-brand grid h-11 w-11 place-items-center rounded-lg text-ink-600 transition-colors hover:bg-paper hover:text-ink-950"
                             >
                               <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                             </button>
@@ -9334,7 +9472,7 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
                                 onClick={() => setConfirmDelete(s.id)}
                                 title={`Remove ${s.name}`}
                                 aria-label={`Remove ${s.name}`}
-                                className="grid h-8 w-8 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-brand-50 hover:text-brand-700"
+                                className="focus-brand grid h-11 w-11 place-items-center rounded-lg text-ink-600 transition-colors hover:bg-brand-50 hover:text-brand-800"
                               >
                                 <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                               </button>
@@ -9359,7 +9497,7 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
                           <button
                             type="button"
                             onClick={openAdd}
-                            className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg border border-ink-200 bg-white px-4 font-code text-[8.5px] font-bold tracking-[0.16em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950"
+                            className="focus-brand mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-ink-200 bg-white px-4 font-code text-[10px] font-bold tracking-[0.04em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950"
                           >
                             <UserPlus className="h-3.5 w-3.5" aria-hidden="true" />
                             ADD THE FIRST SUPPLIER
@@ -9370,10 +9508,10 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
                   )}
                 </tbody>
               </table>
-            </div>
+            </HorizontalScrollRegion>
           </div>
 
-          <p className="mt-3 font-code text-[8px] tracking-[0.18em] text-ink-400">
+          <p className="mt-3 font-code text-[10px] tracking-[0.04em] text-ink-600">
             EVERY ADD, EDIT, SUSPENSION AND REMOVAL IS APPENDED TO THE AUDIT TRAIL — THE REGISTER IS NEVER SILENT.
           </p>
         </div>
@@ -9404,35 +9542,39 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
             onClick={() => {
               if (!editBusy) setEditing(null);
             }}
-            role="dialog"
-            aria-modal="true"
-            aria-label={`Edit ${editing.name}`}
           >
             <motion.div
+              ref={editDialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="supplier-edit-title"
+              tabIndex={-1}
               initial={{ opacity: 0, y: 18, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12 }}
               transition={{ duration: 0.28, ease: EASE }}
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={trapEditTab}
               className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-[12px] panel panel-lift p-5 sm:p-7"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="font-code text-[8px] font-semibold tracking-[0.24em] text-ink-400">EDIT SUPPLIER</p>
-                  <h3 className="mt-1 truncate font-display text-[20px] font-black tracking-[-0.015em] text-ink-950">
+                  <p className="font-code text-[10px] font-semibold tracking-[0.08em] text-ink-600">EDIT SUPPLIER</p>
+                  <h3 id="supplier-edit-title" className="mt-1 truncate font-display text-[20px] font-black tracking-[-0.015em] text-ink-950">
                     {editing.name}
                   </h3>
-                  <p className="mt-1 font-code text-[8.5px] tracking-[0.16em] text-ink-400">
+                  <p className="mt-1 font-code text-[10px] tracking-[0.04em] text-ink-600">
                     REG {editing.registrationNo} · ADDED {shortDateOf(editing.createdAt)}
                   </p>
                 </div>
                 <button
+                  ref={editCloseRef}
                   type="button"
                   onClick={() => {
                     if (!editBusy) setEditing(null);
                   }}
                   aria-label="Close without saving"
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-paper hover:text-ink-900"
+                  className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-lg text-ink-500 transition-colors hover:bg-paper hover:text-ink-900"
                 >
                   <X className="h-4 w-4" aria-hidden="true" />
                 </button>
@@ -9453,7 +9595,7 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
                   type="button"
                   onClick={() => setEditing(null)}
                   disabled={editBusy}
-                  className="inline-flex h-10 items-center rounded-xl border border-ink-200 bg-white px-5 font-code text-[9px] font-bold tracking-[0.16em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:opacity-60"
+                  className="focus-brand inline-flex min-h-11 items-center rounded-xl border border-ink-200 bg-white px-5 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:opacity-60"
                 >
                   CANCEL
                 </button>
@@ -9461,7 +9603,7 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
                   type="button"
                   onClick={() => void saveEdit()}
                   disabled={editBusy}
-                  className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-5 text-[13px] font-semibold text-white shadow-[0_10px_26px_rgba(217,38,22,0.28)] transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-5 text-[13px] font-semibold text-white shadow-[0_10px_26px_rgba(217,38,22,0.28)] transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {editBusy ? "Writing…" : "Save changes"}
                 </button>
@@ -9652,7 +9794,7 @@ function RulesView({
             onChange={(e) => setThresholdDraft(e.target.value)}
             placeholder="0 = off"
             aria-label="Dual approval threshold"
-            className="h-9 w-40 rounded-lg border border-ink-200 bg-white px-3 font-code text-[11px] tabular text-ink-900 outline-none transition-colors focus:border-brand-600 dark:border-white/15 dark:bg-white/[0.04] dark:text-ink-100"
+            className="focus-brand h-11 w-40 rounded-lg border border-ink-200 bg-white px-3 font-code text-[12px] tabular text-ink-900 outline-none transition-colors focus:border-brand-600 dark:border-white/15 dark:bg-white/[0.04] dark:text-ink-100"
           />
           <button
             type="button"
@@ -9663,11 +9805,11 @@ function RulesView({
               void setGuard({ dualApprovalThreshold: next }, `DUAL APPROVAL AT ${next.toLocaleString()}`);
               setThresholdDraft("");
             }}
-            className="h-9 rounded-lg bg-ink-950 px-3.5 font-code text-[8px] font-bold tracking-[0.16em] text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
+            className="focus-brand inline-flex min-h-11 items-center rounded-lg bg-ink-950 px-3.5 font-code text-[10px] font-bold tracking-[0.04em] text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
           >
             SET
           </button>
-          <span className="font-code text-[8px] tracking-[0.12em] text-ink-400">
+          <span className="font-code text-[10px] tracking-[0.04em] text-ink-600">
             ACTIVE — {shown.dualApprovalThreshold ? shown.dualApprovalThreshold.toLocaleString() : "OFF"}
           </span>
         </div>
@@ -9686,7 +9828,7 @@ function RulesView({
             groupLabel="Registry cross-check"
             disabled={locked}
           />
-          <p className="mt-3 font-code text-[7.5px] tracking-[0.16em] text-ink-400">
+          <p className="mt-3 font-code text-[10px] tracking-[0.04em] text-ink-600">
             {register
               ? `REGISTER — ${register.total} REGISTERED · ${register.flagged} SUSPENDED OR BLACKLISTED`
               : "REGISTER — NOT REACHED YET"}
@@ -9709,9 +9851,9 @@ function RulesView({
             value={divergenceDraft || String(shown.scoreDivergencePoints)}
             onChange={(e) => setDivergenceDraft(e.target.value)}
             aria-label="Evaluator divergence threshold in score points"
-            className="h-9 w-24 rounded-lg border border-ink-200 bg-white px-3 font-code text-[11px] tabular text-ink-900 outline-none transition-colors focus:border-brand-600 dark:border-white/15 dark:bg-white/[0.04] dark:text-ink-100"
+            className="focus-brand h-11 w-24 rounded-lg border border-ink-200 bg-white px-3 font-code text-[12px] tabular text-ink-900 outline-none transition-colors focus:border-brand-600 dark:border-white/15 dark:bg-white/[0.04] dark:text-ink-100"
           />
-          <span className="font-code text-[8px] tracking-[0.12em] text-ink-400">POINTS</span>
+          <span className="font-code text-[10px] tracking-[0.04em] text-ink-600">POINTS</span>
           <button
             type="button"
             disabled={locked || !divergenceDraft}
@@ -9721,11 +9863,11 @@ function RulesView({
               void setGuard({ scoreDivergencePoints: next }, `EVALUATOR DIVERGENCE AT ${next} POINTS`);
               setDivergenceDraft("");
             }}
-            className="h-9 rounded-lg bg-ink-950 px-3.5 font-code text-[8px] font-bold tracking-[0.16em] text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
+            className="focus-brand inline-flex min-h-11 items-center rounded-lg bg-ink-950 px-3.5 font-code text-[10px] font-bold tracking-[0.04em] text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
           >
             SET
           </button>
-          <span className="font-code text-[8px] tracking-[0.12em] text-ink-400">
+          <span className="font-code text-[10px] tracking-[0.04em] text-ink-600">
             ACTIVE — {shown.scoreDivergencePoints} POINTS
           </span>
         </div>
@@ -9746,9 +9888,9 @@ function RulesView({
             value={stalenessDraft || String(shown.fxStalenessDays)}
             onChange={(e) => setStalenessDraft(e.target.value)}
             aria-label="FX quote staleness window in days"
-            className="h-9 w-24 rounded-lg border border-ink-200 bg-white px-3 font-code text-[11px] tabular text-ink-900 outline-none transition-colors focus:border-brand-600 dark:border-white/15 dark:bg-white/[0.04] dark:text-ink-100"
+            className="focus-brand h-11 w-24 rounded-lg border border-ink-200 bg-white px-3 font-code text-[12px] tabular text-ink-900 outline-none transition-colors focus:border-brand-600 dark:border-white/15 dark:bg-white/[0.04] dark:text-ink-100"
           />
-          <span className="font-code text-[8px] tracking-[0.12em] text-ink-400">DAYS</span>
+          <span className="font-code text-[10px] tracking-[0.04em] text-ink-600">DAYS</span>
           <button
             type="button"
             disabled={locked || !stalenessDraft}
@@ -9758,11 +9900,11 @@ function RulesView({
               void setGuard({ fxStalenessDays: next }, `FX QUOTES STALE AFTER ${next} DAYS`);
               setStalenessDraft("");
             }}
-            className="h-9 rounded-lg bg-ink-950 px-3.5 font-code text-[8px] font-bold tracking-[0.16em] text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
+            className="focus-brand inline-flex min-h-11 items-center rounded-lg bg-ink-950 px-3.5 font-code text-[10px] font-bold tracking-[0.04em] text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
           >
             SET
           </button>
-          <span className="font-code text-[8px] tracking-[0.12em] text-ink-400">
+          <span className="font-code text-[10px] tracking-[0.04em] text-ink-600">
             ACTIVE — {shown.fxStalenessDays} DAYS
           </span>
         </div>
@@ -9784,14 +9926,14 @@ function RulesView({
             className={cn("h-1.5 w-1.5 rounded-full", loadFailed ? "bg-red-500" : "animate-pulse bg-amber-400")}
             aria-hidden="true"
           />
-          <p className="font-code text-[8px] font-semibold tracking-[0.22em] text-ink-500">
+          <p className="font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">
             {loadFailed ? "GUARD SERVICE UNREACHABLE — SETTINGS NOT LOADED" : "SYNCING GUARDS WITH THE SIDE-CAR…"}
           </p>
           {loadFailed && (
             <button
               type="button"
               onClick={() => load()}
-              className="ml-auto font-code text-[8px] font-bold tracking-[0.18em] text-brand-700 transition-colors hover:text-brand-800"
+              className="focus-brand ml-auto inline-flex min-h-11 items-center rounded px-2 font-code text-[10px] font-bold tracking-[0.04em] text-brand-800 transition-colors hover:text-brand-900"
             >
               RETRY
             </button>
@@ -9807,7 +9949,7 @@ function RulesView({
             transition={{ duration: 0.5, delay: 0.05 * i, ease: EASE }}
             className="rounded-[12px] panel p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]"
           >
-            <p className="font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400">GUARD {g.no}</p>
+            <p className="font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">GUARD {g.no}</p>
             <h3 className="mt-1.5 font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">{g.title}</h3>
             <p className="mt-1 text-[12.5px] text-ink-500">{g.desc}</p>
             <div className="mt-4">{g.control}</div>
@@ -9822,13 +9964,13 @@ function RulesView({
         >
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400">GUARD 05</p>
+              <p className="font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">GUARD 05</p>
               <h3 className="mt-1.5 font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">Citation policy</h3>
               <p className="mt-1 max-w-md text-[12.5px] text-ink-500">
                 Page-level citations on every claim. Zero unsourced tolerated — not a setting, a design constraint.
               </p>
             </div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1.5 font-code text-[8px] font-bold tracking-[0.16em] text-brand-800">
+            <span className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1.5 font-code text-[10px] font-bold tracking-[0.04em] text-brand-900">
               <Lock className="h-3 w-3" aria-hidden="true" />
               LOCKED BY DESIGN
             </span>
@@ -9841,10 +9983,10 @@ function RulesView({
         <div data-tour="rules-audit" className="flex items-start gap-3 rounded-[10px] border border-ink-100 bg-sand p-5">
           <ShieldCheck className="h-4 w-4 shrink-0 text-brand-700" aria-hidden="true" />
           <div className="min-w-0">
-            <p className="font-code text-[7.5px] leading-[1.9] tracking-[0.14em] text-ink-600">
+            <p className="font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-700">
               EVERY GUARD CHANGE IS LOGGED — NAME, TIMESTAMP, BEFORE &amp; AFTER VALUES.
             </p>
-            <p className="mt-2 font-code text-[7.5px] leading-[1.9] tracking-[0.14em] text-brand-800">
+            <p className="mt-2 font-code text-[10px] leading-relaxed tracking-[0.04em] text-brand-900">
               {shown.updatedAt
                 ? `LAST CHANGE — ${stampOf(shown.updatedAt)} · BY ${String(shown.updatedBy ?? "unknown").toUpperCase()}`
                 : "NO GUARD CHANGES YET — THE CARVED SETTINGS STAND."}
@@ -9852,7 +9994,7 @@ function RulesView({
             <button
               type="button"
               onClick={onOpenAudit}
-              className="mt-2 inline-flex items-center gap-1.5 font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-500 transition-colors hover:text-ink-950"
+              className="focus-brand mt-2 inline-flex min-h-11 items-center gap-1.5 rounded px-2 font-code text-[10px] font-bold tracking-[0.04em] text-ink-700 transition-colors hover:text-ink-950"
             >
               READ THE TRAIL
               <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
@@ -9996,7 +10138,7 @@ function GatesView({
         <StageStrip
           label="Decision authority"
           search={
-            <label className="relative block w-52">
+            <label className="relative block w-full min-w-0 max-w-[13rem]">
               <Search
                 className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-ink-400"
                 aria-hidden="true"
@@ -10007,7 +10149,7 @@ function GatesView({
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search approvals…"
                 aria-label="Search approvals by tender, office or supplier"
-                className="focus-brand h-7 w-full rounded-md border border-ink-200/80 bg-[#fffdfb] pl-7 pr-2.5 font-code text-[9px] font-semibold tracking-[0.06em] text-ink-900 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-950 dark:border-white/[0.1] dark:bg-white/[0.04] dark:text-white dark:placeholder:text-ink-500 dark:focus:border-white/35"
+                className="focus-brand h-11 w-full rounded-md border border-ink-200/80 bg-[#fffdfb] pl-7 pr-2.5 text-base text-ink-900 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-950 dark:border-white/[0.1] dark:bg-white/[0.04] dark:text-white dark:placeholder:text-ink-500 dark:focus:border-white/35"
               />
             </label>
           }
@@ -10057,7 +10199,7 @@ function GatesView({
               <p className="mt-2.5 text-[12.5px] leading-relaxed text-ink-300">
                 Five of nine seats present before an award counts. Meet the roster and the quorum rule.
               </p>
-              <span className="mt-4 inline-flex items-center gap-1.5 font-code text-[8.5px] font-bold tracking-[0.2em] text-brand-400">
+              <span className="mt-4 inline-flex min-h-11 items-center gap-1.5 font-code text-[10px] font-bold tracking-[0.06em] text-brand-300">
                 OPEN THE ROSTER
                 <ArrowUpRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden="true" />
               </span>
@@ -10089,6 +10231,9 @@ export function Dashboard({
   const [active, setActive] = useState<SectionId>("mc-overview");
   const [activeCyclePage, setActiveCyclePage] = useState<CyclePageTab>("solicitation");
   const [navOpen, setNavOpen] = useState(false);
+  const mobileMenuTriggerRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuRef = useRef<HTMLElement>(null);
+  const reduceMotion = useReducedMotion();
   /* Desktop sidebar: the whole rail collapses, and the choice is remembered. */
   const [navCollapsed, setNavCollapsed] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
@@ -10129,11 +10274,58 @@ export function Dashboard({
     };
   }, []);
 
-  /* Body scroll lock for the mobile drawer */
+  /* The mobile drawer behaves like a modal navigation surface: contain focus,
+     close on Escape or desktop resize, and return focus to its trigger. */
   useEffect(() => {
-    document.body.style.overflow = navOpen ? "hidden" : "";
+    if (!navOpen) return;
+    const drawer = mobileMenuRef.current;
+    const previousOverflow = document.body.style.overflow;
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const selector = 'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
+    const focusableItems = () =>
+      Array.from(drawer?.querySelectorAll<HTMLElement>(selector) ?? []).filter(
+        (element) => !element.closest("[hidden], .hidden, [aria-hidden='true']"),
+      );
+
+    document.body.style.overflow = "hidden";
+    focusableItems()[0]?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setNavOpen(false);
+        return;
+      }
+      if (event.key !== "Tab" || !drawer) return;
+      const items = focusableItems();
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (!first || !last) {
+        event.preventDefault();
+        drawer.focus();
+      } else if (event.shiftKey && (document.activeElement === first || !drawer.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !drawer.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    const onDesktop = () => {
+      if (desktop.matches) setNavOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    desktop.addEventListener("change", onDesktop);
     return () => {
-      document.body.style.overflow = "";
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+      desktop.removeEventListener("change", onDesktop);
+      if (desktop.matches) {
+        requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('button[aria-label="Jump to a workspace section"]')?.focus());
+      } else if (previouslyFocused?.isConnected) {
+        previouslyFocused.focus();
+      }
     };
   }, [navOpen]);
 
@@ -10191,7 +10383,7 @@ export function Dashboard({
     }
     setNavOpen(false);
     setActive(id);
-    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" }));
   };
 
   const switchToCyclePage = (page: CyclePageTab) => {
@@ -10262,13 +10454,13 @@ export function Dashboard({
     })),
   ];
 
-  const launchRun = async (ref: string, title: string, format: string, docs: number, checks: number) => {
+  const launchRun = async (ref: string, title: string, format: string, docs: number, checks: number, sourceRef?: string) => {
     let res: Response;
     try {
       res = await fetch("/api/runs?XTransformPort=3031", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ tenderId: ref }),
+        body: JSON.stringify({ tenderId: sourceRef || ref, reference: ref }),
       });
     } catch {
       throw new Error("The run service is unavailable. Check your connection and try again.");
@@ -10277,7 +10469,7 @@ export function Dashboard({
     setModalOpen(false);
     /* Guide the officer to the register — the run goes live in front of them. */
     setActive("mc-runs");
-    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" }));
     onToast(`RUN QUEUED — ${title.toUpperCase()} · ${format.toUpperCase()} · ${docs} DOC${docs === 1 ? "" : "S"} · ${checks} CHECK${checks === 1 ? "" : "S"}`);
     void refresh();
   };
@@ -10389,7 +10581,7 @@ export function Dashboard({
     if (chapter.section) {
       setNavOpen(false);
       setActive(chapter.section);
-      requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+      requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" }));
     }
     if (chapter.tour[0]?.action === "open-wizard") openNewRun();
     /* A step that lives in the rail needs the rail on screen — bring it back
@@ -10427,7 +10619,7 @@ export function Dashboard({
           <button
             type="button"
             onClick={() => switchTo("mc-overview")}
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-ink-950 px-4 font-code text-[9px] font-bold tracking-[0.16em] text-white transition-colors hover:bg-ink-800"
+            className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-xl bg-ink-950 px-4 font-code text-[10px] font-bold tracking-[0.06em] text-white transition-colors hover:bg-ink-800"
           >
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
             BACK TO OVERVIEW
@@ -10496,7 +10688,7 @@ export function Dashboard({
       case "mc-stack":
         return <StackConsole onToast={onToast} />;
       case "mc-oversight":
-        return <OversightView actor={user} onToast={onToast} onOpenAudit={() => switchTo("mc-audit")} />;
+        return <OversightView actor={user} onToast={onToast} />;
       case "mc-governance":
         return <GovernanceView user={user} onToast={onToast} />;
       case "mc-compliance":
@@ -10548,20 +10740,21 @@ export function Dashboard({
       <AnimatePresence>
         {!navCollapsed && (
           <motion.aside
-            initial={{ x: "-100%" }}
+            initial={reduceMotion ? false : { x: "-100%" }}
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
-            transition={{ duration: 0.32, ease: EASE }}
-            className="fixed inset-y-0 left-0 z-40 hidden w-[264px] flex-col border-r border-white/[0.08] bg-night shadow-[24px_0_60px_-40px_rgba(0,0,0,0.9)] lg:flex"
+            transition={reduceMotion ? { duration: 0 } : { duration: 0.32, ease: EASE }}
+            className="fixed inset-y-0 left-0 z-40 hidden w-[264px] flex-col border-r border-white/[0.08] bg-ink-950 bg-grid-sidebar shadow-[24px_0_60px_-40px_rgba(0,0,0,0.9)] lg:flex"
             aria-label="Workspace sidebar"
+            aria-hidden={navOpen || undefined}
+            inert={navOpen}
           >
-            <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-50" aria-hidden="true" />
             <button
               type="button"
               onClick={() => setNavCollapsedPersisted(true)}
               aria-label="Collapse sidebar"
               title="Collapse the sidebar"
-              className="absolute right-3 top-6 z-10 grid h-8 w-8 place-items-center rounded-lg text-ink-500 transition-colors hover:bg-white/10 hover:text-white"
+              className="focus-brand absolute right-3 top-5 z-10 grid h-11 w-11 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-white/10 hover:text-white"
             >
               <PanelLeftClose className="h-4 w-4" aria-hidden="true" />
             </button>
@@ -10583,17 +10776,23 @@ export function Dashboard({
       </AnimatePresence>
 
       {/* Mobile top bar */}
-      <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-white/[0.07] bg-night px-4 py-3 lg:hidden">
+      <header
+        className="mobile-safe-header sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-white/[0.07] bg-night lg:hidden"
+        aria-hidden={navOpen || undefined}
+        inert={navOpen}
+      >
         <QuorumLogo variant="light" />
         <div className="flex items-center gap-2.5">
           {/* Reports the sidecar's real state — never a hardcoded "online" */}
-          <AgentStatusBadge mode={agentMode} className="hidden sm:inline-flex" />
+          <AgentStatusBadge mode={agentMode} className="hidden sm:inline-flex" darkSurface />
           <button
+            ref={mobileMenuTriggerRef}
             type="button"
             onClick={() => setNavOpen(true)}
             aria-label="Open workspace menu"
             aria-expanded={navOpen}
-            className="focus-brand grid h-10 w-10 place-items-center rounded-full border border-white/15 text-white transition-colors hover:border-brand-500"
+            aria-controls={navOpen ? "workspace-mobile-drawer" : undefined}
+            className="focus-brand grid h-11 w-11 place-items-center rounded-full border border-white/15 text-white transition-colors hover:border-brand-500"
           >
             <Menu className="h-5 w-5" aria-hidden="true" />
           </button>
@@ -10605,29 +10804,33 @@ export function Dashboard({
         {navOpen && (
           <>
             <motion.div
-              initial={{ opacity: 0 }}
+              initial={reduceMotion ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              exit={reduceMotion ? { opacity: 1 } : { opacity: 0 }}
+              transition={reduceMotion ? { duration: 0 } : { duration: 0.2 }}
               className="fixed inset-0 z-[60] bg-night/70 backdrop-blur-sm lg:hidden"
               onClick={() => setNavOpen(false)}
               aria-hidden="true"
             />
             <motion.aside
-              initial={{ x: "-100%" }}
+              ref={mobileMenuRef}
+              id="workspace-mobile-drawer"
+              role="dialog"
+              aria-modal="true"
+              tabIndex={-1}
+              initial={reduceMotion ? false : { x: "-100%" }}
               animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ duration: 0.32, ease: EASE }}
-              className="fixed inset-y-0 left-0 z-[61] w-[290px] bg-night lg:hidden"
-              aria-label="Workspace menu"
+              exit={reduceMotion ? { x: 0 } : { x: "-100%" }}
+              transition={reduceMotion ? { duration: 0 } : { duration: 0.32, ease: EASE }}
+              className="mobile-safe-drawer fixed inset-y-0 left-0 z-[61] bg-ink-950 bg-grid-sidebar lg:hidden"
+              aria-label="Workspace navigation"
             >
-              <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-50" aria-hidden="true" />
               <div className="relative flex h-full flex-col">
                 <button
                   type="button"
                   onClick={() => setNavOpen(false)}
                   aria-label="Close menu"
-                  className="absolute right-3 top-4 grid h-9 w-9 place-items-center rounded-lg text-ink-300 hover:bg-white/10 hover:text-white"
+                  className="focus-brand absolute right-3 top-4 grid h-11 w-11 place-items-center rounded-lg text-ink-200 hover:bg-white/10 hover:text-white"
                 >
                   <X className="h-4.5 w-4.5" aria-hidden="true" />
                 </button>
@@ -10654,6 +10857,8 @@ export function Dashboard({
           "desk-sheet transition-[padding] duration-300 ease-out",
           navCollapsed ? "lg:pl-0" : "lg:pl-[264px]"
         )}
+        aria-hidden={navOpen || undefined}
+        inert={navOpen}
       >
         {/* Sticky utility bar — the desk's instrument strip */}
         <div className="sticky top-0 z-30 border-b border-ink-200/70 bg-paper/80 backdrop-blur-xl supports-[backdrop-filter]:bg-paper/65 dark:border-white/[0.08]">
@@ -10667,7 +10872,7 @@ export function Dashboard({
                   onClick={() => setNavCollapsedPersisted(false)}
                   aria-label="Expand sidebar"
                   title="Expand the sidebar"
-                  className="focus-brand hidden h-10 w-10 shrink-0 place-items-center rounded-full border border-ink-200/80 bg-white text-ink-600 transition-colors hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 lg:grid dark:border-white/10 dark:bg-white/[0.04]"
+                  className="focus-brand hidden h-11 w-11 shrink-0 place-items-center rounded-full border border-ink-200/80 bg-white text-ink-600 transition-colors hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 lg:grid dark:border-white/10 dark:bg-white/[0.04]"
                 >
                   <PanelLeftOpen className="h-4 w-4" aria-hidden="true" />
                 </button>
@@ -10676,7 +10881,7 @@ export function Dashboard({
                   lives in the status cluster on the right — one pulsing dot
                   per screen, not two. */}
               <nav aria-label="Workspace location" className="flex min-w-0 items-center gap-2.5">
-                <span className="hidden shrink-0 font-code text-[8px] font-semibold uppercase tracking-[0.24em] text-ink-400 sm:inline">
+                <span className="hidden shrink-0 font-code text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-500 sm:inline">
                   Workspace
                 </span>
                 <span className="hidden shrink-0 text-[11px] text-ink-300 sm:inline dark:text-ink-600" aria-hidden="true">
@@ -10684,6 +10889,8 @@ export function Dashboard({
                 </span>
                 <span
                   aria-current="page"
+                  aria-live="polite"
+                  aria-atomic="true"
                   className="min-w-0 truncate text-[13.5px] font-semibold tracking-[-0.01em] text-ink-950 dark:text-white"
                 >
                   {SECTION_LABEL[active] ?? "Overview"}
@@ -10703,13 +10910,14 @@ export function Dashboard({
                 aria-label="Jump to a workspace section"
                 aria-keyshortcuts="Meta+K Control+K"
                 title="Jump to… (⌘K)"
-                className="focus-brand inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-ink-200/80 bg-white/60 px-2.5 text-ink-500 shadow-[0_1px_2px_rgba(11,12,15,0.03)] transition-colors hover:border-ink-300 hover:text-ink-900 dark:border-white/[0.1] dark:bg-white/[0.04] dark:text-ink-400 dark:hover:border-white/20 dark:hover:text-white"
+                className="focus-brand inline-flex h-11 shrink-0 items-center gap-2 rounded-lg border border-ink-200/80 bg-white/60 px-2.5 text-ink-500 shadow-[0_1px_2px_rgba(11,12,15,0.03)] transition-colors hover:border-ink-300 hover:text-ink-900 dark:border-white/[0.1] dark:bg-white/[0.04] dark:text-ink-400 dark:hover:border-white/20 dark:hover:text-white"
               >
                 <CommandIcon className="h-3.5 w-3.5" aria-hidden="true" />
-                <span className="hidden font-code text-[8px] font-bold tracking-[0.16em] xl:inline">JUMP TO</span>
+                <span className="font-code text-[10px] font-bold tracking-[0.06em] sm:hidden">JUMP TO</span>
+                <span className="hidden font-code text-[10px] font-bold tracking-[0.06em] xl:inline">JUMP TO</span>
                 <kbd
                   aria-hidden="true"
-                  className="hidden rounded-[4px] border border-ink-200/80 bg-white px-1 py-[1px] font-code text-[8px] font-bold leading-none text-ink-500 lg:inline dark:border-white/10 dark:bg-white/[0.06] dark:text-ink-400"
+                  className="hidden rounded-[4px] border border-ink-200/80 bg-white px-1 py-[2px] font-code text-[10px] font-bold leading-none text-ink-500 lg:inline dark:border-white/10 dark:bg-white/[0.06] dark:text-ink-400"
                 >
                   ⌘K
                 </kbd>
@@ -10719,7 +10927,7 @@ export function Dashboard({
                   status cluster because the width never jumps. */}
               <div className="relative hidden min-w-0 w-full max-w-[13rem] sm:block">
                 <Search
-                  className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400"
+                  className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400 dark:text-[#a8adb7]"
                   aria-hidden="true"
                 />
                 <input
@@ -10728,7 +10936,7 @@ export function Dashboard({
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search evaluations…"
                   aria-label="Search evaluations by reference, title or buyer"
-                  className="focus-brand h-9 w-full rounded-lg border border-ink-200/80 bg-[#fffdfb] pl-9 pr-3.5 text-[12.5px] text-ink-900 shadow-[inset_0_1px_1px_rgba(11,12,15,0.03)] outline-none transition-[border-color,background-color] duration-300 placeholder:text-ink-400 focus:border-ink-950 focus:ring-[3px] focus:ring-ink-950/[0.07] dark:border-white/[0.1] dark:bg-white/[0.04] dark:focus:border-white/35 dark:focus:ring-white/[0.06]"
+                  className="focus-brand h-11 w-full rounded-lg border border-ink-200/80 bg-[#fffdfb] pl-9 pr-3.5 text-base text-ink-900 shadow-[inset_0_1px_1px_rgba(11,12,15,0.03)] outline-none transition-[border-color,background-color] duration-300 placeholder:text-ink-400 focus:border-ink-950 focus:ring-[3px] focus:ring-ink-950/[0.07] dark:border-white/[0.1] dark:bg-white/[0.04] dark:focus:border-white/35 dark:focus:ring-white/[0.06]"
                 />
               </div>
             </div>
@@ -10754,8 +10962,9 @@ export function Dashboard({
 
         <main
           id="mc-main"
+          tabIndex={-1}
           className={cn(
-            "mx-auto w-full px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pt-7",
+            "mx-auto w-full px-4 pb-24 pt-6 outline-none sm:px-6 lg:px-8 lg:pt-7",
             active === "mc-stack" ? "max-w-none" : "max-w-[1500px]"
           )}
         >
@@ -10773,7 +10982,7 @@ export function Dashboard({
               <p className="text-[12.5px] font-medium text-brand-900">
                 The agent service (quorum-mcp sidecar) is not answering — the numbers below may be stale.
               </p>
-              <p className="font-code text-[8.5px] tracking-[0.14em] text-brand-700">
+              <p className="font-code text-[10px] tracking-[0.04em] text-brand-800">
                 CHECK TOOLS &amp; MODELS FOR THE LIVE STATUS
               </p>
             </div>
@@ -10782,10 +10991,9 @@ export function Dashboard({
           <section id="mc-overview" aria-labelledby="mc-greeting" className="scroll-mt-20">
             <div className="flex flex-wrap items-end justify-between gap-5">
               <div className="min-w-0">
-                <SpecBar index="04" label="Workspace" meta="Overview · live from quorum-mcp" />
                 <h1
                   id="mc-greeting"
-                  className="type-display mt-6 text-[34px] text-ink-950 sm:text-[44px]"
+                  className="type-display text-[34px] text-ink-950 sm:text-[44px]"
                 >
                   {greeting},{" "}
                   <span className="font-editorial text-[1.04em] font-normal tracking-normal text-brand-600 dark:text-brand-400">
@@ -10812,10 +11020,10 @@ export function Dashboard({
               </div>
             </div>
 
-            {/* Stats — a hairline-divided editorial band, not floating cards */}
+            {/* Stats — the editorial band in light mode, quiet surfaced cards in dark mode */}
             <div
               data-tour="ov-stats"
-              className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-[12px] border border-ink-200/70 bg-ink-200/60 shadow-[0_1px_2px_rgba(11,12,15,0.04),0_18px_40px_-24px_rgba(11,12,15,0.26)] xl:grid-cols-4 dark:border-white/10 dark:bg-white/10 dark:shadow-[0_1px_0_rgba(255,255,255,0.05)_inset,0_22px_55px_-30px_rgba(0,0,0,0.8)]"
+              className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-[12px] border border-ink-200/70 bg-ink-200/60 shadow-[0_1px_2px_rgba(11,12,15,0.04),0_18px_40px_-24px_rgba(11,12,15,0.26)] dark:gap-3 dark:overflow-visible dark:border-0 dark:bg-transparent dark:shadow-none xl:grid-cols-4"
             >
               <StatCard
                 index="01"
@@ -10874,15 +11082,9 @@ export function Dashboard({
             />
           </div>
 
-          {/* Feed + portals */}
-          <div className="mt-6 grid grid-cols-1 gap-4 sm:gap-6">
-            <div className="min-w-0">
-              <AgentFeed />
-            </div>
-            <div className="grid grid-cols-1 content-start gap-4 sm:gap-6 md:grid-cols-2">
-              <PortalSync />
-              <StandingRuleCard />
-            </div>
+          {/* Feed */}
+          <div className="mt-6 min-w-0">
+            <AgentFeed />
           </div>
 
           {/* Bottom strip */}
@@ -10911,7 +11113,7 @@ export function Dashboard({
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onLaunch={launchRun}
-        pastRefs={runs.map((r) => r.id)}
+        pastRefs={runs.map((r) => r.reference ?? r.id)}
         canDeleteDocs={canDo(user?.role, "run_reviews")}
       />
 

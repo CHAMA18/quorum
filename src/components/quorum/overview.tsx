@@ -107,7 +107,7 @@ export function Overview() {
                   <p className="font-code text-[20px] font-extrabold leading-none tracking-[-0.02em] text-ink-950 tabular sm:text-[24px]">
                     26<span className="ml-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-500">days</span>
                   </p>
-                  <p className="mt-1.5 font-code text-[9.5px] tracking-[0.14em] text-ink-500">
+                  <p className="mt-1.5 font-code text-[10.5px] tracking-[0.08em] text-ink-500">
                     COMMITTEE WORK, BY HAND
                   </p>
                 </div>
@@ -115,21 +115,17 @@ export function Overview() {
                   <p className="font-code text-[20px] font-extrabold leading-none tracking-[-0.02em] text-brand-600 tabular sm:text-[24px]">
                     ~20<span className="ml-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-600/70">min</span>
                   </p>
-                  <p className="mt-1.5 font-code text-[9.5px] tracking-[0.14em] text-ink-500">
+                  <p className="mt-1.5 font-code text-[10.5px] tracking-[0.08em] text-ink-500">
                     WHAT YOUR AGENT SHOULD TAKE
                   </p>
                 </div>
               </div>
 
               {/* Measured, not marketed — the bench behind the clock figures */}
-              <p className="mt-3 font-code text-[9.5px] leading-relaxed tracking-[0.12em] text-ink-400 sm:mt-4">
-                MEASURED, NOT CLAIMED — on the record's staged packs, the shipped
-                review graph (files → requirements → cited findings → human gate)
-                runs in 4–9 ms deterministic, 20–28 s on the configured model. The
-                read-and-flag pipeline scales to volume measured at ~0.9 s per MB
-                of pack text. The ~20 min stays the envelope for full real-world
-                packs — still two orders of magnitude inside 26 days, and the
-                gavel stays human either way.
+              <p className="mt-3 text-[12px] leading-[1.65] text-ink-600 sm:mt-4">
+                <span className="font-semibold text-ink-800">Measured, not claimed — </span>on the record&apos;s staged packs, the shipped
+                review graph (files → requirements → cited findings → human gate) runs in 4–9 ms deterministically and 20–28 s on the configured model. The
+                read-and-flag pipeline scales to about 0.9 s per MB of pack text. The ~20 min stays the envelope for full real-world packs — still two orders of magnitude inside 26 days, and the gavel stays human either way.
               </p>
 
               {/* Task chips over the committee segment */}
@@ -143,7 +139,7 @@ export function Overview() {
                     transition={{ delay: 0.15 + i * 0.09, duration: 0.5, ease: EASE }}
                     className="inline-flex items-center gap-2 rounded-full border border-ink-100 bg-paper px-3 py-1.5 text-[12px] font-medium text-ink-700 transition-colors hover:border-brand-300 hover:bg-brand-50"
                   >
-                    <span className="font-code text-[9.5px] font-semibold text-brand-600 tabular">
+                    <span className="font-code text-[10px] font-semibold text-brand-600 tabular">
                       {String(i + 1).padStart(2, "0")}
                     </span>
                     {t}

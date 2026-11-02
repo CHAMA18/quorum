@@ -19,10 +19,11 @@
  *   · a fixed minimum height keeps the panel from jumping between slides.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Building2, ChevronLeft, ChevronRight, Landmark, ScrollText, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { nextRovingTabIndex } from "@/lib/a11y";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 const INTERVAL_MS = 6_500;
@@ -58,6 +59,7 @@ export function RegisterShowcase({ compact = false }: { compact?: boolean }) {
   const reduce = useReducedMotion();
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const idPrefix = useId();
   const regionRef = useRef<HTMLDivElement>(null);
   const count = SLIDES.length;
 
@@ -73,14 +75,12 @@ export function RegisterShowcase({ compact = false }: { compact?: boolean }) {
   }, [paused, reduce, index, count]);
 
   /* Arrow keys move the carousel when focus is inside it. */
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowRight") {
-      e.preventDefault();
-      step(1);
-    } else if (e.key === "ArrowLeft") {
-      e.preventDefault();
-      step(-1);
-    }
+  const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const next = nextRovingTabIndex(event.key, index, count);
+    if (next === null) return;
+    event.preventDefault();
+    go(next);
+    requestAnimationFrame(() => document.getElementById(`${idPrefix}-tab-${next}`)?.focus());
   };
 
   const slide = SLIDES[index];
@@ -102,6 +102,10 @@ export function RegisterShowcase({ compact = false }: { compact?: boolean }) {
       {/* The slide — one fact at a time, on a stable stage. */}
       <div
         className={cn("relative", compact ? "min-h-[124px]" : "min-h-[148px]")}
+        id={`${idPrefix}-slide`}
+        role="tabpanel"
+        aria-labelledby={`${idPrefix}-tab-${index}`}
+        tabIndex={0}
         aria-live={paused || reduce ? "polite" : "off"}
       >
         <AnimatePresence mode="wait" initial={false}>
@@ -125,7 +129,7 @@ export function RegisterShowcase({ compact = false }: { compact?: boolean }) {
               <Icon className="h-4 w-4" />
             </span>
             <div className="min-w-0">
-              <p className="font-code text-[8.5px] font-semibold tracking-[0.22em] text-brand-300/90">
+              <p className="font-code text-[10px] font-semibold tracking-[0.12em] text-brand-300/90">
                 {String(index + 1).padStart(2, "0")} · {slide.kicker.toUpperCase()}
               </p>
               <p className={cn("font-semibold text-white", compact ? "mt-1.5 text-[14px]" : "mt-2 text-[15.5px]")}>
@@ -148,10 +152,13 @@ export function RegisterShowcase({ compact = false }: { compact?: boolean }) {
               key={s.title}
               type="button"
               role="tab"
+              id={`${idPrefix}-tab-${i}`}
               aria-selected={i === index}
+              aria-controls={`${idPrefix}-slide`}
+              tabIndex={i === index ? 0 : -1}
               aria-label={`Slide ${i + 1}: ${s.title}`}
               onClick={() => go(i)}
-              className="focus-brand group/sig relative h-6 w-9 rounded-md py-2.5"
+              className="focus-brand group/sig relative h-11 w-11 rounded-md"
             >
               <span className="absolute inset-x-0 bottom-2 top-auto block h-[3px] overflow-hidden rounded-full bg-white/12">
                 {i === index ? (
@@ -178,14 +185,14 @@ export function RegisterShowcase({ compact = false }: { compact?: boolean }) {
           ))}
         </div>
         <div className="ml-auto flex items-center gap-1.5">
-          <span className="mr-1 font-code text-[8px] font-bold tabular tracking-[0.14em] text-ink-500" aria-hidden="true">
+          <span className="mr-1 font-code text-[10px] font-bold tabular tracking-[0.08em] text-ink-500" aria-hidden="true">
             {String(index + 1).padStart(2, "0")}/{String(count).padStart(2, "0")}
           </span>
           <button
             type="button"
             onClick={() => step(-1)}
             aria-label="Previous slide"
-            className="focus-brand grid h-8 w-8 place-items-center rounded-lg border border-white/12 text-ink-300 transition-colors hover:border-white/30 hover:text-white"
+            className="focus-brand grid h-11 w-11 place-items-center rounded-lg border border-white/12 text-ink-200 transition-colors hover:border-white/30 hover:text-white"
           >
             <ChevronLeft className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -193,7 +200,7 @@ export function RegisterShowcase({ compact = false }: { compact?: boolean }) {
             type="button"
             onClick={() => step(1)}
             aria-label="Next slide"
-            className="focus-brand grid h-8 w-8 place-items-center rounded-lg border border-white/12 text-ink-300 transition-colors hover:border-white/30 hover:text-white"
+            className="focus-brand grid h-11 w-11 place-items-center rounded-lg border border-white/12 text-ink-200 transition-colors hover:border-white/30 hover:text-white"
           >
             <ChevronRight className="h-4 w-4" aria-hidden="true" />
           </button>

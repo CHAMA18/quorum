@@ -3,15 +3,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { BookOpen, CircleAlert, Gavel, Maximize2, Search, X } from "lucide-react";
+import { HorizontalScrollRegion } from "@/components/quorum/horizontal-scroll-region";
 import { cn } from "@/lib/utils";
+import { preferredScrollBehavior, trapTabFocus } from "@/lib/a11y";
 import { TourLayer, type TourStep } from "@/components/quorum/tour";
 
 /* ── Quorum's documentation — the complete handbook ────────────────────────
    Its own page at /docs: Docusaurus-grade depth, written for the first-time
    officer and the auditor alike — every screen, every rule, the gate
    protocol, and Zambia's procurement law as the engine implements it.
-   Chapters carry real screenshots of the screens they describe; the shots
-   are frozen in public/docs and expand into a lightbox on click. */
+   Chapters carry dated screenshots of the screens they describe; the shots
+   are frozen in public/docs and expand into a lightbox on click. Captions call
+   out any visible legacy details that no longer match the current workspace. */
 
 type DocCalloutTone = "rule" | "law" | "tip" | "warn";
 
@@ -101,10 +104,10 @@ const DOC_CHAPTERS: DocChapter[] = [
       {
         kind: "figure",
         src: "/docs/overview.png",
-        alt: "The Quorum workspace overview: greeting, live stat tiles and the recent evaluations list with start times",
-        screen: "WORKSPACE · OVERVIEW · CAPTURED 18 OCT 2026",
+        alt: "Archived Quorum workspace overview showing its 18 October 2026 stat tiles and former tender ID format",
+        screen: "ARCHIVED CAPTURE · OVERVIEW · 18 OCT 2026",
         caption:
-          "The workspace as it stood when these pages were written: the evaluations table, the approvals queue and the live sources rail — every number read straight from the agent service, none written by hand.",
+          "Historical workspace snapshot. Its tender rows show the former country-prefixed IDs; the current register displays neutral QRM system references.",
       },
       {
         kind: "table",
@@ -112,7 +115,7 @@ const DOC_CHAPTERS: DocChapter[] = [
         head: ["MOVE", "WHERE", "WHAT HAPPENS"],
         rows: [
           ["Brief", "New evaluation wizard", "Name the tender and stage its documents — OCDS records, a PDF pack or the email bag."],
-          ["Review", "Agent runs", "The agent reads the pack, extracts requirements and sweeps the rules. Findings appear with page-level citations."],
+          ["Review", "Evaluations", "The agent reads the pack, extracts requirements and sweeps the rules. Findings appear with page-level citations."],
           ["Decide", "Approvals", "The gate. A committee member reads the cited findings and signs to award, or returns the tender for clarification."],
           ["Record", "Award history", "The history appends the decision, the signer and the time. Nothing is edited; entries are only added."],
         ],
@@ -157,10 +160,10 @@ const DOC_CHAPTERS: DocChapter[] = [
       {
         kind: "figure",
         src: "/docs/runs.png",
-        alt: "The Agent runs register: one row per tender with bids, issues found, sourced claims, status and time",
-        screen: "WORKSPACE · AGENT RUNS · CAPTURED 18 OCT 2026",
+        alt: "Archived Agent runs register captured 18 October 2026, with the former tender ID format",
+        screen: "ARCHIVED CAPTURE · LEGACY REFERENCE FORMAT",
         caption:
-          "The evaluations table — one row per tender. Statuses are derived from what actually happened in each evaluation: in progress, needs approval, or complete.",
+          "Historical run-register snapshot. The IDs shown use the previous country-prefixed format; the current register assigns and displays QRM system references.",
       },
       {
         kind: "table",
@@ -193,10 +196,10 @@ const DOC_CHAPTERS: DocChapter[] = [
       {
         kind: "figure",
         src: "/docs/run-detail.png",
-        alt: "A run row opened in the register: the top issues the agent flagged, each as a chip, with the sourced report download",
-        screen: "WORKSPACE · AGENT RUNS · ONE RUN OPENED",
+        alt: "Archived run row with findings and report actions, showing the former country-prefixed tender ID format",
+        screen: "ARCHIVED CAPTURE · RUN DETAILS · LEGACY ID",
         caption:
-          "One run opened. Every flagged issue is a chip that names what was seen; the sourced report — findings, citations, audit hash — downloads from the same row.",
+          "Historical run-detail snapshot. Current run details and downloadable reports use the neutral QRM reference while retaining source IDs only for record lookup.",
       },
     ],
   },
@@ -210,10 +213,10 @@ const DOC_CHAPTERS: DocChapter[] = [
         kind: "steps",
         title: "The wizard, step by step",
         items: [
-          "Details. Enter the tender reference and the published title exactly as they appear, then choose the source format: OCDS records, a PDF pack or the email bag. The wizard suggests the next reference in your register's sequence, or reads one out of a staged filename.",
+          "Details. Quorum assigns a neutral QRM reference to the new record. Add the published tender title and source format; reference-shaped text in a filename stays with the source document and does not replace the system ID.",
           "Documents. Drop up to twelve files. Each moves from RECEIVED to PARSING to INDEXED; nothing can launch while a document is still being read. Uploads mirror to cloud storage when configured, or stay in the local vault.",
           "Scope. Choose which checks run — specifications, quantities and prices. Page-level citations stay on for every finding, always.",
-          "Launch. The run is queued and you land on Agent runs, where it goes live in front of you.",
+          "Launch. The run is queued and you land on Evaluations, where its progress appears in front of you.",
         ],
       },
       {
@@ -233,16 +236,16 @@ const DOC_CHAPTERS: DocChapter[] = [
       {
         kind: "figure",
         src: "/docs/new-evaluation.png",
-        alt: "The New evaluation wizard: step 1 details with an assigned tender reference, source format choices and the sample tender registry open",
-        screen: "WORKSPACE · NEW EVALUATION · STEP 1 OF 3",
+        alt: "Archived New evaluation wizard capture showing the former tender reference format, source format choices and the sample registry",
+        screen: "ARCHIVED CAPTURE · LEGACY REFERENCE FORMAT",
         caption:
-          "The wizard at step one: the reference is assigned by the register and locked, the format is a choice, and the sample registry stages a real pack — with its own bids and price deviations — in one click.",
+          "This older capture shows the previous country-prefixed ID. The current wizard issues a locked QRM-YYYY-NNN system reference; the sample pack’s source ID stays behind the scenes for document lookup.",
       },
       {
         kind: "callout",
         tone: "tip",
         title: "Naming matters",
-        text: "The reference you type is the join key for everything afterwards: files, findings, gates and history rows. If the published document names the tender differently, keep the document's spelling — the agent matches on what the papers say.",
+        text: "Quorum assigns the join key for new records and uses it for files, findings, gates and history. If a published document carries a separate authority reference, keep that exact text in the source document; it does not replace the system ID.",
       },
     ],
   },
@@ -349,11 +352,11 @@ const DOC_CHAPTERS: DocChapter[] = [
     id: "zambia",
     kicker: "The law",
     title: "Zambia's procurement regime",
-    lead: "First up among the jurisdictions the platform serves: Zambia — the Public Procurement Act No. 8 of 2023, which repealed and replaced the 2008 Act, and the Public-Private Partnership Act No. 14 of 2009.",
+    lead: "First up among the jurisdictions the platform serves: Zambia — the Public Procurement Act No. 8 of 2020, as amended by Act No. 17 of 2023, the Public Procurement Regulations of 2022, and the Public-Private Partnership Act No. 14 of 2009.",
     blocks: [
       {
         kind: "p",
-        text: "The engine reviews a file with the lawful methods in view: open and limited bidding, direct bidding, simplified bidding, force account, community participation, purchases from other procuring entities, PPP concessions, and the alternative-method route via the Zambia Public Procurement Authority. The method register below is the engine's own data — loaded live, so what you read here is what the review applies.",
+        text: "The engine reviews the complete method register: open national/international bidding and selection, limited, simplified and direct bidding/selection, electronic reverse auction, force account, community participation, purchases from other procuring entities, private-financed infrastructure and concessions, government-to-government procurement, and any alternative method approved by the Zambia Public Procurement Authority. National or international scope is recorded separately where applicable. The register below is loaded live from the same source the review applies.",
       },
       { kind: "methods" },
       {
@@ -363,9 +366,9 @@ const DOC_CHAPTERS: DocChapter[] = [
         rows: [
           ["Legal basis", "The statute the method rides on — name it in the record when the method is questioned."],
           ["When this is lawful", "The conditions that must hold. A choice that doesn't fit them is a finding waiting to happen."],
-          ["Value band", "Where the law draws a line — simplified bidding up to K1 million, open bidding above it."],
+          ["Value band", "Where the law draws a line — thresholds differ by procurement type and selection method."],
           ["Advertising", "Whether the invitation must be gazetted and advertised, or goes only to nominated firms."],
-          ["Float period", "The minimum time bidders get: four weeks national, six weeks international."],
+          ["Float period", "The minimum time for the selected route, checked against the current Regulations."],
           ["Award authorisation", "Who signs: the Procurement Committee, the Central Tender Committee, or the Authority — never the agent."],
         ],
       },
@@ -662,7 +665,7 @@ const DOC_CHAPTERS: DocChapter[] = [
           { term: "What if the agent service is offline?", def: "Reads that depend on it pause, and approvals cannot be recorded until it is back. The interface shows AGENT · OFFLINE rather than pretending." },
           { term: "A finding is wrong. What now?", def: "Quote its citation back at the record. Findings that can't be anchored to a document never pass the pipeline; for the rest, the committee's return is the correction mechanism." },
           { term: "Where does my data live?", def: "On your host: the agent service's data directory for evaluations, gates, suppliers and logs; the local vault or cloud storage for documents, as configured." },
-          { term: "Which jurisdictions are supported?", def: "The method register opens with Zambia — Public Procurement Act No. 8 of 2023 — and grows by jurisdiction; the engine validates only the identifier schemes it actually knows." },
+          { term: "Which jurisdictions are supported?", def: "The method register opens with Zambia — Public Procurement Act No. 8 of 2020, as amended — and grows by jurisdiction; the engine validates only the identifier schemes it actually knows." },
         ],
       },
       {
@@ -705,8 +708,8 @@ function DocCallout({ tone, title, text }: { tone: DocCalloutTone; title: string
       <div className="relative overflow-hidden rounded-[10px] border border-ink-950 bg-night p-5 text-white shadow-[0_18px_45px_rgba(11,12,15,0.25)]">
         <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
         <div className="relative">
-          <p className="font-code text-[8px] font-bold tracking-[0.28em] text-brand-400">{title.toUpperCase()}</p>
-          <p className="mt-2.5 font-code text-[9.5px] leading-[2] tracking-[0.14em] text-ink-200">{text}</p>
+          <p className="font-code text-[10px] font-bold tracking-[0.06em] text-brand-400">{title.toUpperCase()}</p>
+        <p className="mt-2.5 font-code text-[10.5px] leading-relaxed tracking-[0.04em] text-ink-200">{text}</p>
         </div>
       </div>
     );
@@ -720,7 +723,7 @@ function DocCallout({ tone, title, text }: { tone: DocCalloutTone; title: string
   const Icon = look.Icon;
   return (
     <div className={cn("rounded-xl border px-4 py-3.5", look.box)}>
-      <p className={cn("flex items-center gap-2 font-code text-[8px] font-bold tracking-[0.22em]", look.label)}>
+      <p className={cn("flex items-center gap-2 font-code text-[10px] font-bold tracking-[0.06em]", look.label)}>
         <Icon className={cn("h-3.5 w-3.5 shrink-0", look.icon)} aria-hidden="true" />
         {title.toUpperCase()}
       </p>
@@ -745,15 +748,21 @@ type ZMethodRow = {
 };
 
 const METHOD_FALLBACK: { name: string; when: string }[] = [
-  { name: "Open bidding / selection", when: "The default — advertised, open to the public, above K1 million." },
-  { name: "Limited bidding / selection", when: "No public advertisement: a limited number of firms, or urgency that makes open bidding impractical." },
+  { name: "Open bidding", when: "Open competition for goods, works and non-consulting services; national or international scope is recorded separately." },
+  { name: "Open selection", when: "Open competition for consulting services; national or international scope is recorded separately." },
+  { name: "Limited bidding", when: "Goods, works or non-consulting services where the Act permits a limited invitation; prior authority approval is required." },
+  { name: "Limited selection", when: "Consulting services where the Act permits a limited invitation; prior authority approval is required." },
   { name: "Direct bidding", when: "Single source: sole availability, emergency, compatibility, or a below-threshold value." },
-  { name: "Simplified bidding / selection", when: "Low-value, off-the-shelf purchases up to K1 million — three written quotations." },
+  { name: "Direct selection", when: "Consulting services from a single consultant where statutory grounds are met." },
+  { name: "Simplified bidding", when: "Low-value goods, works or non-consulting services; value threshold is set by the Regulations." },
+  { name: "Simplified selection", when: "Low-value consulting services; value threshold is set by the Regulations." },
+  { name: "Electronic reverse auction", when: "A defined requirement with measurable monetary criteria and an approved secure e-GP auction." },
   { name: "Force account", when: "The entity builds with its own personnel and equipment." },
   { name: "Community participation", when: "Selected project components engage local communities and NGOs." },
   { name: "Purchases from other procuring entities", when: "A Government agency can meet the requirement and no supplier would offer benefit." },
-  { name: "Private-financed infrastructure / concessions", when: "PPPs under the Public-Private Partnership Act No. 14 of 2009." },
-  { name: "Alternative procurement methods", when: "Only with the ZPPA's prior approval." },
+  { name: "Private-financed infrastructure / concessions (PPP)", when: "Procurement of infrastructure from private financing and award of concessions under the applicable PPP framework." },
+  { name: "Government-to-government procurement", when: "Procurement from a foreign State under an agreement with the Republic." },
+  { name: "Alternative method (ZPPA approval required)", when: "A method outside the listed routes, only with the Authority's prior approval." },
 ];
 
 function DocMethodsBoard() {
@@ -791,7 +800,7 @@ function DocMethodsBoard() {
   if (offline || !methods || methods.length === 0) {
     return (
       <div className="rounded-[10px] border border-brand-200 bg-brand-50 p-5">
-        <p className="flex items-center gap-2 font-code text-[8px] font-bold tracking-[0.22em] text-brand-700">
+        <p className="flex items-center gap-2 font-code text-[10px] font-bold tracking-[0.06em] text-brand-800">
           <CircleAlert className="h-3.5 w-3.5" aria-hidden="true" />
           THE AGENT'S METHOD REGISTER IS NOT REACHABLE — SUMMARY BELOW
         </p>
@@ -821,10 +830,10 @@ function DocMethodsBoard() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <h4 className="font-display text-[16px] font-extrabold tracking-[-0.01em] text-ink-950">{m.name}</h4>
-              <p className="mt-0.5 font-code text-[8px] tracking-[0.16em] text-ink-400">{m.legalBasis.toUpperCase()}</p>
+              <p className="mt-1 font-code text-[10px] tracking-[0.04em] text-ink-600">{m.legalBasis.toUpperCase()}</p>
             </div>
             {m.valueBand && (
-              <span className="rounded-full border border-ink-200 bg-paper px-3 py-1 font-code text-[8px] font-bold tracking-[0.14em] text-ink-700">
+              <span className="inline-flex min-h-8 items-center rounded-full border border-ink-200 bg-paper px-3 py-1 font-code text-[10px] font-bold tracking-[0.04em] text-ink-700">
                 {m.valueBand.toUpperCase()}
               </span>
             )}
@@ -832,13 +841,13 @@ function DocMethodsBoard() {
           <p className="mt-3 text-[12.5px] leading-relaxed text-ink-700">{m.when}</p>
 
           <details className="mt-3 border-t border-ink-100 pt-3">
-            <summary className="cursor-pointer select-none font-code text-[8.5px] font-bold tracking-[0.16em] text-ink-500">
+            <summary className="focus-brand inline-flex min-h-11 cursor-pointer select-none items-center rounded font-code text-[10px] font-bold tracking-[0.04em] text-ink-700">
               THE PROCESS, IN ORDER
             </summary>
             <ol className="mt-2.5 space-y-2">
               {m.steps.map((s, i) => (
                 <li key={i} className="flex gap-2.5 text-[12.5px] leading-relaxed text-ink-700">
-                  <span className="shrink-0 font-code text-[9px] font-bold text-brand-700">{String(i + 1).padStart(2, "0")}</span>
+                  <span className="shrink-0 font-code text-[10px] font-bold text-brand-700">{String(i + 1).padStart(2, "0")}</span>
                   <span className="min-w-0">{s}</span>
                 </li>
               ))}
@@ -858,15 +867,15 @@ function DocMethodsBoard() {
 
           <dl className="mt-4 grid grid-cols-1 gap-3 border-t border-ink-100 pt-3 sm:grid-cols-3">
             <div>
-              <dt className="font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-400">AWARD AUTHORISATION</dt>
+              <dt className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-600">AWARD AUTHORISATION</dt>
               <dd className="mt-1 text-[11.5px] leading-snug text-ink-700">{m.awardAuthorisation}</dd>
             </div>
             <div>
-              <dt className="font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-400">ADVERTISING</dt>
+              <dt className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-600">ADVERTISING</dt>
               <dd className="mt-1 text-[11.5px] leading-snug text-ink-700">{m.advertising}</dd>
             </div>
             <div>
-              <dt className="font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-400">FLOAT PERIOD</dt>
+              <dt className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-600">FLOAT PERIOD</dt>
               <dd className="mt-1 text-[11.5px] leading-snug text-ink-700">{m.floatPeriod ?? "—"}</dd>
             </div>
           </dl>
@@ -894,10 +903,10 @@ function DocBlockView({ block, onOpenShot }: { block: DocBlock; onOpenShot?: (fi
           >
             <img src={block.src} alt={block.alt} loading="lazy" className="block w-full" />
             <span className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 bg-gradient-to-t from-ink-950/90 via-ink-950/45 to-transparent px-3.5 pb-2.5 pt-9">
-              <span className="min-w-0 truncate font-code text-[7.5px] font-bold tracking-[0.18em] text-white/70">
+              <span className="min-w-0 truncate font-code text-[10px] font-bold tracking-[0.04em] text-white/85">
                 {block.screen}
               </span>
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/15 px-2 py-1 font-code text-[7px] font-bold tracking-[0.16em] text-white opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/15 px-2 py-1 font-code text-[10px] font-bold tracking-[0.04em] text-white opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
                 <Maximize2 className="h-2.5 w-2.5" aria-hidden="true" />
                 EXPAND
               </span>
@@ -913,14 +922,14 @@ function DocBlockView({ block, onOpenShot }: { block: DocBlock; onOpenShot?: (fi
       return (
         <div>
           {block.title && (
-            <p className="mb-3 font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400">
+            <p className="mb-3 font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">
               {block.title.toUpperCase()}
             </p>
           )}
           <ol className="space-y-2.5">
             {block.items.map((item, i) => (
               <li key={i} className="flex gap-3 text-[13px] leading-relaxed text-ink-700">
-                <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border border-ink-200 font-code text-[8px] font-bold text-ink-500">
+                <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border border-ink-200 font-code text-[10px] font-bold text-ink-700">
                   {i + 1}
                 </span>
                 <span className="min-w-0">{item}</span>
@@ -933,16 +942,16 @@ function DocBlockView({ block, onOpenShot }: { block: DocBlock; onOpenShot?: (fi
       return (
         <div>
           {block.title && (
-            <p className="mb-3 font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400">
+            <p className="mb-3 font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">
               {block.title.toUpperCase()}
             </p>
           )}
-          <div className="overflow-x-auto rounded-xl border border-ink-100">
+          <HorizontalScrollRegion label={`${block.title ?? "Handbook comparison"} table`} className="rounded-xl border border-ink-100">
             <table className="w-full min-w-[560px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-ink-100 bg-paper">
                   {block.head.map((h) => (
-                    <th key={h} scope="col" className="px-4 py-3 font-code text-[8px] font-bold tracking-[0.18em] text-ink-500">
+                    <th key={h} scope="col" className="px-4 py-3 font-code text-[10px] font-bold tracking-[0.04em] text-ink-700">
                       {h}
                     </th>
                   ))}
@@ -966,21 +975,21 @@ function DocBlockView({ block, onOpenShot }: { block: DocBlock; onOpenShot?: (fi
                 ))}
               </tbody>
             </table>
-          </div>
+          </HorizontalScrollRegion>
         </div>
       );
     case "terms":
       return (
         <div>
           {block.title && (
-            <p className="mb-3 font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400">
+            <p className="mb-3 font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">
               {block.title.toUpperCase()}
             </p>
           )}
           <dl className="divide-y divide-ink-50 rounded-xl border border-ink-100">
             {block.items.map((t) => (
               <div key={t.term} className="px-4 py-3.5">
-                <dt className="font-code text-[9.5px] font-bold tracking-[0.14em] text-ink-900">{t.term.toUpperCase()}</dt>
+                <dt className="font-code text-[10px] font-bold tracking-[0.14em] text-ink-900">{t.term.toUpperCase()}</dt>
                 <dd className="mt-1 text-[12.5px] leading-relaxed text-ink-600">{t.def}</dd>
               </div>
             ))}
@@ -1021,6 +1030,7 @@ export function DocumentationView() {
   /* The enlarged shot — set by a figure, cleared by Escape or a click away. */
   const [shot, setShot] = useState<DocFigure | null>(null);
   const shotCloseRef = useRef<HTMLButtonElement | null>(null);
+  const shotDialogRef = useRef<HTMLElement | null>(null);
   /* The rule register is server truth. If the sidecar is unreachable the
      static rows remain, clearly labelled as defaults. */
   const [liveRules, setLiveRules] = useState<RuleCatalogueRow[] | null>(null);
@@ -1101,14 +1111,14 @@ export function DocumentationView() {
     if (!hash || !DOC_CHAPTER_IDS.includes(hash)) return;
     const id = window.setTimeout(() => {
       setActiveId(hash);
-      document.getElementById(`docs-${hash}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.getElementById(`docs-${hash}`)?.scrollIntoView({ behavior: preferredScrollBehavior(), block: "start" });
     }, 60);
     return () => window.clearTimeout(id);
   }, []);
 
   const jumpTo = (id: string) => {
     setActiveId(id);
-    document.getElementById(`docs-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    document.getElementById(`docs-${id}`)?.scrollIntoView({ behavior: preferredScrollBehavior(), block: "start" });
   };
 
   return (
@@ -1143,11 +1153,11 @@ export function DocumentationView() {
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search the handbook…"
                 aria-label="Search the handbook"
-                className="h-9 w-full rounded-full border border-ink-200 bg-paper pl-9 pr-3 text-[12.5px] text-ink-900 outline-none transition-colors placeholder:text-ink-300 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
+                className="focus-brand h-11 w-full rounded-full border border-ink-200 bg-paper pl-9 pr-3 text-[14px] text-ink-900 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10 dark:placeholder:text-ink-400"
               />
             </label>
             {q && (
-              <p className="mt-2 px-1 font-code text-[8px] tracking-[0.18em] text-ink-400">
+              <p className="mt-2 px-1 font-code text-[10px] tracking-[0.04em] text-ink-600">
                 {visible.length} OF {chapters.length} CHAPTERS MATCH
               </p>
             )}
@@ -1162,14 +1172,14 @@ export function DocumentationView() {
                       onClick={() => jumpTo(ch.id)}
                       aria-current={isActive ? "true" : undefined}
                       className={cn(
-                        "flex w-full items-baseline gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors",
+                        "focus-brand flex min-h-11 w-full items-baseline gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors",
                         isActive ? "bg-ink-950 text-white" : "text-ink-600 hover:bg-paper hover:text-ink-950",
                       )}
                     >
                       <span
                         className={cn(
-                          "font-code text-[8px] font-bold tracking-[0.14em]",
-                          isActive ? "text-brand-400" : "text-ink-300",
+                          "font-code text-[10px] font-bold tracking-[0.04em]",
+                          isActive ? "text-brand-400" : "text-ink-500",
                         )}
                       >
                         {String(idx + 1).padStart(2, "0")}
@@ -1187,7 +1197,7 @@ export function DocumentationView() {
             )}
           </div>
 
-          <p className="mt-3 px-2 font-code text-[7.5px] leading-[2] tracking-[0.16em] text-ink-400">
+          <p className="mt-3 px-2 font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600">
             {chapters.length} CHAPTERS · WRITTEN AGAINST THE ENGINE IT DOCUMENTS
           </p>
         </nav>
@@ -1202,7 +1212,7 @@ export function DocumentationView() {
                 id={`docs-${ch.id}`}
                 className="scroll-mt-24 rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)] sm:p-7"
               >
-                <p className="flex items-center gap-2.5 font-code text-[9px] font-bold tracking-[0.26em] text-brand-700">
+                <p className="flex items-center gap-2.5 font-code text-[10px] font-bold tracking-[0.26em] text-brand-700">
                   <span className="inline-block h-[2px] w-5 bg-brand-600" aria-hidden="true" />
                   CHAPTER {no} · {ch.kicker.toUpperCase()}
                 </p>
@@ -1236,15 +1246,18 @@ export function DocumentationView() {
             className="fixed inset-0 z-[80] grid place-items-center bg-ink-950/85 p-4 backdrop-blur-sm sm:p-8"
           >
             <motion.figure
+              ref={shotDialogRef}
+              tabIndex={-1}
               initial={{ opacity: 0, y: 14, scale: 0.985 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10 }}
               transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={(event) => trapTabFocus(event, shotDialogRef.current)}
               className="flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded-[10px] border border-white/10 bg-ink-950 shadow-[0_40px_120px_rgba(0,0,0,0.6)]"
             >
               <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
-                <p className="min-w-0 truncate font-code text-[8.5px] font-bold tracking-[0.2em] text-ink-300">
+                <p className="min-w-0 truncate font-code text-[10px] font-bold tracking-[0.04em] text-ink-200">
                   {shot.screen}
                 </p>
                 <button
@@ -1252,7 +1265,7 @@ export function DocumentationView() {
                   ref={shotCloseRef}
                   onClick={() => setShot(null)}
                   aria-label="Close the screenshot"
-                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-ink-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                  className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-lg text-ink-200 transition-colors hover:bg-white/10 hover:text-white"
                 >
                   <X className="h-4 w-4" aria-hidden="true" />
                 </button>

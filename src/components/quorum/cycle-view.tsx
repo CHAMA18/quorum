@@ -19,7 +19,7 @@
  * carries a dark variant, tokens do the rest.
  */
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { cloneElement, isValidElement, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { createPortal } from "react-dom";
 import {
@@ -30,9 +30,11 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   CircleAlert,
   Copy,
   Download,
+  ExternalLink,
   FileSignature,
   FileText,
   Flag,
@@ -42,100 +44,163 @@ import {
   Plus,
   Scale,
   Search,
-  Sparkles,
   Stamp,
+  Trash2,
   Upload,
   Workflow,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { trapTabFocus } from "@/lib/a11y";
+import { isSystemReference, systemReferenceLabel } from "@/lib/system-reference";
+import {
+  REQUIRED_DOCUMENT_GROUPS,
+  STANDARD_REQUIRED_DOCUMENTS,
+} from "@/lib/required-bid-documents";
 import { StoredDocsBrowser } from "@/components/quorum/stored-docs-browser";
-import { Switch } from "@/components/ui/switch";
+import { HorizontalScrollRegion } from "@/components/quorum/horizontal-scroll-region";
 
 const SVC = "?XTransformPort=3031";
+const DEFAULT_METHOD_ID = "open-national-bidding";
+const canonicalMethodId = (methodId?: string) =>
+  methodId === "open-bidding" ? "open-national-bidding" : methodId === "open-selection" ? "open-national-selection" : methodId ?? DEFAULT_METHOD_ID;
+const isDefaultBiddingMethod = (methodId?: string) =>
+  ["open-national-bidding", "open-international-bidding"].includes(canonicalMethodId(methodId));
+const scopeForMethodId = (methodId: string): "National" | "International" | undefined =>
+  methodId.includes("-international-") ? "International" : methodId.includes("-national-") ? "National" : undefined;
+const tenderReferenceLabel = (tender?: { systemReference?: string; source?: "sample" | "record" }) =>
+  isSystemReference(tender?.systemReference)
+    ? systemReferenceLabel(tender.systemReference)
+    : tender?.source === "sample" ? "BUILT-IN SAMPLE PACK" : "SYSTEM REFERENCE PENDING";
 const EASE = [0.22, 1, 0.36, 1] as const;
+
+/* The evaluation-criteria table is authored in the specification and carried
+   into the notice unchanged. Read it with the same rules the sidecar applies
+   at publication, so the desk sees the exact criteria the gate will test. */
+type EvaluationCriterion = {
+  id: string;
+  title: string;
+  weight: number;
+  evidence?: string;
+  scoringMethod?: string;
+};
+const EVALUATION_CRITERIA_EXAMPLES = [
+  "Technical quality and performance",
+  "Implementation approach and work plan",
+  "Delivery schedule and deployment",
+  "Life-cycle cost and maintenance",
+  "Environmental or sustainability outcome",
+  "After-sales support and warranty",
+  "Cybersecurity and privacy safeguards",
+];
+
+function reindexEvaluationCriteria(criteria: EvaluationCriterion[]): EvaluationCriterion[] {
+  return criteria.map((criterion, index) => ({
+    ...criterion,
+    id: `C-${String(index + 1).padStart(2, "0")}`,
+  }));
+}
+
+function parseEvaluationCriteriaMarkdown(markdown: string): EvaluationCriterion[] {
+  if (!markdown) return [];
+  const lines = markdown.split(/\r?\n/);
+  const heading = lines.findIndex((line) => /^#{1,6}\s+(?:\d+\.?\s*)?evaluation criteria\b/i.test(line.trim()));
+  if (heading < 0) return [];
+  const criteria: EvaluationCriterion[] = [];
+  let criterionColumn = 0;
+  let weightColumn = 1;
+  let evidenceColumn = -1;
+  let scoringMethodColumn = -1;
+  for (const line of lines.slice(heading + 1)) {
+    const trimmed = line.trim();
+    if (/^#{1,6}\s/.test(trimmed)) break;
+    if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) {
+      if (criteria.length) break;
+      continue;
+    }
+    const cells = trimmed.slice(1, -1).split("|").map((cell) => cell.trim());
+    if (cells.length < 2 || cells.every((cell) => /^:?-{2,}:?$/.test(cell))) continue;
+    const isCriterionHeader = (cell: string) => /\b(?:criterion|criteria|title)\b/i.test(cell);
+    if (cells.some(isCriterionHeader) && cells.some((cell) => /weight|percentage/i.test(cell))) {
+      criterionColumn = Math.max(0, cells.findIndex(isCriterionHeader));
+      weightColumn = cells.findIndex((cell) => /weight|percentage/i.test(cell));
+      evidenceColumn = cells.findIndex((cell) => /evidence|basis|subcriteria/i.test(cell));
+      scoringMethodColumn = cells.findIndex((cell) => /scoring method|score method/i.test(cell));
+      continue;
+    }
+    const title = cells[criterionColumn] ?? "";
+    const weight = cells[weightColumn]?.match(/^(\d+(?:\.\d+)?)\s*%?$/);
+    if (!title || !weight) continue;
+    criteria.push({
+      id: `C-${String(criteria.length + 1).padStart(2, "0")}`,
+      title: title.slice(0, 120),
+      weight: Number(weight[1]),
+      evidence: evidenceColumn >= 0 ? (cells[evidenceColumn] ?? "") : "",
+      scoringMethod: scoringMethodColumn >= 0 ? (cells[scoringMethodColumn] ?? "") : "",
+    });
+  }
+  return criteria;
+}
+
+function parseEvaluationProcedureMarkdown(markdown: string): string {
+  const lines = markdown.split(/\r?\n/);
+  const heading = lines.findIndex((line) => /^#{1,6}\s+(?:\d+\.?\s*)?evaluation criteria\b/i.test(line.trim()));
+  if (heading < 0) return "";
+  const nextHeading = lines.findIndex((line, index) => index > heading && /^#{1,6}\s/.test(line.trim()));
+  const procedureLine = lines
+    .slice(heading + 1, nextHeading < 0 ? lines.length : nextHeading)
+    .find((line) => /^\*\*Evaluation procedure:\*\*/i.test(line.trim()));
+  return procedureLine?.trim().replace(/^\*\*Evaluation procedure:\*\*\s*/i, "") ?? "";
+}
 
 const OFFICES = ["PROCUREMENT_UNIT", "EVALUATION_COMMITTEE", "ACCOUNTING_OFFICER", "OVERSIGHT"] as const;
 const CURRENCIES = ["ZMW", "KES", "USD", "RWF"] as const;
 const MAX_REQUIRED_DOCUMENTS = 100;
-const REQUIRED_DOCUMENT_GROUPS = [
-  {
-    label: "BUSINESS AND LEGAL ELIGIBILITY",
-    documents: [
-      "Certificate of incorporation / business registration",
-      "Tax compliance / clearance certificate",
-      "Tax identification number (TIN / PIN)",
-      "Social security / pension clearance certificate",
-      "Workers' compensation / employer liability certificate",
-      "Valid professional or sector licence",
-      "Beneficial ownership declaration",
-      "Power of attorney / authorised signatory evidence",
-    ],
-  },
-  {
-    label: "INTEGRITY AND BID SECURITY",
-    documents: [
-      "Bidder eligibility and non-debarment declaration",
-      "Conflict of interest declaration",
-      "Anti-bribery and integrity declaration",
-      "Bid securing declaration",
-      "Bid security / tender bond",
-    ],
-  },
-  {
-    label: "FINANCIAL AND PRICING",
-    documents: [
-      "Audited financial statements",
-      "Annual turnover evidence",
-      "Bank reference / proof of access to credit",
-      "Signed bid / tender submission form",
-      "Priced bill of quantities / price schedule",
-      "Financial proposal and cost breakdown",
-      "Cash-flow forecast",
-    ],
-  },
-  {
-    label: "TECHNICAL CAPABILITY AND DELIVERY",
-    documents: [
-      "Technical proposal and compliance schedule",
-      "Statement of compliance with specifications",
-      "Methodology / work plan",
-      "Delivery / implementation schedule",
-      "Key personnel CVs and qualifications",
-      "Similar contracts / client references",
-      "Equipment and resource schedule",
-      "Product brochures / technical data sheets",
-      "Samples, demonstration or inspection evidence",
-      "Manufacturer authorisation / dealership proof",
-      "Joint venture / consortium agreement",
-    ],
-  },
-  {
-    label: "QUALITY, SAFETY AND REGULATORY",
-    documents: [
-      "Quality management certificate (e.g. ISO 9001)",
-      "Environmental and social management plan",
-      "Health and safety plan / certificate",
-      "Environmental permit / regulatory approval",
-      "Import / export permit for regulated goods",
-      "Data protection / information security plan",
-      "Product conformity / standards certificate",
-    ],
-  },
-  {
-    label: "WARRANTY, SUPPORT AND LOCAL PARTICIPATION",
-    documents: [
-      "Warranty and after-sales support commitment",
-      "Service and maintenance support plan",
-      "Local content / citizen participation plan",
-      "Subcontractor and key supplier disclosures",
-      "Manufacturer warranty / product guarantee",
-    ],
-  },
-] as const;
-const STANDARD_REQUIRED_DOCUMENTS = new Set(
-  REQUIRED_DOCUMENT_GROUPS.flatMap((group) => group.documents).map((document) => document.toLocaleLowerCase()),
-);
+
+function RequiredDocumentToggle({
+  document,
+  checked,
+  disabled,
+  onCheckedChange,
+}: {
+  document: string;
+  checked: boolean;
+  disabled: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-label={`Require ${document}`}
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onCheckedChange(!checked)}
+      className={cn(
+        "focus-brand flex min-h-11 w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-70",
+        checked ? "bg-emerald-500/[0.07] dark:bg-emerald-400/[0.07]" : "hover:bg-ink-50 dark:hover:bg-white/[0.035]",
+      )}
+    >
+      <span className="text-[13px] leading-snug text-ink-800 dark:text-[#e3e6eb]">{document}</span>
+      <span
+        aria-hidden="true"
+        className={cn(
+          "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border border-transparent transition-colors",
+          checked
+            ? "bg-emerald-600 dark:border-emerald-300/70 dark:bg-emerald-600"
+            : "bg-ink-300 dark:border-[#69717e] dark:bg-[#46505d]",
+        )}
+      >
+        <span
+          className={cn(
+            "absolute left-1 size-4 rounded-full bg-white shadow-sm transition-transform",
+            checked && "translate-x-5",
+          )}
+        />
+      </span>
+    </button>
+  );
+}
 
 function requiredDocumentsFromNotice(md?: string): string[] {
   if (!md) return [];
@@ -224,7 +289,7 @@ type MatrixDto = {
   scoringStartedAt?: string;
   scoringBasisBlockReason?: string | null;
   status: "DRAFT" | "CERTIFIED";
-  criteria: { id: string; title: string; weight: number }[];
+  criteria: { id: string; title: string; weight: number; evidence?: string; scoringMethod?: string }[];
   technicalWeightPct: number;
   financialFormula?: string;
   preferenceScheme?: string;
@@ -285,6 +350,7 @@ type FindingDto = {
 };
 type CycleDto = {
   tenderId: string;
+  systemReference?: string;
   findings?: FindingDto[];
   blockers?: string[];
   methodId?: string;
@@ -388,9 +454,10 @@ type CycleDto = {
   addenda: { id: string; number: number; summary: string; extendsClosingTo?: string; closingExtensionRequired?: boolean }[];
   notices: {
     id: string;
+    reference?: string;
     md: string;
     fieldCheck: { field: string; present: boolean }[];
-    evaluationCriteria?: { id: string; title: string; weight: number }[];
+    evaluationCriteria?: EvaluationCriterion[];
     createdAt: string;
     gateId?: string;
     issuedAt?: string;
@@ -410,6 +477,7 @@ type CycleDto = {
 type PipelineDto = {
   id: string;
   ref: string;
+  systemReference?: string;
   title: string;
   office?: string;
   budgetEstimate?: number;
@@ -467,6 +535,7 @@ type MemberDto = { name: string; office?: string; status: "PRESENT" | "EXCUSED" 
 type MethodDto = {
   id: string;
   name: string;
+  group: string;
   legalBasis: string;
   when: string;
   valueBand?: string;
@@ -509,24 +578,6 @@ type AssuranceDto = {
   status: "VERIFIED" | "FAILED" | "UNVERIFIED";
   failures: string[];
   verification: VerificationDto | null;
-};
-type TenderExtractionField<T> = { value: T | null; confidence: number; evidence: string | null };
-type TenderExtraction = {
-  title: TenderExtractionField<string>;
-  responsibleOffice: TenderExtractionField<(typeof OFFICES)[number]>;
-  publicationDate: TenderExtractionField<string>;
-  budgetEstimate: TenderExtractionField<number>;
-  currency: TenderExtractionField<(typeof CURRENCIES)[number]>;
-  warnings: string[];
-};
-type NoticeAnalysisState = {
-  status: "idle" | "analyzing" | "ready" | "error";
-  fileName?: string;
-  model?: string;
-  extractionNote?: string;
-  error?: string;
-  fields?: TenderExtraction;
-  conflicts: string[];
 };
 
 /* A cycle row is written by several cores over time; a partially-written row
@@ -1004,7 +1055,7 @@ function Chip({ tone, children }: { tone: "ok" | "warn" | "muted" | "brand"; chi
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2 py-[3px] font-code text-[8px] font-bold tracking-[0.14em]",
+        "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em]",
         tone === "ok" &&
           "bg-emerald-500/10 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 dark:text-emerald-300 dark:ring-emerald-400/25",
         tone === "warn" &&
@@ -1022,89 +1073,46 @@ function Chip({ tone, children }: { tone: "ok" | "warn" | "muted" | "brand"; chi
 }
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
-  return (
-    <label className="block min-w-0">
-      <span className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
-        <span className="eyebrow text-[9px]">{label}</span>
-        {hint ? (
-          <span className="min-w-0 font-code text-[8.5px] leading-[1.5] tracking-[0.1em] text-ink-400">{hint}</span>
-        ) : null}
-      </span>
-      {children}
-    </label>
-  );
-}
+  const fieldId = `cycle-field-${useId()}`;
+  const hintId = hint ? `${fieldId}-hint` : undefined;
+  let controlId: string | undefined;
+  let controlIndex = 0;
 
-type NoticeFieldKey =
-  | "noticeRef"
-  | "noticeBuyer"
-  | "noticeSubject"
-  | "noticeMethod"
-  | "noticeTechWeight"
-  | "noticeFxBasis"
-  | "noticeCdfConstituency"
-  | "noticeCdfExceptionRef"
-  | "noticeCdfExceptionBasis"
-  | "noticeCeiling"
-  | "noticeClosing"
-  | "noticeContact"
-  | "noticeCustomDocument";
+  const enhanceControls = (node: ReactNode): ReactNode => {
+    if (Array.isArray(node)) return node.map(enhanceControls);
+    if (!isValidElement(node)) return node;
 
-type NoticeConsultation = {
-  field: { key: NoticeFieldKey; label: string; format: "text" | "number" | "date" };
-  status: "loading" | "ready" | "error";
-  suggestion: string | null;
-  rationale: string;
-  missingContext: string[];
-  evidenceBasis: string[];
-  model?: string;
-  error?: string;
-};
+    const child = node as ReactElement<{
+      id?: string;
+      "aria-describedby"?: string;
+      children?: ReactNode;
+    }>;
+    if (typeof child.type === "string" && ["input", "select", "textarea"].includes(child.type)) {
+      const id = child.props.id ?? `${fieldId}-control-${++controlIndex}`;
+      controlId ??= id;
+      const describedBy = [child.props["aria-describedby"], hintId].filter(Boolean).join(" ");
+      return cloneElement(child as ReactElement<Record<string, unknown>>, {
+        id,
+        ...(describedBy ? { "aria-describedby": describedBy } : {}),
+      });
+    }
 
-function NoticeAiField({
-  id,
-  label,
-  hint,
-  loading,
-  disabled,
-  control,
-  onAsk,
-  children,
-}: {
-  id: string;
-  label: string;
-  hint?: string;
-  loading: boolean;
-  disabled?: boolean;
-  control?: "number" | "date";
-  onAsk: () => void;
-  children: ReactNode;
-}) {
+    const nestedChildren = child.props.children;
+    return nestedChildren === undefined
+      ? child
+      : cloneElement(child, undefined, enhanceControls(nestedChildren));
+  };
+
+  const enhancedChildren = enhanceControls(children);
   return (
     <div className="block min-w-0">
-      <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
-        <label htmlFor={id} className="eyebrow text-[9px]">{label}</label>
-        {hint ? <span className="min-w-0 font-code text-[8.5px] leading-[1.5] tracking-[0.1em] text-ink-400">{hint}</span> : null}
-      </div>
-      <div className="relative">
-        {children}
-        <button
-          type="button"
-          onClick={onAsk}
-          disabled={disabled || loading}
-          title={`Ask Meta AI to suggest ${label.toLocaleLowerCase()}`}
-          aria-label={`Ask Meta AI to suggest ${label.toLocaleLowerCase()}`}
-          aria-busy={loading}
-          className={cn(
-            "absolute top-1/2 inline-flex h-7 -translate-y-1/2 items-center gap-1 rounded-md border border-brand-500/25 bg-paper/95 px-2 text-[9px] font-semibold text-brand-700 shadow-sm transition-colors hover:border-brand-500/50 hover:bg-brand-50 disabled:cursor-wait disabled:opacity-55 dark:border-transparent dark:bg-[#171923] dark:text-brand-300 dark:hover:border-transparent dark:hover:bg-brand-400/[0.09]",
-            control === "date" ? "right-10" : control === "number" ? "right-7" : "right-1.5",
-            loading && "cursor-wait",
-          )}
-        >
-          {loading ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Sparkles className="h-3 w-3" aria-hidden="true" />}
-          <span>AI</span>
-        </button>
-      </div>
+      <span className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
+        {controlId ? <label htmlFor={controlId} className="eyebrow">{label}</label> : <span className="eyebrow">{label}</span>}
+        {hint ? (
+          <span id={hintId} className="min-w-0 font-sans text-[11.5px] leading-[1.4] text-ink-600 dark:text-ink-400">{hint}</span>
+        ) : null}
+      </span>
+      {enhancedChildren}
     </div>
   );
 }
@@ -1113,12 +1121,7 @@ function NoticeAiField({
    remaps that utility, which would flatten the recessed field into the panel.
    The inset shadow + hover border are what make a control feel physical. */
 const inputCls =
-  "h-10 w-full min-w-0 rounded-xl border border-ink-200/90 bg-[#fffdfb] px-3 text-[12.5px] text-ink-900 shadow-[inset_0_1px_1px_rgba(11,12,15,0.03)] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-ink-400 hover:border-ink-300 focus:border-ink-950 focus:ring-[3px] focus:ring-ink-950/[0.08] dark:border-white/[0.13] dark:bg-[#0b0d12] dark:text-ink-900 dark:placeholder:text-ink-500 dark:hover:border-white/25 dark:focus:border-white/40 dark:focus:ring-white/[0.07] dark:[color-scheme:dark]";
-
-/* Plan-a-tender surfaces — one step taller than the shared field, because
-   these are the first thing an officer fills in on a quiet morning. */
-const planInput =
-  "h-11 w-full min-w-0 rounded-xl border border-ink-200/90 bg-[#fffdfb] px-3 text-[13px] text-ink-900 shadow-[inset_0_1px_1px_rgba(11,12,15,0.03)] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-ink-400 hover:border-ink-300 focus:border-ink-950 focus:ring-[3px] focus:ring-ink-950/[0.08] dark:border-white/[0.13] dark:bg-[#0b0d12] dark:text-ink-900 dark:placeholder:text-ink-500 dark:hover:border-white/25 dark:focus:border-white/40 dark:focus:ring-white/[0.07] dark:[color-scheme:dark]";
+  "h-11 w-full min-w-0 rounded-xl border border-ink-200/90 bg-[#fffdfb] px-3 text-base text-ink-900 shadow-[inset_0_1px_1px_rgba(11,12,15,0.03)] outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-ink-400 hover:border-ink-300 focus:border-ink-950 focus:ring-[3px] focus:ring-ink-950/[0.08] sm:text-[12.5px] dark:border-white/[0.13] dark:bg-[#0b0d12] dark:text-ink-900 dark:placeholder:text-ink-500 dark:hover:border-white/25 dark:focus:border-white/40 dark:focus:ring-white/[0.07] dark:[color-scheme:dark]";
 
 function Btn({
   onClick,
@@ -1139,7 +1142,7 @@ function Btn({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3.5 text-[12px] font-semibold transition-[background-color,border-color,color,box-shadow,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fffdfb] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 dark:focus-visible:ring-offset-[#0b0d12]",
+        "inline-flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3.5 text-[12px] font-semibold transition-[background-color,border-color,color,box-shadow,transform] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fffdfb] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 dark:focus-visible:ring-offset-[#0b0d12]",
         variant === "primary" &&
           "bg-brand-600 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_10px_22px_-14px_rgba(217,38,22,0.9)] hover:bg-brand-500",
         variant === "ghost" &&
@@ -1243,25 +1246,25 @@ function AssuranceCheckForm({
   return (
     <div className="grid gap-2">
       <div className="grid gap-1.5 sm:grid-cols-2">
-        <select className={inputCls} value={source} onChange={(e) => setSource(e.target.value)}>
+        <select className={inputCls} aria-label="Supplier evidence source" value={source} onChange={(e) => setSource(e.target.value)}>
           <option value="REGISTRY_LOOKUP">Registry lookup</option>
           <option value="MANUAL_ATTESTATION">Manual attestation</option>
         </select>
-        <select className={inputCls} value={registryStatus} onChange={(e) => setRegistryStatus(e.target.value)}>
+        <select className={inputCls} aria-label="Supplier registry status" value={registryStatus} onChange={(e) => setRegistryStatus(e.target.value)}>
           <option value="REGISTERED">Registry: registered</option>
           <option value="NOT_FOUND">Registry: not found</option>
           <option value="STRUCK_OFF">Registry: struck off</option>
         </select>
-        <select className={inputCls} value={taxStatus} onChange={(e) => setTaxStatus(e.target.value)}>
+        <select className={inputCls} aria-label="Supplier tax clearance status" value={taxStatus} onChange={(e) => setTaxStatus(e.target.value)}>
           <option value="VALID">Tax: valid clearance</option>
           <option value="EXPIRED">Tax: expired</option>
           <option value="NOT_FOUND">Tax: not found</option>
         </select>
-        <select className={inputCls} value={sanctions} onChange={(e) => setSanctions(e.target.value)}>
+        <select className={inputCls} aria-label="Supplier sanctions screening result" value={sanctions} onChange={(e) => setSanctions(e.target.value)}>
           <option value="CLEAR">Sanctions: clear</option>
           <option value="HIT">Sanctions: hit</option>
         </select>
-        <select className={inputCls} value={pep} onChange={(e) => setPep(e.target.value)}>
+        <select className={inputCls} aria-label="Supplier politically exposed person screening result" value={pep} onChange={(e) => setPep(e.target.value)}>
           <option value="CLEAR">PEP: clear</option>
           <option value="HIT">PEP: hit</option>
         </select>
@@ -1270,7 +1273,7 @@ function AssuranceCheckForm({
 
       <div className="rounded-xl border border-ink-100 bg-paper p-2.5">
         <div className="mb-1.5 flex items-center justify-between gap-2">
-          <p className="font-code text-[8px] tracking-[0.16em] text-ink-400">BENEFICIAL OWNERS — {owners.length}</p>
+          <p className="font-code text-[10px] font-semibold tracking-[0.08em] text-ink-600">Beneficial owners · {owners.length}</p>
           <Btn
             variant="ghost"
             onClick={() => {
@@ -1292,19 +1295,22 @@ function AssuranceCheckForm({
           {owners.map((owner, index) => (
             <li key={owner.key} className="grid gap-1.5 sm:grid-cols-[1.6fr_1fr_70px_1fr_1fr_auto]">
               <input
-                className={cn(inputCls, "h-8 text-[11.5px]")}
-                placeholder={index === 0 ? "Owner name" : "Owner name"}
+                className={cn(inputCls, "h-11 text-base sm:text-[12.5px]")}
+                aria-label={`Beneficial owner ${index + 1} name`}
+                placeholder="Owner name"
                 value={owner.name}
                 onChange={(e) => patchOwner(owner.key, { name: e.target.value })}
               />
               <input
-                className={cn(inputCls, "h-8 text-[11.5px]")}
+                className={cn(inputCls, "h-11 text-base sm:text-[12.5px]")}
+                aria-label={`Beneficial owner ${index + 1} role`}
                 placeholder="Role"
                 value={owner.role}
                 onChange={(e) => patchOwner(owner.key, { role: e.target.value })}
               />
               <input
-                className={cn(inputCls, "h-8 px-1.5 text-[11.5px]")}
+                className={cn(inputCls, "h-11 px-3 text-base sm:px-2 sm:text-[12.5px]")}
+                aria-label={`Beneficial owner ${index + 1} ownership percentage`}
                 type="number"
                 min={0}
                 max={100}
@@ -1313,23 +1319,25 @@ function AssuranceCheckForm({
                 onChange={(e) => patchOwner(owner.key, { ownershipPct: e.target.value })}
               />
               <input
-                className={cn(inputCls, "h-8 text-[11.5px]")}
+                className={cn(inputCls, "h-11 text-base sm:text-[12.5px]")}
+                aria-label={`Beneficial owner ${index + 1} nationality`}
                 placeholder="Nationality"
                 value={owner.nationality}
                 onChange={(e) => patchOwner(owner.key, { nationality: e.target.value })}
               />
               <input
-                className={cn(inputCls, "h-8 text-[11.5px]")}
+                className={cn(inputCls, "h-11 text-base sm:text-[12.5px]")}
+                aria-label={`Beneficial owner ${index + 1} ID or passport number`}
                 placeholder="ID / passport"
                 value={owner.idNo}
                 onChange={(e) => patchOwner(owner.key, { idNo: e.target.value })}
               />
               <button
                 type="button"
-                aria-label="Remove owner"
+                aria-label={`Remove beneficial owner ${index + 1}`}
                 onClick={() => setOwners((current) => (current.length === 1 ? current : current.filter((row) => row.key !== owner.key)))}
                 disabled={busy || owners.length === 1}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink-400 transition-colors hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-30"
+                className="focus-brand inline-flex h-11 w-11 items-center justify-center rounded-lg text-ink-600 transition-colors hover:text-brand-800 disabled:cursor-not-allowed disabled:opacity-30 sm:w-10"
               >
                 <X className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
@@ -1340,7 +1348,7 @@ function AssuranceCheckForm({
 
       <div className="rounded-xl border border-ink-100 bg-paper p-2.5">
         <div className="mb-1.5 flex items-center justify-between gap-2">
-          <p className="font-code text-[8px] tracking-[0.16em] text-ink-400">DOCUMENTS — {documents.length}</p>
+          <p className="font-code text-[10px] font-semibold tracking-[0.08em] text-ink-600">Documents · {documents.length}</p>
           <Btn
             variant="ghost"
             onClick={() => {
@@ -1356,35 +1364,37 @@ function AssuranceCheckForm({
           </Btn>
         </div>
         <ul className="space-y-1.5">
-          {documents.map((doc) => (
+          {documents.map((doc, index) => (
             <li key={doc.key} className="grid gap-1.5 sm:grid-cols-[1.3fr_1.3fr_150px_auto]">
               <input
-                className={cn(inputCls, "h-8 text-[11.5px]")}
+                className={cn(inputCls, "h-11 text-base sm:text-[12.5px]")}
+                aria-label={`Document ${index + 1} kind`}
                 placeholder="Kind (e.g. TAX CLEARANCE)"
                 value={doc.kind}
                 onChange={(e) => patchDocument(doc.key, { kind: e.target.value })}
               />
               <input
-                className={cn(inputCls, "h-8 text-[11.5px]")}
+                className={cn(inputCls, "h-11 text-base sm:text-[12.5px]")}
+                aria-label={`Document ${index + 1} reference`}
                 placeholder="Reference"
                 value={doc.reference}
                 onChange={(e) => patchDocument(doc.key, { reference: e.target.value })}
               />
               <input
-                className={cn(inputCls, "h-8 text-[11.5px]")}
+                className={cn(inputCls, "h-11 text-base sm:text-[12.5px]")}
                 type="date"
-                aria-label="Document expires on"
+                aria-label={`Document ${index + 1} expires on`}
                 value={doc.expiresAt}
                 onChange={(e) => patchDocument(doc.key, { expiresAt: e.target.value })}
               />
               <button
                 type="button"
-                aria-label="Remove document"
+                aria-label={`Remove document ${index + 1}`}
                 onClick={() =>
                   setDocuments((current) => (current.length === 1 ? current : current.filter((row) => row.key !== doc.key)))
                 }
                 disabled={busy || documents.length === 1}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink-400 transition-colors hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-30"
+                className="focus-brand inline-flex h-11 w-11 items-center justify-center rounded-lg text-ink-600 transition-colors hover:text-brand-800 disabled:cursor-not-allowed disabled:opacity-30 sm:w-10"
               >
                 <X className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
@@ -1393,7 +1403,7 @@ function AssuranceCheckForm({
         </ul>
       </div>
 
-      <input className={inputCls} placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
+      <input className={inputCls} aria-label="Supplier assurance notes (optional)" placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
       <Btn variant="ghost" onClick={submit} disabled={busy}>
         <Check className="h-3.5 w-3.5" aria-hidden="true" /> Record the check
       </Btn>
@@ -1456,7 +1466,12 @@ function Card({
     document.body.style.overflow = "hidden";
     const focusTimer = window.setTimeout(() => dialogRef.current?.focus(), 0);
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
+      if (event.key === "Escape") {
+        const focusedModal = document.activeElement?.closest('[role="dialog"][aria-modal="true"]');
+        if (focusedModal && focusedModal !== dialogRef.current) return;
+        close();
+        return;
+      }
       if (event.key !== "Tab") return;
       const nodes = Array.from(
         dialogRef.current?.querySelectorAll<HTMLElement>(
@@ -1489,7 +1504,7 @@ function Card({
           <div className="flex flex-wrap items-start justify-between gap-3 px-5 pb-4 pt-[18px]">
             <div className="min-w-0">
               <h3 className="font-display text-[15px] font-bold tracking-[-0.015em] text-ink-950">{title}</h3>
-              {sub ? <p className="mt-1.5 max-w-[52ch] font-code text-[9px] leading-[1.6] tracking-[0.12em] text-ink-500 dark:text-ink-400">{sub}</p> : null}
+              {sub ? <p className="mt-1.5 max-w-[52ch] font-code text-[10px] leading-[1.6] tracking-[0.08em] text-ink-500 dark:text-ink-400">{sub}</p> : null}
             </div>
             {right ? <div className="shrink-0">{right}</div> : null}
           </div>
@@ -1505,7 +1520,7 @@ function Card({
               type="button"
               onClick={() => setOpen(true)}
               disabled={busy}
-              className="inline-flex h-9 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-ink-950 px-3.5 text-[11px] font-semibold text-white transition-colors hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 @lg:w-auto dark:bg-white dark:text-ink-950 dark:hover:bg-brand-400"
+              className="focus-brand inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-ink-950 px-3.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50 @lg:w-auto dark:bg-white dark:text-ink-950 dark:hover:bg-brand-400"
             >
               {actionLabel}
               <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1541,7 +1556,7 @@ function Card({
                     >
                       <header className="flex shrink-0 items-start justify-between gap-4 border-b border-ink-100 px-5 py-4 dark:border-white/[0.06] sm:px-7 sm:py-5">
                         <div className="min-w-0">
-                          <p className="font-code text-[8.5px] font-bold tracking-[0.2em] text-brand-700 dark:text-brand-300">TENDER CYCLE · GUIDED WORKFLOW</p>
+                          <p className="font-code text-[10px] font-bold tracking-[0.08em] text-brand-800 dark:text-brand-300">Tender cycle · guided workflow</p>
                           <h3 id={`cycle-workflow-${dialogId}`} className="mt-1 font-display text-[20px] font-black tracking-[-0.02em] text-ink-950 dark:text-white sm:text-[22px]">{title}</h3>
                           {sub ? <p className="mt-1.5 max-w-[65ch] text-[11.5px] leading-relaxed text-ink-500 dark:text-ink-400">{sub}</p> : null}
                         </div>
@@ -1550,7 +1565,7 @@ function Card({
                           onClick={close}
                           disabled={busy}
                           aria-label={`Close ${title} workflow`}
-                          className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-900 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-white/[0.06] dark:hover:text-white"
+                          className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-900 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-white/[0.06] dark:hover:text-white"
                         >
                           <X className="h-4 w-4" aria-hidden="true" />
                         </button>
@@ -1578,7 +1593,7 @@ function Card({
         <div className="min-w-0">
           <h3 className="font-display text-[15px] font-bold tracking-[-0.015em] text-ink-950">{title}</h3>
           {sub ? (
-            <p className="mt-1.5 max-w-[52ch] font-code text-[9px] leading-[1.6] tracking-[0.12em] text-ink-500 dark:text-ink-400">
+            <p className="mt-1.5 max-w-[52ch] font-code text-[10px] leading-[1.6] tracking-[0.08em] text-ink-500 dark:text-ink-400">
               {sub}
             </p>
           ) : null}
@@ -1596,11 +1611,15 @@ function Card({
 function useOutside(ref: React.RefObject<HTMLElement | null>, onOutside: () => void, active: boolean) {
   useEffect(() => {
     if (!active) return;
-    const fn = (e: MouseEvent) => {
+    const fn = (e: Event) => {
       if (ref.current && !ref.current.contains(e.target as Node)) onOutside();
     };
-    document.addEventListener("mousedown", fn);
-    return () => document.removeEventListener("mousedown", fn);
+    document.addEventListener("pointerdown", fn);
+    document.addEventListener("focusin", fn);
+    return () => {
+      document.removeEventListener("pointerdown", fn);
+      document.removeEventListener("focusin", fn);
+    };
   }, [ref, onOutside, active]);
 }
 
@@ -1632,20 +1651,20 @@ function StageBrief({
           <Gavel className="h-3 w-3" aria-hidden="true" />
         </span>
         <div className="min-w-0">
-          <p className="font-code text-[8px] font-bold tracking-[0.18em] text-brand-600 dark:text-brand-300">{label}</p>
-          <p className="mt-1.5 max-w-[86ch] text-[12.5px] leading-relaxed text-ink-600 dark:text-ink-300">{lede}</p>
+          <p className="font-code text-[10.5px] font-bold tracking-[0.12em] text-brand-600 dark:text-brand-300">{label}</p>
+          <p className="mt-1.5 max-w-[86ch] text-[12.5px] leading-relaxed text-ink-600 dark:text-ink-600">{lede}</p>
         </div>
       </div>
       <ul className="mt-3 grid gap-x-5 gap-y-1.5 sm:grid-cols-2">
         {items.map((item) => (
-          <li key={item} className="flex items-start gap-2 text-[11.5px] leading-snug text-ink-500 dark:text-ink-400">
+          <li key={item} className="flex items-start gap-2 text-[12.5px] leading-snug text-ink-600 dark:text-ink-600">
             <span className="mt-[6px] h-1 w-1 shrink-0 rounded-full bg-brand-500/60" aria-hidden="true" />
             <span className="min-w-0">{item}</span>
           </li>
         ))}
       </ul>
       {gate ? (
-        <p className="mt-3 border-t border-ink-100 pt-2.5 font-code text-[8.5px] leading-relaxed tracking-[0.1em] text-ink-400 dark:border-white/[0.06] dark:text-ink-500">
+        <p className="mt-3 border-t border-ink-100 pt-2.5 text-[11px] leading-relaxed text-ink-600 dark:border-white/[0.06] dark:text-ink-600">
           {gate}
         </p>
       ) : null}
@@ -1690,9 +1709,9 @@ function ProgressRing({ pct, size = 42 }: { pct: number; size?: number }) {
           )}
         />
       </svg>
-      <span className="relative flex items-baseline gap-px font-code text-[10px] font-bold tabular leading-none text-ink-800 dark:text-ink-200">
+      <span className="relative flex items-baseline gap-px font-code text-[11px] font-bold tabular leading-none text-ink-800 dark:text-ink-200">
         {value}
-        <span className="text-[6.5px] font-semibold text-ink-400">%</span>
+        <span className="text-[10px] font-semibold text-ink-600 dark:text-ink-300">%</span>
       </span>
     </span>
   );
@@ -1705,7 +1724,7 @@ function TenderPicker({
   onSelect,
   onToast,
 }: {
-  tenders: { ref: string; title: string }[];
+  tenders: { ref: string; title: string; systemReference?: string; source?: "sample" | "record" }[];
   value: string;
   cycles: CycleDto[];
   onSelect: (ref: string) => void;
@@ -1715,6 +1734,9 @@ function TenderPicker({
   const [active, setActive] = useState(0);
   const [q, setQ] = useState("");
   const [copied, setCopied] = useState(false);
+  const pickerPanelId = `${useId()}-tender-picker`;
+  const listboxId = `${pickerPanelId}-listbox`;
+  const pickerTriggerRef = useRef<HTMLButtonElement>(null);
   /* Carousel direction — last travel of the deck, so the slide animation
      always agrees with the control that caused it. */
   const [dir, setDir] = useState(0);
@@ -1742,6 +1764,7 @@ function TenderPicker({
   };
 
   const current = tenders.find((t) => t.ref === currentRef);
+  const displayReference = tenderReferenceLabel;
   const currentCycle = cycles.find((x) => x.tenderId === currentRef) ?? null;
   const progressOf = (r: string) => {
     const c = cycles.find((x) => x.tenderId === r);
@@ -1751,13 +1774,14 @@ function TenderPicker({
   };
   const query = q.trim().toLowerCase();
   const filtered = query
-    ? tenders.filter((t) => `${t.ref} ${t.title}`.toLowerCase().includes(query))
+    ? tenders.filter((t) => `${t.systemReference ?? ""} ${t.title}`.toLowerCase().includes(query))
     : tenders;
 
   const pick = (r: string) => {
     onSelect(r);
     setOpen(false);
     setQ("");
+    window.requestAnimationFrame(() => pickerTriggerRef.current?.focus());
   };
 
   /* Opening the panel is a state transition, not an effect: reset the query and
@@ -1792,11 +1816,15 @@ function TenderPicker({
       : { label: `STAGE ${String(deriveStages(currentCycle).currentIndex + 1).padStart(2, "0")} · ${p.stage.toUpperCase()}`, tone: "brand" as const };
 
   const copyRef = async () => {
-    if (!currentRef) return;
+    if (!isSystemReference(current?.systemReference)) {
+      onToast("CREATE THE PROCUREMENT RECORD TO ISSUE ITS SYSTEM REFERENCE");
+      return;
+    }
     try {
-      await navigator.clipboard.writeText(currentRef);
+      const reference = systemReferenceLabel(current.systemReference);
+      await navigator.clipboard.writeText(reference);
       setCopied(true);
-      onToast(`REFERENCE ${currentRef} COPIED`);
+      onToast(`REFERENCE ${reference} COPIED`);
       setTimeout(() => setCopied(false), 1600);
     } catch {
       /* Clipboard permission denied — the reference is selectable text anyway. */
@@ -1822,7 +1850,7 @@ function TenderPicker({
         if (!open) return;
         if (e.key === "ArrowDown") {
           e.preventDefault();
-          setActive((a) => Math.min(a + 1, filtered.length - 1));
+          setActive((a) => Math.min(a + 1, Math.max(filtered.length - 1, 0)));
         }
         if (e.key === "ArrowUp") {
           e.preventDefault();
@@ -1830,11 +1858,12 @@ function TenderPicker({
         }
         if (e.key === "Enter") {
           e.preventDefault();
-          pick(filtered[active]?.ref ?? currentRef);
+          if (filtered[active]) pick(filtered[active].ref);
         }
         if (e.key === "Escape") {
           e.preventDefault();
           setOpen(false);
+          window.requestAnimationFrame(() => pickerTriggerRef.current?.focus());
         }
       }}
     >
@@ -1868,11 +1897,12 @@ function TenderPicker({
         style={{ touchAction: "pan-y" }}
       >
         <button
+          ref={pickerTriggerRef}
           type="button"
           onClick={handleToggleClick}
-          aria-haspopup="listbox"
+          aria-haspopup="dialog"
           aria-expanded={open}
-          aria-label={`Tender: ${current ? `${current.ref} — ${current.title}` : "select a tender"}. Open the dossier picker.`}
+          aria-label={`Tender: ${current ? `${displayReference(current)} — ${current.title}` : "select a tender"}. ${dossierStatus.label}. ${p.pct}% complete${currentCycle?.closingDate ? `. Closes ${fmtDate(currentCycle.closingDate)}; ${relDays(currentCycle.closingDate)}.` : ""} Open the dossier picker.`}
           className="min-w-0 w-full rounded-[8px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50 sm:w-auto sm:flex-1"
         >
           {/* One dossier = one slide. The key is the tender reference, so
@@ -1886,13 +1916,13 @@ function TenderPicker({
           >
             <ProgressRing pct={p.pct} />
             <span className="min-w-0 flex-1">
-              <span className="flex flex-wrap items-center gap-x-2 gap-y-1 eyebrow text-[8px] tracking-[0.24em]">
+              <span className="flex flex-wrap items-center gap-x-2 gap-y-1 eyebrow text-[10px] tracking-[0.12em]">
                 <span className="text-ink-400 dark:text-ink-500">Working dossier</span>
                 <Chip tone={dossierStatus.tone}>{dossierStatus.label}</Chip>
               </span>
               <span className="mt-1.5 flex min-w-0 items-baseline gap-2.5">
                 <span className="shrink-0 font-code text-[12.5px] font-bold tracking-[0.08em] text-ink-950 dark:text-white">
-                  {current ? current.ref : "—"}
+                  {current ? displayReference(current) : "—"}
                 </span>
                 <span className="truncate text-[12px] leading-tight text-ink-500">
                   {current?.title ?? "No tender staged on the desk yet"}
@@ -1902,10 +1932,10 @@ function TenderPicker({
                   when the cycle has one. Without a record the right-hand count
                   already says what the desk holds — say it once, not twice. */}
               {currentCycle?.closingDate ? (
-                <span className="mt-1 flex min-w-0 items-center gap-x-2.5 gap-y-0.5 flex-wrap font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-400">
-                  <span className="inline-flex items-center gap-1">
-                    <CalendarClock className="h-2.5 w-2.5" aria-hidden="true" />
-                    CLOSES {fmtDate(currentCycle.closingDate).toUpperCase()} · {relDays(currentCycle.closingDate).toUpperCase()}
+                <span className="mt-1 inline-flex min-w-0 flex-wrap items-center gap-1.5 text-[11px] leading-relaxed text-ink-600 dark:text-ink-300">
+                  <CalendarClock className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span>
+                    Closes {fmtDate(currentCycle.closingDate)} · {relDays(currentCycle.closingDate)}
                   </span>
                 </span>
               ) : null}
@@ -1913,13 +1943,13 @@ function TenderPicker({
           </motion.span>
         </button>
         <span className="ml-auto flex shrink-0 items-center gap-1.5">
-          {current ? (
+          {isSystemReference(current?.systemReference) ? (
             <button
               type="button"
               onClick={() => void copyRef()}
-              aria-label={`Copy tender reference ${current.ref}`}
-              title={`Copy ${current.ref}`}
-              className="focus-brand grid h-7 w-7 place-items-center rounded-lg border border-ink-200/70 text-ink-400 transition-colors hover:border-ink-400 hover:text-ink-900 dark:border-white/10 dark:text-ink-500 dark:hover:border-white/25 dark:hover:text-white"
+              aria-label={`Copy tender reference ${current.systemReference}`}
+              title={`Copy ${current.systemReference}`}
+              className="focus-brand grid h-11 w-11 place-items-center rounded-lg border border-ink-200/70 text-ink-400 transition-colors hover:border-ink-400 hover:text-ink-900 dark:border-white/10 dark:text-ink-500 dark:hover:border-white/25 dark:hover:text-white"
             >
               {copied ? <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
             </button>
@@ -1929,35 +1959,35 @@ function TenderPicker({
               <button
                 type="button"
                 onClick={() => step(-1)}
-                aria-label={`Previous dossier (${tenders[(at - 1 + count) % count]?.ref ?? ""})`}
+                aria-label={`Previous dossier (${displayReference(tenders[(at - 1 + count) % count])})`}
                 title="Previous tender"
-                className="focus-brand grid h-7 w-7 place-items-center rounded-lg border border-ink-200/70 text-ink-500 transition-colors hover:border-ink-400 hover:bg-ink-950/[0.03] hover:text-ink-900 active:scale-95 dark:border-white/10 dark:text-ink-400 dark:hover:border-white/25 dark:hover:bg-white/[0.05] dark:hover:text-white"
+                className="focus-brand grid h-11 w-11 place-items-center rounded-lg border border-ink-200/70 text-ink-500 transition-colors hover:border-ink-400 hover:bg-ink-950/[0.03] hover:text-ink-900 active:scale-95 dark:border-white/10 dark:text-ink-400 dark:hover:border-white/25 dark:hover:bg-white/[0.05] dark:hover:text-white"
               >
                 <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
-              <span className="w-[46px] text-center font-code text-[9px] font-bold tabular tracking-[0.06em] text-ink-500 dark:text-ink-400">
+              <span className="w-[50px] text-center font-code text-[10px] font-bold tabular tracking-[0.04em] text-ink-600 dark:text-ink-300">
                 {String(at + 1).padStart(2, "0")}/{String(count).padStart(2, "0")}
               </span>
               <button
                 type="button"
                 onClick={() => step(1)}
-                aria-label={`Next dossier (${tenders[(at + 1) % count]?.ref ?? ""})`}
+                aria-label={`Next dossier (${displayReference(tenders[(at + 1) % count])})`}
                 title="Next tender"
-                className="focus-brand grid h-7 w-7 place-items-center rounded-lg border border-ink-200/70 text-ink-500 transition-colors hover:border-ink-400 hover:bg-ink-950/[0.03] hover:text-ink-900 active:scale-95 dark:border-white/10 dark:text-ink-400 dark:hover:border-white/25 dark:hover:bg-white/[0.05] dark:hover:text-white"
+                className="focus-brand grid h-11 w-11 place-items-center rounded-lg border border-ink-200/70 text-ink-500 transition-colors hover:border-ink-400 hover:bg-ink-950/[0.03] hover:text-ink-900 active:scale-95 dark:border-white/10 dark:text-ink-400 dark:hover:border-white/25 dark:hover:bg-white/[0.05] dark:hover:text-white"
               >
                 <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
             </span>
           ) : null}
-          <span className="hidden font-code text-[8px] font-bold tracking-[0.16em] text-ink-400 lg:block">
-            {tenders.length} ON DESK
+          <span className="hidden text-[10.5px] font-medium text-ink-600 dark:text-ink-300 lg:block">
+            {tenders.length} tenders on desk
           </span>
           <button
             type="button"
             onClick={toggle}
-            aria-hidden="true"
-            tabIndex={-1}
-            className="hidden h-7 w-7 place-items-center rounded-lg border border-ink-200/70 text-ink-500 transition-colors group-hover:border-ink-300 group-hover:text-ink-900 sm:grid dark:border-white/10 dark:group-hover:border-white/25 dark:group-hover:text-white"
+            aria-expanded={open}
+            aria-label={open ? "Collapse tender list" : "Expand tender list"}
+            className="focus-brand hidden h-11 w-11 shrink-0 place-items-center rounded-lg border border-ink-200/70 text-ink-600 transition-colors group-hover:border-ink-300 group-hover:text-ink-900 sm:grid dark:border-white/10 dark:text-ink-300 dark:group-hover:border-white/25 dark:group-hover:text-white"
           >
             <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", open && "rotate-180")} aria-hidden="true" />
           </button>
@@ -1968,31 +1998,36 @@ function TenderPicker({
           to twelve; past that the stepper and the searchable picker are the
           honest instruments. */}
       {many && count <= 12 ? (
-        <div className="mt-2 hidden items-center justify-center gap-1.5 sm:flex">
+        <div className="mt-2 hidden items-center justify-center gap-1.5 md:flex">
           {tenders.map((t, i) => (
             <button
               key={t.ref}
               type="button"
               onClick={() => goTo(i)}
-              aria-label={`Dossier ${i + 1} of ${count}: ${t.ref}`}
+              aria-label={`Dossier ${i + 1} of ${count}: ${displayReference(t)}`}
               aria-current={i === at ? "true" : undefined}
-              title={`${t.ref} — ${t.title}`}
-              className={cn(
-                "focus-brand h-1.5 rounded-full transition-all duration-200",
-                i === at
-                  ? "w-4 bg-brand-500 dark:bg-brand-400"
-                  : "w-1.5 bg-ink-200 hover:bg-ink-300 dark:bg-white/[0.14] dark:hover:bg-white/[0.28]",
-              )}
-            />
+              title={`${displayReference(t)} — ${t.title}`}
+              className="focus-brand grid h-11 w-11 place-items-center rounded-full"
+            >
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "block h-1.5 rounded-full transition-all duration-200",
+                  i === at
+                    ? "w-4 bg-brand-500 dark:bg-brand-400"
+                    : "w-1.5 bg-ink-200 hover:bg-ink-300 dark:bg-white/[0.14] dark:hover:bg-white/[0.28]",
+                )}
+              />
+            </button>
           ))}
         </div>
       ) : null}
 
       {/* The one announcement a screen reader needs: which dossier the desk
           is showing now. The visual slide animation is silent by design. */}
-      <span className="sr-only" aria-live="polite">
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
         {count
-          ? `Dossier ${at + 1} of ${count}: ${current ? `${current.ref} — ${current.title}` : "none selected"}`
+          ? `Dossier ${at + 1} of ${count}: ${current ? `${displayReference(current)} — ${current.title}` : "none selected"}. ${dossierStatus.label}. ${p.pct}% complete${currentCycle?.closingDate ? `. Closes ${fmtDate(currentCycle.closingDate)}; ${relDays(currentCycle.closingDate)}.` : ""}`
           : "No tenders on the desk"}
       </span>
 
@@ -2003,15 +2038,21 @@ function TenderPicker({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.985 }}
             transition={{ duration: 0.18, ease: EASE }}
+            id={pickerPanelId}
+            role="dialog"
+            aria-label="Choose a tender"
             className="panel panel-lift absolute left-0 right-0 z-40 mt-2 overflow-hidden rounded-[10px]"
           >
             <div className="flex items-center justify-between gap-3 border-b border-ink-100/80 px-4 py-2.5 dark:border-white/[0.06]">
-              <p className="eyebrow text-[8px]">Tenders on the desk</p>
-              <span className="font-code text-[8px] font-bold tabular tracking-[0.12em] text-ink-400">
+              <p className="eyebrow text-[10px] tracking-[0.1em]">Tenders on the desk</p>
+              <span className="text-[10.5px] font-medium tabular text-ink-600 dark:text-ink-300">
                 {filtered.length} / {tenders.length}
               </span>
             </div>
             <div className="p-2.5">
+              <p id={`${pickerPanelId}-instructions`} className="sr-only">
+                Type to filter tenders. Use the up and down arrow keys to move through results, Enter to choose, and Escape to close.
+              </p>
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400" aria-hidden="true" />
                 <input
@@ -2023,11 +2064,17 @@ function TenderPicker({
                   }}
                   placeholder="Find by reference or title…"
                   aria-label="Find a tender"
-                  className="h-9 w-full rounded-lg border border-ink-200/80 bg-transparent pl-9 pr-3 text-[12px] text-ink-900 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-400 dark:border-white/10 dark:text-ink-900 dark:focus:border-white/30"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-expanded={open}
+                  aria-controls={listboxId}
+                  aria-describedby={`${pickerPanelId}-instructions`}
+                  aria-activedescendant={open && filtered[active] ? `${listboxId}-option-${active}` : undefined}
+                  className="h-11 w-full rounded-lg border border-ink-200/80 bg-transparent pl-9 pr-3 text-base text-ink-900 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-400 sm:text-[13px] dark:border-white/10 dark:text-ink-900 dark:focus:border-white/30"
                 />
               </div>
             </div>
-            <ul role="listbox" aria-label="Tenders" className="max-h-[320px] overflow-y-auto px-1.5 pb-2">
+            <ul id={listboxId} role="listbox" aria-label="Tenders" className="max-h-[320px] overflow-y-auto px-1.5 pb-2">
               {filtered.map((t, i) => {
                 const row = progressOf(t.ref);
                 const selected = t.ref === currentRef;
@@ -2035,12 +2082,15 @@ function TenderPicker({
                   <li key={t.ref}>
                     <button
                       type="button"
+                      id={`${listboxId}-option-${i}`}
                       role="option"
-                      aria-selected={selected}
+                      tabIndex={-1}
+                      aria-selected={i === active}
+                      aria-label={`${displayReference(t)} — ${t.title}; ${row.pct}% complete; ${row.stage}${selected ? "; currently open" : ""}`}
                       onMouseEnter={() => setActive(i)}
                       onClick={() => pick(t.ref)}
                       className={cn(
-                        "flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-left transition-colors",
+                        "flex min-h-11 w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-left transition-colors",
                         i === active && "bg-ink-950/[0.045] dark:bg-white/[0.055]",
                         selected && "bg-brand-50/70 dark:bg-brand-500/[0.08]",
                       )}
@@ -2062,16 +2112,16 @@ function TenderPicker({
                         ))}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate font-code text-[10.5px] font-bold tracking-[0.06em] text-ink-900">
-                          {t.ref}
+                        <span className="block truncate font-code text-[11px] font-bold tracking-[0.04em] text-ink-800 dark:text-ink-200">
+                          {displayReference(t)}
                         </span>
-                        <span className="mt-0.5 block truncate text-[11px] text-ink-500">{t.title}</span>
+                        <span className="mt-0.5 block truncate text-[12px] text-ink-600 dark:text-ink-300">{t.title}</span>
                       </span>
                       <span className="flex shrink-0 flex-col items-end gap-0.5">
-                        <span className={cn("tabular font-code text-[9px] font-bold", row.pct === 100 ? "text-emerald-600 dark:text-emerald-400" : "text-ink-600")}>
+                        <span className={cn("tabular font-code text-[10px] font-bold", row.pct === 100 ? "text-emerald-600 dark:text-emerald-400" : "text-ink-600")}>
                           {row.pct}%
                         </span>
-                        <span className="max-w-[92px] truncate font-code text-[7.5px] tracking-[0.1em] text-ink-400">
+                        <span className="max-w-[110px] truncate text-[10px] leading-tight text-ink-600 dark:text-ink-300">
                           {row.stage}
                         </span>
                       </span>
@@ -2080,19 +2130,19 @@ function TenderPicker({
                   </li>
                 );
               })}
-              {filtered.length === 0 ? (
-                <li className="px-3 py-8 text-center">
-                  <p className="text-[12px] text-ink-500">
-                    {tenders.length === 0 ? "No tenders staged yet." : "No tender matches that search."}
-                  </p>
-                  {tenders.length === 0 ? (
-                    <p className="mt-1 font-code text-[8px] tracking-[0.14em] text-ink-400">
-                      START IN THE PIPELINE BELOW
-                    </p>
-                  ) : null}
-                </li>
-              ) : null}
             </ul>
+            {filtered.length === 0 ? (
+              <div role="status" className="px-3 py-8 text-center">
+                <p className="text-[12px] text-ink-600 dark:text-ink-300">
+                  {tenders.length === 0 ? "No tenders staged yet." : "No tender matches that search."}
+                </p>
+                {tenders.length === 0 ? (
+                  <p className="mt-1 text-[11px] text-ink-600 dark:text-ink-300">
+                    Start in the pipeline below.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -2115,7 +2165,7 @@ function Vital({
 }) {
   return (
     <div className="min-w-0 px-5 py-3.5">
-      <p className="eyebrow whitespace-nowrap text-[8px] tracking-[0.2em]">{label}</p>
+      <p className="eyebrow whitespace-nowrap text-[10.5px] tracking-[0.12em]">{label}</p>
       <p
         className={cn(
           "mt-2 truncate font-display text-[17px] font-bold leading-none tracking-[-0.02em] tabular",
@@ -2126,7 +2176,7 @@ function Vital({
       </p>
       {/* The meaning line wraps rather than clipping: "1 late · rejected
           unopened" is the point of the cell, not decoration. */}
-      <p className="mt-1.5 font-code text-[8px] leading-[1.6] tracking-[0.12em] text-ink-400">{meta}</p>
+      <p className="mt-1.5 text-[11px] leading-relaxed text-ink-600 dark:text-ink-300">{meta}</p>
     </div>
   );
 }
@@ -2149,8 +2199,8 @@ function VitalStrip({ cycle }: { cycle: CycleDto | null }) {
           <span className="font-semibold text-ink-800">No cycle record yet.</span> Stage this tender below —
           opening, evaluation, award and contract each keep their own file from the first entry.
         </p>
-        <span className="ml-auto hidden font-code text-[8px] font-bold tracking-[0.16em] text-ink-400 sm:block">
-          7 STAGES · ONE CONTINUOUS FILE
+        <span className="ml-auto hidden text-[10.5px] font-medium text-ink-600 dark:text-ink-300 sm:block">
+          7 stages · one continuous file
         </span>
       </div>
     );
@@ -2172,29 +2222,29 @@ function VitalStrip({ cycle }: { cycle: CycleDto | null }) {
     {
       label: "Closing",
       value: cycle?.closingDate ? fmtDate(cycle.closingDate) : "—",
-      meta: cycle?.closingDate ? relDays(cycle.closingDate).toUpperCase() : "NOT YET ON RECORD",
+      meta: cycle?.closingDate ? relDays(cycle.closingDate) : "No closing date on record",
     },
     {
       label: "Bids opened",
       value: bids.length ? bids.length : "—",
-      meta: bids.length ? (late ? `${late} LATE · REJECTED UNOPENED` : "ALL ADMITTED") : "AWAITING THE OPENING",
+      meta: bids.length ? (late ? `${late} late · rejected unopened` : "All bids admitted") : "Awaiting bid opening",
       accent: late > 0,
     },
     {
       label: "Responsive",
       value: scored.length ? `${responsive}/${scored.length}` : "—",
-      meta: leading !== null ? `LEADING TOTAL ${leading}` : "NO MATRIX CERTIFIED",
+      meta: leading !== null ? `Leading total ${leading}` : "No certified evaluation matrix",
     },
     {
       label: "Standstill",
       value: cycle?.standstill ? (standstillActive ? "Active" : "Lifted") : "—",
-      meta: cycle?.standstill ? `ENDS ${fmtDate(cycle.standstill.endsAt).toUpperCase()} · ${cycle.standstill.days} WD` : "NOT REACHED",
+      meta: cycle?.standstill ? `Ends ${fmtDate(cycle.standstill.endsAt)} · ${cycle.standstill.days} working days` : "Standstill not reached",
       accent: standstillActive,
     },
     {
       label: "Contract",
       value: contract ? `${contract.currency ?? ""} ${fmtMoney(contract.value)}`.trim() : "—",
-      meta: contract ? (contract.completedAt ? "ACCEPTED · CYCLE CLOSED" : "ACTIVE · MILESTONES OPEN") : "NOT YET AWARDED",
+      meta: contract ? (contract.completedAt ? "Accepted · cycle closed" : "Active · milestones open") : "Not yet awarded",
     },
   ];
 
@@ -2274,7 +2324,7 @@ function TenderCompare({
   current,
   onSelect,
 }: {
-  tenders: { ref: string; title: string }[];
+  tenders: { ref: string; title: string; systemReference?: string; source?: "sample" | "record" }[];
   cycles: CycleDto[];
   pipeline: PipelineDto[];
   applications: PortalAppRow[];
@@ -2284,12 +2334,31 @@ function TenderCompare({
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
   const dialogId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const wasOpenRef = useRef(false);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      if (!wasOpenRef.current) return;
+      wasOpenRef.current = false;
+      const target = returnFocusRef.current;
+      returnFocusRef.current = null;
+      const timer = window.setTimeout(() => {
+        if (target?.isConnected) target.focus();
+      }, 220);
+      return () => window.clearTimeout(timer);
+    }
+    wasOpenRef.current = true;
+    const active = document.activeElement;
+    returnFocusRef.current = active instanceof HTMLElement ? active : null;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key !== "Escape") return;
+      const focusedModal = document.activeElement?.closest('[role="dialog"][aria-modal="true"]');
+      if (focusedModal && focusedModal !== dialogRef.current) return;
+      setOpen(false);
     };
     const prior = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -2335,7 +2404,7 @@ function TenderCompare({
           <p className="text-[11.5px] font-semibold text-ink-800 dark:text-ink-100">{fmtDate(r.closing)}</p>
           <p
             className={cn(
-              "mt-0.5 font-code text-[7.5px] font-bold tracking-[0.14em]",
+              "mt-0.5 font-code text-[10px] font-bold tracking-[0.08em]",
               r.closing && (daysUntil(r.closing) ?? 0) < 0 ? "text-brand-700 dark:text-brand-300" : "text-ink-400",
             )}
           >
@@ -2352,7 +2421,7 @@ function TenderCompare({
           <span className="mt-1.5 block h-[2px] w-full overflow-hidden rounded-full bg-ink-100 dark:bg-white/[0.08]">
             <span className="block h-full rounded-full bg-brand-500" style={{ width: `${r.pct}%` }} />
           </span>
-          <p className="mt-1 font-code text-[7px] tracking-[0.12em] text-ink-400">
+          <p className="mt-1 font-code text-[10px] leading-snug tracking-[0.06em] text-ink-500 dark:text-ink-400">
             {r.pct}% COMPLETE · {r.stageCaption.toUpperCase()}
           </p>
         </>
@@ -2363,7 +2432,7 @@ function TenderCompare({
       value: (r) => (
         <>
           <p className="font-display text-[20px] font-bold leading-none text-ink-950 tabular dark:text-white">{r.bids}</p>
-          <p className="mt-1 font-code text-[7px] tracking-[0.12em] text-ink-400">
+          <p className="mt-1 font-code text-[10px] leading-snug tracking-[0.06em] text-ink-500 dark:text-ink-400">
             {r.bids === 1 ? "BID ON THE REGISTER" : "BIDS ON THE REGISTER"}
           </p>
         </>
@@ -2374,7 +2443,7 @@ function TenderCompare({
       value: (r) => (
         <>
           <p className="font-display text-[20px] font-bold leading-none text-ink-950 tabular dark:text-white">{r.portalBids}</p>
-          <p className="mt-1 font-code text-[7px] tracking-[0.12em] text-ink-400">RECEIVED FROM SUPPLIERS</p>
+          <p className="mt-1 font-code text-[10px] leading-snug tracking-[0.06em] text-ink-500 dark:text-ink-400">RECEIVED FROM SUPPLIERS</p>
         </>
       ),
     },
@@ -2387,7 +2456,7 @@ function TenderCompare({
               {r.currency ? `${r.currency} ` : ""}
               {fmtMoney(r.value)}
             </p>
-            <p className="mt-1 font-code text-[7px] tracking-[0.12em] text-ink-400">
+            <p className="mt-1 font-code text-[10px] leading-snug tracking-[0.06em] text-ink-500 dark:text-ink-400">
               {r.valueKind === "contract" ? "CONTRACT ON RECORD" : "BUDGET ESTIMATE"}
             </p>
           </>
@@ -2402,7 +2471,7 @@ function TenderCompare({
           <p className="text-[11.5px] font-semibold text-ink-800 dark:text-ink-100">
             {r.complaints} {r.complaints === 1 ? "open complaint" : "open complaints"}
           </p>
-          <p className="mt-0.5 font-code text-[7.5px] tracking-[0.12em] text-ink-400">
+          <p className="mt-0.5 font-code text-[10px] leading-snug tracking-[0.06em] text-ink-500 dark:text-ink-400">
             {r.alb} ALB {r.alb === 1 ? "DOSSIER" : "DOSSIERS"}
           </p>
         </>
@@ -2413,6 +2482,7 @@ function TenderCompare({
   return (
     <>
       <button
+        ref={triggerRef}
         type="button"
         onClick={start}
         disabled={tenders.length < 2}
@@ -2420,11 +2490,11 @@ function TenderCompare({
         aria-expanded={open}
         aria-controls={`${dialogId}-dialog`}
         title={tenders.length < 2 ? "Stage at least two tenders to compare them" : "Compare the tenders on the desk"}
-        className="focus-brand inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-[10px] border border-ink-200/80 bg-[#fffdfb] px-4 font-code text-[8.5px] font-bold tracking-[0.16em] text-ink-800 shadow-[0_1px_2px_rgba(11,12,15,0.04)] transition-colors hover:border-brand-400 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.1] dark:bg-white/[0.04] dark:text-ink-200 dark:hover:border-brand-500/50 dark:hover:text-brand-300 sm:h-auto sm:self-stretch"
+        className="focus-brand inline-flex h-11 min-h-11 shrink-0 items-center justify-center gap-2 rounded-[10px] border border-ink-200/80 bg-[#fffdfb] px-3.5 font-code text-[10.5px] font-bold tracking-[0.08em] text-ink-800 shadow-[0_1px_2px_rgba(11,12,15,0.04)] transition-colors hover:border-brand-400 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.1] dark:bg-white/[0.04] dark:text-ink-200 dark:hover:border-brand-500/50 dark:hover:text-brand-300 sm:h-auto sm:self-stretch"
       >
         <Scale className="h-3.5 w-3.5" aria-hidden="true" />
-        COMPARE
-        <span className="rounded-full bg-ink-950 px-1.5 py-0.5 text-[7px] font-bold tracking-[0.1em] text-white dark:bg-white dark:text-ink-950">
+        Compare
+        <span className="rounded-full bg-ink-950 px-1.5 py-0.5 text-[10px] font-bold tracking-[0.04em] text-white dark:bg-white dark:text-ink-950">
           {tenders.length}
         </span>
       </button>
@@ -2443,21 +2513,24 @@ function TenderCompare({
                   onMouseDown={(event) => {
                     if (event.target === event.currentTarget) setOpen(false);
                   }}
-                  role="dialog"
-                  aria-modal="true"
-                  aria-labelledby={`${dialogId}-title`}
                 >
                   <motion.div
+                    ref={dialogRef}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby={`${dialogId}-title`}
+                    tabIndex={-1}
                     initial={{ opacity: 0, y: 18, scale: 0.985 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 12, scale: 0.99 }}
                     transition={{ duration: 0.28, ease: EASE }}
+                    onKeyDown={(event) => trapTabFocus(event, dialogRef.current)}
                     className="panel panel-lift flex max-h-[92dvh] w-full max-w-6xl flex-col overflow-hidden rounded-[12px]"
                   >
                     <header className="flex shrink-0 items-start justify-between gap-4 border-b border-ink-100 px-5 py-4 dark:border-white/[0.06] sm:px-7 sm:py-5">
                       <div className="min-w-0">
-                        <p className="font-code text-[8.5px] font-bold tracking-[0.2em] text-brand-700 dark:text-brand-300">
-                          TENDER CYCLE · COMPARISON
+                        <p className="font-code text-[10px] font-bold tracking-[0.1em] text-brand-800 dark:text-brand-300">
+                          Tender cycle · comparison
                         </p>
                         <h3
                           id={`${dialogId}-title`}
@@ -2474,7 +2547,7 @@ function TenderCompare({
                         type="button"
                         onClick={() => setOpen(false)}
                         aria-label="Close tender comparison"
-                        className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-900 dark:hover:bg-white/[0.06] dark:hover:text-white"
+                        className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-lg text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-950 sm:w-10 dark:hover:bg-white/[0.06] dark:hover:text-white"
                       >
                         <X className="h-4 w-4" aria-hidden="true" />
                       </button>
@@ -2497,7 +2570,7 @@ function TenderCompare({
                                 disabled={full}
                                 title={t.title}
                                 className={cn(
-                                  "focus-brand inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-code text-[8px] font-bold tracking-[0.1em] transition-colors",
+                                  "focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 font-code text-[10px] font-bold tracking-[0.06em] transition-colors",
                                   on
                                     ? "border-ink-950 bg-ink-950 text-white dark:border-white dark:bg-white dark:text-ink-950"
                                     : "border-ink-200 bg-white text-ink-500 hover:border-ink-400 hover:text-ink-900 dark:border-white/[0.12] dark:bg-white/[0.03] dark:text-ink-400 dark:hover:border-white/30 dark:hover:text-white",
@@ -2508,12 +2581,12 @@ function TenderCompare({
                                   className={cn("h-1 w-1 rounded-full", on ? "bg-emerald-400" : "bg-ink-300 dark:bg-white/25")}
                                   aria-hidden="true"
                                 />
-                                {t.ref}
+                                {tenderReferenceLabel(t)}
                               </button>
                             );
                           })}
-                          <span className="ml-auto font-code text-[7.5px] font-bold tracking-[0.16em] text-ink-400">
-                            {picked.length} OF 4 SELECTED
+                          <span aria-live="polite" className="ml-auto text-[10.5px] font-semibold text-ink-600">
+                            {picked.length} of 4 selected
                           </span>
                         </div>
                       </div>
@@ -2523,13 +2596,13 @@ function TenderCompare({
                           Pick at least one tender to compare.
                         </p>
                       ) : (
-                        <div className="overflow-x-auto">
+                        <HorizontalScrollRegion label="Tender comparison table">
                           <table className="w-full min-w-[560px] border-collapse text-left">
                             <thead>
                               <tr className="border-b border-ink-100 dark:border-white/[0.07]">
                                 <th
                                   scope="col"
-                                  className="sticky left-0 z-10 w-[128px] bg-[#fffdfb] px-4 py-3 font-code text-[7.5px] font-bold tracking-[0.2em] text-ink-400 dark:bg-[#12141a]"
+                                  className="sticky left-0 z-10 w-[148px] bg-[#fffdfb] px-4 py-3 font-code text-[10px] font-bold tracking-[0.08em] text-ink-600 dark:bg-[#12141a]"
                                 >
                                   TENDER
                                 </th>
@@ -2540,16 +2613,16 @@ function TenderCompare({
                                     className="min-w-[176px] border-l border-ink-100/70 px-3 py-3 align-top dark:border-white/[0.055]"
                                   >
                                     <div className="flex flex-wrap items-center gap-1.5">
-                                      <span className="font-code text-[9.5px] font-bold tracking-[0.08em] text-ink-950 dark:text-white">
-                                        {r.ref}
+                                      <span className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-950 dark:text-white">
+                                        {tenderReferenceLabel(tenders.find((tender) => tender.ref === r.ref))}
                                       </span>
                                       {r.ref === current ? (
-                                        <span className="rounded-full bg-ink-950 px-1.5 py-0.5 font-code text-[6.5px] font-bold tracking-[0.14em] text-white dark:bg-white dark:text-ink-950">
+                                        <span className="rounded-full bg-ink-950 px-2 py-1 font-code text-[10px] font-bold tracking-[0.04em] text-white dark:bg-white dark:text-ink-950">
                                           ON DESK
                                         </span>
                                       ) : null}
                                       {rows.length > 1 && earliest === r.closing ? (
-                                        <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 font-code text-[6.5px] font-bold tracking-[0.12em] text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+                                        <span className="rounded-full bg-emerald-500/10 px-2 py-1 font-code text-[10px] font-bold tracking-[0.04em] text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200">
                                           CLOSES FIRST
                                         </span>
                                       ) : null}
@@ -2569,7 +2642,7 @@ function TenderCompare({
                                 >
                                   <th
                                     scope="row"
-                                    className="sticky left-0 z-10 bg-[#fffdfb] px-4 py-3.5 align-top font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-400 dark:bg-[#12141a]"
+                                    className="sticky left-0 z-10 bg-[#fffdfb] px-4 py-3.5 align-top font-code text-[10px] font-bold tracking-[0.06em] text-ink-600 dark:bg-[#12141a]"
                                   >
                                     {fact.label.toUpperCase()}
                                   </th>
@@ -2596,7 +2669,7 @@ function TenderCompare({
                                         onSelect(r.ref);
                                         setOpen(false);
                                       }}
-                                      className="focus-brand inline-flex items-center gap-1 font-code text-[7.5px] font-bold tracking-[0.16em] text-brand-700 transition-colors hover:text-brand-800 dark:text-brand-300 dark:hover:text-brand-200"
+                                      className="focus-brand inline-flex min-h-11 items-center gap-1 font-code text-[10px] font-bold tracking-[0.06em] text-brand-800 transition-colors hover:text-brand-700 dark:text-brand-300 dark:hover:text-brand-200"
                                     >
                                       OPEN DOSSIER
                                       <ArrowRight className="h-2.5 w-2.5" aria-hidden="true" />
@@ -2606,19 +2679,19 @@ function TenderCompare({
                               </tr>
                             </tbody>
                           </table>
-                        </div>
+                        </HorizontalScrollRegion>
                       )}
                     </div>
 
                     <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-ink-100 px-5 py-3.5 dark:border-white/[0.06] sm:px-7">
-                      <p className="max-w-[60ch] text-[10.5px] leading-relaxed text-ink-400">
+                      <p className="max-w-[60ch] text-[11.5px] leading-relaxed text-ink-600">
                         Every figure is stored on the tender&apos;s cycle record — closing date, opening register, portal
                         applications, contract value. Nothing here is inferred.
                       </p>
                       <button
                         type="button"
                         onClick={() => setOpen(false)}
-                        className="inline-flex h-8 items-center rounded-lg border border-ink-200/80 px-3 font-code text-[8px] font-bold tracking-[0.16em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 dark:border-white/[0.12] dark:text-ink-300 dark:hover:border-white/30 dark:hover:text-white"
+                        className="focus-brand inline-flex min-h-11 items-center rounded-lg border border-ink-200/80 px-3 font-code text-[10.5px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950 dark:border-white/[0.12] dark:text-ink-300 dark:hover:border-white/30 dark:hover:text-white"
                       >
                         CLOSE
                       </button>
@@ -2648,7 +2721,7 @@ export function CycleView({
   selectedPage?: CyclePageTab;
   onPageChange?: (page: CyclePageTab) => void;
 }) {
-  const [tenders, setTenders] = useState<{ ref: string; title: string }[]>([]);
+  const [tenders, setTenders] = useState<{ ref: string; title: string; systemReference?: string; source?: "sample" | "record" }[]>([]);
   const [ref, setRef] = useState("");
   const [tab, setTab] = useState<CyclePageTab>(selectedPage);
   const [cycles, setCycles] = useState<CycleDto[]>([]);
@@ -2659,19 +2732,22 @@ export function CycleView({
   const [members, setMembers] = useState<MemberDto[]>([]);
   const [budgetLines, setBudgetLines] = useState<BudgetLineDto[]>([]);
   const [methods, setMethods] = useState<MethodDto[]>([]);
+  const [methodsStatus, setMethodsStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [methodsRetry, setMethodsRetry] = useState(0);
+  const methodSelectRef = useRef<HTMLSelectElement>(null);
+  const methodRetryButtonRef = useRef<HTMLButtonElement>(null);
+  const methodsRetryFocusRef = useRef(false);
   const [busy, setBusy] = useState(false);
   /* Draft inputs, one record shared across the tab forms. */
   const [d, setD] = useState<Record<string, string>>({});
+  const [criteriaDraft, setCriteriaDraft] = useState<EvaluationCriterion[] | null>(null);
+  const [criteriaProcedureDraft, setCriteriaProcedureDraft] = useState<string | null>(null);
+  const [criteriaAnnouncement, setCriteriaAnnouncement] = useState("");
+  const evaluationCriterionTitleRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const firstEvaluationCriterionButtonRef = useRef<HTMLButtonElement | null>(null);
   const requiredDocsId = useId();
   const [customDocumentDraft, setCustomDocumentDraft] = useState("");
   const [customDocumentError, setCustomDocumentError] = useState("");
-  const [noticeAnalysis, setNoticeAnalysis] = useState<NoticeAnalysisState>({ status: "idle", conflicts: [] });
-  const [noticeConsultation, setNoticeConsultation] = useState<NoticeConsultation | null>(null);
-  const noticeConsultationPanelRef = useRef<HTMLElement | null>(null);
-  const [noticeFile, setNoticeFile] = useState<File | null>(null);
-  const [pendingUploadRef, setPendingUploadRef] = useState("");
-  const [noticeUploadMessage, setNoticeUploadMessage] = useState("");
-  const [metaConsent, setMetaConsent] = useState(false);
   const [openRows, setOpenRows] = useState<{ bidder: string; receivedAt: string; priceRead: string }[]>([
     { bidder: "", receivedAt: "", priceRead: "" },
   ]);
@@ -2679,94 +2755,50 @@ export function CycleView({
      opening: the officer still records the register, but sees who bid
      electronically and for how much. */
   const [portalApps, setPortalApps] = useState<PortalAppRow[]>([]);
-  /* The register owns the reference: this is the next system-issued number,
-     refreshed when the publication year or currency changes. */
-  const [autoRef, setAutoRef] = useState("");
-  const [refLoading, setRefLoading] = useState(true);
+  /* The register owns the neutral reference: refresh when publication year
+     changes or another record claims the next sequence number. */
+  const [noticeAutoRef, setNoticeAutoRef] = useState("");
+  const [noticeRefLoading, setNoticeRefLoading] = useState(true);
   const set = (k: string, v: string) => {
     setD((p) => ({ ...p, [k]: v }));
-    /* Editing a field IS the officer's call on a notice conflict. */
-    setNoticeAnalysis((current) =>
-      current.conflicts.includes(k)
-        ? { ...current, conflicts: current.conflicts.filter((conflict) => conflict !== k) }
-        : current,
-    );
   };
 
-  const analyzeTenderNotice = async (file: File, consentConfirmed = metaConsent) => {
-    if (!consentConfirmed) {
-      setNoticeAnalysis({
-        status: "error",
-        fileName: file.name,
-        error: "Confirm the Meta AI data notice before analyzing this document.",
-        conflicts: [],
-      });
-      return;
-    }
-
-    setNoticeAnalysis({ status: "analyzing", fileName: file.name, conflicts: [] });
-    const form = new FormData();
-    form.append("file", file);
-    form.append("metaConsent", "true");
-    try {
-      const response = await fetch("/api/cycle/parse-tender", { method: "POST", body: form });
-      const result = (await response.json().catch(() => ({}))) as {
-        error?: string;
-        model?: string;
-        extractionNote?: string;
-        fields?: TenderExtraction;
-      };
-      if (!response.ok || !result.fields) {
-        setNoticeAnalysis({
-          status: "error",
-          fileName: file.name,
-          extractionNote: result.extractionNote,
-          error: result.error ?? `Document analysis failed (HTTP ${response.status}).`,
-          conflicts: [],
-        });
-        return;
-      }
-
-      const extracted = result.fields;
-      const candidates: { key: string; label: string; value: string | null }[] = [
-        { key: "pipeTitle", label: "Tender title", value: extracted.title.value },
-        { key: "pipeOffice", label: "Responsible office", value: extracted.responsibleOffice.value },
-        { key: "pipePub", label: "Publication date", value: extracted.publicationDate.value },
-        { key: "pipeEst", label: "Budget estimate", value: extracted.budgetEstimate.value === null ? null : String(extracted.budgetEstimate.value) },
-        { key: "pipeCur", label: "Currency", value: extracted.currency.value },
-      ].filter((field) => field.key !== "pipePub" || !field.value || /^\d{4}-\d{2}-\d{2}$/.test(field.value));
-
-      const conflicts: string[] = [];
-      const next = { ...d };
-      for (const candidate of candidates) {
-        if (!candidate.value) continue;
-        const existing = d[candidate.key]?.trim();
-        if (existing && existing.toLocaleLowerCase() !== candidate.value.toLocaleLowerCase()) {
-          conflicts.push(candidate.key);
-          continue;
-        }
-        next[candidate.key] = candidate.value;
-      }
-      setD(next);
-      setNoticeAnalysis({
-        status: "ready",
-        fileName: file.name,
-        model: result.model,
-        extractionNote: result.extractionNote,
-        fields: extracted,
-        conflicts,
-      });
-    } catch (error) {
-      setNoticeAnalysis({
-        status: "error",
-        fileName: file.name,
-        error: error instanceof Error ? error.message : "The document analysis service could not be reached.",
-        conflicts: [],
-      });
-    }
-  };
+  useEffect(() => {
+    setCriteriaDraft(null);
+    setCriteriaProcedureDraft(null);
+    setCriteriaAnnouncement("");
+  }, [ref]);
 
   const cycle = useMemo(() => cycles.find((c) => c.tenderId === ref) ?? null, [cycles, ref]);
+  const pipelineForCurrent = pipeline.find((entry) => entry.linkedTenderId === ref || entry.ref === ref);
+  const currentSystemReference = isSystemReference(cycle?.systemReference)
+    ? cycle.systemReference
+    : isSystemReference(pipelineForCurrent?.systemReference)
+      ? pipelineForCurrent.systemReference
+      : isSystemReference(pipelineForCurrent?.ref)
+        ? pipelineForCurrent.ref
+        : isSystemReference(ref)
+          ? ref
+          : "";
+  const currentReferenceLabel = tenderReferenceLabel(tenders.find((tender) => tender.ref === ref));
+  const selectedNoticeMethodId = canonicalMethodId(d.noticeMethod ?? cycle?.methodId);
+  const selectedNoticeMethod = methods.find((method) => method.id === selectedNoticeMethodId);
+  const methodRecordSelectionId = canonicalMethodId(d.methodPick ?? cycle?.methodId);
+  const methodRecordSelection = methods.find((method) => method.id === methodRecordSelectionId);
+  const showMethodRecordGuidance = methodsStatus === "ready" && !!methodRecordSelection?.when && (
+    methodRecordSelectionId !== canonicalMethodId(cycle?.methodId) || !cycle?.method?.when
+  );
+  const noticeMethodName = selectedNoticeMethod?.name ?? cycle?.method?.name ?? "Open national bidding";
+  const selectedNoticeScope = d.noticeScope ?? scopeForMethodId(selectedNoticeMethodId) ?? "National";
+  const methodGroups = useMemo(() => {
+    const groups = new Map<string, MethodDto[]>();
+    for (const method of methods) {
+      const group = groups.get(method.group) ?? [];
+      group.push(method);
+      groups.set(method.group, group);
+    }
+    return Array.from(groups.entries());
+  }, [methods]);
 
   useEffect(() => {
     setTab(selectedPage);
@@ -2792,21 +2824,39 @@ export function CycleView({
       ]);
       const samples = (t.samples ?? []) as { ref: string; title?: string }[];
       const cycleRows = ((c.cycles ?? []) as CycleDto[]).map(normalizeCycle);
+      const pipelineRows = (c.pipeline ?? []) as PipelineDto[];
+      const runRows = (rn.runs ?? []) as { tenderId: string; reference?: string }[];
+      const systemReferences = new Map<string, string>();
+      const rememberReference = (tenderId: string | undefined, candidate: unknown) => {
+        if (tenderId && isSystemReference(candidate) && !systemReferences.has(tenderId)) {
+          systemReferences.set(tenderId, candidate);
+        }
+      };
+      for (const entry of pipelineRows) {
+        const systemReference = isSystemReference(entry.systemReference)
+          ? entry.systemReference
+          : isSystemReference(entry.ref) ? entry.ref : undefined;
+        rememberReference(entry.linkedTenderId, systemReference);
+        rememberReference(entry.ref, systemReference);
+      }
+      for (const cycle of cycleRows) rememberReference(cycle.tenderId, cycle.systemReference);
+      for (const run of runRows) rememberReference(run.tenderId, run.reference);
       /* Live tenders the desk has seen (runs + cycles) join the curated packs —
          a manually staged probe tender is as real to the cycle as a sample. */
       const seen = new Set<string>();
-      const list: { ref: string; title: string }[] = [];
-      const push = (ref: string, title?: string) => {
+      const list: { ref: string; title: string; systemReference?: string; source?: "sample" | "record" }[] = [];
+      const push = (ref: string, title?: string, source?: "sample" | "record") => {
         if (!ref || seen.has(ref)) return;
         seen.add(ref);
-        list.push({ ref, title: title || ref });
+        const systemReference = systemReferences.get(ref) ?? (isSystemReference(ref) ? ref : undefined);
+        list.push({ ref, title: title || "Tender record", ...(systemReference ? { systemReference } : {}), ...(source ? { source } : {}) });
       };
-      for (const s of samples) push(s.ref, s.title || s.ref);
-      for (const cyc of cycleRows) push(cyc.tenderId);
-      for (const r of (rn.runs ?? []) as { tenderId: string }[]) push(r.tenderId);
+      for (const s of samples) push(s.ref, s.title, "sample");
+      for (const cyc of cycleRows) push(cyc.tenderId, undefined, "record");
+      for (const r of runRows) push(r.tenderId, undefined, "record");
       setTenders(list);
       setCycles(cycleRows);
-      setPipeline((c.pipeline ?? []) as PipelineDto[]);
+      setPipeline(pipelineRows);
       setDeadlines(
         ((dl.deadlines ?? []) as DeadlineDto[])
           .map((d) => ({ ...d, kind: d.kind || "DEADLINE" }))
@@ -2833,39 +2883,53 @@ export function CycleView({
      cannot drift from what the sidecar validates against. */
   useEffect(() => {
     let alive = true;
+    setMethodsStatus("loading");
     fetch(`/api/methods${SVC}`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`Method register request failed (${res.status}).`);
+        return res.json();
+      })
       .then((data: { ZM?: MethodDto[] }) => {
-        if (alive && Array.isArray(data.ZM)) setMethods(data.ZM);
+        if (!alive) return;
+        if (Array.isArray(data.ZM) && data.ZM.length > 0) {
+          setMethods(data.ZM);
+          setMethodsStatus("ready");
+        } else {
+          setMethodsStatus("error");
+        }
       })
       .catch(() => {
-        /* the selector stays empty and says so; nothing is invented */
+        if (alive) setMethodsStatus("error");
       });
     return () => {
       alive = false;
     };
-  }, []);
-
-  const refreshNextRef = useCallback(async () => {
-    setRefLoading(true);
-    try {
-      const q = new URLSearchParams();
-      if (d.pipePub) q.set("publication", d.pipePub);
-      if (d.pipeCur) q.set("currency", d.pipeCur);
-      const query = q.toString();
-      const res = await fetch(`/api/pipeline/next-ref${query ? `?${query}&` : "?"}XTransformPort=3031`, { cache: "no-store" });
-      const data = (await res.json().catch(() => ({}))) as { ref?: string };
-      if (res.ok && data.ref) setAutoRef(data.ref);
-    } catch {
-      /* Backend still issues the reference on save; the field says so. */
-    } finally {
-      setRefLoading(false);
-    }
-  }, [d.pipePub, d.pipeCur]);
+  }, [methodsRetry]);
 
   useEffect(() => {
-    void refreshNextRef();
-  }, [refreshNextRef, pipeline.length, cycles.length, tenders.length]);
+    if (!methodsRetryFocusRef.current || methodsStatus === "loading") return;
+    const target = methodsStatus === "ready" ? methodSelectRef.current : methodRetryButtonRef.current;
+    if (document.activeElement === document.body && target) requestAnimationFrame(() => target.focus());
+    methodsRetryFocusRef.current = false;
+  }, [methodsStatus]);
+
+  const noticeDraftCount = cycles.reduce((count, cycle) => count + cycle.notices.length, 0);
+  const refreshNoticeRef = useCallback(async () => {
+    setNoticeRefLoading(true);
+    try {
+      const res = await fetch(`/api/pipeline/next-ref?XTransformPort=3031`, { cache: "no-store" });
+      const data = (await res.json().catch(() => ({}))) as { ref?: string };
+      if (res.ok && isSystemReference(data.ref)) setNoticeAutoRef(data.ref);
+    } catch {
+      /* The sidecar issues the reference when the notice draft is saved. */
+    } finally {
+      setNoticeRefLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshNoticeRef();
+  }, [refreshNoticeRef, pipeline.length, cycles.length, noticeDraftCount, tenders.length]);
 
   const act = async (path: string, body: unknown, okMsg: string, firstParty = false): Promise<boolean> => {
     setBusy(true);
@@ -2891,112 +2955,8 @@ export function CycleView({
     }
   };
 
-  const createPipelineEntry = async (): Promise<boolean> => {
-    setBusy(true);
-    setNoticeUploadMessage("");
-    let createdRef = pendingUploadRef;
-    try {
-      if (!createdRef) {
-        const response = await fetch(`/api/pipeline${SVC}`, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            title: d.pipeTitle,
-            office: d.pipeOffice || undefined,
-            budgetEstimate: Number(d.pipeEst) || undefined,
-            currency: d.pipeCur || undefined,
-            expectedPublication: d.pipePub || undefined,
-          }),
-        });
-        const result = (await response.json().catch(() => ({}))) as {
-          error?: string;
-          entry?: { ref?: string };
-        };
-        if (!response.ok) {
-          onToast((result.error ?? `THE CYCLE SERVICE REFUSED (HTTP ${response.status})`).toUpperCase());
-          return false;
-        }
-        if (!result.entry?.ref) {
-          onToast("THE PIPELINE SERVICE CREATED NO USABLE TENDER REFERENCE — REFRESH THE PIPELINE BEFORE RETRYING");
-          await pull();
-          return false;
-        }
-        createdRef = result.entry.ref;
-        setPendingUploadRef(createdRef);
-      }
-
-      const uploadWarnings: string[] = [];
-      if (noticeFile) {
-        const form = new FormData();
-        form.append("file", noticeFile);
-        const uploadResponse = await fetch(`/api/tenders/${encodeURIComponent(createdRef)}/docs`, {
-          method: "POST",
-          body: form,
-        });
-        const upload = (await uploadResponse.json().catch(() => ({}))) as {
-          error?: string;
-          key?: string;
-          staged?: boolean;
-          audited?: boolean;
-          reason?: string;
-          note?: string;
-          auditReason?: string;
-        };
-        if (!uploadResponse.ok || !upload.key) {
-          const message = upload.error ?? `The notice could not be attached (HTTP ${uploadResponse.status}).`;
-          setNoticeUploadMessage(`Tender ${createdRef} is already in the pipeline. ${message} Retry here to attach the notice without creating a duplicate.`);
-          onToast(`TENDER ${createdRef} CREATED · NOTICE UPLOAD FAILED — RETRY TO ATTACH`);
-          await pull();
-          return false;
-        }
-        if (!upload.staged) {
-          uploadWarnings.push(`stored, but not staged for review${upload.reason || upload.note ? `: ${upload.reason ?? upload.note}` : ""}`);
-        }
-        if (!upload.audited) {
-          uploadWarnings.push(`stored, but audit recording failed${upload.auditReason ? `: ${upload.auditReason}` : ""}`);
-        }
-      }
-
-      setPendingUploadRef("");
-      setNoticeFile(null);
-      setNoticeUploadMessage("");
-      setNoticeAnalysis({ status: "idle", conflicts: [] });
-      setMetaConsent(false);
-      setD((current) => ({ ...current, pipeTitle: "", pipeEst: "", pipePub: "" }));
-      onToast(
-        noticeFile
-          ? uploadWarnings.length
-            ? `TENDER ${createdRef} CREATED · NOTICE ${uploadWarnings.join(" · ")}`.toUpperCase()
-            : `TENDER ${createdRef} CREATED · NOTICE STORED AND AUDITED`.toUpperCase()
-          : `TENDER ${createdRef} ADDED TO THE PIPELINE`,
-      );
-      await pull();
-      void refreshNextRef();
-      return true;
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : "The service could not be reached.";
-      if (createdRef && noticeFile) {
-        setPendingUploadRef(createdRef);
-        setNoticeUploadMessage(`Tender ${createdRef} is already in the pipeline. ${reason} Retry here to attach the notice without creating a duplicate.`);
-        onToast(`TENDER ${createdRef} CREATED · NOTICE UPLOAD FAILED — RETRY TO ATTACH`);
-        await pull();
-      } else {
-        onToast(`THE PIPELINE SERVICE DID NOT ANSWER — ${reason}`.toUpperCase());
-      }
-      return false;
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const refreshCycle = () => void pull();
 
-  /* ── Tab: pipeline (G17) ─────────────────────────────────────────────────── */
-
-  const planned = pipeline.filter((p) => p.status !== "LINKED");
-  const estimates = pipeline.filter((p) => p.budgetEstimate);
-  const sameCur = estimates.length && estimates.every((p) => (p.currency ?? "") === (estimates[0].currency ?? ""));
-  const combined = sameCur ? estimates.reduce((s, p) => s + (p.budgetEstimate ?? 0), 0) : 0;
   /* ── Solicitation — the notice, the specification and the question log ──────
      Everything a bidder reads before the closing is created here: the notice
      (refused at publication unless every mandatory field is present), the
@@ -3018,6 +2978,7 @@ export function CycleView({
       .filter((document) => !STANDARD_REQUIRED_DOCUMENTS.has(document.toLocaleLowerCase()));
     return [...new Map([...fromNotice, ...fromDraft].map((document) => [document.toLocaleLowerCase(), document] as const)).values()];
   }, [currentNotice?.id, currentNotice?.md, d.noticeCustomDocs]);
+  const customRequiredSelected = customRequiredDocs.filter((document) => selectedRequiredDocs.has(document)).length;
   const setRequiredDocument = (document: string, required: boolean) => {
     const next = new Set(selectedRequiredDocs);
     if (required) {
@@ -3025,6 +2986,20 @@ export function CycleView({
       next.add(document);
     } else {
       next.delete(document);
+    }
+    set("noticeDocs", [...next].join("\n"));
+  };
+  /* Section controls act on one table at a time — every standard group and
+     the custom list can be filled or cleared without touching the others. */
+  const setRequiredDocuments = (documents: readonly string[], required: boolean) => {
+    const next = new Set(selectedRequiredDocs);
+    if (required) {
+      for (const document of documents) {
+        if (next.size >= MAX_REQUIRED_DOCUMENTS) break;
+        next.add(document);
+      }
+    } else {
+      for (const document of documents) next.delete(document);
     }
     set("noticeDocs", [...next].join("\n"));
   };
@@ -3062,117 +3037,87 @@ export function CycleView({
   };
   const noticeMissing = (currentNotice?.fieldCheck ?? []).filter((f) => !f.present);
   const currentSpec = cycle?.specs.length ? cycle.specs[cycle.specs.length - 1] : null;
-  const noticeCriteria = currentNotice?.evaluationCriteria ?? [];
+  /* Parse the published markdown, not a cached copy — the publication gate
+     re-reads the notice table, so this is the same list it will test. */
+  const noticeCriteria = parseEvaluationCriteriaMarkdown(currentNotice?.md ?? "");
   const noticeCriteriaWeight = noticeCriteria.reduce((sum, criterion) => sum + criterion.weight, 0);
-  const noticeCriteriaValid = noticeCriteria.length > 0 && Math.abs(noticeCriteriaWeight - 100) <= 0.0001 &&
-    noticeCriteria.every((criterion) => !!criterion.title.trim() && criterion.weight > 0);
-
-  const consultNoticeField = async (field: NoticeConsultation["field"], currentValue: string) => {
-    setNoticeConsultation({ field, status: "loading", suggestion: null, rationale: "", missingContext: [], evidenceBasis: [] });
-    onToast(`CONSULTING META MUSE · ${field.label}`);
-    const draft = {
-      noticeRef: d.noticeRef ?? "",
-      noticeBuyer: d.noticeBuyer ?? "",
-      noticeSubject: d.noticeSubject ?? "",
-      noticeMethod: d.noticeMethod ?? "",
-      noticeTechWeight: d.noticeTechWeight ?? "80",
-      noticeEvaluationCurrency: d.noticeEvaluationCurrency ?? cycle?.methodCurrency ?? "ZMW",
-      noticeScope: d.noticeScope ?? "National",
-      noticeFxBasis: d.noticeFxBasis ?? "",
-      noticePreference: d.noticePreference ?? "None",
-      noticeCdfConstituency: d.noticeCdfConstituency ?? "",
-      noticeCdfExceptionRef: d.noticeCdfExceptionRef ?? "",
-      noticeCdfExceptionBasis: d.noticeCdfExceptionBasis ?? "",
-      noticeCeiling: d.noticeCeiling ?? "",
-      noticeClosing: d.noticeClosing ?? d.closing ?? "",
-      noticeContact: d.noticeContact ?? "",
-      foreignBiddersPermitted: d.foreignBiddersPermitted ?? "false",
-      customDocumentDraft: customDocumentDraft,
-    };
-
-    try {
-      const response = await fetch("/api/cycle/consult-notice-field", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          target: { ...field, currentValue },
-          context: {
-            tenderReference: ref,
-            tenderTitle,
-            procurementMethod: cycle?.methodId ?? "",
-            evaluationCurrency: cycle?.methodCurrency ?? "ZMW",
-            closingDate: cycle?.closingDate ?? "",
-            scope: d.noticeScope ?? "National",
-            draft,
-            requiredDocuments: [...selectedRequiredDocs],
-            researchNotice: currentNotice?.md?.slice(0, 8_000) ?? "",
-            researchSpecification: currentSpec?.md?.slice(0, 8_000) ?? "",
-            extractedNotice: noticeAnalysis.fields ?? null,
-          },
-        }),
-      });
-      const result = await response.json().catch(() => ({})) as {
-        error?: string;
-        suggestion?: string | null;
-        rationale?: string;
-        missingContext?: string[];
-        evidenceBasis?: string[];
-        model?: string;
-      };
-      if (!response.ok) throw new Error(result.error ?? `Meta AI consultation failed (HTTP ${response.status}).`);
-      setNoticeConsultation({
-        field,
-        status: "ready",
-        suggestion: result.suggestion ?? null,
-        rationale: result.rationale ?? "Review the evidence before deciding what to enter.",
-        missingContext: result.missingContext ?? [],
-        evidenceBasis: result.evidenceBasis ?? [],
-        model: result.model,
-      });
-      onToast("META MUSE SUGGESTION READY · REVIEW IT BEFORE USE");
-      window.requestAnimationFrame(() => noticeConsultationPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }));
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Meta AI could not complete this consultation.";
-      setNoticeConsultation({
-        field,
-        status: "error",
-        suggestion: null,
-        rationale: "",
-        missingContext: [],
-        evidenceBasis: [],
-        error: message,
-      });
-      onToast(message.toLocaleUpperCase());
-      window.requestAnimationFrame(() => noticeConsultationPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }));
-    }
+  const noticeCriteriaTableValid = noticeCriteria.length > 0 && noticeCriteria.length <= 12 && Math.abs(noticeCriteriaWeight - 100) <= 0.0001 &&
+    noticeCriteria.every((criterion) => !!criterion.title.trim() && Number.isFinite(criterion.weight) && criterion.weight > 0 && !!criterion.evidence?.trim() && !!criterion.scoringMethod?.trim());
+  const noticeProcedurePresent = !!parseEvaluationProcedureMarkdown(currentNotice?.md ?? "").trim();
+  const noticeCriteriaValid = noticeCriteriaTableValid && noticeProcedurePresent;
+  const evaluationCriteria = currentNotice ? noticeCriteria : parseEvaluationCriteriaMarkdown(currentSpec?.md ?? "");
+  const evaluationProcedure = parseEvaluationProcedureMarkdown(currentNotice?.md ?? currentSpec?.md ?? "");
+  const legacyIssuedCriteria = notices.some((notice) => !!notice.issuedAt) && evaluationCriteria.length > 0 &&
+    evaluationCriteria.some((criterion) => !criterion.evidence?.trim() || !criterion.scoringMethod?.trim());
+  const activeEvaluationCriteria = criteriaDraft ?? evaluationCriteria;
+  const activeEvaluationProcedure = criteriaProcedureDraft ?? evaluationProcedure;
+  const evaluationTotal = activeEvaluationCriteria.reduce((sum, criterion) => sum + criterion.weight, 0);
+  const evaluationRowValid = (criterion: EvaluationCriterion) =>
+    !!criterion.title.trim() && Number.isFinite(criterion.weight) && criterion.weight > 0 &&
+    !!criterion.evidence?.trim() && !!criterion.scoringMethod?.trim();
+  const evaluationCriteriaValid = activeEvaluationCriteria.length > 0 && activeEvaluationCriteria.length <= 12 &&
+    activeEvaluationCriteria.every(evaluationRowValid) && Math.abs(evaluationTotal - 100) <= 0.0001;
+  const evaluationValid = evaluationCriteriaValid && !!activeEvaluationProcedure.trim();
+  const evaluationIssue = activeEvaluationCriteria.length === 0
+    ? "No evaluation-criteria table is on record."
+    : activeEvaluationCriteria.length > 12
+      ? "More than 12 criteria — a matrix is meant to be read."
+      : !activeEvaluationCriteria.every(evaluationRowValid)
+        ? activeEvaluationCriteria.some((criterion) => !criterion.title.trim() || !Number.isFinite(criterion.weight) || criterion.weight <= 0)
+          ? "Every criterion needs a title and a weight above zero."
+          : activeEvaluationCriteria.some((criterion) => !criterion.evidence?.trim())
+            ? "State the bidder evidence or subcriteria for every criterion."
+            : "State the scoring method for every criterion."
+        : Math.abs(evaluationTotal - 100) > 0.0001
+          ? `Weights sum to ${evaluationTotal.toFixed(1)}% — they must total exactly 100%.`
+          : !activeEvaluationProcedure.trim()
+            ? "Describe the evidence and scoring procedure before this can be published."
+            : "";
+  const evaluationLocked = (currentNotice?.gateId != null) || notices.some((notice) => !!notice.issuedAt);
+  const evaluationDirty = criteriaDraft !== null || criteriaProcedureDraft !== null;
+  const updateEvaluationCriteria = (update: (rows: EvaluationCriterion[]) => EvaluationCriterion[]) => {
+    setCriteriaDraft((current) => reindexEvaluationCriteria(update(current ?? evaluationCriteria)));
+  };
+  const appendEvaluationCriterion = (criterion: Omit<EvaluationCriterion, "id">) => {
+    const nextIndex = activeEvaluationCriteria.length;
+    updateEvaluationCriteria((rows) => [...rows, { id: "", ...criterion }]);
+    requestAnimationFrame(() => evaluationCriterionTitleRefs.current[nextIndex]?.focus());
+  };
+  const moveEvaluationCriterion = (index: number, offset: -1 | 1) => {
+    const nextIndex = index + offset;
+    if (nextIndex < 0 || nextIndex >= activeEvaluationCriteria.length) return;
+    const movedCriterion = activeEvaluationCriteria[index];
+    updateEvaluationCriteria((rows) => {
+      const next = [...rows];
+      [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+      return next;
+    });
+    setCriteriaAnnouncement(`${movedCriterion.title.trim() || `Criterion ${index + 1}`} moved to position ${nextIndex + 1} of ${activeEvaluationCriteria.length}.`);
+    requestAnimationFrame(() => evaluationCriterionTitleRefs.current[nextIndex]?.focus());
   };
 
-  const suggestionValue = noticeConsultation?.suggestion?.trim() ?? "";
-  const suggestionCanApply = !!noticeConsultation && noticeConsultation.status === "ready" && !!suggestionValue && (
-    noticeConsultation.field.format === "text" ||
-    (noticeConsultation.field.format === "number" && Number.isFinite(Number(suggestionValue)) &&
-      (noticeConsultation.field.key !== "noticeTechWeight" || (Number(suggestionValue) >= 0 && Number(suggestionValue) <= 100))) ||
-    (noticeConsultation.field.format === "date" && /^\d{4}-\d{2}-\d{2}$/.test(suggestionValue))
-  );
-
-  const applyNoticeSuggestion = () => {
-    if (!noticeConsultation || !suggestionCanApply) return;
-    if (noticeConsultation.field.key === "noticeCustomDocument") {
-      setCustomDocumentDraft(suggestionValue);
-    } else {
-      set(noticeConsultation.field.key, suggestionValue);
-    }
-    setNoticeConsultation(null);
+  const saveEvaluationCriteria = () => {
+    void act(
+      `/api/tenders/${ref}/specs/criteria`,
+      {
+        criteria: activeEvaluationCriteria.map(({ title, weight, evidence, scoringMethod }) => ({ title, weight, evidence, scoringMethod })),
+        procedure: activeEvaluationProcedure,
+      },
+      "EVALUATION CRITERIA AND PROCEDURE SAVED TO THE SPECIFICATION AND NOTICE DRAFT",
+    ).then((ok) => {
+      if (!ok) return;
+      setCriteriaDraft(null);
+      setCriteriaProcedureDraft(null);
+    });
   };
 
   const draftTenderNotice = () =>
     act(
       `/api/tenders/${ref}/notices/draft`,
       {
-        reference: d.noticeRef || ref,
         buyer: d.noticeBuyer,
         subject: d.noticeSubject || tenderTitle,
-        method: d.noticeMethod || cycle?.methodId || "Open competitive bidding",
+        method: noticeMethodName,
         closingDate: d.noticeClosing || d.closing || undefined,
         ceiling: d.noticeCeiling,
         contact: d.noticeContact,
@@ -3185,7 +3130,7 @@ export function CycleView({
         cdfReservationExceptionBasis: d.noticePreference === "CDF_RESERVATION" ? d.noticeCdfExceptionBasis : undefined,
         foreignBiddersPermitted: d.foreignBiddersPermitted === "true",
         evaluationCurrency: d.noticeEvaluationCurrency || (cycle?.methodCurrency ?? "ZMW"),
-        procurementScope: d.noticeScope || "National",
+        procurementScope: selectedNoticeScope,
       },
       "NOTICE DRAFTED — THE MANDATORY-FIELD CHECK DECIDES WHETHER IT CAN PUBLISH",
     ).then((ok) => ok && refreshCycle());
@@ -3224,9 +3169,9 @@ export function CycleView({
         right={
           currentNotice ? (
             currentNotice.issuedAt ? (
-              <Chip tone={noticeCriteriaValid ? "ok" : "warn"}>{noticeCriteriaValid ? "ISSUED" : "ISSUED · CRITERIA MISSING"}</Chip>
+              <Chip tone={noticeCriteriaValid ? "ok" : "warn"}>{noticeCriteriaValid ? "ISSUED" : "ISSUED · BASIS REVIEW"}</Chip>
             ) : noticeMissing.length || !noticeCriteriaValid ? (
-              <Chip tone="warn">{noticeMissing.length + (noticeCriteriaValid ? 0 : 1)} REQUIREMENT{noticeMissing.length + (noticeCriteriaValid ? 0 : 1) === 1 ? "" : "S"} MISSING</Chip>
+              <Chip tone="warn">{noticeMissing.length + (noticeCriteriaTableValid ? 0 : 1)} REQUIREMENT{noticeMissing.length + (noticeCriteriaTableValid ? 0 : 1) === 1 ? "" : "S"} MISSING</Chip>
             ) : (
               <Chip tone="brand">READY FOR THE GATE</Chip>
             )
@@ -3236,39 +3181,123 @@ export function CycleView({
         }
       >
         <div className="grid gap-3">
-          <p className="rounded-lg bg-brand-500/[0.045] px-3 py-2 text-[10px] leading-relaxed text-ink-600 dark:bg-brand-400/[0.045] dark:text-ink-300">
-            Meta AI uses the current tender draft and available notice/specification excerpts only when you ask for help. Suggestions are advisory and are never applied until you choose to use one.
-          </p>
-          <div className="grid gap-2.5 sm:grid-cols-2">
-            <NoticeAiField id="notice-reference" label="REFERENCE" hint={ref ? `on record: ${ref}` : "select a tender first"} loading={noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeRef"} disabled={!ref || noticeConsultation?.status === "loading"} onAsk={() => void consultNoticeField({ key: "noticeRef", label: "REFERENCE", format: "text" }, d.noticeRef ?? "")}>
-              <input id="notice-reference" className={cn(inputCls, "pr-16")} placeholder={ref || "Tender reference"} value={d.noticeRef ?? ""} onChange={(e) => set("noticeRef", e.target.value)} />
-            </NoticeAiField>
-            <NoticeAiField id="notice-buyer" label="BUYER — THE PROCURING ENTITY" loading={noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeBuyer"} disabled={!ref || noticeConsultation?.status === "loading"} onAsk={() => void consultNoticeField({ key: "noticeBuyer", label: "BUYER — THE PROCURING ENTITY", format: "text" }, d.noticeBuyer ?? "")}>
-              <input id="notice-buyer" className={cn(inputCls, "pr-16")} placeholder="e.g. Ministry of Health" value={d.noticeBuyer ?? ""} onChange={(e) => set("noticeBuyer", e.target.value)} />
-            </NoticeAiField>
-            <NoticeAiField id="notice-subject" label="SUBJECT OF THE PROCUREMENT" hint={tenderTitle ? "defaults to the tender title" : undefined} loading={noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeSubject"} disabled={!ref || noticeConsultation?.status === "loading"} onAsk={() => void consultNoticeField({ key: "noticeSubject", label: "SUBJECT OF THE PROCUREMENT", format: "text" }, d.noticeSubject ?? "")}>
-              <input id="notice-subject" className={cn(inputCls, "pr-16")} placeholder={tenderTitle || "What is being bought"} value={d.noticeSubject ?? ""} onChange={(e) => set("noticeSubject", e.target.value)} />
-            </NoticeAiField>
-            <NoticeAiField id="notice-method" label="PROCUREMENT METHOD" hint="recorded on the award file too" loading={noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeMethod"} disabled={!ref || noticeConsultation?.status === "loading"} onAsk={() => void consultNoticeField({ key: "noticeMethod", label: "PROCUREMENT METHOD", format: "text" }, d.noticeMethod ?? "")}>
-              <input id="notice-method" className={cn(inputCls, "pr-16")} placeholder={cycle?.methodId || "Open competitive bidding"} value={d.noticeMethod ?? ""} onChange={(e) => set("noticeMethod", e.target.value)} />
-            </NoticeAiField>
-            <NoticeAiField id="notice-technical-weight" label="TECHNICAL WEIGHT (%) — BALANCE IS FINANCIAL" control="number" loading={noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeTechWeight"} disabled={!ref || noticeConsultation?.status === "loading"} onAsk={() => void consultNoticeField({ key: "noticeTechWeight", label: "TECHNICAL WEIGHT (%)", format: "number" }, d.noticeTechWeight ?? "80")}>
-              <input id="notice-technical-weight" className={cn(inputCls, "pr-16")} type="number" min={0} max={100} value={d.noticeTechWeight ?? "80"} onChange={(e) => set("noticeTechWeight", e.target.value)} />
-            </NoticeAiField>
+          <div className="grid gap-2.5 md:grid-cols-2">
+            <div className="border-b border-ink-100 pb-2 dark:border-white/[0.07] md:col-span-2">
+              <h3 className="font-display text-[13px] font-semibold text-ink-900 dark:text-white">Notice details</h3>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-ink-500 dark:text-ink-400">
+                Identify the buyer, what is being purchased, and the method used for this tender.
+              </p>
+            </div>
+            <Field label="SYSTEM REFERENCE" hint="Quorum-assigned ID; source-pack keys stay internal.">
+              <input
+                id="notice-reference"
+                className={cn(inputCls, "cursor-default font-code tracking-[0.04em]")}
+                value={currentSystemReference || noticeAutoRef}
+                placeholder={noticeRefLoading ? "Assigning reference…" : "Issued when record is created"}
+                readOnly
+                aria-readonly="true"
+              />
+            </Field>
+            <Field label="BUYER — THE PROCURING ENTITY">
+              <input id="notice-buyer" className={inputCls} placeholder="e.g. Ministry of Health" value={d.noticeBuyer ?? ""} onChange={(e) => set("noticeBuyer", e.target.value)} />
+            </Field>
+            <Field label="SUBJECT OF THE PROCUREMENT">
+              <input id="notice-subject" className={inputCls} placeholder={tenderTitle || "What is being bought"} value={d.noticeSubject ?? ""} onChange={(e) => set("noticeSubject", e.target.value)} />
+            </Field>
+            <div className="block min-w-0">
+              <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
+                <label htmlFor="notice-method" className="eyebrow">PROCUREMENT METHOD</label>
+                <span className="min-w-0 font-sans text-[11.5px] leading-[1.4] text-ink-600 dark:text-ink-400">
+                  {methodsStatus === "ready" ? `${methods.length} Zambia legal methods · scope set separately` : "Loading Zambia method register…"}
+                </span>
+              </div>
+              <select
+                ref={methodSelectRef}
+                id="notice-method"
+                className={inputCls}
+                value={selectedNoticeMethodId}
+                disabled={methodsStatus !== "ready"}
+                aria-describedby={
+                  methodsStatus !== "ready"
+                    ? "notice-method-status"
+                    : selectedNoticeMethod?.when
+                      ? "notice-method-guidance"
+                      : undefined
+                }
+                onChange={(event) => {
+                  const methodId = event.target.value;
+                  set("noticeMethod", methodId);
+                  const scope = scopeForMethodId(methodId);
+                  if (scope) set("noticeScope", scope);
+                }}
+              >
+                {methodsStatus === "ready" ? (
+                  methodGroups.map(([group, groupMethods]) => (
+                    <optgroup key={group} label={group}>
+                      {groupMethods.map((method) => (
+                        <option key={method.id} value={method.id}>
+                          {method.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))
+                ) : (
+                  <option value={selectedNoticeMethodId}>
+                    {methodsStatus === "loading" ? "Loading procurement methods…" : "Method register unavailable"}
+                  </option>
+                )}
+              </select>
+              {methodsStatus === "ready" && selectedNoticeMethod?.when ? (
+                <p id="notice-method-guidance" className="mt-1.5 text-[11px] leading-relaxed text-ink-600 dark:text-ink-400">
+                  {selectedNoticeMethod.when}
+                </p>
+              ) : null}
+            </div>
+            {methodsStatus !== "ready" ? (
+              <div id="notice-method-status" role="status" className="-mt-1 flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] leading-relaxed text-ink-500 md:col-span-2">
+                <span>
+                  {methodsStatus === "loading"
+                    ? "Loading the complete Zambia legal-method list."
+                    : "The Zambia procurement-method list could not be loaded."}
+                </span>
+                {methodsStatus === "error" ? (
+                  <button
+                    ref={methodRetryButtonRef}
+                    type="button"
+                    onClick={() => {
+                      methodsRetryFocusRef.current = true;
+                      setMethodsRetry((attempt) => attempt + 1);
+                    }}
+                    className="focus-brand inline-flex min-h-11 items-center rounded-lg border border-ink-200 px-3 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-400 dark:border-white/15 dark:text-ink-200 dark:hover:border-white/30"
+                  >
+                    TRY AGAIN
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+            <div className="border-t border-ink-100 pt-3 dark:border-white/[0.07] md:col-span-2">
+              <h3 className="font-display text-[13px] font-semibold text-ink-900 dark:text-white">Evaluation and bidder rules</h3>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-ink-500 dark:text-ink-400">
+                Set evaluation weights, currency, scope, preferences, and bidder eligibility.
+              </p>
+            </div>
+            <Field label="TECHNICAL WEIGHT (%) — BALANCE IS FINANCIAL">
+              <input id="notice-technical-weight" className={inputCls} type="number" min={0} max={100} value={d.noticeTechWeight ?? "80"} onChange={(e) => set("noticeTechWeight", e.target.value)} />
+            </Field>
             <Field label="EVALUATION CURRENCY">
               <select className={inputCls} value={d.noticeEvaluationCurrency ?? cycle?.methodCurrency ?? "ZMW"} onChange={(e) => set("noticeEvaluationCurrency", e.target.value)}>
                 {CURRENCIES.map((currency) => <option key={currency} value={currency}>{currency}</option>)}
               </select>
             </Field>
             <Field label="PROCUREMENT SCOPE">
-              <select className={inputCls} value={d.noticeScope ?? "National"} onChange={(e) => set("noticeScope", e.target.value)}>
+              <select className={inputCls} value={selectedNoticeScope} onChange={(e) => set("noticeScope", e.target.value)}>
                 <option value="National">National</option>
                 <option value="International">International</option>
               </select>
             </Field>
-            <NoticeAiField id="notice-fx-basis" label="FX BASIS — SOURCE AND OBSERVATION DATE" hint="State the source and date/method the issued document requires bidders and evaluators to use." loading={noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeFxBasis"} disabled={!ref || noticeConsultation?.status === "loading"} onAsk={() => void consultNoticeField({ key: "noticeFxBasis", label: "FX BASIS — SOURCE AND OBSERVATION DATE", format: "text" }, d.noticeFxBasis ?? "")}>
-              <input id="notice-fx-basis" className={cn(inputCls, "pr-16")} placeholder="Bank of Zambia published rate, dated YYYY-MM-DD" value={d.noticeFxBasis ?? ""} onChange={(e) => set("noticeFxBasis", e.target.value)} />
-            </NoticeAiField>
+            <Field label="FX BASIS — SOURCE AND OBSERVATION DATE" hint="State the source and date/method the issued document requires bidders and evaluators to use.">
+              <input id="notice-fx-basis" className={inputCls} placeholder="Bank of Zambia published rate, dated YYYY-MM-DD" value={d.noticeFxBasis ?? ""} onChange={(e) => set("noticeFxBasis", e.target.value)} />
+            </Field>
             <div className="rounded-xl border border-ink-100 bg-paper/60 px-3 py-2.5 text-[11px] leading-relaxed text-ink-600 dark:border-white/[0.07] dark:bg-white/[0.025] dark:text-ink-400">
               <span className="font-semibold">Financial formula fixed for this release:</span> Lowest evaluated price / bidder evaluated price × 100, after documented arithmetic corrections, unconditional discounts and published preference.
             </div>
@@ -3280,51 +3309,57 @@ export function CycleView({
               </select>
             </Field>
             {d.noticePreference === "CDF_RESERVATION" ? (
-              <div className="grid gap-2 rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3 sm:col-span-2 sm:grid-cols-2">
-                <NoticeAiField id="notice-cdf-constituency" label="FUNDED CONSTITUENCY" loading={noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeCdfConstituency"} disabled={!ref || noticeConsultation?.status === "loading"} onAsk={() => void consultNoticeField({ key: "noticeCdfConstituency", label: "FUNDED CONSTITUENCY", format: "text" }, d.noticeCdfConstituency ?? "")}>
-                  <input id="notice-cdf-constituency" className={cn(inputCls, "pr-16")} value={d.noticeCdfConstituency ?? ""} onChange={(e) => set("noticeCdfConstituency", e.target.value)} maxLength={120} placeholder="Name the constituency funding this procurement" />
-                </NoticeAiField>
-                <p className="sm:col-span-2 text-[10.5px] leading-relaxed text-amber-900 dark:text-amber-200">
+              <div className="grid gap-2 rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3 md:col-span-2 md:grid-cols-2">
+                <Field label="FUNDED CONSTITUENCY">
+                  <input id="notice-cdf-constituency" className={inputCls} value={d.noticeCdfConstituency ?? ""} onChange={(e) => set("noticeCdfConstituency", e.target.value)} maxLength={120} placeholder="Name the constituency funding this procurement" />
+                </Field>
+                <p className="md:col-span-2 text-[10.5px] leading-relaxed text-amber-900 dark:text-amber-200">
                   Optional locality exception under SI 45/2025 regulation 8(2): record it only where procurement requirements cannot be satisfied by a citizen bidder domiciled in the funded constituency. This evidence is part of the published solicitation.
                 </p>
-                <NoticeAiField id="notice-cdf-evidence" label="LOCALITY ASSESSMENT EVIDENCE REFERENCE" loading={noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeCdfExceptionRef"} disabled={!ref || noticeConsultation?.status === "loading"} onAsk={() => void consultNoticeField({ key: "noticeCdfExceptionRef", label: "LOCALITY ASSESSMENT EVIDENCE REFERENCE", format: "text" }, d.noticeCdfExceptionRef ?? "")}>
-                  <input id="notice-cdf-evidence" className={cn(inputCls, "pr-16")} value={d.noticeCdfExceptionRef ?? ""} onChange={(e) => set("noticeCdfExceptionRef", e.target.value)} maxLength={200} placeholder="Market assessment / local capacity record" />
-                </NoticeAiField>
-                <NoticeAiField id="notice-cdf-basis" label="WHY CONSTITUENCY REQUIREMENTS CANNOT BE MET" hint="At least 20 characters when an evidence reference is supplied." loading={noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeCdfExceptionBasis"} disabled={!ref || noticeConsultation?.status === "loading"} onAsk={() => void consultNoticeField({ key: "noticeCdfExceptionBasis", label: "WHY CONSTITUENCY REQUIREMENTS CANNOT BE MET", format: "text" }, d.noticeCdfExceptionBasis ?? "")}>
-                  <input id="notice-cdf-basis" className={cn(inputCls, "pr-16")} value={d.noticeCdfExceptionBasis ?? ""} onChange={(e) => set("noticeCdfExceptionBasis", e.target.value)} maxLength={500} placeholder="Describe the unmet requirement and local market check" />
-                </NoticeAiField>
+                <Field label="LOCALITY ASSESSMENT EVIDENCE REFERENCE">
+                  <input id="notice-cdf-evidence" className={inputCls} value={d.noticeCdfExceptionRef ?? ""} onChange={(e) => set("noticeCdfExceptionRef", e.target.value)} maxLength={200} placeholder="Market assessment / local capacity record" />
+                </Field>
+                <Field label="WHY CONSTITUENCY REQUIREMENTS CANNOT BE MET" hint="At least 20 characters when an evidence reference is supplied.">
+                  <input id="notice-cdf-basis" className={inputCls} value={d.noticeCdfExceptionBasis ?? ""} onChange={(e) => set("noticeCdfExceptionBasis", e.target.value)} maxLength={500} placeholder="Describe the unmet requirement and local market check" />
+                </Field>
               </div>
             ) : null}
             <label className="flex items-center gap-2 rounded-lg border border-ink-100 px-3 py-2 text-[11.5px] text-ink-700">
               <input type="checkbox" checked={d.foreignBiddersPermitted === "true"} onChange={(e) => set("foreignBiddersPermitted", e.target.checked ? "true" : "false")} />
               Foreign bidders may participate (required for the local supplier 5% margin)
             </label>
-            <NoticeAiField id="notice-budget-ceiling" label="BUDGET CEILING" loading={noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeCeiling"} disabled={!ref || noticeConsultation?.status === "loading"} onAsk={() => void consultNoticeField({ key: "noticeCeiling", label: "BUDGET CEILING", format: "text" }, d.noticeCeiling ?? "")}>
-              <input id="notice-budget-ceiling" className={cn(inputCls, "pr-16")} placeholder={`${cycle?.methodCurrency ?? ""} 48,000,000`.trim()} value={d.noticeCeiling ?? ""} onChange={(e) => set("noticeCeiling", e.target.value)} />
-            </NoticeAiField>
-            <NoticeAiField id="notice-closing-date" label="CLOSING DATE" hint={cycle?.closingDate ? `on record: ${fmtDate(cycle.closingDate)}` : "moves with the notice"} control="date" loading={noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeClosing"} disabled={!ref || noticeConsultation?.status === "loading"} onAsk={() => void consultNoticeField({ key: "noticeClosing", label: "CLOSING DATE", format: "date" }, d.noticeClosing ?? "")}>
+            <div className="border-t border-ink-100 pt-3 dark:border-white/[0.07] md:col-span-2">
+              <h3 className="font-display text-[13px] font-semibold text-ink-900 dark:text-white">Budget and timeline</h3>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-ink-500 dark:text-ink-400">
+                Set the spending limit, closing date, and contact for bidder questions.
+              </p>
+            </div>
+            <Field label="BUDGET CEILING">
+              <input id="notice-budget-ceiling" className={inputCls} placeholder={`${cycle?.methodCurrency ?? ""} 48,000,000`.trim()} value={d.noticeCeiling ?? ""} onChange={(e) => set("noticeCeiling", e.target.value)} />
+            </Field>
+            <Field label="CLOSING DATE" hint={cycle?.closingDate ? `on record: ${fmtDate(cycle.closingDate)}` : "moves with the notice"}>
               <input id="notice-closing-date" className={cn(inputCls, "pr-20")} type="date" value={d.noticeClosing ?? ""} onChange={(e) => set("noticeClosing", e.target.value)} />
-            </NoticeAiField>
-            <NoticeAiField id="notice-clarification-contact" label="CONTACT FOR CLARIFICATIONS" loading={noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeContact"} disabled={!ref || noticeConsultation?.status === "loading"} onAsk={() => void consultNoticeField({ key: "noticeContact", label: "CONTACT FOR CLARIFICATIONS", format: "text" }, d.noticeContact ?? "")}>
-              <input id="notice-clarification-contact" className={cn(inputCls, "pr-16")} placeholder="Office, officer and email" value={d.noticeContact ?? ""} onChange={(e) => set("noticeContact", e.target.value)} />
-            </NoticeAiField>
-            <div className="min-w-0 sm:col-span-2">
+            </Field>
+            <Field label="CONTACT FOR CLARIFICATIONS">
+              <input id="notice-clarification-contact" className={inputCls} placeholder="Office, officer and email" value={d.noticeContact ?? ""} onChange={(e) => set("noticeContact", e.target.value)} />
+            </Field>
+            <div className="min-w-0 border-t border-ink-100 pt-3 dark:border-white/[0.07] md:col-span-2">
               <div className="mb-1.5 flex flex-wrap items-end justify-between gap-2">
                 <div>
-                  <p className="eyebrow text-[9px]">REQUIRED BID DOCUMENTS</p>
-                  <p className="mt-1 text-[10.5px] leading-relaxed text-ink-500 dark:text-ink-400">
+                  <h3 className="font-display text-[13px] font-semibold text-ink-900 dark:text-white">Required bid documents</h3>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-ink-500 dark:text-[#aeb5c0]">
                     Choose the documents required for this tender. Only enabled items are published in the notice and checked during bid review.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span aria-live="polite" className="rounded-full bg-ink-100 px-2.5 py-1 font-code text-[9px] font-semibold text-ink-600 dark:bg-white/[0.07] dark:text-ink-300">
+                  <span aria-live="polite" className="rounded-full bg-ink-100 px-2.5 py-1.5 font-code text-[10.5px] font-semibold text-ink-700 dark:bg-white/[0.07] dark:text-[#e3e6eb]">
                     {selectedRequiredDocs.size} SELECTED
                   </span>
                   <button
                     type="button"
                     onClick={() => set("noticeDocs", "")}
                     disabled={selectedRequiredDocs.size === 0}
-                    className="rounded-md px-2 py-1 text-[10px] font-semibold text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-900 disabled:cursor-not-allowed disabled:opacity-40 dark:text-ink-400 dark:hover:bg-white/[0.07] dark:hover:text-white"
+                    className="focus-brand inline-flex min-h-11 items-center rounded-md px-3 text-[11.5px] font-semibold text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900 disabled:cursor-not-allowed disabled:opacity-60 dark:text-[#c3c9d2] dark:hover:bg-white/[0.07] dark:hover:text-white"
                   >
                     Clear selection
                   </button>
@@ -3332,53 +3367,78 @@ export function CycleView({
               </div>
 
               <div className="rounded-xl border border-ink-200/80 bg-paper/70 p-3 dark:border-white/[0.1] dark:bg-[#0b0d12] sm:p-4">
-                <div className="grid max-h-[520px] gap-3 overflow-y-auto pr-1 lg:grid-cols-2">
-                  {REQUIRED_DOCUMENT_GROUPS.map((group) => (
-                    <fieldset key={group.label} className="min-w-0 rounded-lg border border-ink-100 bg-white/70 p-2.5 dark:border-white/[0.07] dark:bg-white/[0.02]">
-                      <legend className="px-1 font-code text-[8px] font-bold tracking-[0.14em] text-ink-400">{group.label}</legend>
-                      <div className="grid gap-1">
-                        {group.documents.map((document, documentIndex) => {
-                          const switchId = `${requiredDocsId}-standard-${group.label.toLocaleLowerCase().replace(/[^a-z0-9]+/g, "-")}-${documentIndex}`;
-                          const checked = selectedRequiredDocs.has(document);
-                          return (
-                            <div key={document} className={cn("flex min-h-9 items-center justify-between gap-3 rounded-md px-2 py-1.5 transition-colors", checked ? "bg-emerald-500/[0.07] dark:bg-emerald-400/[0.07]" : "hover:bg-ink-50 dark:hover:bg-white/[0.035]")}>
-                              <span id={`${switchId}-label`} className="text-[10.5px] leading-snug text-ink-700 dark:text-ink-300">{document}</span>
-                              <Switch
-                                id={switchId}
-                                aria-labelledby={`${switchId}-label`}
-                                aria-label={`Require ${document}`}
+                <div className="grid gap-3 lg:max-h-[520px] lg:overflow-y-auto lg:pr-1 lg:grid-cols-2">
+                  {REQUIRED_DOCUMENT_GROUPS.map((group) => {
+                    const groupDocuments = group.documents;
+                    const groupSelected = groupDocuments.filter((document) => selectedRequiredDocs.has(document)).length;
+                    const allSelected = groupSelected === groupDocuments.length;
+                    return (
+                      <fieldset key={group.label} className="min-w-0 rounded-lg border border-ink-100 bg-white/70 p-2.5 dark:border-white/[0.07] dark:bg-white/[0.02]">
+                        <legend className="px-1 font-code text-[10px] font-bold tracking-[0.1em] text-ink-500 dark:text-[#c3c9d2]">{group.label}</legend>
+                        <div className="mb-1 flex items-center justify-between gap-2">
+                          <span className="font-code text-[10px] tracking-[0.06em] text-ink-500 dark:text-[#aeb5c0]" aria-live="polite">
+                            {groupSelected} OF {groupDocuments.length} REQUIRED
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setRequiredDocuments(groupDocuments, !allSelected)}
+                            disabled={!allSelected && selectedRequiredDocs.size >= MAX_REQUIRED_DOCUMENTS}
+                            aria-label={allSelected ? `Clear all documents in ${group.label}` : `Enable all documents in ${group.label}`}
+                            className="focus-brand inline-flex min-h-11 items-center rounded-md px-3 text-[11px] font-semibold text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900 disabled:cursor-not-allowed disabled:opacity-60 dark:text-[#d5d9df] dark:hover:bg-white/[0.07] dark:hover:text-white"
+                          >
+                            {allSelected ? "Clear all" : "Select all"}
+                          </button>
+                        </div>
+                        <div className="grid gap-1">
+                          {group.documents.map((document, documentIndex) => {
+                            const checked = selectedRequiredDocs.has(document);
+                            return (
+                              <RequiredDocumentToggle
+                                key={document}
+                                document={document}
                                 checked={checked}
                                 disabled={!checked && selectedRequiredDocs.size >= MAX_REQUIRED_DOCUMENTS}
                                 onCheckedChange={(on) => setRequiredDocument(document, on)}
-                                className="data-[state=checked]:bg-emerald-600 dark:data-[state=checked]:bg-emerald-500"
                               />
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </fieldset>
-                  ))}
+                            );
+                          })}
+                        </div>
+                      </fieldset>
+                    );
+                  })}
 
                   {customRequiredDocs.length ? (
                     <fieldset className="min-w-0 rounded-lg border border-brand-500/20 bg-brand-500/[0.025] p-2.5 dark:border-brand-400/15 dark:bg-brand-400/[0.025] lg:col-span-2">
-                      <legend className="px-1 font-code text-[8px] font-bold tracking-[0.14em] text-ink-400">CUSTOM / TENDER-SPECIFIC DOCUMENTS</legend>
-                      <div className="grid gap-1 sm:grid-cols-2">
+                        <legend className="px-1 font-code text-[10px] font-bold tracking-[0.1em] text-ink-500 dark:text-[#c3c9d2]">CUSTOM / TENDER-SPECIFIC DOCUMENTS</legend>
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                          <span className="font-code text-[10px] tracking-[0.06em] text-ink-500 dark:text-[#aeb5c0]" aria-live="polite">
+                          {customRequiredSelected} OF {customRequiredDocs.length} REQUIRED
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setRequiredDocuments(customRequiredDocs, customRequiredSelected !== customRequiredDocs.length)}
+                          disabled={customRequiredSelected !== customRequiredDocs.length && selectedRequiredDocs.size >= MAX_REQUIRED_DOCUMENTS}
+                          aria-label={
+                            customRequiredSelected === customRequiredDocs.length
+                              ? "Clear all custom required documents"
+                              : "Enable all custom required documents"
+                          }
+                          className="focus-brand inline-flex min-h-11 items-center rounded-md px-3 text-[11px] font-semibold text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900 disabled:cursor-not-allowed disabled:opacity-60 dark:text-[#d5d9df] dark:hover:bg-white/[0.07] dark:hover:text-white"
+                        >
+                          {customRequiredSelected === customRequiredDocs.length ? "Clear all" : "Select all"}
+                        </button>
+                      </div>
+                      <div className="grid gap-1 md:grid-cols-2">
                         {customRequiredDocs.map((document, documentIndex) => {
-                          const switchId = `${requiredDocsId}-custom-${documentIndex}`;
                           const checked = selectedRequiredDocs.has(document);
                           return (
-                            <div key={document} className={cn("flex min-h-9 items-center justify-between gap-3 rounded-md px-2 py-1.5 transition-colors", checked ? "bg-emerald-500/[0.07] dark:bg-emerald-400/[0.07]" : "hover:bg-ink-50 dark:hover:bg-white/[0.035]")}>
-                              <span id={`${switchId}-label`} className="text-[10.5px] leading-snug text-ink-700 dark:text-ink-300">{document}</span>
-                              <Switch
-                                id={switchId}
-                                aria-labelledby={`${switchId}-label`}
-                                aria-label={`Require ${document}`}
-                                checked={checked}
-                                disabled={!checked && selectedRequiredDocs.size >= MAX_REQUIRED_DOCUMENTS}
-                                onCheckedChange={(on) => setRequiredDocument(document, on)}
-                                className="data-[state=checked]:bg-emerald-600 dark:data-[state=checked]:bg-emerald-500"
-                              />
-                            </div>
+                            <RequiredDocumentToggle
+                              key={document}
+                              document={document}
+                              checked={checked}
+                              disabled={!checked && selectedRequiredDocs.size >= MAX_REQUIRED_DOCUMENTS}
+                              onCheckedChange={(on) => setRequiredDocument(document, on)}
+                            />
                           );
                         })}
                       </div>
@@ -3387,10 +3447,10 @@ export function CycleView({
                 </div>
 
                 <div className="mt-3 flex flex-col gap-2 border-t border-ink-100 pt-3 dark:border-white/[0.07] sm:flex-row">
-                  <div className="relative min-w-0 flex-1">
+                  <div className="min-w-0 flex-1">
                     <input
                       id={`${requiredDocsId}-custom-document`}
-                      className={cn(inputCls, "h-9 pr-16")}
+                      className={cn(inputCls, "h-11 text-base sm:text-[12.5px]")}
                       value={customDocumentDraft}
                       onChange={(event) => {
                         setCustomDocumentDraft(event.target.value);
@@ -3407,102 +3467,31 @@ export function CycleView({
                       aria-label="Custom required document"
                       aria-describedby={customDocumentError ? `${requiredDocsId}-custom-error` : undefined}
                     />
-                    <button
-                      type="button"
-                      onClick={() => void consultNoticeField({ key: "noticeCustomDocument", label: "CUSTOM BID DOCUMENT REQUIREMENT", format: "text" }, customDocumentDraft)}
-                      disabled={!ref || noticeConsultation?.status === "loading"}
-                      aria-label="Ask Meta AI to suggest a tender-specific document requirement"
-                      title="Ask Meta AI to suggest a tender-specific document requirement"
-                      className="absolute right-1.5 top-1/2 inline-flex h-7 -translate-y-1/2 items-center gap-1 rounded-md bg-paper/95 px-2 text-[9px] font-semibold text-brand-700 transition-colors hover:bg-brand-50 disabled:cursor-wait disabled:opacity-55 dark:bg-[#171923] dark:text-brand-300 dark:hover:bg-brand-400/[0.09]"
-                    >
-                      {noticeConsultation?.status === "loading" && noticeConsultation.field.key === "noticeCustomDocument"
-                        ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
-                        : <Sparkles className="h-3 w-3" aria-hidden="true" />}
-                      <span>AI</span>
-                    </button>
                   </div>
                   <button
                     type="button"
                     onClick={addCustomRequiredDocument}
                     disabled={!customDocumentDraft.trim() || selectedRequiredDocs.size >= MAX_REQUIRED_DOCUMENTS}
-                    className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-ink-200 px-3 text-[10px] font-semibold text-ink-700 transition-colors hover:border-ink-400 hover:bg-ink-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/[0.12] dark:text-ink-200 dark:hover:border-white/30 dark:hover:bg-white/[0.05]"
+                    className="focus-brand inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-ink-200 px-3 text-[11.5px] font-semibold text-ink-700 transition-colors hover:border-ink-400 hover:bg-ink-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/[0.12] dark:text-ink-200 dark:hover:border-white/30 dark:hover:bg-white/[0.05]"
                   >
                     <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Add and require
                   </button>
                 </div>
-                {customDocumentError ? <p id={`${requiredDocsId}-custom-error`} role="alert" className="mt-1.5 text-[10px] text-rose-600 dark:text-rose-300">{customDocumentError}</p> : null}
+                {customDocumentError ? <p id={`${requiredDocsId}-custom-error`} role="alert" className="mt-1.5 text-[12px] text-rose-700 dark:text-rose-300">{customDocumentError}</p> : null}
                 {selectedRequiredDocs.size === 0 ? (
-                  <p role="status" className="mt-2 text-[10px] leading-relaxed text-amber-700 dark:text-amber-300">No documents are selected. The notice will explicitly state that no eligibility documents were listed.</p>
+                  <p role="status" className="mt-2 text-[12px] leading-relaxed text-amber-800 dark:text-amber-300">No documents are selected. The notice will explicitly state that no eligibility documents were listed.</p>
                 ) : (
-                  <p className="mt-2 text-[9px] leading-relaxed text-ink-400">The tender creator owns this checklist. You can select up to {MAX_REQUIRED_DOCUMENTS} items; the selected list is carried into the published notice and bid-compliance review.</p>
+                  <p className="mt-2 text-[11.5px] leading-relaxed text-ink-600 dark:text-[#aeb5c0]">You can select up to {MAX_REQUIRED_DOCUMENTS} items. The selected list is included in the published notice and bid-compliance review.</p>
                 )}
               </div>
             </div>
           </div>
 
-          {noticeConsultation ? (
-            <section ref={noticeConsultationPanelRef} aria-live="polite" aria-busy={noticeConsultation.status === "loading"} className="rounded-xl border border-brand-500/20 bg-brand-500/[0.035] p-3.5 dark:border-0 dark:bg-brand-400/[0.055] sm:p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-start gap-2.5">
-                  <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-500/[0.11] text-brand-700 dark:bg-brand-400/[0.12] dark:text-brand-300">
-                    {noticeConsultation.status === "loading"
-                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                      : <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="eyebrow text-[9px] text-brand-700 dark:text-brand-300">META AI FIELD CONSULTANT · {noticeConsultation.field.label}</p>
-                    {noticeConsultation.status === "loading" ? (
-                      <p className="mt-1.5 text-[11px] text-ink-600 dark:text-ink-300">Reviewing the tender context and checking what evidence supports this field…</p>
-                    ) : noticeConsultation.status === "error" ? (
-                      <p role="alert" className="mt-1.5 text-[11px] leading-relaxed text-rose-700 dark:text-rose-300">{noticeConsultation.error}</p>
-                    ) : (
-                      <>
-                        <p className="mt-1.5 text-[11px] leading-relaxed text-ink-700 dark:text-ink-200">{noticeConsultation.rationale}</p>
-                        {noticeConsultation.suggestion ? (
-                          <div className="mt-2.5 rounded-lg bg-white/80 px-3 py-2.5 text-[12px] leading-relaxed text-ink-900 dark:bg-white/[0.055] dark:text-white">
-                            <p className="mb-1 font-code text-[8px] font-bold tracking-[0.13em] text-ink-400">SUGGESTED INPUT · REVIEW BEFORE USE</p>
-                            <p className="whitespace-pre-wrap break-words">{noticeConsultation.suggestion}</p>
-                          </div>
-                        ) : null}
-                        {noticeConsultation.evidenceBasis.length ? (
-                          <p className="mt-2 text-[10px] leading-relaxed text-ink-500 dark:text-ink-400">
-                            <span className="font-semibold text-ink-600 dark:text-ink-300">Context used: </span>{noticeConsultation.evidenceBasis.join(" · ")}
-                          </p>
-                        ) : null}
-                        {noticeConsultation.missingContext.length ? (
-                          <div className="mt-2 rounded-lg bg-amber-500/[0.07] px-3 py-2 text-[10px] leading-relaxed text-amber-800 dark:bg-amber-400/[0.08] dark:text-amber-200">
-                            <p className="mb-1 font-semibold">Confirm or add this context</p>
-                            <ul className="list-disc space-y-0.5 pl-4">
-                              {noticeConsultation.missingContext.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}
-                            </ul>
-                          </div>
-                        ) : null}
-                        {noticeConsultation.model ? <p className="mt-2 font-code text-[8px] tracking-[0.12em] text-ink-400">{noticeConsultation.model}</p> : null}
-                      </>
-                    )}
-                  </div>
-                </div>
-                <button type="button" onClick={() => setNoticeConsultation(null)} aria-label="Close Meta AI suggestion" className="shrink-0 rounded-md p-1.5 text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-800 dark:hover:bg-white/[0.08] dark:hover:text-white">
-                  <X className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-              </div>
-              {noticeConsultation.status === "ready" ? (
-                <div className="mt-3 flex flex-wrap items-center gap-2 pl-9">
-                  {noticeConsultation.suggestion ? (
-                    <Btn onClick={applyNoticeSuggestion} disabled={!suggestionCanApply}>
-                      <Check className="h-3.5 w-3.5" aria-hidden="true" /> Use suggestion
-                    </Btn>
-                  ) : null}
-                  <span className="text-[9px] text-ink-400">The tender record changes only when you apply a suggestion.</span>
-                </div>
-              ) : null}
-            </section>
-          ) : null}
-
           <div className="flex flex-wrap items-center gap-2">
-            <Btn onClick={() => void draftTenderNotice()} disabled={busy || !ref}>
+            <Btn onClick={() => void draftTenderNotice()} disabled={busy || !ref || methodsStatus !== "ready" || evaluationDirty}>
               <FileText className="h-3.5 w-3.5" aria-hidden="true" /> {currentNotice ? "Redraft the notice" : "Draft the notice"}
             </Btn>
+            {evaluationDirty ? <p className="basis-full text-[10.5px] text-brand-700 dark:text-brand-300" role="status">Save the evaluation basis before drafting the notice.</p> : null}
             {currentNotice && !currentNotice.issuedAt ? (
               <Btn
                 variant="ghost"
@@ -3513,13 +3502,13 @@ export function CycleView({
               </Btn>
             ) : null}
             {currentNotice?.issuedAt ? (
-              <span className="font-code text-[8.5px] tracking-[0.12em] text-ink-400">
+              <span className="font-code text-[10px] leading-relaxed tracking-[0.08em] text-ink-500 dark:text-ink-400">
                 ISSUED {fmtDate(currentNotice.issuedAt)}
                 {currentNotice.issuedBy ? ` · ${currentNotice.issuedBy.toUpperCase()}` : ""}
               </span>
             ) : null}
             {currentNotice?.gateId && !currentNotice.issuedAt ? (
-              <span className="font-code text-[8.5px] tracking-[0.12em] text-brand-600 dark:text-brand-300">
+              <span className="font-code text-[10px] leading-relaxed tracking-[0.08em] text-brand-700 dark:text-brand-300">
                 GATE {currentNotice.gateId} AWAITING A NAMED OFFICER
               </span>
             ) : null}
@@ -3527,13 +3516,13 @@ export function CycleView({
 
           {currentNotice ? (
             <div className="rounded-xl border border-ink-100 bg-paper px-3 py-2.5 dark:border-white/[0.08]">
-              <p className="font-code text-[8px] font-bold tracking-[0.16em] text-ink-400">MANDATORY FIELDS · {currentNotice.fieldCheck.filter((f) => f.present).length} OF {currentNotice.fieldCheck.length}</p>
+              <p className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-500 dark:text-ink-400">MANDATORY FIELDS · {currentNotice.fieldCheck.filter((f) => f.present).length} OF {currentNotice.fieldCheck.length}</p>
               <ul className="mt-2 flex flex-wrap gap-1.5">
                 {currentNotice.fieldCheck.map((f) => (
                   <li
                     key={f.field}
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-full px-2 py-[3px] font-code text-[8px] font-bold tracking-[0.1em]",
+                      "inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em]",
                       f.present
                         ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
                         : "bg-brand-500/10 text-brand-700 dark:text-brand-300",
@@ -3545,27 +3534,30 @@ export function CycleView({
                 ))}
               </ul>
               <div className="mt-2 border-t border-ink-100 pt-2 dark:border-white/[0.06]">
-                <p className="font-code text-[8px] font-bold tracking-[0.14em] text-ink-400">
-                  EVALUATION CRITERIA · {noticeCriteriaValid ? `${noticeCriteria.length} PUBLISHED · ${noticeCriteriaWeight.toFixed(1)}% TOTAL` : "MISSING OR INVALID · MUST TOTAL EXACTLY 100%"}
+                <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500 dark:text-ink-400">
+                  EVALUATION CRITERIA · {noticeCriteriaTableValid ? `${noticeCriteria.length} PUBLISHED · ${noticeCriteriaWeight.toFixed(1)}% TOTAL` : "MISSING / INVALID · DETAILS AND WEIGHTS REQUIRED"}
                 </p>
-                {noticeCriteriaValid ? (
+                {noticeCriteriaTableValid ? (
                   <ul className="mt-1.5 flex flex-wrap gap-1.5">
-                    {noticeCriteria.map((criterion) => <li key={criterion.id} className="rounded-md bg-ink-100/70 px-2 py-1 text-[9px] text-ink-700 dark:bg-white/[0.05] dark:text-ink-300">{criterion.title} · {criterion.weight}%</li>)}
+                    {noticeCriteria.map((criterion) => <li key={criterion.id} className="rounded-md bg-ink-100/70 px-2.5 py-1.5 text-[11.5px] leading-snug text-ink-700 dark:bg-white/[0.05] dark:text-ink-600">{criterion.title} · {criterion.weight}%</li>)}
                   </ul>
                 ) : (
-                  <p className="mt-1 text-[10.5px] leading-relaxed text-amber-700 dark:text-amber-300">Draft the specification with an evaluation-criteria table whose weights sum to 100, then redraft the notice before publication.</p>
+                  <p className="mt-1 text-[10.5px] leading-relaxed text-amber-700 dark:text-amber-300">Add bidder evidence / subcriteria and a scoring method for every row; weights must total 100. Then redraft the notice before publication.</p>
                 )}
+                {!noticeProcedurePresent ? (
+                  <p className="mt-1.5 text-[10.5px] leading-relaxed text-amber-700 dark:text-amber-300">The bidder-facing evaluation procedure is missing. Add the evidence and scoring method in Evaluation criteria, then redraft this notice.</p>
+                ) : null}
               </div>
               <details className="mt-2.5">
-                <summary className="cursor-pointer font-code text-[8.5px] tracking-[0.12em] text-ink-500">READ THE DRAFT</summary>
-                <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-ink-50/80 p-2.5 text-[11px] leading-relaxed text-ink-700 dark:bg-white/[0.04] dark:text-ink-300">
+                <summary className="focus-brand inline-flex min-h-11 cursor-pointer items-center rounded-md px-2 font-code text-[10px] font-semibold tracking-[0.08em] text-ink-600 dark:text-ink-600">Read the draft</summary>
+                <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-ink-50/80 p-2.5 text-[11px] leading-relaxed text-ink-700 dark:bg-white/[0.04] dark:text-ink-600">
                   {currentNotice.md}
                 </pre>
               </details>
             </div>
           ) : (
             <p className="text-[11.5px] leading-relaxed text-ink-400">
-              No notice is on record for {ref || "this tender"}. The draft is refused at the gate, not here — every mandatory field is checked the moment it is drafted.
+              No notice is on record for {currentReferenceLabel}. The draft is refused at the gate, not here — every mandatory field is checked the moment it is drafted.
             </p>
           )}
         </div>
@@ -3589,18 +3581,396 @@ export function CycleView({
             <Btn onClick={() => void draftSpecDoc()} disabled={busy || !ref || !(d.specBrief ?? "").trim()}>
               <FileText className="h-3.5 w-3.5" aria-hidden="true" /> {currentSpec ? "Draft a fresh version" : "Draft the specification"}
             </Btn>
-            <span className="font-code text-[8.5px] tracking-[0.12em] text-ink-400">
+              <span className="font-code text-[10px] leading-relaxed tracking-[0.08em] text-ink-500 dark:text-ink-400">
               {currentSpec ? `${cycle?.specs.length} VERSION${(cycle?.specs.length ?? 0) === 1 ? "" : "S"} · LATEST ${fmtDate(currentSpec.createdAt)}` : "NO SPECIFICATION ON RECORD"}
             </span>
           </div>
           {currentSpec ? (
-            <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-lg border border-ink-100 bg-paper p-3 text-[11px] leading-relaxed text-ink-700 dark:border-white/[0.08] dark:text-ink-300">
+            <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-lg border border-ink-100 bg-paper p-3 text-[11px] leading-relaxed text-ink-700 dark:border-white/[0.08] dark:text-ink-600">
               {currentSpec.md}
             </pre>
           ) : (
             <p className="text-[11.5px] leading-relaxed text-ink-400">
               A specification is the document every technical finding is measured against. Draft it before the notice publishes: a requirement the pack never states cannot be enforced against a bid.
             </p>
+          )}
+        </div>
+      </Card>
+
+      <Card
+        title="Evaluation criteria"
+        sub="AUTHOR THE SCORING BASIS BEFORE THE NOTICE IS ISSUED"
+        right={
+          evaluationLocked ? (
+            <Chip tone="muted">{notices.some((notice) => !!notice.issuedAt) ? "ISSUED · LOCKED" : "GATE · LOCKED"}</Chip>
+          ) : activeEvaluationCriteria.length === 0 ? (
+            <Chip tone="warn">NO CRITERIA</Chip>
+          ) : evaluationValid ? (
+            <Chip tone="ok">VALID · 100%</Chip>
+          ) : evaluationCriteriaValid ? (
+            <Chip tone="warn">PROCEDURE NEEDED</Chip>
+          ) : (
+            <Chip tone="warn">
+              {Number.isInteger(evaluationTotal) ? evaluationTotal : evaluationTotal.toFixed(1)}% TOTAL
+            </Chip>
+          )
+        }
+      >
+        <div className="grid gap-4">
+          <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{criteriaAnnouncement}</p>
+          <div className="rounded-xl border border-ink-100 bg-paper/70 p-3 dark:border-white/[0.08] dark:bg-white/[0.025]">
+            <p className="text-[12px] font-semibold text-ink-800 dark:text-ink-800">
+              The issued solicitation becomes the committee’s scoring contract.
+            </p>
+            <p className="mt-1 text-[11.5px] leading-relaxed text-ink-600 dark:text-ink-400">
+              For every criterion, disclose the evidence or subcriteria, the scoring method and its relative weight. Bidders see the same basis before they submit; the evaluation matrix will use the published criteria and weights exactly.
+            </p>
+            <p className="mt-2 border-t border-ink-100 pt-2 text-[11px] leading-relaxed text-ink-500 dark:border-white/[0.07] dark:text-ink-400">
+              Keep eligibility and mandatory documents as pass/fail requirements. Use this weighted table for comparative merit, and avoid counting the same outcome twice.
+            </p>
+          </div>
+
+          {evaluationLocked ? (
+            <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.045] p-3" role="status">
+              <p className="text-[11.5px] font-semibold text-amber-900 dark:text-amber-200">
+                {notices.some((notice) => !!notice.issuedAt)
+                  ? "This notice has been issued. Its evaluation basis is fixed for every bidder."
+                  : "A publication gate is checking this notice. Withdraw that gate before editing its criteria."}
+              </p>
+              {currentNotice?.issuedAt ? (
+                <p className="mt-1 text-[11px] leading-relaxed text-amber-900/80 dark:text-amber-100/80">
+                  If a correction is required after issue, record it through an addendum visible to all bidders.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {evaluationLocked ? (
+            <div className="grid gap-3">
+              <div className="overflow-hidden rounded-xl border border-ink-100 dark:border-white/[0.08]">
+                <ul className="divide-y divide-ink-100 dark:divide-white/[0.06]">
+                  {(evaluationCriteria.length ? evaluationCriteria : activeEvaluationCriteria).map((criterion) => (
+                    <li key={criterion.id} className="flex flex-wrap items-start gap-3 px-3 py-2.5">
+                      <span className="w-11 shrink-0 font-code text-[10px] font-bold tracking-[0.08em] text-ink-500 dark:text-ink-500">{criterion.id}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12px] font-semibold text-ink-800 dark:text-ink-900">{criterion.title}</p>
+                        {criterion.evidence ? <p className="mt-1 text-[11px] leading-relaxed text-ink-600 dark:text-ink-500"><span className="font-semibold">Evidence / subcriteria:</span> {criterion.evidence}</p> : null}
+                        {criterion.scoringMethod ? <p className="mt-1 text-[11px] leading-relaxed text-ink-600 dark:text-ink-500"><span className="font-semibold">Scoring method:</span> {criterion.scoringMethod}</p> : null}
+                      </div>
+                      <span className="shrink-0 font-code text-[11px] font-bold tabular-nums text-ink-700 dark:text-ink-600">{criterion.weight}%</span>
+                    </li>
+                  ))}
+                </ul>
+                {evaluationProcedure ? (
+                  <p className="border-t border-ink-100 bg-paper/70 px-3 py-2.5 text-[11px] leading-relaxed text-ink-700 dark:border-white/[0.07] dark:bg-white/[0.025] dark:text-ink-600">
+                    <span className="font-semibold">Evaluation procedure: </span>{evaluationProcedure}
+                  </p>
+                ) : null}
+              </div>
+              {!evaluationValid ? (
+                <p className="text-[11px] leading-relaxed text-amber-800 dark:text-amber-200" role="status">
+                  {legacyIssuedCriteria
+                    ? `This issued notice uses the earlier two-column criteria format${evaluationProcedure ? "" : " and has no detailed procedure"}. Its published basis remains fixed here; distribute any required clarification to every bidder by addendum.`
+                    : evaluationProcedure
+                      ? evaluationIssue
+                      : "No evaluation procedure is disclosed in this issued document. Any clarification must be distributed to every bidder through the addendum process."}
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {activeEvaluationCriteria.length ? (
+                <div className="grid gap-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="eyebrow">WEIGHTED SCORING CRITERIA</p>
+                      <p className="mt-1 text-[11px] leading-relaxed text-ink-500 dark:text-ink-400">{activeEvaluationCriteria.length} of 12 rows · weights total 100% · evidence and scoring method required per criterion</p>
+                    </div>
+                    {evaluationDirty ? <Chip tone="brand">UNSAVED CHANGES</Chip> : null}
+                  </div>
+                  <ol className="grid gap-2">
+                    {activeEvaluationCriteria.map((criterion, index) => (
+                      <li key={criterion.id} className="grid min-w-0 gap-2.5 rounded-xl border border-ink-100 bg-[#fffefa] p-3 dark:border-white/[0.08] dark:bg-white/[0.02] sm:grid-cols-[minmax(0,1fr)_150px_auto] sm:items-end">
+                        <Field label={`CRITERION ${String(index + 1).padStart(2, "0")}`} hint="Use an outcome bidders can evidence">
+                          <input
+                            ref={(element) => { evaluationCriterionTitleRefs.current[index] = element; }}
+                            className={inputCls}
+                            value={criterion.title}
+                            maxLength={120}
+                            disabled={busy}
+                            aria-label={`Criterion ${index + 1} title`}
+                            placeholder="e.g. Delivery plan and implementation capacity"
+                            onChange={(event) => updateEvaluationCriteria((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, title: event.target.value } : row))}
+                          />
+                        </Field>
+                        <Field label="WEIGHT (%)" hint="0.1–100">
+                          <div className="relative">
+                            <input
+                              className={cn(inputCls, "pr-9 text-right tabular-nums")}
+                              type="number"
+                              inputMode="decimal"
+                              min="0.1"
+                              max="100"
+                              step="0.1"
+                              disabled={busy}
+                              aria-label={`Weight percentage for criterion ${index + 1}`}
+                              value={criterion.weight || ""}
+                              placeholder="0.0"
+                              onChange={(event) => {
+                                const rawValue = event.target.value === "" ? 0 : Number(event.target.value);
+                                const value = Number.isFinite(rawValue) ? Math.round(rawValue * 10) / 10 : 0;
+                                updateEvaluationCriteria((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, weight: value } : row));
+                              }}
+                            />
+                            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-ink-400">%</span>
+                          </div>
+                        </Field>
+                        <div className="flex items-center justify-end gap-1 sm:pb-0.5">
+                          <button
+                            type="button"
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45 disabled:cursor-not-allowed disabled:opacity-35 dark:text-ink-400 dark:hover:bg-white/[0.08] dark:hover:text-white"
+                            aria-label={`Move criterion ${index + 1} up`}
+                            disabled={busy || index === 0}
+                            onClick={() => moveEvaluationCriterion(index, -1)}
+                          >
+                            <ChevronUp className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-ink-500 transition-colors hover:bg-brand-50 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45 disabled:cursor-not-allowed disabled:opacity-35 dark:text-ink-400 dark:hover:bg-brand-500/10 dark:hover:text-brand-300"
+                            aria-label={`Remove criterion ${index + 1}`}
+                            disabled={busy}
+                            onClick={() => {
+                              const nextLength = activeEvaluationCriteria.length - 1;
+                              updateEvaluationCriteria((rows) => rows.filter((_, rowIndex) => rowIndex !== index));
+                              requestAnimationFrame(() => {
+                                if (nextLength === 0) firstEvaluationCriterionButtonRef.current?.focus();
+                                else evaluationCriterionTitleRefs.current[Math.min(index, nextLength - 1)]?.focus();
+                              });
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45 disabled:cursor-not-allowed disabled:opacity-35 dark:text-ink-400 dark:hover:bg-white/[0.08] dark:hover:text-white"
+                            aria-label={`Move criterion ${index + 1} down`}
+                            disabled={busy || index === activeEvaluationCriteria.length - 1}
+                            onClick={() => moveEvaluationCriterion(index, 1)}
+                          >
+                            <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                        </div>
+                        <div className="grid gap-2.5 sm:col-span-3 sm:grid-cols-2">
+                          <Field label="BIDDER EVIDENCE / SUBCRITERIA" hint="What documents or measurable facts will be assessed?">
+                            <textarea
+                              className={cn(inputCls, "h-20 resize-y py-2.5 text-[12px] leading-relaxed")}
+                              value={criterion.evidence ?? ""}
+                              maxLength={600}
+                              disabled={busy}
+                              aria-label={`Bidder evidence or subcriteria for ${criterion.title || `criterion ${index + 1}`}`}
+                              placeholder="e.g. Named project references completed in the last 5 years; include client, value, dates and completion evidence."
+                              onChange={(event) => updateEvaluationCriteria((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, evidence: event.target.value } : row))}
+                            />
+                          </Field>
+                          <Field label="SCORING METHOD" hint="Use published, reproducible anchors or a formula.">
+                            <textarea
+                              className={cn(inputCls, "h-20 resize-y py-2.5 text-[12px] leading-relaxed")}
+                              value={criterion.scoringMethod ?? ""}
+                              maxLength={600}
+                              disabled={busy}
+                              aria-label={`Scoring method for ${criterion.title || `criterion ${index + 1}`}`}
+                              placeholder="e.g. Score 0–5 against the published anchors; multiply by this row’s weight; award 0 for no evidence."
+                              onChange={(event) => updateEvaluationCriteria((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, scoringMethod: event.target.value } : row))}
+                            />
+                          </Field>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                  {activeEvaluationCriteria.length < 12 ? (
+                    <div>
+                      <p className="text-[10.5px] leading-relaxed text-ink-500 dark:text-ink-400">Optional examples — adapt to the contract and use only where relevant. New rows start at 0%.</p>
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {EVALUATION_CRITERIA_EXAMPLES.map((example) => {
+                          const alreadyAdded = activeEvaluationCriteria.some((criterion) => criterion.title.trim().toLocaleLowerCase() === example.toLocaleLowerCase());
+                          return (
+                            <button
+                              key={example}
+                              type="button"
+                              className="inline-flex min-h-11 items-center rounded-full border border-ink-200/80 px-2.5 text-[10.5px] font-medium text-ink-600 transition-colors hover:border-ink-400 hover:text-ink-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/[0.12] dark:text-ink-400 dark:hover:border-white/25 dark:hover:text-white"
+                              aria-label={`Add suggested criterion: ${example}`}
+                              disabled={busy || alreadyAdded}
+                              onClick={() => appendEvaluationCriterion({ title: example, weight: 0, evidence: "", scoringMethod: "" })}
+                            >
+                              <Plus className="mr-1 h-3 w-3" aria-hidden="true" />{example}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+                  <div className="grid gap-3 rounded-xl border border-ink-100 bg-paper/70 p-3 dark:border-white/[0.08] dark:bg-white/[0.025] sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="eyebrow">WEIGHT ALLOCATED</span>
+                        <span className={cn("font-code text-[12px] font-bold tabular-nums", evaluationCriteriaValid ? "text-emerald-700 dark:text-emerald-300" : "text-brand-700 dark:text-brand-300")}>
+                          {Number.isInteger(evaluationTotal) ? evaluationTotal : evaluationTotal.toFixed(1)}% / 100%
+                        </span>
+                      </div>
+                      <div
+                        className="mt-2 h-2 overflow-hidden rounded-full bg-ink-100 dark:bg-white/[0.09]"
+                        role="progressbar"
+                        aria-label="Evaluation criteria weight allocation"
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={Number.isFinite(evaluationTotal) ? Math.min(100, Math.max(0, Number(evaluationTotal.toFixed(1)))) : 0}
+                      >
+                        <div className={cn("h-full rounded-full transition-[width] duration-200", evaluationCriteriaValid ? "bg-emerald-500" : evaluationTotal > 100 ? "bg-brand-600" : "bg-ink-700 dark:bg-ink-300")} style={{ width: `${Math.min(100, Math.max(0, evaluationTotal))}%` }} />
+                      </div>
+                      <p className={cn("mt-2 text-[11px] leading-relaxed", evaluationCriteriaValid ? "text-emerald-800 dark:text-emerald-300" : "text-brand-700 dark:text-brand-300")} role="status">
+                        {evaluationCriteriaValid
+                          ? "Allocation is exact. These relative weights will be published and carried into the scoring matrix."
+                          : evaluationTotal < 100
+                            ? `${(100 - evaluationTotal).toFixed(1)} percentage points remain to allocate.`
+                            : `${(evaluationTotal - 100).toFixed(1)} percentage points over the 100% limit.`}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="inline-flex h-11 items-center justify-center gap-1.5 rounded-lg border border-ink-200 bg-[#fffefa] px-3.5 text-[12px] font-semibold text-ink-700 transition-colors hover:border-ink-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:bg-white/[0.035] dark:text-ink-800 dark:hover:border-white/30"
+                      disabled={activeEvaluationCriteria.length >= 12 || busy}
+                      onClick={() => appendEvaluationCriterion({ title: "", weight: 0, evidence: "", scoringMethod: "" })}
+                    >
+                      <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Add criterion
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-ink-200 bg-paper/60 p-4 dark:border-white/[0.14] dark:bg-white/[0.02]">
+                  <p className="text-[12px] font-semibold text-ink-800 dark:text-ink-800">No scored criteria yet</p>
+                  <p className="mt-1 max-w-2xl text-[11.5px] leading-relaxed text-ink-600 dark:text-ink-400">
+                    Add criteria that distinguish how well each responsive bid meets the procurement need. You can then set and rebalance their weights; the total must equal 100%.
+                  </p>
+                  <button
+                    type="button"
+                    ref={firstEvaluationCriterionButtonRef}
+                    className="mt-3 inline-flex h-11 items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3.5 text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45 disabled:cursor-not-allowed disabled:opacity-40"
+                    disabled={busy}
+                    onClick={() => {
+                      setCriteriaDraft([{ id: "C-01", title: "", weight: 100, evidence: "", scoringMethod: "" }]);
+                      requestAnimationFrame(() => evaluationCriterionTitleRefs.current[0]?.focus());
+                    }}
+                  >
+                    <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Add first criterion
+                  </button>
+                </div>
+              )}
+
+              {activeEvaluationCriteria.length > 0 ? (
+                <div className="grid gap-2">
+                  <div className="flex flex-wrap items-end justify-between gap-2">
+                    <Field label="EVALUATION PROCEDURE" hint="Required · published verbatim · max 1,600 characters">
+                      <textarea
+                        className={cn(inputCls, "h-auto min-h-28 resize-y py-3 text-[13px] leading-relaxed")}
+                        value={activeEvaluationProcedure}
+                        maxLength={1600}
+                        disabled={busy}
+                        aria-label="Evaluation procedure disclosed to bidders"
+                        placeholder="Describe the evaluation sequence, any pass/fail thresholds, treatment of clarifications and partial evidence, tie-break rule, and how technical and financial scores combine. Keep row-level evidence and scoring anchors in their criteria above."
+                        onChange={(event) => setCriteriaProcedureDraft(event.target.value)}
+                      />
+                    </Field>
+                    <span className="pb-1 font-code text-[10px] tabular-nums text-ink-400">{activeEvaluationProcedure.length} / 1,600</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-ink-500 dark:text-ink-400">
+                    Each row is published with its evidence basis, scoring method and weight. Keep the procedure for stages, thresholds, ties and score combination below; never apply a factor that bidders could not see.
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {[
+                      { title: "Relevant to the contract", text: "Tie every scored factor to the subject matter and the outcome being bought." },
+                      { title: "Objective and reproducible", text: "State evidence, score anchors and how partial or missing evidence is treated." },
+                      { title: "Fully disclosed", text: "Publish the criteria, relative weights and application method before bids are submitted." },
+                      { title: "Proportionate value", text: "Use non-price or life-cycle cost factors only where they fit the need and market." },
+                    ].map((guide) => (
+                      <div key={guide.title} className="rounded-lg border border-ink-100 px-3 py-2.5 dark:border-white/[0.07]">
+                        <p className="text-[11px] font-semibold text-ink-800 dark:text-ink-800">{guide.title}</p>
+                        <p className="mt-0.5 text-[10.5px] leading-relaxed text-ink-500 dark:text-ink-400">{guide.text}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="rounded-xl border border-ink-100 p-3 dark:border-white/[0.08]">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="eyebrow">OFFICIAL PROCUREMENT REFERENCES</p>
+                    <p className="mt-1 text-[10.5px] text-ink-500 dark:text-ink-400">Guidance is jurisdiction-dependent; apply the governing solicitation and law.</p>
+                  </div>
+                  <Scale className="h-4 w-4 text-ink-400" aria-hidden="true" />
+                </div>
+                <ul className="mt-2 grid gap-1.5 text-[11px] sm:grid-cols-2 xl:grid-cols-3">
+                  <li>
+                    <a className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-ink-700 underline decoration-ink-300 underline-offset-2 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45 dark:text-ink-600 dark:decoration-white/25 dark:hover:text-brand-300" href="https://www.zppa.org.zm/documents/20182/21184/The%2BPublic%2BProcurement%2BAct%2BNo.%2B8%2Bof%2B2020.pdf/7ebd55aa-03cd-41c5-a906-f319d162d615?version=1.0" target="_blank" rel="noreferrer">
+                      Zambia PPA 2020 · §60 <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                    </a>
+                  </li>
+                  <li>
+                    <a className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-ink-700 underline decoration-ink-300 underline-offset-2 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45 dark:text-ink-600 dark:decoration-white/25 dark:hover:text-brand-300" href="https://www.zppa.org.zm/documents/20182/21181/Public%2BProcurement%2BRegulations%2B2022.pdf/9f9fd0d3-860e-4fbf-bed6-d9378d0c04ab?version=1.0" target="_blank" rel="noreferrer">
+                      Zambia Regulations 2022 · reg. 8 <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                    </a>
+                  </li>
+                  <li>
+                    <a className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-ink-700 underline decoration-ink-300 underline-offset-2 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45 dark:text-ink-600 dark:decoration-white/25 dark:hover:text-brand-300" href="https://uncitral.un.org/sites/uncitral.un.org/files/media-documents/uncitral/en/2011-model-law-on-public-procurement-e.pdf" target="_blank" rel="noreferrer">
+                      UNCITRAL Model Law · art. 11 <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                    </a>
+                  </li>
+                  <li>
+                    <a className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-ink-700 underline decoration-ink-300 underline-offset-2 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45 dark:text-ink-600 dark:decoration-white/25 dark:hover:text-brand-300" href="https://www.unodc.org/documents/treaties/UNCAC/Publications/TechnicalGuide/09-84395_Ebook.pdf" target="_blank" rel="noreferrer">
+                      UNCAC · art. 9 <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                    </a>
+                  </li>
+                  <li>
+                    <a className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-ink-700 underline decoration-ink-300 underline-offset-2 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45 dark:text-ink-600 dark:decoration-white/25 dark:hover:text-brand-300" href="https://www.wto.org/english/docs_e/legal_e/downloads_e/gpa12_en.pdf" target="_blank" rel="noreferrer">
+                      WTO GPA 2012 · art. X(7)(iii) (where covered) <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                    </a>
+                  </li>
+                  <li>
+                    <a className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-ink-700 underline decoration-ink-300 underline-offset-2 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45 dark:text-ink-600 dark:decoration-white/25 dark:hover:text-brand-300" href="https://documents1.worldbank.org/curated/en/099325208202512194/pdf/IDU-a052dfd8-ab44-44c1-b854-870b4cccacdb.pdf" target="_blank" rel="noreferrer">
+                      World Bank · Rated Criteria Guidance <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                    </a>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ink-100 pt-3 dark:border-white/[0.07]">
+                <p className={cn("text-[11px] leading-relaxed", evaluationValid ? "text-emerald-800 dark:text-emerald-300" : "text-brand-700 dark:text-brand-300")} role="status">
+                  {evaluationValid
+                    ? `${activeEvaluationCriteria.length} criteria · exact 100% total · procedure ready for disclosure.`
+                    : evaluationIssue}
+                </p>
+                <button
+                  type="button"
+                  className="inline-flex h-11 items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-4 text-[12px] font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45 disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={busy || !ref || !evaluationValid || !evaluationDirty}
+                  onClick={saveEvaluationCriteria}
+                >
+                  {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Check className="h-3.5 w-3.5" aria-hidden="true" />}
+                  {busy ? "Saving…" : "Save evaluation basis"}
+                </button>
+              </div>
+
+              {currentNotice ? (
+                <p className="text-[10.5px] leading-relaxed text-ink-500 dark:text-ink-400">
+                  Saving updates the specification and current notice draft together. The issued notice is immutable here; changes after issue must be communicated to all bidders by addendum.
+                </p>
+              ) : (
+                <p className="text-[10.5px] leading-relaxed text-ink-500 dark:text-ink-400">
+                  Saving adds this basis to the latest specification. When you draft the notice, its criteria and procedure are carried forward for publication.
+                </p>
+              )}
+            </div>
           )}
         </div>
       </Card>
@@ -3629,7 +3999,7 @@ export function CycleView({
                 <span className="mt-1 block text-emerald-800 dark:text-emerald-300">A: {c.answer}</span>
               ) : (
                 <div className="mt-1 flex gap-1.5">
-                  <input className={inputCls} placeholder="Answer on behalf of the buyer — sent to every bidder" value={d[`ans-${c.id}`] ?? ""} onChange={(e) => set(`ans-${c.id}`, e.target.value)} />
+                  <input className={inputCls} aria-label={`Buyer response to clarification from ${c.askedBy}`} placeholder="Answer on behalf of the buyer — sent to every bidder" value={d[`ans-${c.id}`] ?? ""} onChange={(e) => set(`ans-${c.id}`, e.target.value)} />
                   <Btn
                     variant="ghost"
                     onClick={() => act(`/api/tenders/${ref}/clarifications/${c.id}/answer`, { answer: d[`ans-${c.id}`] }, "ANSWER RECORDED — EVERY BIDDER IS TREATED THE SAME").then((ok) => ok && refreshCycle())}
@@ -3669,97 +4039,6 @@ export function CycleView({
           </ul>
         ) : null}
       </Card>
-
-      <Card
-        title="Plan a tender"
-        sub="ONE DETAIL AT A TIME — ONLY A TITLE IS REQUIRED"
-        workflow
-        busy={busy}
-        actionLabel="Create a tender"
-        teaser="Start from the notice or type the title — one question at a time. The reference is issued on save."
-        right={pendingUploadRef ? <Chip tone="warn">NOTICE PENDING · {pendingUploadRef}</Chip> : undefined}
-      >
-        {(close) => (
-          <PlanTenderIntake
-            d={d}
-            set={set}
-            autoRef={autoRef}
-            refLoading={refLoading}
-            busy={busy}
-            noticeFile={noticeFile}
-            onPickNotice={(file) => {
-              setNoticeFile(file);
-              setNoticeUploadMessage("");
-              void analyzeTenderNotice(file);
-            }}
-            noticeAnalysis={noticeAnalysis}
-            noticeUploadMessage={noticeUploadMessage}
-            metaConsent={metaConsent}
-            onMetaConsent={(value) => {
-              setMetaConsent(value);
-              if (value && noticeFile && noticeAnalysis.status === "error") {
-                void analyzeTenderNotice(noticeFile, true);
-              }
-            }}
-            pendingUploadRef={pendingUploadRef}
-            onApplyExtracted={(key, value) => set(key, value)}
-            onCreate={createPipelineEntry}
-            onCreated={close}
-          />
-        )}
-      </Card>
-
-      <Card
-        title="Pipeline"
-        workflow
-        busy={busy}
-        actionLabel="Manage pipeline"
-        teaser="Every pack staged before advertisement — link one to a live tender when it lands."
-        sub={
-          pipeline.length
-            ? `${pipeline.length} ENTR${pipeline.length === 1 ? "Y" : "IES"}${combined ? ` · ${estimates[0].currency ?? ""} ${fmtMoney(combined)} COMBINED` : ""}`
-            : "NO ENTRIES YET"
-        }
-        right={
-          pipeline.length === 0 ? undefined : planned.length ? (
-            <Chip tone="warn">{planned.length} UNLINKED</Chip>
-          ) : (
-            <Chip tone="ok">ALL LINKED</Chip>
-          )
-        }
-      >
-        {pipeline.length === 0 ? (
-          <div className="flex flex-col items-center rounded-[10px] border border-dashed border-ink-200 px-5 py-10 text-center dark:border-white/[0.12]">
-            <span className="grid h-11 w-11 place-items-center rounded-full bg-ink-100/70 text-ink-400 dark:bg-white/[0.05]">
-              <Workflow className="h-5 w-5" aria-hidden="true" />
-            </span>
-            <p className="mt-3.5 text-[13px] font-semibold text-ink-800">Nothing planned yet</p>
-            <p className="mt-1.5 max-w-[36ch] text-[11.5px] leading-relaxed text-ink-400">
-              Stage the pack above. It waits here until the tender is advertised and the cycle begins.
-            </p>
-          </div>
-        ) : (
-          <ul className="space-y-2">
-            {pipeline.map((p) => (
-              <PipelineRow
-                key={p.id}
-                p={p}
-                tenders={tenders}
-                busy={busy}
-                onLink={(tenderId) => act(`/api/pipeline/${p.id}/link`, { tenderId }, "PIPELINE ENTRY LINKED")}
-                onValidateRequisition={(budgetReference, note) =>
-                  act(
-                    `/api/pipeline/${p.id}/requisition`,
-                    { budgetValidated: true, budgetReference, note },
-                    "REQUISITION AND BUDGET VALIDATION RECORDED",
-                    true,
-                  )
-                }
-              />
-            ))}
-          </ul>
-        )}
-      </Card>
     </div>
   );
 
@@ -3778,8 +4057,8 @@ export function CycleView({
       sub="CLOSINGS · ALB RESPONSES · STANDSTILLS · MILESTONES · COMPLAINTS — DERIVED, NEVER STORED TWICE"
       right={
         deadlines.length ? (
-          <span className="font-code text-[8.5px] font-bold tracking-[0.14em] text-ink-500">
-            {deadlines.length} LIVE{overdueList.length ? <span className="text-brand-600 dark:text-brand-300"> · {overdueList.length} OVERDUE</span> : null}
+          <span className="text-[10px] font-semibold text-ink-600">
+            {deadlines.length} live{overdueList.length ? <span className="text-brand-700 dark:text-brand-300"> · {overdueList.length} overdue</span> : null}
           </span>
         ) : null
       }
@@ -3791,7 +4070,7 @@ export function CycleView({
           { label: "LATER", n: laterList.length },
         ].map((bucket) => (
           <div key={bucket.label} className="bg-[#fffefa] px-3.5 py-3 dark:bg-[#12141a]">
-            <dt className="eyebrow text-[7.5px] tracking-[0.18em]">{bucket.label}</dt>
+            <dt className="eyebrow text-[10px] tracking-[0.08em]">{bucket.label}</dt>
             <dd
               className={cn(
                 "mt-1.5 font-display text-[19px] font-bold leading-none tabular tracking-[-0.02em]",
@@ -3819,7 +4098,7 @@ export function CycleView({
             .filter((b) => b.list.length)
             .map((bucket) => (
               <section key={bucket.label}>
-                <p className={cn("mb-1.5 font-code text-[8px] font-bold tracking-[0.2em]", bucket.tone === "brand" ? "text-brand-600 dark:text-brand-300" : "text-ink-400")}>
+                <p className={cn("mb-1.5 font-code text-[10px] font-bold tracking-[0.08em]", bucket.tone === "brand" ? "text-brand-700 dark:text-brand-300" : "text-ink-600")}>
                   {bucket.label} — {bucket.list.length}
                 </p>
                 <ul className="divide-y divide-ink-100 rounded-xl border border-ink-100 bg-paper">
@@ -3830,8 +4109,9 @@ export function CycleView({
                         <DeadlineIcon kind={x.kind} />
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[12.5px] font-semibold text-ink-900">{x.tenderId}</p>
-                        <p className="truncate font-code text-[8.5px] tracking-[0.1em] text-ink-400">
+                        <p className="truncate text-[12.5px] font-semibold text-ink-900">{tenderReferenceLabel(tenders.find((tender) => tender.ref === x.tenderId))}</p>
+                        <p className="truncate text-[10.5px] text-ink-500">{tenders.find((tender) => tender.ref === x.tenderId)?.title ?? "Tender record"}</p>
+                        <p className="truncate text-[10px] leading-relaxed text-ink-600">
                           {x.kind.replace(/_/g, " ")}{x.ref ? ` — ${x.ref}` : ""}
                         </p>
                       </div>
@@ -3839,7 +4119,7 @@ export function CycleView({
                         <p className={cn("font-code text-[10px] font-bold tracking-[0.06em]", x.overdue ? "text-brand-700 dark:text-brand-300" : "text-ink-700")}>
                           {relDays(x.dueAt).toUpperCase()}
                         </p>
-                        <p className="font-code text-[8px] tracking-[0.08em] text-ink-400">{fmtDateTime(x.dueAt)}</p>
+                        <p className="text-[10px] font-medium text-ink-600">{fmtDateTime(x.dueAt)}</p>
                       </div>
                     </li>
                   ))}
@@ -3861,7 +4141,7 @@ export function CycleView({
             { k: "OVERDUE", v: "Never dismissed by time alone — the item stays here until its record moves through its own gate." },
           ].map((row) => (
             <li key={row.k} className="rounded-xl border border-ink-100 bg-paper px-3 py-2.5 dark:border-white/[0.08]">
-              <p className="font-code text-[8px] font-bold tracking-[0.14em] text-ink-400">{row.k}</p>
+              <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">{row.k}</p>
               <p className="mt-1 text-[11.5px] leading-relaxed text-ink-700 dark:text-ink-300">{row.v}</p>
             </li>
           ))}
@@ -3908,7 +4188,7 @@ export function CycleView({
             <Check className="h-3.5 w-3.5" aria-hidden="true" /> Set
           </Btn>
         </div>
-        <p className="mt-2 font-code text-[9px] tracking-[0.12em] text-ink-500">
+        <p className="mt-2 font-code text-[10px] tracking-[0.12em] text-ink-500">
           ON RECORD: {cycle?.closingDate ? fmtDateTime(cycle.closingDate) : "NOT SET"}
         </p>
       </Card>
@@ -3929,17 +4209,17 @@ export function CycleView({
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <Chip tone="ok">REGISTER CERTIFIED{cycle.opening.certifiedBy ? ` · ${cycle.opening.certifiedBy}` : ""}</Chip>
-              {cycle.opening.certifiedAt ? <span className="font-code text-[8px] tracking-[0.1em] text-ink-400">{fmtDateTime(cycle.opening.certifiedAt)}</span> : null}
-              {cycle.opening.gateId ? <span className="font-code text-[8px] tracking-[0.1em] text-ink-400">GATE {cycle.opening.gateId}</span> : null}
+              {cycle.opening.certifiedAt ? <span className="text-[10.5px] leading-relaxed text-ink-600">Certified {fmtDateTime(cycle.opening.certifiedAt)}</span> : null}
+              {cycle.opening.gateId ? <span className="text-[10.5px] leading-relaxed text-ink-600">Gate {cycle.opening.gateId}</span> : null}
             </div>
-            <div className="overflow-x-auto rounded-lg border border-ink-100">
+            <HorizontalScrollRegion label="Certified bid opening register" className="rounded-lg border border-ink-100">
               <table className="w-full min-w-[480px] text-[12px]">
                 <thead>
-                  <tr className="border-b border-ink-100 bg-ink-50/70 text-left font-code text-[8px] tracking-[0.12em] text-ink-500">
-                    <th className="px-2.5 py-2">BIDDER</th>
-                    <th className="px-2.5 py-2">RECEIVED</th>
-                    <th className="px-2.5 py-2">PRICE READ</th>
-                    <th className="px-2.5 py-2 text-right">DISPOSITION</th>
+                  <tr className="border-b border-ink-100 bg-ink-50/70 text-left font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">
+                    <th scope="col" className="px-2.5 py-2">BIDDER</th>
+                    <th scope="col" className="px-2.5 py-2">RECEIVED</th>
+                    <th scope="col" className="px-2.5 py-2">PRICE READ</th>
+                    <th scope="col" className="px-2.5 py-2 text-right">DISPOSITION</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -3953,22 +4233,22 @@ export function CycleView({
                       </td>
                     </tr>
                   )) : (
-                    <tr><td colSpan={4} className="px-2.5 py-4 text-center text-[11px] text-ink-400">No bid rows are included in this opening record.</td></tr>
+                    <tr><td colSpan={4} className="px-2.5 py-4 text-center text-[11.5px] leading-relaxed text-ink-600">No bid rows are included in this opening record.</td></tr>
                   )}
                 </tbody>
               </table>
-            </div>
+            </HorizontalScrollRegion>
             {cycle.opening.reconciliation ? (
               <div
                 className={cn(
-                  "rounded-lg border px-3 py-2 font-code text-[9px] leading-relaxed tracking-[0.06em]",
+                  "rounded-lg border px-3 py-2 text-[11px] leading-relaxed",
                   cycle.opening.reconciliation.matches
                     ? "border-emerald-500/25 bg-emerald-500/[0.06] text-emerald-800 dark:text-emerald-300"
                     : "border-amber-500/30 bg-amber-500/[0.08] text-amber-900 dark:text-amber-200",
                 )}
               >
                 {cycle.opening.reconciliation.matches ? "RECONCILED" : "RECONCILIATION FAILED"} — {cycle.opening.reconciliation.note}
-                <span className="mt-1 block text-[8px] text-ink-500">
+                <span className="mt-1 block text-[10.5px] leading-relaxed text-ink-600">
                   {cycle.opening.reconciliation.sealed} SEALED · {cycle.opening.reconciliation.manual} MANUAL ·{" "}
                   {cycle.opening.reconciliation.withdrawn} WITHDRAWN · {cycle.opening.reconciliation.amended} AMENDED
                 </span>
@@ -3979,13 +4259,13 @@ export function CycleView({
               <div className="grid gap-2 rounded-lg border border-amber-500/20 bg-amber-500/[0.04] p-3 sm:grid-cols-2">
                 {(cycle.opening.reconciliation.missingFromRegister?.length ?? 0) > 0 ? (
                   <div>
-                    <p className="font-code text-[8px] font-bold tracking-[0.12em] text-amber-800 dark:text-amber-300">MISSING FROM REGISTER</p>
+                    <p className="font-code text-[10px] font-bold tracking-[0.06em] text-amber-900 dark:text-amber-300">Missing from register</p>
                     <p className="mt-1 text-[11px] leading-relaxed text-ink-700 dark:text-ink-200">{cycle.opening.reconciliation.missingFromRegister?.join(" · ")}</p>
                   </div>
                 ) : null}
                 {(cycle.opening.reconciliation.extraInRegister?.length ?? 0) > 0 ? (
                   <div>
-                    <p className="font-code text-[8px] font-bold tracking-[0.12em] text-amber-800 dark:text-amber-300">REGISTER ENTRIES WITHOUT A PORTAL RECEIPT</p>
+                    <p className="font-code text-[10px] font-bold tracking-[0.06em] text-amber-900 dark:text-amber-300">Register entries without a portal receipt</p>
                     <p className="mt-1 text-[11px] leading-relaxed text-ink-700 dark:text-ink-200">{cycle.opening.reconciliation.extraInRegister?.join(" · ")}</p>
                   </div>
                 ) : null}
@@ -3993,18 +4273,18 @@ export function CycleView({
             ) : null}
             {cycle.opening.minutesMd ? (
               <details className="rounded-lg border border-ink-100 bg-paper px-3 py-2">
-                <summary className="cursor-pointer font-code text-[8px] font-bold tracking-[0.12em] text-ink-500">READ THE OPENING MINUTES</summary>
+                <summary className="focus-brand inline-flex min-h-11 cursor-pointer items-center rounded-md px-1 font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">Read the opening minutes</summary>
                 <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap text-[11px] leading-relaxed text-ink-700">{cycle.opening.minutesMd}</pre>
               </details>
             ) : null}
-            {cycle.opening.sha ? <p className="font-code text-[8px] tracking-[0.14em] text-ink-400">SHA-256 {cycle.opening.sha}</p> : null}
+            {cycle.opening.sha ? <p className="text-[10px] leading-relaxed text-ink-500">SHA-256 {cycle.opening.sha}</p> : null}
           </div>
         ) : (
           <div className="space-y-3">
             <p className="text-[11px] leading-relaxed text-ink-500">Enter each bid as it was received. The submitted register is reconciled with portal receipts and routed for certification.</p>
-            <div className="overflow-x-auto">
+            <HorizontalScrollRegion label="Bid opening entry rows">
               <div className="min-w-[560px] space-y-2">
-                <div className="grid grid-cols-[1.4fr_1.2fr_1fr] gap-2 px-1 font-code text-[8px] font-bold tracking-[0.12em] text-ink-400">
+                <div className="grid grid-cols-[1.4fr_1.2fr_1fr] gap-2 px-1 font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">
                   <span>BIDDER</span><span>RECEIVED AT</span><span>PRICE READ</span>
                 </div>
                 {openRows.map((row, i) => (
@@ -4033,18 +4313,18 @@ export function CycleView({
                   </div>
                 ))}
               </div>
-            </div>
+            </HorizontalScrollRegion>
             <div className="flex items-center gap-2">
               <Btn variant="ghost" onClick={() => setOpenRows((p) => [...p, { bidder: "", receivedAt: "", priceRead: "" }])}>
-                <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Row
+                <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Add bid row
               </Btn>
               <Btn onClick={recordOpening} disabled={busy || !ref || !openRows.some((row) => row.bidder.trim() && row.receivedAt)}>
                 <Stamp className="h-3.5 w-3.5" aria-hidden="true" /> Record opening
               </Btn>
             </div>
             {cycle?.opening && !cycle.opening.certifiedAt ? (
-              <p className="font-code text-[9px] tracking-[0.12em] text-brand-700 dark:text-brand-300">
-                REGISTER {cycle.opening.id.toUpperCase()} AWAITING CERTIFICATION — GATE {cycle.opening.gateId?.toUpperCase()}
+              <p className="text-[11.5px] leading-relaxed text-brand-800 dark:text-brand-300">
+                Register {cycle.opening.id} is awaiting certification{cycle.opening.gateId ? ` · Gate ${cycle.opening.gateId}` : ""}
               </p>
             ) : null}
           </div>
@@ -4061,23 +4341,23 @@ export function CycleView({
           const apps = portalApps.filter((a) => a.tenderId === ref);
           if (apps.length === 0) {
             return (
-              <p className="font-code text-[9.5px] leading-relaxed tracking-[0.1em] text-ink-400">
-                NO ELECTRONIC APPLICATIONS ON RECORD FOR THIS TENDER — ORGANIZATIONS FILE FROM THE SUPPLIER PORTAL AT /ORG
+              <p className="text-[11.5px] leading-relaxed text-ink-600">
+                No electronic applications are on record for this tender. Suppliers can file through the <a href="/org" className="font-semibold text-ink-800 underline decoration-ink-400 underline-offset-2 hover:text-brand-700">/org portal</a>.
               </p>
             );
           }
           return (
             <div className="space-y-2">
               <Chip tone="ok">{apps.length} ELECTRONIC {apps.length === 1 ? "APPLICATION" : "APPLICATIONS"} ON RECORD</Chip>
-              <div className="overflow-x-auto rounded-lg border border-ink-100">
+              <HorizontalScrollRegion label="Supplier applications register" className="rounded-lg border border-ink-100">
                 <table className="w-full min-w-[620px] text-[12px]">
                   <thead>
-                    <tr className="border-b border-ink-100 bg-ink-50/70 text-left font-code text-[8px] tracking-[0.12em] text-ink-500">
-                      <th className="px-2.5 py-2">ORGANIZATION</th>
-                      <th className="px-2.5 py-2">OFFER</th>
-                      <th className="px-2.5 py-2">RECEIVED</th>
-                      <th className="px-2.5 py-2">RECEIPT</th>
-                      <th className="px-2.5 py-2">STATUS</th>
+                    <tr className="border-b border-ink-100 bg-ink-50/70 text-left font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">
+                      <th scope="col" className="px-2.5 py-2">ORGANIZATION</th>
+                      <th scope="col" className="px-2.5 py-2">OFFER</th>
+                      <th scope="col" className="px-2.5 py-2">RECEIVED</th>
+                      <th scope="col" className="px-2.5 py-2">RECEIPT</th>
+                      <th scope="col" className="px-2.5 py-2">STATUS</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -4086,7 +4366,7 @@ export function CycleView({
                         <td className="px-2.5 py-1.5 font-semibold text-ink-900">{a.orgName}</td>
                         <td className="px-2.5 py-1.5 text-ink-500">
                           {a.sealed ? (
-                            <span className="font-code text-[9px] font-bold tracking-[0.1em] text-brand-700 dark:text-brand-300">SEALED</span>
+                            <span className="font-code text-[10px] font-bold tracking-[0.06em] text-brand-800 dark:text-brand-300">SEALED</span>
                           ) : (
                             <>
                               {a.currency ? `${a.currency} ` : ""}
@@ -4095,15 +4375,15 @@ export function CycleView({
                           )}
                         </td>
                         <td className="px-2.5 py-1.5 text-ink-500">{fmtDateTime(a.receivedAt)}</td>
-                        <td className="px-2.5 py-1.5 font-code text-[8px] tracking-[0.06em] text-ink-400">{a.receiptId ?? a.id}</td>
-                        <td className="px-2.5 py-1.5 font-code text-[8px] font-bold tracking-[0.08em] text-ink-500">{a.status.replace(/_/g, " ")}</td>
+                        <td className="px-2.5 py-1.5 font-code text-[10px] tracking-normal text-ink-600">{a.receiptId ?? a.id}</td>
+                        <td className="px-2.5 py-1.5 font-code text-[10px] font-bold tracking-[0.04em] text-ink-700">{a.status.replace(/_/g, " ")}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-              </div>
-              <p className="font-code text-[8.5px] tracking-[0.12em] text-ink-400">
-                THE OPENING REGISTER REMAINS THE OFFICER'S ACT — THESE ROWS ARE CONTEXT, NOT ENTRIES
+              </HorizontalScrollRegion>
+              <p className="text-[11px] leading-relaxed text-ink-600">
+                The opening register remains the officer’s act. These portal rows are context, not entries.
               </p>
             </div>
           );
@@ -4424,7 +4704,7 @@ export function CycleView({
           >
             <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Record the position
           </Btn>
-          <span className="font-code text-[8.5px] tracking-[0.12em] text-ink-400">
+          <span className="text-[11px] leading-relaxed text-ink-600">
             {(d[basisKey] ?? "").trim().length < 10 ? "A BASIS OF AT LEAST 10 CHARACTERS IS REQUIRED" : "READY"}
           </span>
         </div>
@@ -4435,7 +4715,7 @@ export function CycleView({
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold text-ink-900">{x.member}</span>
                   <Chip tone={x.position === "DISSENT" ? "warn" : "muted"}>{x.position.replace(/_/g, " ")}</Chip>
-                  <span className="font-code text-[8px] tracking-[0.1em] text-ink-400">{fmtDateTime(x.recordedAt)}</span>
+                  <span className="text-[10.5px] leading-relaxed text-ink-600">{fmtDateTime(x.recordedAt)}</span>
                 </div>
                 <p className="mt-1 leading-relaxed text-ink-600">{x.basis}</p>
               </li>
@@ -4465,7 +4745,7 @@ export function CycleView({
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <p className="truncate text-[13px] font-semibold text-ink-900">{m.name}</p>
-                    <p className="font-code text-[8px] tracking-[0.14em] text-ink-400">PRESENT · {m.office ? OFFICE_LABELS[m.office] ?? m.office.replace(/_/g, " ") : "OFFICE NOT SET"}</p>
+                    <p className="text-[11px] leading-relaxed text-ink-600">Present · {m.office ? OFFICE_LABELS[m.office] ?? m.office.replace(/_/g, " ") : "Office not set"}</p>
                   </div>
                   {decl ? (
                     decl.declaration === "NO_CONFLICT" ? <Chip tone="ok">NO CONFLICT</Chip> : <Chip tone="warn">CONFLICT DECLARED</Chip>
@@ -4484,7 +4764,8 @@ export function CycleView({
                   <div className="mt-2 space-y-1.5">
                     {decl.declaration === "CONFLICT_DECLARED" && !decl.conflicts ? (
                       <input
-                        className={cn(inputCls, "h-9")}
+                        className={inputCls}
+                        aria-label={`Conflict declaration for ${m.name}`}
                         placeholder="State the conflict"
                         value={d[`coi-${m.name}`] ?? ""}
                         onChange={(e) => set(`coi-${m.name}`, e.target.value)}
@@ -4492,7 +4773,7 @@ export function CycleView({
                       />
                     ) : null}
                     <p className="text-[11px] text-ink-500">
-                      <span className="font-code text-[8px] tracking-[0.12em] text-ink-400">CONNECTIONS </span>
+                      <span className="font-code text-[10px] font-semibold tracking-[0.04em] text-ink-600">Connections: </span>
                       {decl.entities?.length
                         ? decl.entities.map((entity) => `${entity.name}${entity.relationship ? ` (${entity.relationship})` : ""}`).join(" · ")
                         : "none named — screening can only check names on the record"}
@@ -4500,6 +4781,7 @@ export function CycleView({
                     <div className="flex items-start gap-1.5">
                       <textarea
                         className={cn(inputCls, "h-14 py-2 text-[11.5px]")}
+                        aria-label={`Connected firms or people for ${m.name}`}
                         placeholder="Connected firms or people, one per line: Acme Holdings | former employer"
                         value={d[`coi-ent-${m.name}`] ?? ""}
                         onChange={(e) => set(`coi-ent-${m.name}`, e.target.value)}
@@ -4524,22 +4806,22 @@ export function CycleView({
               Scoring is locked until the evaluation currency and required FX quotes are recorded and the committee records its pre-score MED basis.
             </div>
           ) : null}
-          <div className="overflow-x-auto">
+          <HorizontalScrollRegion label="Evaluation scoring matrix">
             <table className="w-full min-w-[720px] text-[12px]">
               <thead>
-                <tr className="border-b border-ink-100 text-left font-code text-[8px] tracking-[0.14em] text-ink-400">
-                  <th className="py-2 pr-2">BIDDER</th>
+                <tr className="border-b border-ink-100 text-left font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">
+                  <th scope="col" className="py-2 pr-2">BIDDER</th>
                   {cycle.matrix.criteria.map((c) => (
-                    <th key={c.id} className="py-2 pr-2">
+                    <th key={c.id} scope="col" className="py-2 pr-2">
                       {c.title.toUpperCase()} · {c.weight}%
                     </th>
                   ))}
-                  <th className="py-2 pr-2">TECH</th>
-                  <th className="py-2 pr-2">FIN</th>
-                  <th className="py-2 pr-2">TOTAL</th>
-                  <th className="py-2 pr-2">RESPONSIVE</th>
-                  <th className="py-2 pr-2">VERDICT</th>
-                  <th className="py-2" />
+                  <th scope="col" className="py-2 pr-2">TECH</th>
+                  <th scope="col" className="py-2 pr-2">FIN</th>
+                  <th scope="col" className="py-2 pr-2">TOTAL</th>
+                  <th scope="col" className="py-2 pr-2">RESPONSIVE</th>
+                  <th scope="col" className="py-2 pr-2">VERDICT</th>
+                  <th scope="col" className="py-2"><span className="sr-only">Row actions</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -4555,8 +4837,9 @@ export function CycleView({
                       return (
                         <td key={c.id} className="py-2 pr-2">
                           <input
-                            className="h-8 w-16 rounded-lg border border-ink-200 px-2 text-[12px] disabled:border-transparent disabled:bg-transparent disabled:text-ink-700"
+                            className="h-11 w-16 rounded-lg border border-ink-200 px-2 text-base disabled:border-transparent disabled:bg-transparent disabled:text-ink-700"
                             type="number" min={0} max={100}
+                            aria-label={`${b.bidder} technical score for ${c.title}, from 0 to 100`}
                             disabled={cycle.matrix!.status === "CERTIFIED"}
                             value={d[`s-${b.bidder}-${c.id}`] ?? String(s?.score ?? 0)}
                             onChange={(e) => set(`s-${b.bidder}-${c.id}`, e.target.value)}
@@ -4568,19 +4851,19 @@ export function CycleView({
                     <td className="py-2 pr-2">
                       <span>{b.financial?.formulaScore ?? "—"}</span>
                       {b.financial?.evaluatedAmount !== undefined ? (
-                        <p className="mt-0.5 max-w-[180px] font-code text-[8px] leading-snug tracking-[0.06em] text-ink-400">
+                        <p className="mt-0.5 max-w-[220px] font-code text-[10px] leading-relaxed tracking-normal text-ink-600">
                           {b.financial.currency ?? "?"} {fmtMoney(b.financial.amount)} → {b.financial.evaluatedCurrency}{" "}
                           {fmtMoney(b.financial.evaluatedAmount)} @ {b.financial.fxRate}
                         </p>
                       ) : null}
                       {b.financial?.fxError ? (
-                        <p className="mt-0.5 max-w-[180px] text-[9.5px] leading-snug text-brand-700 dark:text-brand-300">
+                        <p className="mt-0.5 max-w-[220px] text-[11px] leading-snug text-brand-800 dark:text-brand-300">
                           NO FX — {b.financial.fxError}
                         </p>
                       ) : null}
                     </td>
                     <td className="py-2 pr-2 font-bold text-ink-950">{b.total ?? "—"}</td>
-                    <td className="py-2 pr-2 font-code text-[8px] tracking-[0.1em]">
+                    <td className="py-2 pr-2 font-code text-[10px] font-semibold tracking-[0.04em]">
                       {b.responsiveness === "RESPONSIVE" ? <span className="text-emerald-700 dark:text-emerald-300">YES</span> : <span className="text-brand-700 dark:text-brand-300">{b.responsiveness.replace(/_/g, " ")}</span>}
                     </td>
                     <td className="py-2 pr-2">{b.verdict === "RECOMMENDED" ? <Chip tone="ok">RECOMMENDED</Chip> : b.verdict === "DISQUALIFIED" ? <Chip tone="warn">DISQUALIFIED</Chip> : <Chip tone="muted">NOT RECOMMENDED</Chip>}</td>
@@ -4595,7 +4878,7 @@ export function CycleView({
                 ))}
               </tbody>
             </table>
-          </div>
+          </HorizontalScrollRegion>
           {cycle.matrix.status === "DRAFT" ? (
             <div className="mt-3 grid gap-3 border-t border-ink-100 pt-3 lg:grid-cols-2">
               <div className="space-y-2">
@@ -4617,10 +4900,10 @@ export function CycleView({
                     <p className="font-semibold text-ink-800">MED recorded · {fmtDateTime(cycle.matrix.med.recordedAt)}</p>
                     <p className="mt-1 text-ink-500">{cycle.matrix.med.notes || "No basis note on the legacy record."}</p>
                     {Object.entries(cycle.matrix.med.adjustments ?? {}).length ? (
-                      <ul className="mt-1 space-y-0.5 font-code text-[8px] text-ink-500">
+                      <ul className="mt-1 space-y-0.5 font-code text-[10px] leading-relaxed text-ink-600">
                         {Object.entries(cycle.matrix.med.adjustments ?? {}).map(([key, score]) => <li key={key}>{key.replace("|", " · ")} → {score}</li>)}
                       </ul>
-                    ) : <p className="mt-1 font-code text-[8px] text-ink-400">NO SCORE ADJUSTMENTS RECORDED</p>}
+                    ) : <p className="mt-1 text-[11px] text-ink-600">No score adjustments recorded.</p>}
                   </div>
                 ) : null}
               </div>
@@ -4650,18 +4933,22 @@ export function CycleView({
             {publishedCriteriaReady ? (
               <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 dark:border-emerald-500/20 dark:bg-emerald-500/[0.04]">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-code text-[8px] font-bold tracking-[0.14em] text-emerald-800 dark:text-emerald-300">PUBLISHED EVALUATION CRITERIA · TOTAL {publishedCriteriaWeight.toFixed(1)}%</p>
+                  <p className="font-code text-[10px] font-bold tracking-[0.06em] text-emerald-900 dark:text-emerald-300">PUBLISHED EVALUATION CRITERIA · TOTAL {publishedCriteriaWeight.toFixed(1)}%</p>
                   <Chip tone="ok">NOTICE {publishedEvaluationNotice?.id}</Chip>
                 </div>
                 <ul className="mt-2 grid gap-1 sm:grid-cols-2">
                   {publishedEvaluationCriteria.map((criterion) => (
-                    <li key={criterion.id} className="flex items-center justify-between gap-2 rounded-lg border border-emerald-200/70 bg-white/70 px-2.5 py-2 text-[11.5px] dark:border-white/[0.06] dark:bg-white/[0.025]">
-                      <span className="min-w-0 truncate font-medium text-ink-800">{criterion.title}</span>
-                      <span className="shrink-0 font-code text-[9px] font-bold text-ink-500">{criterion.weight}%</span>
+                    <li key={criterion.id} className="flex items-start justify-between gap-3 rounded-lg border border-emerald-200/70 bg-white/70 px-2.5 py-2 text-[11.5px] dark:border-white/[0.06] dark:bg-white/[0.025]">
+                      <div className="min-w-0">
+                        <p className="font-medium text-ink-800">{criterion.title}</p>
+                        {criterion.evidence ? <p className="mt-1 leading-relaxed text-ink-600 dark:text-ink-500"><span className="font-semibold">Evidence:</span> {criterion.evidence}</p> : null}
+                        {criterion.scoringMethod ? <p className="mt-1 leading-relaxed text-ink-600 dark:text-ink-500"><span className="font-semibold">Scoring:</span> {criterion.scoringMethod}</p> : null}
+                      </div>
+                      <span className="shrink-0 font-code text-[10.5px] font-bold text-ink-600">{criterion.weight}%</span>
                     </li>
                   ))}
                 </ul>
-                <p className="mt-2 text-[10px] text-ink-500">The matrix will use this issued notice’s criteria exactly.</p>
+                <p className="mt-2 text-[11.5px] leading-relaxed text-ink-600">The matrix will use this issued notice’s criteria exactly.</p>
               </div>
             ) : (
               <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/60 px-3 py-3 dark:border-amber-500/25 dark:bg-amber-500/[0.04]">
@@ -4692,19 +4979,19 @@ export function CycleView({
         >
           {!cycle.matrix.financialAdjustmentsCertifiedAt ? (
             <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-500/20 dark:bg-amber-500/[0.04]">
-              <p className="font-code text-[8.5px] font-bold tracking-[0.14em] text-amber-900 dark:text-amber-200">FINANCIAL BASIS — RECORD BEFORE ANY EVALUATOR SCORES</p>
-              <p className="mt-1 text-[10.5px] leading-relaxed text-amber-800 dark:text-amber-300">For each bidder, record arithmetic correction, unconditional discount, other documented adjustment, and a source reference. The published preference scheme controls whether any margin is available. A second procurement-unit member certifies this record.</p>
+              <p className="font-code text-[10px] font-bold tracking-[0.06em] text-amber-900 dark:text-amber-200">FINANCIAL BASIS — RECORD BEFORE ANY EVALUATOR SCORES</p>
+              <p className="mt-1 text-[11.5px] leading-relaxed text-amber-800 dark:text-amber-300">For each bidder, record arithmetic correction, unconditional discount, other documented adjustment, and a source reference. The published preference scheme controls whether any margin is available. A second procurement-unit member certifies this record.</p>
               <div className="mt-3 space-y-2">
                 {cycle.matrix.bids.map((bid) => {
                   const key = encodeURIComponent(bid.bidder);
                   return (
                     <div key={bid.bidder} className="grid gap-1.5 rounded-lg border border-amber-200/70 bg-white/70 p-2 dark:border-white/[0.06] dark:bg-white/[0.025] sm:grid-cols-2 lg:grid-cols-4">
                       <p className="truncate self-center text-[11.5px] font-semibold text-ink-800" title={bid.bidder}>{bid.bidder}</p>
-                      <input className={inputCls} type="number" step="0.01" placeholder="Arithmetic correction ±" value={d[`fin-${key}-correction`] ?? "0"} onChange={(e) => set(`fin-${key}-correction`, e.target.value)} />
-                      <input className={inputCls} type="number" min="0" step="0.01" placeholder="Unconditional discount" value={d[`fin-${key}-discount`] ?? "0"} onChange={(e) => set(`fin-${key}-discount`, e.target.value)} />
-                      <input className={inputCls} type="number" step="0.01" placeholder="Other evaluated adjustment ±" value={d[`fin-${key}-other`] ?? "0"} onChange={(e) => set(`fin-${key}-other`, e.target.value)} />
+                      <input className={inputCls} aria-label={`Arithmetic correction for ${bid.bidder}`} type="number" step="0.01" placeholder="Arithmetic correction ±" value={d[`fin-${key}-correction`] ?? "0"} onChange={(e) => set(`fin-${key}-correction`, e.target.value)} />
+                      <input className={inputCls} aria-label={`Unconditional discount for ${bid.bidder}`} type="number" min="0" step="0.01" placeholder="Unconditional discount" value={d[`fin-${key}-discount`] ?? "0"} onChange={(e) => set(`fin-${key}-discount`, e.target.value)} />
+                      <input className={inputCls} aria-label={`Other evaluated adjustment for ${bid.bidder}`} type="number" step="0.01" placeholder="Other evaluated adjustment ±" value={d[`fin-${key}-other`] ?? "0"} onChange={(e) => set(`fin-${key}-other`, e.target.value)} />
                       {cycle.matrix?.preferenceScheme === "SI45-2025" ? (
-                        <select className={inputCls} value={d[`fin-${key}-preference`] ?? ""} onChange={(e) => set(`fin-${key}-preference`, e.target.value)}>
+                        <select className={inputCls} aria-label={`Preference claim for ${bid.bidder}`} value={d[`fin-${key}-preference`] ?? ""} onChange={(e) => set(`fin-${key}-preference`, e.target.value)}>
                           <option value="">No preference claimed</option>
                           <option value="LOCAL_SUPPLIER">Local supplier · 5%</option>
                           <option value="CITIZEN_SUPPLIER">Citizen supplier · 7%</option>
@@ -4719,16 +5006,16 @@ export function CycleView({
                         </select>
                       ) : null}
                       {d[`fin-${key}-preference`]?.startsWith("LOCAL_CONTENT_") ? (
-                        <input className={inputCls} type="number" min="35" max="100" placeholder="Verified local content %" value={d[`fin-${key}-local-content`] ?? ""} onChange={(e) => set(`fin-${key}-local-content`, e.target.value)} />
+                        <input className={inputCls} aria-label={`Verified local content percentage for ${bid.bidder}`} type="number" min="35" max="100" placeholder="Verified local content %" value={d[`fin-${key}-local-content`] ?? ""} onChange={(e) => set(`fin-${key}-local-content`, e.target.value)} />
                       ) : null}
                       {cycle.matrix?.preferenceScheme === "CDF_RESERVATION" ? (
                         <>
-                          <select className={inputCls} value={d[`fin-${key}-reservation-citizen`] ?? ""} onChange={(e) => set(`fin-${key}-reservation-citizen`, e.target.value)}>
+                          <select className={inputCls} aria-label={`Citizen supplier status for ${bid.bidder}`} value={d[`fin-${key}-reservation-citizen`] ?? ""} onChange={(e) => set(`fin-${key}-reservation-citizen`, e.target.value)}>
                             <option value="">Citizen supplier?</option>
                             <option value="yes">Yes — citizen supplier</option>
                             <option value="no">No — not a citizen supplier</option>
                           </select>
-                          <select className={inputCls} value={d[`fin-${key}-reservation-domiciled`] ?? ""} onChange={(e) => set(`fin-${key}-reservation-domiciled`, e.target.value)}>
+                          <select className={inputCls} aria-label={`Funded constituency residence status for ${bid.bidder}`} value={d[`fin-${key}-reservation-domiciled`] ?? ""} onChange={(e) => set(`fin-${key}-reservation-domiciled`, e.target.value)}>
                             <option value="">Domiciled in {cycle.matrix?.cdfReservationConstituency ?? "funded constituency"}?</option>
                             <option value="yes">Yes — domiciled in funded constituency</option>
                             <option value="no">No — domiciled elsewhere</option>
@@ -4738,7 +5025,7 @@ export function CycleView({
                           ) : null}
                         </>
                       ) : null}
-                      <input className={cn(inputCls, "sm:col-span-2 lg:col-span-2")} placeholder="Bid page / correction / ownership / local-content evidence reference" value={d[`fin-${key}-evidence`] ?? ""} onChange={(e) => set(`fin-${key}-evidence`, e.target.value)} />
+                      <input className={cn(inputCls, "sm:col-span-2 lg:col-span-2")} aria-label={`Evidence reference for evaluated-price adjustments for ${bid.bidder}`} placeholder="Bid page / correction / ownership / local-content evidence reference" value={d[`fin-${key}-evidence`] ?? ""} onChange={(e) => set(`fin-${key}-evidence`, e.target.value)} />
                     </div>
                   );
                 })}
@@ -4766,7 +5053,7 @@ export function CycleView({
               BASIS {cycle.matrix.evaluationCurrency ?? "LEGACY STATED AMOUNTS"}
             </Chip>
             {cycle.matrix.consensus ? (
-              <span className="font-code text-[8px] tracking-[0.1em] text-ink-400">
+              <span className="font-code text-[10px] tracking-[0.04em] text-ink-600">
                 SIG {cycle.matrix.consensus.signature.slice(0, 12).toUpperCase()}
               </span>
             ) : null}
@@ -4786,7 +5073,7 @@ export function CycleView({
 
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="space-y-2">
-              <p className="font-code text-[8px] tracking-[0.16em] text-ink-400">PER-EVALUATOR SHEETS</p>
+              <p className="font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">PER-EVALUATOR SHEETS</p>
               {assignedEvaluators.length === 0 ? (
                 <p className="text-[11.5px] text-amber-700 dark:text-amber-300">
                   No PRESENT member holds the evaluation-committee office — the certification gate refuses a panel that is not constituted.
@@ -4805,7 +5092,7 @@ export function CycleView({
                       <li key={member.name} className="flex items-center justify-between gap-2 rounded-lg border border-ink-100 bg-paper px-2.5 py-2">
                         <div className="min-w-0">
                           <p className="truncate text-[12px] font-semibold text-ink-900">{member.name}</p>
-                          <p className="font-code text-[8px] tracking-[0.1em] text-ink-400">
+                          <p className="text-[11px] leading-relaxed text-ink-600">
                             {sheet ? `V${sheet.version} · ${fmtDateTime(sheet.submittedAt)} · ${sheet.submittedBy.toUpperCase()}` : "NO SHEET ON FILE"}
                           </p>
                         </div>
@@ -4829,13 +5116,13 @@ export function CycleView({
                     </select>
                   </Field>
                   {sheetEvaluator ? (
-                    <div className="overflow-x-auto">
+                    <HorizontalScrollRegion label="Evaluator scoring sheet">
                       <table className="w-full min-w-[420px] text-[11px]">
                         <thead>
-                          <tr className="border-b border-ink-100 text-left font-code text-[7.5px] tracking-[0.1em] text-ink-400">
-                            <th className="py-1.5 pr-1.5">BIDDER</th>
+                          <tr className="border-b border-ink-100 text-left font-code text-[10px] font-bold tracking-[0.04em] text-ink-600">
+                            <th scope="col" className="py-1.5 pr-1.5">BIDDER</th>
                             {cycle.matrix.criteria.map((criterion) => (
-                              <th key={criterion.id} className="py-1.5 pr-1.5">
+                              <th key={criterion.id} scope="col" className="py-1.5 pr-1.5">
                                 {criterion.id} · {criterion.weight}%
                               </th>
                             ))}
@@ -4848,10 +5135,11 @@ export function CycleView({
                               {cycle.matrix!.criteria.map((criterion) => (
                                 <td key={criterion.id} className="py-1.5 pr-1.5">
                                   <input
-                                    className="h-7 w-14 rounded-md border border-ink-200 px-1.5 text-[11.5px]"
+                                    className="h-11 w-16 rounded-md border border-ink-200 px-1.5 text-base"
                                     type="number"
                                     min={0}
                                     max={100}
+                                    aria-label={`${bid.bidder} score for ${criterion.title}, ${criterion.weight} percent, from 0 to 100`}
                                     disabled={!scoreBasisReady}
                                     value={d[`sh-${sheetEvaluator}-${bid.bidder}-${criterion.id}`] ?? ""}
                                     onChange={(e) => set(`sh-${sheetEvaluator}-${bid.bidder}-${criterion.id}`, e.target.value)}
@@ -4862,7 +5150,7 @@ export function CycleView({
                           ))}
                         </tbody>
                       </table>
-                    </div>
+                    </HorizontalScrollRegion>
                   ) : null}
                   <Btn variant="ghost" onClick={submitSheet} disabled={busy || !sheetEvaluator || !scoreBasisReady}>
                     <FileSignature className="h-3.5 w-3.5" aria-hidden="true" /> Submit sheet for {sheetEvaluator || "—"}
@@ -4875,7 +5163,7 @@ export function CycleView({
             </div>
 
             <div className="space-y-2">
-              <p className="font-code text-[8px] tracking-[0.16em] text-ink-400">DIVERGENCES ACROSS SHEETS</p>
+              <p className="font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">DIVERGENCES ACROSS SHEETS</p>
               {divergences.length === 0 ? (
                 <p className="text-[11.5px] text-ink-500">No cell has more than one scored sheet yet.</p>
               ) : (
@@ -4888,7 +5176,7 @@ export function CycleView({
                         </p>
                         <Chip tone={cell.spread > 25 ? "warn" : "muted"}>SPREAD {cell.spread}</Chip>
                       </div>
-                      <p className="font-code text-[8px] tracking-[0.08em] text-ink-400">
+                      <p className="text-[11px] leading-relaxed text-ink-600">
                         {cell.values.map((value) => `${value.evaluator.toUpperCase()} ${value.score}`).join(" · ")}
                       </p>
                     </li>
@@ -4924,7 +5212,7 @@ export function CycleView({
                 <div className="rounded-xl border border-ink-100 bg-paper p-2.5 text-[11.5px] text-ink-600">
                   <p className="font-semibold text-ink-900">Consensus minute</p>
                   <p className="mt-1 leading-snug">{cycle.matrix.consensus.notes}</p>
-                  <p className="mt-1 font-code text-[8px] tracking-[0.1em] text-ink-400">
+                  <p className="mt-1 text-[11px] leading-relaxed text-ink-600">
                     {cycle.matrix.consensus.recordedBy.toUpperCase()} · {fmtDateTime(cycle.matrix.consensus.recordedAt)} · ATTENDEES{" "}
                     {cycle.matrix.consensus.attendees.join(", ")}
                   </p>
@@ -4934,10 +5222,11 @@ export function CycleView({
           </div>
 
           <div className="mt-4 space-y-2 border-t border-ink-100 pt-3">
-            <p className="font-code text-[8px] tracking-[0.16em] text-ink-400">EVALUATED-PRICE BASIS</p>
+            <p className="font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">EVALUATED-PRICE BASIS</p>
             <div className="grid gap-1.5 sm:grid-cols-[140px_1fr]">
               <input
                 className={inputCls}
+                aria-label="Evaluation currency"
                 placeholder="ZMW"
                 value={d.evalCurrency ?? cycle.matrix.evaluationCurrency ?? ""}
                 onChange={(e) => set("evalCurrency", e.target.value.toUpperCase())}
@@ -4945,6 +5234,7 @@ export function CycleView({
               />
               <textarea
                 className={cn(inputCls, "h-16 py-2")}
+                aria-label="Sourced foreign-exchange rates and dates"
                 placeholder="USD = 25.80 | Bank of Zambia | 2026-10-29"
                 value={
                   d.fxRates ??
@@ -4961,7 +5251,7 @@ export function CycleView({
                 </Btn>
               ) : null}
               {(cycle.matrix.fxRates ?? []).map((rate) => (
-                <span key={rate.base} className="font-code text-[8px] tracking-[0.08em] text-ink-400">
+                <span key={rate.base} className="font-code text-[10px] tracking-normal text-ink-600">
                   {rate.base}→{rate.quote} {rate.rate} · {rate.source.toUpperCase()} · {rate.asOf.slice(0, 10)}
                 </span>
               ))}
@@ -5000,7 +5290,7 @@ export function CycleView({
             const signals = bid?.priceSignals ?? [];
             return signals.length ? (
               <div className="rounded-lg border border-ink-100 bg-white px-2.5 py-2 dark:border-white/[0.07] dark:bg-white/[0.025]">
-                <p className="font-code text-[8px] font-bold tracking-[0.12em] text-ink-400">PRICE SCHEDULE SIGNALS · HUMAN REVIEW REQUIRED</p>
+                <p className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">PRICE SCHEDULE SIGNALS · HUMAN REVIEW REQUIRED</p>
                 <ul className="mt-1 space-y-0.5">
                   {signals.slice(0, 4).map((signal, index) => (
                     <li key={`${signal.item}-${index}`} className="text-[10.5px] leading-relaxed text-ink-600">
@@ -5021,7 +5311,7 @@ export function CycleView({
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-[13px] font-semibold text-ink-900">{a.bidder}</p>
-                    <p className="font-code text-[8.5px] tracking-[0.12em] text-ink-400">OPENED {a.openedAt ? fmtDate(a.openedAt) : "—"} · RESPONSE DUE {fmtDate(a.responseDueAt)} · {relDays(a.responseDueAt).toUpperCase()}</p>
+                    <p className="text-[11px] leading-relaxed text-ink-600">Opened {a.openedAt ? fmtDate(a.openedAt) : "—"} · Response due {fmtDate(a.responseDueAt)} · {relDays(a.responseDueAt)}</p>
                   </div>
                   {a.resolution ? <Chip tone={a.resolution.outcome === "JUSTIFIED" ? "ok" : "warn"}>{a.resolution.outcome}</Chip> : <Chip tone="warn">OPEN</Chip>}
                 </div>
@@ -5030,7 +5320,7 @@ export function CycleView({
                   <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50/60 p-2.5 text-[11px] dark:border-emerald-500/20 dark:bg-emerald-500/[0.04]">
                     <p className="font-semibold text-emerald-900 dark:text-emerald-200">Bidder response received {fmtDateTime(a.response.receivedAt)} · {a.response.submittedByOrg}</p>
                     <p className="mt-1 whitespace-pre-wrap text-ink-700">{a.response.text}</p>
-                    <p className="mt-1 font-code text-[8px] text-ink-500">EVIDENCE {a.response.evidenceRef} · RECEIPT {a.response.receiptHash?.slice(0, 16) ?? "—"}</p>
+                    <p className="mt-1 text-[10.5px] leading-relaxed text-ink-600">Evidence {a.response.evidenceRef} · Receipt {a.response.receiptHash?.slice(0, 16) ?? "—"}</p>
                   </div>
                 ) : a.noResponseRecordedAt ? (
                   <p className="mt-2 text-[11px] text-amber-800 dark:text-amber-300">No bidder response recorded after the deadline on {fmtDateTime(a.noResponseRecordedAt)} by {a.noResponseRecordedBy}.</p>
@@ -5097,7 +5387,7 @@ export function CycleView({
     act(
       `/api/tenders/${ref}/method`,
       {
-        methodId: d.methodPick ?? cycle?.methodId ?? "open-bidding",
+        methodId: canonicalMethodId(d.methodPick ?? cycle?.methodId),
         justification: d.methodJust,
         approvalRef: d.methodRef || undefined,
         estimatedValue: d.methodValue ? Number(d.methodValue) : undefined,
@@ -5158,8 +5448,8 @@ export function CycleView({
       >
         {(cycle.blockers ?? []).length > 0 ? (
           <div className="mb-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-[11.5px] text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
-            <p className="font-code text-[8.5px] tracking-[0.14em]">
-              THE GATE WILL REFUSE — {(cycle.blockers ?? []).length} BLOCKER{(cycle.blockers ?? []).length === 1 ? "" : "S"}
+            <p className="font-code text-[10px] font-semibold tracking-[0.06em]">
+              The gate will refuse this report until all {(cycle.blockers ?? []).length} blocker{(cycle.blockers ?? []).length === 1 ? "" : "s"} are resolved.
             </p>
             <ul className="mt-1 list-disc space-y-1 pl-4">
               {(cycle.blockers ?? []).map((blocker, i) => (
@@ -5178,7 +5468,7 @@ export function CycleView({
                 <li key={f.id} className="rounded-xl border border-ink-100 bg-paper px-3 py-2.5">
                   <div className="flex flex-wrap items-center gap-2">
                     <Chip tone={open ? "warn" : "ok"}>{open ? "OPEN" : f.disposition?.status ?? "—"}</Chip>
-                    <span className="font-code text-[9px] tracking-[0.12em] text-ink-500">{f.id} · {f.rule} · {f.severity}</span>
+                    <span className="font-code text-[10px] tracking-[0.12em] text-ink-500">{f.id} · {f.rule} · {f.severity}</span>
                   </div>
                   <p className="mt-1 text-[12px] text-ink-700">{f.item}</p>
                   {f.disposition ? (
@@ -5190,6 +5480,7 @@ export function CycleView({
                     <div className="mt-2 grid gap-1.5 sm:grid-cols-[8rem_1fr_8rem_auto]">
                       <select
                         className={inputCls}
+                        aria-label={`Disposition for finding ${f.id}`}
                         value={d[`fdisp-${f.id}`] ?? "CLEARED"}
                         onChange={(e) => set(`fdisp-${f.id}`, e.target.value)}
                       >
@@ -5199,12 +5490,14 @@ export function CycleView({
                       </select>
                       <input
                         className={inputCls}
+                        aria-label={`Disposition reason for finding ${f.id}`}
                         placeholder="Reason (required)"
                         value={d[`fnote-${f.id}`] ?? ""}
                         onChange={(e) => set(`fnote-${f.id}`, e.target.value)}
                       />
                       <input
                         className={inputCls}
+                        aria-label={`Seconding officer for finding ${f.id}`}
                         placeholder={d[`fdisp-${f.id}`] === "WAIVED" ? "Seconded by" : "Seconder (waiver)"}
                         value={d[`fsecond-${f.id}`] ?? ""}
                         onChange={(e) => set(`fsecond-${f.id}`, e.target.value)}
@@ -5250,7 +5543,7 @@ export function CycleView({
                 <Chip tone="ok">
                   APPROVED {fmtDate(cycle.methodApprovedAt)} · {cycle.methodApprovedBy?.toUpperCase() ?? "—"}
                 </Chip>
-              ) : cycle.methodId && cycle.methodId !== "open-bidding" ? (
+              ) : cycle.methodId && !isDefaultBiddingMethod(cycle.methodId) ? (
                 <Chip tone="brand">METHOD GATE PENDING</Chip>
               ) : null}
               {cycle.method.approvalRef ? <Chip tone="muted">{cycle.method.approvalRef}</Chip> : null}
@@ -5258,7 +5551,7 @@ export function CycleView({
             {cycle.method.legalBasis ? <p className="text-[11px] text-ink-500">{cycle.method.legalBasis}</p> : null}
             {cycle.method.when ? <p className="text-[11.5px] text-ink-600">{cycle.method.when}</p> : null}
             {cycle.method.valueBand ? (
-              <p className="font-code text-[8.5px] tracking-[0.12em] text-ink-400">VALUE BAND {cycle.method.valueBand.toUpperCase()}</p>
+              <p className="font-code text-[10px] tracking-[0.06em] text-ink-600">Value band · {cycle.method.valueBand}</p>
             ) : null}
             {cycle.method.justification ? (
               <p className="text-[11.5px] text-ink-600">Justification: {cycle.method.justification}</p>
@@ -5273,44 +5566,85 @@ export function CycleView({
           </p>
         )}
         <div className="grid gap-1.5">
+          <label htmlFor="cycle-method-selection" className="eyebrow">PROCUREMENT METHOD</label>
+          {methodsStatus === "ready" ? (
+            <p id="cycle-method-options" className="text-[11px] leading-relaxed text-ink-600 dark:text-ink-400">
+              {methods.length} methods in the Zambia legal register, grouped by competition type.
+            </p>
+          ) : null}
           <select
+            id="cycle-method-selection"
             className={inputCls}
-            value={d.methodPick ?? cycle.methodId ?? "open-bidding"}
+            aria-label="Procurement method"
+            value={methodRecordSelectionId}
+            aria-describedby={showMethodRecordGuidance ? "cycle-method-options cycle-method-selection-guidance" : methodsStatus === "ready" ? "cycle-method-options" : undefined}
+            disabled={methodsStatus !== "ready"}
             onChange={(e) => set("methodPick", e.target.value)}
           >
-            {methods.length === 0 ? <option value="open-bidding">Open bidding / selection</option> : null}
-            {methods.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
+            {methodsStatus === "ready" ? (
+              methodGroups.map(([group, groupMethods]) => (
+                <optgroup key={group} label={group}>
+                  {groupMethods.map((method) => (
+                    <option key={method.id} value={method.id}>
+                      {method.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))
+            ) : (
+              <option value={canonicalMethodId(d.methodPick ?? cycle.methodId)}>
+                {methodsStatus === "loading" ? "Loading procurement methods…" : "Method register unavailable"}
               </option>
-            ))}
+            )}
           </select>
-          {(d.methodPick ?? cycle.methodId ?? "open-bidding") !== "open-bidding" ? (
-            <>
-              <textarea
-                className={cn(inputCls, "h-16 py-2")}
-                placeholder="Why competition was restricted — at least 20 characters, naming the statutory ground"
-                value={d.methodJust ?? ""}
-                onChange={(e) => set("methodJust", e.target.value)}
-              />
+          {showMethodRecordGuidance ? (
+            <p id="cycle-method-selection-guidance" className="text-[11px] leading-relaxed text-ink-600 dark:text-ink-400">
+              <span className="font-semibold">Selected: {methodRecordSelection?.name}.</span> {methodRecordSelection?.when}
+            </p>
+          ) : null}
+          {methodsStatus !== "ready" ? (
+            <p role="status" className="text-[10.5px] leading-relaxed text-ink-500">
+              {methodsStatus === "loading"
+                ? "Loading the complete legal-method list."
+                : "The method register is unavailable; a procurement method cannot be recorded yet."}
+            </p>
+          ) : null}
+          {!isDefaultBiddingMethod(d.methodPick ?? cycle.methodId) ? (
+            <div className="grid gap-2.5 rounded-xl border border-ink-100 bg-paper/60 p-3 dark:border-white/[0.08] dark:bg-white/[0.02]">
+              <Field label="RESTRICTED METHOD JUSTIFICATION" hint="Required · minimum 20 characters · name the statutory ground">
+                <textarea
+                  className={cn(inputCls, "h-16 py-2")}
+                  placeholder="Explain why competition was restricted"
+                  value={d.methodJust ?? ""}
+                  aria-required="true"
+                  onChange={(e) => set("methodJust", e.target.value)}
+                />
+              </Field>
+              <Field label="AUTHORITY APPROVAL REFERENCE" hint="Required when the selected method or value band needs prior approval">
+                <input
+                  className={inputCls}
+                  placeholder="Enter the approval reference"
+                  value={d.methodRef ?? ""}
+                  onChange={(e) => set("methodRef", e.target.value)}
+                />
+              </Field>
+            </div>
+          ) : null}
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+            <Field label="ESTIMATED PROCUREMENT VALUE" hint="Optional · checked against the winning bid before award">
               <input
                 className={inputCls}
-                placeholder="Authority approval reference (ZPPA) — required above K1m for direct/limited"
-                value={d.methodRef ?? ""}
-                onChange={(e) => set("methodRef", e.target.value)}
+                type="number"
+                min="0"
+                step="0.01"
+                inputMode="decimal"
+                placeholder="Enter an amount"
+                value={d.methodValue ?? ""}
+                onChange={(e) => set("methodValue", e.target.value)}
               />
-            </>
-          ) : null}
-          <div className="grid grid-cols-[1fr_auto] gap-1.5">
-            <input
-              className={inputCls}
-              type="number"
-              placeholder="Estimated value (optional — the award re-checks the winning bid)"
-              value={d.methodValue ?? ""}
-              onChange={(e) => set("methodValue", e.target.value)}
-            />
-            <Btn variant="ghost" onClick={recordMethod} disabled={busy || !ref}>
-              <Scale className="h-3.5 w-3.5" aria-hidden="true" /> Record
+            </Field>
+            <Btn variant="ghost" onClick={recordMethod} disabled={busy || !ref || methodsStatus !== "ready"}>
+              <Scale className="h-3.5 w-3.5" aria-hidden="true" /> Record method
             </Btn>
           </div>
         </div>
@@ -5332,7 +5666,7 @@ export function CycleView({
           <div className="mb-3 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <Chip tone={cycle.assurance.status === "VERIFIED" ? "ok" : "warn"}>{cycle.assurance.status}</Chip>
-              <span className="font-code text-[9px] tracking-[0.12em] text-ink-500">
+              <span className="font-code text-[10px] tracking-[0.12em] text-ink-500">
                 {cycle.assurance.expectedSupplier.toUpperCase()}
               </span>
               {cycle.assurance.verification ? (
@@ -5341,9 +5675,8 @@ export function CycleView({
             </div>
             {cycle.assurance.verification ? (
               <>
-                <p className="font-code text-[8.5px] tracking-[0.12em] text-ink-400">
-                  CHECKED {fmtDate(cycle.assurance.verification.checkedAt)} BY{" "}
-                  {cycle.assurance.verification.checkedBy.toUpperCase()} · EXPIRES {fmtDate(cycle.assurance.verification.expiresAt)}
+                <p className="text-[10px] leading-relaxed text-ink-600">
+                  Checked {fmtDate(cycle.assurance.verification.checkedAt)} by {cycle.assurance.verification.checkedBy} · expires {fmtDate(cycle.assurance.verification.expiresAt)}
                 </p>
                 <ul className="space-y-1 text-[12px] text-ink-600">
                   <li>
@@ -5405,7 +5738,7 @@ export function CycleView({
               {cycle.awardReport.signedAt ? <Chip tone="ok">SIGNED BY {cycle.awardReport.signedBy?.toUpperCase()}</Chip> : <Chip tone="brand">AWAITING SIGNATURE GATE</Chip>}
               {cycle.awardReport.recommendation ? <Chip tone="muted">{cycle.awardReport.recommendation.toUpperCase()}</Chip> : null}
             </div>
-            <p className="font-code text-[8px] tracking-[0.14em] text-ink-400">SHA-256 {cycle.awardReport.sha}</p>
+            <p className="break-all font-mono text-[10px] leading-relaxed text-ink-600">SHA-256 · {cycle.awardReport.sha}</p>
             {!cycle.awardReport.signedAt ? (
               <Btn variant="ghost" onClick={draftAwardReport} disabled={busy || !ref}>
                 <FileSignature className="h-3.5 w-3.5" aria-hidden="true" /> Re-draft with current dispositions
@@ -5476,13 +5809,13 @@ export function CycleView({
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <Chip tone={cycle.standstill.status === "ACTIVE" ? "brand" : "muted"}>STANDSTILL {cycle.standstill.status}</Chip>
-              <span className="font-code text-[9px] tracking-[0.12em] text-ink-500">
+              <span className="font-code text-[10px] tracking-[0.12em] text-ink-500">
                 ENDS {fmtDate(cycle.standstill.endsAt)} · {cycle.standstill.days} WORKING DAYS
               </span>
             </div>
             {cycle.awardNotice?.publishedAt ? (
-              <p className="font-code text-[8.5px] tracking-[0.12em] text-ink-400">
-                PUBLISHED {fmtDate(cycle.awardNotice.publishedAt)} · {cycle.awardNotice.portal}
+              <p className="text-[10px] leading-relaxed text-ink-600">
+                Published {fmtDate(cycle.awardNotice.publishedAt)} · {cycle.awardNotice.portal}
               </p>
             ) : null}
             {cycle.standstill.status === "ACTIVE" ? (
@@ -5519,7 +5852,7 @@ export function CycleView({
             <Btn onClick={publishNotice} disabled={busy || !ref || !cycle.awardReport?.signedAt || !(d.awardDispatchRef ?? "").trim()}>
               <Stamp className="h-3.5 w-3.5" aria-hidden="true" /> Publish the notice of award
             </Btn>
-            {!cycle.awardReport?.signedAt ? <p className="font-code text-[8px] tracking-[0.14em] text-ink-400">AWAITING SIGNED AWARD REPORT</p> : null}
+            {!cycle.awardReport?.signedAt ? <p className="text-[10.5px] text-ink-600">Awaiting the signed award report.</p> : null}
           </div>
         )}
       </Card>
@@ -5537,11 +5870,11 @@ export function CycleView({
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2">
               <div className="rounded-xl border border-ink-100 bg-paper px-3 py-3">
-                <p className="font-code text-[8px] font-bold tracking-[0.16em] text-ink-400">WINDOW</p>
+                <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">Window</p>
                 <p className="mt-1.5 text-[15px] font-semibold text-ink-900">{cycle.standstill.days} working days</p>
               </div>
               <div className="rounded-xl border border-ink-100 bg-paper px-3 py-3">
-                <p className="font-code text-[8px] font-bold tracking-[0.16em] text-ink-400">ENDS</p>
+                <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">Ends</p>
                 <p className="mt-1.5 text-[15px] font-semibold text-ink-900">{fmtDate(cycle.standstill.endsAt)}</p>
               </div>
             </div>
@@ -5676,14 +6009,14 @@ export function CycleView({
           </ul>
           {cycle.contract.status !== "EXECUTED" && cycle.contract.status !== "COMPLETED" && !cycle.contract.completedAt ? (
             <div className="mt-3 space-y-2 rounded-xl border border-dashed border-ink-200 p-3">
-              <p className="font-code text-[8.5px] tracking-[0.14em] text-ink-400">EXECUTION — SUPPLIER ACCEPTANCE, BOND AND INSURANCE</p>
+              <p className="font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">Execution · supplier acceptance, bond, and insurance</p>
               <div className="grid gap-1.5 sm:grid-cols-3">
-                <input className={inputCls} type="number" placeholder="Security amount" value={d.secAmount ?? ""} onChange={(e) => set("secAmount", e.target.value)} />
-                <input className={inputCls} placeholder="Security issuer" value={d.secIssuer ?? ""} onChange={(e) => set("secIssuer", e.target.value)} />
-                <input className={inputCls} type="date" value={d.secValid ?? ""} onChange={(e) => set("secValid", e.target.value)} />
-                <input className={inputCls} placeholder="Insurance policy no." value={d.insPolicy ?? ""} onChange={(e) => set("insPolicy", e.target.value)} />
-                <input className={inputCls} placeholder="Insurer" value={d.insIssuer ?? ""} onChange={(e) => set("insIssuer", e.target.value)} />
-                <input className={inputCls} type="date" value={d.insValid ?? ""} onChange={(e) => set("insValid", e.target.value)} />
+                <input className={inputCls} aria-label="Performance security amount" type="number" placeholder="Security amount" value={d.secAmount ?? ""} onChange={(e) => set("secAmount", e.target.value)} />
+                <input className={inputCls} aria-label="Performance security issuer" placeholder="Security issuer" value={d.secIssuer ?? ""} onChange={(e) => set("secIssuer", e.target.value)} />
+                <input className={inputCls} aria-label="Performance security valid until" type="date" value={d.secValid ?? ""} onChange={(e) => set("secValid", e.target.value)} />
+                <input className={inputCls} aria-label="Insurance policy number" placeholder="Insurance policy no." value={d.insPolicy ?? ""} onChange={(e) => set("insPolicy", e.target.value)} />
+                <input className={inputCls} aria-label="Insurer name" placeholder="Insurer" value={d.insIssuer ?? ""} onChange={(e) => set("insIssuer", e.target.value)} />
+                <input className={inputCls} aria-label="Insurance valid until" type="date" value={d.insValid ?? ""} onChange={(e) => set("insValid", e.target.value)} />
               </div>
               <Btn variant="ghost" onClick={executeContract} disabled={busy || !d.secAmount || !d.secIssuer || !d.secValid || !d.insPolicy || !d.insIssuer || !d.insValid}>
                 <Stamp className="h-3.5 w-3.5" aria-hidden="true" /> Execute the contract (gate)
@@ -5712,8 +6045,8 @@ export function CycleView({
             {cycle.contract.milestones.length === 0 ? <li className="py-3 text-center text-[12px] text-ink-400">No milestones yet.</li> : null}
           </ul>
           <div className="mt-3 grid grid-cols-[2fr_1fr_auto] gap-1.5">
-            <input className={inputCls} placeholder="Milestone" value={d.milTitle ?? ""} onChange={(e) => set("milTitle", e.target.value)} />
-            <input className={inputCls} type="date" value={d.milDue ?? ""} onChange={(e) => set("milDue", e.target.value)} />
+            <input className={inputCls} aria-label="Milestone title" placeholder="Milestone" value={d.milTitle ?? ""} onChange={(e) => set("milTitle", e.target.value)} />
+            <input className={inputCls} aria-label="Milestone due date" type="date" value={d.milDue ?? ""} onChange={(e) => set("milDue", e.target.value)} />
             <Btn variant="ghost" onClick={addMilestone} disabled={busy || !d.milTitle}>
               <Plus className="h-3.5 w-3.5" aria-hidden="true" />
             </Btn>
@@ -5738,10 +6071,10 @@ export function CycleView({
             {cycle.contract.variations.length === 0 ? <li className="py-3 text-center text-[12px] text-ink-400">No variations.</li> : null}
           </ul>
           <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
-            <input className={inputCls} placeholder="Variation description" value={d.varDesc ?? ""} onChange={(e) => set("varDesc", e.target.value)} />
-            <input className={inputCls} type="number" placeholder="± value" value={d.varDelta ?? ""} onChange={(e) => set("varDelta", e.target.value)} />
-            <input className={inputCls} placeholder="Attorney-General legal advice reference" value={d.varAdvice ?? ""} onChange={(e) => set("varAdvice", e.target.value)} />
-            <input className={inputCls} placeholder="Approving authority reference" value={d.varApproval ?? ""} onChange={(e) => set("varApproval", e.target.value)} />
+            <input className={inputCls} aria-label="Variation description" placeholder="Variation description" value={d.varDesc ?? ""} onChange={(e) => set("varDesc", e.target.value)} />
+            <input className={inputCls} aria-label="Variation value change" type="number" placeholder="± value" value={d.varDelta ?? ""} onChange={(e) => set("varDelta", e.target.value)} />
+            <input className={inputCls} aria-label="Attorney-General legal advice reference" placeholder="Attorney-General legal advice reference" value={d.varAdvice ?? ""} onChange={(e) => set("varAdvice", e.target.value)} />
+            <input className={inputCls} aria-label="Variation approving authority reference" placeholder="Approving authority reference" value={d.varApproval ?? ""} onChange={(e) => set("varApproval", e.target.value)} />
             <div className="sm:col-span-2">
               <Btn variant="ghost" onClick={addVariation} disabled={busy || !d.varDesc || !d.varDelta || !d.varAdvice || !d.varApproval}>
               <Plus className="h-3.5 w-3.5" aria-hidden="true" />
@@ -5773,9 +6106,9 @@ export function CycleView({
                   </span>
                   {p.status === "CERTIFIED" || p.certifiedAt ? <Chip tone="ok">CERTIFIED</Chip> : <Chip tone="warn">AT GATE</Chip>}
                 </div>
-                <p className="font-code text-[8px] tracking-[0.12em] text-ink-400">
-                  {p.invoiceId ? `INVOICE ${p.invoiceId} · ` : ""}
-                  {p.milestoneId ? `MILESTONE ${p.milestoneId} · ` : ""}
+                <p className="text-[10px] leading-relaxed text-ink-600">
+                  {p.invoiceId ? `Invoice ${p.invoiceId} · ` : ""}
+                  {p.milestoneId ? `Milestone ${p.milestoneId} · ` : ""}
                   {p.goodsReceiptId ? `GRN ${p.goodsReceiptId}` : ""}
                 </p>
               </li>
@@ -5783,17 +6116,17 @@ export function CycleView({
             {cycle.contract.payments.length === 0 ? <li className="py-3 text-center text-[12px] text-ink-400">No payments raised.</li> : null}
           </ul>
           {cycle.contract.payments.length > 0 ? (
-            <p className="mt-2 font-code text-[8.5px] tracking-[0.12em] text-ink-400">
-              CUMULATIVE GROSS {fmtMoney(cycle.contract.payments.reduce((s, p) => s + (p.gross ?? p.amount), 0))} · NET{" "}
+            <p className="mt-2 text-[10px] leading-relaxed text-ink-600">
+              Cumulative gross {fmtMoney(cycle.contract.payments.reduce((s, p) => s + (p.gross ?? p.amount), 0))} · net{" "}
               {fmtMoney(cycle.contract.payments.reduce((s, p) => s + (p.net ?? p.amount), 0))} · RETENTION{" "}
               {fmtMoney(cycle.contract.payments.reduce((s, p) => s + (p.retention ?? 0), 0))} · CONTRACT {fmtMoney(cycle.contract.value)}
             </p>
           ) : null}
           <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
-            <input className={inputCls} placeholder="Payment description" value={d.payDesc ?? ""} onChange={(e) => set("payDesc", e.target.value)} />
-            <input className={inputCls} type="number" placeholder="Gross amount" value={d.payAmount ?? ""} onChange={(e) => set("payAmount", e.target.value)} />
-            <input className={inputCls} placeholder="Invoice no." value={d.payInvoice ?? ""} onChange={(e) => set("payInvoice", e.target.value)} />
-            <select className={inputCls} value={d.payMilestone ?? ""} onChange={(e) => set("payMilestone", e.target.value)}>
+            <input className={inputCls} aria-label="Payment description" placeholder="Payment description" value={d.payDesc ?? ""} onChange={(e) => set("payDesc", e.target.value)} />
+            <input className={inputCls} aria-label="Payment gross amount" type="number" placeholder="Gross amount" value={d.payAmount ?? ""} onChange={(e) => set("payAmount", e.target.value)} />
+            <input className={inputCls} aria-label="Invoice number" placeholder="Invoice no." value={d.payInvoice ?? ""} onChange={(e) => set("payInvoice", e.target.value)} />
+            <select className={inputCls} aria-label="Accepted milestone for payment" value={d.payMilestone ?? ""} onChange={(e) => set("payMilestone", e.target.value)}>
               <option value="">Accepted milestone…</option>
               {cycle.contract.milestones.map((m) => (
                 <option key={m.id} value={m.id} disabled={m.status !== "DONE"}>
@@ -5801,8 +6134,8 @@ export function CycleView({
                 </option>
               ))}
             </select>
-            <input className={inputCls} placeholder="Goods receipt (GRN)" value={d.payGrn ?? ""} onChange={(e) => set("payGrn", e.target.value)} />
-            <input className={inputCls} type="number" placeholder="Withholding" value={d.payWithholding ?? ""} onChange={(e) => set("payWithholding", e.target.value)} />
+            <input className={inputCls} aria-label="Goods receipt note number" placeholder="Goods receipt (GRN)" value={d.payGrn ?? ""} onChange={(e) => set("payGrn", e.target.value)} />
+            <input className={inputCls} aria-label="Payment withholding amount" type="number" placeholder="Withholding" value={d.payWithholding ?? ""} onChange={(e) => set("payWithholding", e.target.value)} />
             <Btn
               variant="ghost"
               onClick={addPayment}
@@ -5830,7 +6163,7 @@ export function CycleView({
               <div className="space-y-2">
                 {contract.security ? (
                   <div className="rounded-xl border border-ink-100 bg-paper px-3 py-2.5 text-[12px] dark:border-white/[0.08]">
-                    <p className="font-code text-[8px] font-bold tracking-[0.14em] text-ink-400">DECLARED AT EXECUTION</p>
+                    <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">Declared at execution</p>
                     <p className="mt-1 text-ink-700">
                       {fmtMoney(contract.security.amount)} · {contract.security.issuer || "issuer not stated"} · valid to {fmtDate(contract.security.validUntil)}
                     </p>
@@ -5857,14 +6190,15 @@ export function CycleView({
                         ) : (
                           <div className="flex items-end gap-1.5">
                             <input
-                              className={cn(inputCls, "h-8 w-36 text-[11.5px]")}
+                              className={cn(inputCls, "h-11 w-44 text-[12.5px]")}
+                              aria-label={`Officer verifying ${s.instrument.replace(/_/g, " ")} ${s.reference ?? ""}`}
                               placeholder="Verifying officer"
                               value={d[`sec-${s.id}-by`] ?? ""}
                               onChange={(e) => set(`sec-${s.id}-by`, e.target.value)}
                             />
                             <Btn
                               variant="ghost"
-                              className="h-8"
+                              className="h-11"
                               onClick={() =>
                                 act(
                                   `/api/tenders/${ref}/contract/security/${s.id}/verify`,
@@ -5879,9 +6213,9 @@ export function CycleView({
                           </div>
                         )}
                       </div>
-                      <p className="mt-1 font-code text-[8px] tracking-[0.12em] text-ink-400">
-                        RECEIVED {fmtDate(s.receivedAt)}
-                        {s.validUntil ? ` · VALID TO ${fmtDate(s.validUntil)}` : " · NO EXPIRY ON RECORD"}
+                      <p className="mt-1 text-[10.5px] leading-relaxed text-ink-600">
+                        Received {fmtDate(s.receivedAt)}
+                        {s.validUntil ? ` · Valid to ${fmtDate(s.validUntil)}` : " · No expiry on record"}
                       </p>
                     </li>
                   ))}
@@ -5964,7 +6298,7 @@ export function CycleView({
                   d.budgetLine === line.id ? "border-brand-400 bg-brand-50/50 dark:bg-brand-950/30" : "border-ink-100 bg-paper",
                 )}
               >
-                <button type="button" className="w-full text-left" onClick={() => set("budgetLine", line.id)}>
+                <button type="button" className="min-h-11 w-full text-left" onClick={() => set("budgetLine", line.id)}>
                   <span className="font-semibold text-ink-900">{line.code}</span>{" "}
                   <span className="text-ink-400">
                     {line.fiscalYear} · {line.currency} {fmtMoney(line.approved)} approved · {fmtMoney(line.committed)} committed
@@ -5975,10 +6309,10 @@ export function CycleView({
             {budgetLines.length === 0 ? <li className="py-3 text-center text-[12px] text-ink-400">No budget line yet.</li> : null}
           </ul>
           <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
-            <input className={inputCls} placeholder="Code (e.g. CAP-2026)" value={d.budCode ?? ""} onChange={(e) => set("budCode", e.target.value)} />
-            <input className={inputCls} type="number" placeholder="Approved amount" value={d.budApproved ?? ""} onChange={(e) => set("budApproved", e.target.value)} />
-            <input className={inputCls} type="number" placeholder="Fiscal year" value={d.budYear ?? ""} onChange={(e) => set("budYear", e.target.value)} />
-            <input className={inputCls} placeholder="Currency" value={d.budCurrency ?? ""} onChange={(e) => set("budCurrency", e.target.value)} />
+            <input className={inputCls} aria-label="Budget line code" placeholder="Code (e.g. CAP-2026)" value={d.budCode ?? ""} onChange={(e) => set("budCode", e.target.value)} />
+            <input className={inputCls} aria-label="Budget line approved amount" type="number" placeholder="Approved amount" value={d.budApproved ?? ""} onChange={(e) => set("budApproved", e.target.value)} />
+            <input className={inputCls} aria-label="Budget line fiscal year" type="number" placeholder="Fiscal year" value={d.budYear ?? ""} onChange={(e) => set("budYear", e.target.value)} />
+            <input className={inputCls} aria-label="Budget line currency" placeholder="Currency" value={d.budCurrency ?? ""} onChange={(e) => set("budCurrency", e.target.value)} />
             <Btn variant="ghost" onClick={createBudgetLine} disabled={busy || !d.budCode || !d.budApproved}>
               <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Add budget line
             </Btn>
@@ -5987,7 +6321,7 @@ export function CycleView({
 
         <Card title="Prepare the contract pack" sub="OPENS AFTER THE AWARD REPORT IS SIGNED AND THE STANDSTILL HAS LAPSED" workflow busy={busy} actionLabel="Prepare contract pack">
           <div className="mb-3 grid gap-1.5 sm:grid-cols-2">
-            <select className={inputCls} value={d.budgetLine ?? budgetLines[0]?.id ?? ""} onChange={(e) => set("budgetLine", e.target.value)}>
+            <select className={inputCls} aria-label="Budget line for contract commitment" value={d.budgetLine ?? budgetLines[0]?.id ?? ""} onChange={(e) => set("budgetLine", e.target.value)}>
               <option value="">Select a budget line…</option>
               {budgetLines.map((line) => (
                 <option key={line.id} value={line.id}>
@@ -5995,7 +6329,7 @@ export function CycleView({
                 </option>
               ))}
             </select>
-            <input className={inputCls} type="number" placeholder="Retention %" value={d.retentionPct ?? ""} onChange={(e) => set("retentionPct", e.target.value)} />
+            <input className={inputCls} aria-label="Contract retention percentage" type="number" placeholder="Retention %" value={d.retentionPct ?? ""} onChange={(e) => set("retentionPct", e.target.value)} />
           </div>
           <Btn onClick={preparePack} disabled={busy || !ref || !cycle.awardReport?.signedAt || !budgetLines.length || !(d.budgetLine || budgetLines[0]?.id)}>
             <FileSignature className="h-3.5 w-3.5" aria-hidden="true" /> Prepare the contract pack
@@ -6029,15 +6363,15 @@ export function CycleView({
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <Chip tone="ok">CYCLE CLOSED</Chip>
-              <span className="font-code text-[9px] font-bold tracking-[0.12em] text-ink-500">ACCEPTED {fmtDate(cycle.contract.completedAt)}</span>
+              <span className="font-code text-[10px] font-bold tracking-[0.12em] text-ink-500">ACCEPTED {fmtDate(cycle.contract.completedAt)}</span>
             </div>
             <dl className="grid gap-2 sm:grid-cols-2">
               <div className="rounded-xl border border-ink-100 bg-paper px-3 py-3">
-                <dt className="font-code text-[8px] font-bold tracking-[0.15em] text-ink-400">CERTIFICATE</dt>
+                <dt className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">Certificate</dt>
                 <dd className="mt-1.5 text-[13px] font-semibold text-ink-900">{cycle.contract.completion?.certificateId ?? "—"}</dd>
               </div>
               <div className="rounded-xl border border-ink-100 bg-paper px-3 py-3">
-                <dt className="font-code text-[8px] font-bold tracking-[0.15em] text-ink-400">PERFORMANCE RATING</dt>
+                <dt className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">Performance rating</dt>
                 <dd className="mt-1.5 text-[13px] font-semibold text-ink-900">{cycle.contract.completion?.performanceRating ?? "—"} / 5</dd>
               </div>
             </dl>
@@ -6049,12 +6383,13 @@ export function CycleView({
               Record acceptance after the contract work is complete. The action creates an approval gate; it does not close the cycle until that gate is approved.
             </p>
             <div className="grid gap-1.5 sm:grid-cols-3">
-              <input className={inputCls} placeholder="Certificate no." value={d.completeCert ?? ""} onChange={(e) => set("completeCert", e.target.value)} />
-              <input className={inputCls} type="date" value={d.completeDefects ?? ""} onChange={(e) => set("completeDefects", e.target.value)} />
-              <input className={inputCls} type="number" min={1} max={5} placeholder="Rating 1–5" value={d.completeRating ?? ""} onChange={(e) => set("completeRating", e.target.value)} />
+              <input className={inputCls} aria-label="Acceptance certificate number" placeholder="Certificate no." value={d.completeCert ?? ""} onChange={(e) => set("completeCert", e.target.value)} />
+              <input className={inputCls} aria-label="Defects liability end date" type="date" value={d.completeDefects ?? ""} onChange={(e) => set("completeDefects", e.target.value)} />
+              <input className={inputCls} aria-label="Supplier performance rating from 1 to 5" type="number" min={1} max={5} placeholder="Rating 1–5" value={d.completeRating ?? ""} onChange={(e) => set("completeRating", e.target.value)} />
             </div>
             <textarea
               className={cn(inputCls, "min-h-20 py-2")}
+              aria-label="Final acceptance note and outstanding observations"
               placeholder="Acceptance note and any remaining observations"
               value={d.completeNote ?? ""}
               onChange={(e) => set("completeNote", e.target.value)}
@@ -6128,10 +6463,10 @@ export function CycleView({
       >
         <div className="grid gap-2">
           <div className="grid gap-2 sm:grid-cols-2">
-            <input className={inputCls} placeholder="Complainant" value={d.cmpWho ?? ""} onChange={(e) => set("cmpWho", e.target.value)} />
-            <input className={inputCls} placeholder="Subject" value={d.cmpWhat ?? ""} onChange={(e) => set("cmpWhat", e.target.value)} />
+            <input className={inputCls} aria-label="Complaint filer" placeholder="Complainant" value={d.cmpWho ?? ""} onChange={(e) => set("cmpWho", e.target.value)} />
+            <input className={inputCls} aria-label="Complaint subject" placeholder="Subject" value={d.cmpWhat ?? ""} onChange={(e) => set("cmpWhat", e.target.value)} />
           </div>
-          <textarea className={cn(inputCls, "h-20 py-2")} placeholder="Grounds" value={d.cmpBody ?? ""} onChange={(e) => set("cmpBody", e.target.value)} />
+          <textarea className={cn(inputCls, "h-20 py-2")} aria-label="Complaint grounds as filed" placeholder="Grounds" value={d.cmpBody ?? ""} onChange={(e) => set("cmpBody", e.target.value)} />
           <Btn
             onClick={() =>
               act(`/api/tenders/${ref}/complaints`, { complainant: d.cmpWho, subject: d.cmpWhat, body: d.cmpBody }, "COMPLAINT LOGGED").then(
@@ -6157,7 +6492,7 @@ export function CycleView({
             : `${cycle.complaints.filter((c) => c.status === "OPEN").length} open · ${cycle.complaints.filter((c) => c.status === "ESCALATED").length} escalated · ${cycle.complaints.filter((c) => c.duringStandstill).length} filed inside the standstill window`
         }
       >
-        <dl className="mb-4 grid grid-cols-4 gap-px overflow-hidden rounded-[10px] border border-ink-100 bg-ink-100/70 dark:border-white/[0.07] dark:bg-white/[0.07]">
+        <dl className="mb-4 grid grid-cols-2 gap-px overflow-hidden rounded-[10px] border border-ink-100 bg-ink-100/70 dark:border-white/[0.07] dark:bg-white/[0.07] lg:grid-cols-4">
           {[
             { label: "LIVE", n: cycle.complaints.filter((c) => c.status === "OPEN" || c.status === "ESCALATED").length, alarm: true },
             { label: "ANSWERED", n: cycle.complaints.filter((c) => c.status === "ANSWERED").length },
@@ -6165,7 +6500,7 @@ export function CycleView({
             { label: "CLOSED", n: cycle.complaints.filter((c) => c.status === "CLOSED" || c.status === "WITHDRAWN").length },
           ].map((bucket) => (
             <div key={bucket.label} className="bg-[#fffefa] px-3 py-2.5 dark:bg-[#12141a]">
-              <dt className="eyebrow text-[7px] tracking-[0.16em]">{bucket.label}</dt>
+              <dt className="eyebrow text-[10px] tracking-[0.08em]">{bucket.label}</dt>
               <dd
                 className={cn(
                   "mt-1 font-display text-[17px] font-bold leading-none tabular",
@@ -6199,47 +6534,47 @@ export function CycleView({
                     </Chip>
                   </div>
                 </div>
-                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-code text-[8px] tracking-[0.08em] text-ink-400">
-                  <span>RECEIVED {fmtDateTime(c.receivedAt)}</span>
-                  {c.acknowledgedAt ? <span>ACKNOWLEDGED {fmtDateTime(c.acknowledgedAt)}</span> : null}
-                  <span className="break-all">REF {c.id}</span>
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] leading-relaxed text-ink-600">
+                  <span>Received {fmtDateTime(c.receivedAt)}</span>
+                  {c.acknowledgedAt ? <span>Acknowledged {fmtDateTime(c.acknowledgedAt)}</span> : null}
+                  <span className="break-all">Reference {c.id}</span>
                 </div>
                 <div className="mt-3 rounded-lg border border-ink-100 bg-paper/75 px-3 py-2.5 dark:border-white/[0.08] dark:bg-white/[0.02]">
-                  <p className="font-code text-[8px] font-bold tracking-[0.12em] text-ink-400">GROUNDS AS FILED</p>
+                  <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">Grounds as filed</p>
                   <p className="mt-1.5 whitespace-pre-wrap break-words text-[11.5px] leading-relaxed text-ink-700 dark:text-ink-200">{c.body || "No grounds were included in the record."}</p>
                 </div>
                 {c.response ? (
                   <div className="mt-2 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.035] px-3 py-2.5">
                     <div className="flex flex-wrap items-center justify-between gap-1.5">
-                      <p className="font-code text-[8px] font-bold tracking-[0.12em] text-emerald-800 dark:text-emerald-300">ISSUED RESPONSE</p>
-                      <span className="font-code text-[8px] tracking-[0.06em] text-ink-400">{c.response.by} · {fmtDateTime(c.response.at)}</span>
+                      <p className="font-code text-[10px] font-bold tracking-[0.08em] text-emerald-800 dark:text-emerald-300">Issued response</p>
+                      <span className="text-[10px] text-ink-600">{c.response.by} · {fmtDateTime(c.response.at)}</span>
                     </div>
                     <p className="mt-1.5 whitespace-pre-wrap break-words text-[11.5px] leading-relaxed text-ink-700 dark:text-ink-200">{c.response.md}</p>
-                    {c.response.gateId ? <p className="mt-1.5 font-code text-[8px] tracking-[0.08em] text-ink-400">APPROVAL GATE · {c.response.gateId}</p> : null}
+                    {c.response.gateId ? <p className="mt-1.5 text-[10px] text-ink-600">Approval gate · {c.response.gateId}</p> : null}
                   </div>
                 ) : null}
                 {c.escalationReason ? (
                   <div className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/[0.035] px-3 py-2.5">
-                    <p className="font-code text-[8px] font-bold tracking-[0.12em] text-amber-800 dark:text-amber-300">INDEPENDENT REVIEW REQUESTED{c.escalatedAt ? ` · ${fmtDateTime(c.escalatedAt)}` : ""}</p>
+                    <p className="font-code text-[10px] font-bold tracking-[0.06em] text-amber-900 dark:text-amber-200">Independent review requested{c.escalatedAt ? ` · ${fmtDateTime(c.escalatedAt)}` : ""}</p>
                     <p className="mt-1.5 whitespace-pre-wrap break-words text-[11.5px] leading-relaxed text-ink-700 dark:text-ink-200">{c.escalationReason}</p>
                   </div>
                 ) : null}
                 {c.independentReview ? (
                   <div className="mt-2 rounded-lg border border-ink-100 px-3 py-2.5 dark:border-white/[0.08]">
                     <div className="flex flex-wrap items-center justify-between gap-1.5">
-                      <p className="font-code text-[8px] font-bold tracking-[0.12em] text-ink-500">INDEPENDENT REVIEW · {c.independentReview.outcome}</p>
-                      <span className="font-code text-[8px] tracking-[0.06em] text-ink-400">{c.independentReview.reviewer} · {fmtDateTime(c.independentReview.at)}</span>
+                      <p className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-700">Independent review · {c.independentReview.outcome}</p>
+                      <span className="text-[10px] text-ink-600">{c.independentReview.reviewer} · {fmtDateTime(c.independentReview.at)}</span>
                     </div>
                     <p className="mt-1.5 whitespace-pre-wrap break-words text-[11.5px] leading-relaxed text-ink-700 dark:text-ink-200">{c.independentReview.note}</p>
                   </div>
                 ) : null}
                 {c.closedAt || c.closedBy ? (
-                  <p className="mt-2 font-code text-[8px] tracking-[0.08em] text-ink-400">CLOSED{c.closedBy ? ` BY ${c.closedBy}` : ""}{c.closedAt ? ` · ${fmtDateTime(c.closedAt)}` : ""}</p>
+                  <p className="mt-2 text-[10px] text-ink-600">Closed{c.closedBy ? ` by ${c.closedBy}` : ""}{c.closedAt ? ` · ${fmtDateTime(c.closedAt)}` : ""}</p>
                 ) : null}
                 {c.status === "OPEN" ? (
                   <div className="mt-2 space-y-1.5">
                     <div className="flex gap-1.5">
-                      <input className={inputCls} placeholder="Response draft" value={d[`cresp-${c.id}`] ?? ""} onChange={(e) => set(`cresp-${c.id}`, e.target.value)} />
+                      <input className={inputCls} aria-label={`Response draft for complaint ${c.id}`} placeholder="Response draft" value={d[`cresp-${c.id}`] ?? ""} onChange={(e) => set(`cresp-${c.id}`, e.target.value)} />
                       <Btn
                         variant="ghost"
                         onClick={() =>
@@ -6251,7 +6586,7 @@ export function CycleView({
                       </Btn>
                     </div>
                     <div className="flex gap-1.5">
-                      <input className={inputCls} placeholder="Escalation reason (independent review)" value={d[`cesc-${c.id}`] ?? ""} onChange={(e) => set(`cesc-${c.id}`, e.target.value)} />
+                      <input className={inputCls} aria-label={`Independent review escalation reason for complaint ${c.id}`} placeholder="Escalation reason (independent review)" value={d[`cesc-${c.id}`] ?? ""} onChange={(e) => set(`cesc-${c.id}`, e.target.value)} />
                       <Btn
                         variant="ghost"
                         onClick={() =>
@@ -6266,11 +6601,11 @@ export function CycleView({
                 ) : null}
                 {c.status === "ANSWERED" || c.status === "ESCALATED" ? (
                   <div className="mt-2 space-y-1.5 rounded-lg border border-dashed border-ink-200 p-2">
-                    <p className="font-code text-[8px] tracking-[0.12em] text-ink-400">CLOSE AFTER REVIEW — THE CONTRACT STAYS SUSPENDED UNTIL CLOSED</p>
+                    <p className="text-[10.5px] leading-relaxed text-ink-600">Close after review. The contract stays suspended until this complaint is closed.</p>
                     <div className="grid gap-1.5 sm:grid-cols-3">
-                      <input className={inputCls} placeholder="Outcome" value={d[`cout-${c.id}`] ?? ""} onChange={(e) => set(`cout-${c.id}`, e.target.value)} />
-                      <input className={inputCls} placeholder="Review reason" value={d[`cnote-${c.id}`] ?? ""} onChange={(e) => set(`cnote-${c.id}`, e.target.value)} />
-                      <input className={inputCls} placeholder="Reviewing officer" value={d[`crev-${c.id}`] ?? ""} onChange={(e) => set(`crev-${c.id}`, e.target.value)} />
+                      <input className={inputCls} aria-label={`Independent review outcome for complaint ${c.id}`} placeholder="Outcome" value={d[`cout-${c.id}`] ?? ""} onChange={(e) => set(`cout-${c.id}`, e.target.value)} />
+                      <input className={inputCls} aria-label={`Independent review reason for complaint ${c.id}`} placeholder="Review reason" value={d[`cnote-${c.id}`] ?? ""} onChange={(e) => set(`cnote-${c.id}`, e.target.value)} />
+                      <input className={inputCls} aria-label={`Reviewing officer for complaint ${c.id}`} placeholder="Reviewing officer" value={d[`crev-${c.id}`] ?? ""} onChange={(e) => set(`crev-${c.id}`, e.target.value)} />
                     </div>
                     <Btn
                       variant="ghost"
@@ -6345,23 +6680,23 @@ export function CycleView({
             </div>
 
             {selectedReportPeriod?.entries.length ? (
-              <div className="overflow-x-auto rounded-lg border border-ink-100 dark:border-white/[0.07]">
+              <HorizontalScrollRegion label="Quarterly report entries" className="rounded-lg border border-ink-100 dark:border-white/[0.07]">
                 <table className="w-full min-w-[650px] text-left text-[11px]">
-                  <thead className="bg-paper font-code text-[8px] uppercase tracking-[0.12em] text-ink-500 dark:bg-white/[0.03]">
+                  <thead className="bg-paper font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600 dark:bg-white/[0.03]">
                     <tr><th className="px-3 py-2">Date / tender</th><th className="px-3 py-2">Reportable event</th><th className="px-3 py-2">Supplier / reference</th><th className="px-3 py-2 text-right">Amount</th></tr>
                   </thead>
                   <tbody className="divide-y divide-ink-100 dark:divide-white/[0.06]">
                     {selectedReportPeriod.entries.map((entry) => (
                       <tr key={`${entry.tenderId}-${entry.type}-${entry.reference}`}>
-                        <td className="px-3 py-2.5"><span className="block font-semibold text-ink-800 dark:text-ink-100">{entry.tenderId}</span><span className="text-[9px] text-ink-500">{fmtDate(entry.date)}</span></td>
+                        <td className="px-3 py-2.5"><span className="block font-semibold text-ink-800 dark:text-ink-100">{tenderReferenceLabel(tenders.find((tender) => tender.ref === entry.tenderId))}</span><span className="block text-[10px] text-ink-500">{tenders.find((tender) => tender.ref === entry.tenderId)?.title ?? "Tender record"}</span><span className="text-[10px] text-ink-500">{fmtDate(entry.date)}</span></td>
                         <td className="px-3 py-2.5 text-ink-700 dark:text-ink-200">{entry.type === "VARIATION" ? "Approved contract variation" : `Preference award · ${entry.scheme ?? "scheme recorded"}`}</td>
-                        <td className="px-3 py-2.5 text-ink-600 dark:text-ink-300">{entry.supplier ?? entry.reference}<span className="block font-code text-[8px] text-ink-400">{entry.reference}</span></td>
+                        <td className="px-3 py-2.5 text-ink-600 dark:text-ink-300">{entry.supplier ?? entry.reference}<span className="block font-mono text-[10px] text-ink-500">{entry.reference}</span></td>
                         <td className="px-3 py-2.5 text-right tabular text-ink-700 dark:text-ink-200">{entry.amount === undefined ? "—" : `${entry.currency ?? ""} ${Number(entry.amount).toLocaleString()}`.trim()}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </HorizontalScrollRegion>
             ) : selectedReportPeriod ? (
               <p className="rounded-lg border border-ink-100 bg-paper px-3 py-3 text-[11.5px] text-ink-500 dark:border-white/[0.06] dark:bg-white/[0.02]">No approved variations or preference awards fell in this quarter. A nil return can still be submitted for the period.</p>
             ) : null}
@@ -6387,7 +6722,7 @@ export function CycleView({
                   </Field>
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-code text-[8px] tracking-[0.1em] text-ink-400">SNAPSHOT DIGEST · {selectedReportPeriod.digest.slice(0, 20)}</p>
+                  <p className="font-mono text-[10px] leading-relaxed text-ink-600">Snapshot digest · {selectedReportPeriod.digest.slice(0, 20)}</p>
                   <Btn onClick={() => act("/api/cycle/quarterly-reports", {
                     year: selectedReportPeriod.year,
                     quarter: selectedReportPeriod.quarter,
@@ -6414,7 +6749,7 @@ export function CycleView({
         sub="READ-SIDE ONLY — COMPUTED FROM THE APPEND-ONLY LOGS, ZERO NEW INSTRUMENTATION"
         right={
           analytics ? (
-            <span className="font-code text-[8px] font-bold tracking-[0.14em] text-ink-400">
+            <span className="text-[10px] font-semibold text-ink-600">
               {fmtNum(analytics.tendersInCycle ?? 0)} TENDER{Number(analytics.tendersInCycle ?? 0) === 1 ? "" : "S"} IN CYCLE
             </span>
           ) : null
@@ -6445,7 +6780,7 @@ export function CycleView({
                 ] as { k: string; label: string; hint?: string; accent?: boolean }[]
               ).map((m) => (
                 <div key={m.k} className="bg-[#fffefa] px-4 py-3.5 dark:bg-[#12141a]">
-                  <dt className="eyebrow text-[8px] tracking-[0.2em]">{m.label}</dt>
+                  <dt className="eyebrow text-[10px] tracking-[0.08em]">{m.label}</dt>
                   <dd
                     className={cn(
                       "mt-2 font-display text-[26px] font-black leading-none tracking-[-0.02em] tabular",
@@ -6454,7 +6789,7 @@ export function CycleView({
                   >
                     {fmtNum(analytics[m.k] ?? 0)}
                   </dd>
-                  <p className="mt-1.5 font-code text-[7.5px] tracking-[0.12em] text-ink-400">{m.hint}</p>
+                  <p className="mt-1.5 text-[10px] leading-relaxed text-ink-600">{m.hint}</p>
                 </div>
               ))}
             </dl>
@@ -6465,13 +6800,13 @@ export function CycleView({
             {cycles.length ? (
               <div className="rounded-[10px] border border-ink-100 px-4 pb-3 pt-3.5 dark:border-white/[0.07]">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="eyebrow text-[8px] tracking-[0.2em]">Where the desk stands</p>
-                  <span className="font-code text-[8px] font-bold tracking-[0.14em] text-ink-400">
+                  <p className="eyebrow text-[10px] tracking-[0.08em]">Where the desk stands</p>
+                  <span className="text-[10px] font-semibold text-ink-600">
                     {cycles.length} CYCLE {cycles.length === 1 ? "RECORD" : "RECORDS"} ON FILE
                   </span>
                 </div>
                 <div
-                  className="mt-3 grid grid-cols-7 gap-1.5 sm:gap-2"
+                  className="mt-3 space-y-2"
                   role="img"
                   aria-label={
                     `Tenders by current stage: ` +
@@ -6481,37 +6816,26 @@ export function CycleView({
                   {stageDist.map((n, i) => (
                     <div
                       key={stageLabels[i]}
-                      className="flex min-w-0 flex-col items-center"
+                      className="grid grid-cols-[minmax(92px,0.8fr)_minmax(0,2fr)_2.5rem] items-center gap-2.5"
                       title={`${n} tender${n === 1 ? "" : "s"} at ${stageLabels[i]}`}
                     >
-                      <span
-                        className={cn(
-                          "font-display text-[15px] font-black leading-none tabular tracking-[-0.02em]",
-                          n > 0 ? "text-ink-950 dark:text-white" : "text-ink-300 dark:text-ink-600",
-                        )}
-                      >
-                        {n}
+                      <span className="truncate text-[10.5px] font-medium text-ink-700 dark:text-ink-200">
+                        {stageLabels[i]}
                       </span>
-                      <span
-                        className="mt-1.5 flex h-12 w-full items-end justify-center border-b border-ink-100 dark:border-white/[0.08]"
-                        aria-hidden="true"
-                      >
+                      <span className="h-2 overflow-hidden rounded-full bg-ink-100 dark:bg-white/[0.08]" aria-hidden="true">
                         <span
-                          className={cn(
-                            "w-full max-w-[26px] rounded-t-[3px] transition-[height] duration-500",
-                            n > 0 ? "bg-brand-500/85 dark:bg-brand-400/80" : "bg-transparent",
-                          )}
-                          style={{ height: n > 0 ? `${Math.max((n / stageDistMax) * 100, 10)}%` : "0%" }}
+                          className="block h-full rounded-full bg-brand-500/90 transition-[width] duration-500 dark:bg-brand-400"
+                          style={{ width: n > 0 ? `${Math.max((n / stageDistMax) * 100, 4)}%` : "0%" }}
                         />
                       </span>
-                      <span className="mt-1.5 w-full truncate text-center font-code text-[6.5px] font-bold tracking-[0.08em] text-ink-400">
-                        {stageLabels[i].toUpperCase()}
+                      <span className="text-right font-code text-[10px] font-bold tabular text-ink-700 dark:text-ink-200">
+                        {n}
                       </span>
                     </div>
                   ))}
                 </div>
-                <p className="mt-2.5 font-code text-[7.5px] tracking-[0.14em] text-ink-400">
-                  COUNTED AT THE STAGE EACH RECORD HAS REACHED — CLOSED CYCLES SIT AT CLOSURE
+                <p className="mt-3 text-[10.5px] leading-relaxed text-ink-600">
+                  Counts show the stage each record has reached. Closed cycles remain under closure.
                 </p>
               </div>
             ) : null}
@@ -6535,14 +6859,14 @@ export function CycleView({
                       : "border-emerald-500/25 bg-emerald-500/[0.05] dark:border-emerald-400/25",
                   )}
                 >
-                  <p className={cn("eyebrow text-[8px] tracking-[0.2em]", raised.length ? "text-brand-700 dark:text-brand-300" : "text-emerald-700 dark:text-emerald-300")}>
+                  <p className={cn("eyebrow text-[10px] tracking-[0.08em]", raised.length ? "text-brand-800 dark:text-brand-300" : "text-emerald-800 dark:text-emerald-300")}>
                     {raised.length ? "NEEDS ATTENTION" : "ALL CLEAR"}
                   </p>
                   {raised.length ? (
                     <ul className="mt-2.5 space-y-1.5">
                       {raised.map((w) => (
                         <li key={w.label} className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                          <span className="inline-grid h-4.5 min-w-4.5 place-items-center rounded-full bg-brand-600 px-1 font-code text-[8.5px] font-black tabular text-white dark:bg-brand-500">
+                          <span className="inline-grid h-5 min-w-5 place-items-center rounded-full bg-brand-600 px-1 font-code text-[10px] font-black tabular text-white dark:bg-brand-500">
                             {w.count}
                           </span>
                           <span className="text-[12px] font-medium text-ink-800 dark:text-ink-100">{w.label}</span>
@@ -6551,7 +6875,7 @@ export function CycleView({
                             onClick={() => {
                               selectTab(w.tab);
                             }}
-                            className="focus-brand inline-flex items-center gap-1 rounded font-code text-[8px] font-bold tracking-[0.14em] text-brand-700 underline decoration-brand-500/40 underline-offset-4 transition-colors hover:decoration-brand-500 dark:text-brand-300"
+                            className="focus-brand inline-flex min-h-11 items-center gap-1 rounded font-code text-[10px] font-bold tracking-[0.06em] text-brand-800 underline decoration-brand-500/40 underline-offset-4 transition-colors hover:decoration-brand-500 dark:text-brand-300"
                           >
                             OPEN {w.tabLabel}
                             <ArrowRight className="h-2.5 w-2.5" aria-hidden="true" />
@@ -6580,7 +6904,7 @@ export function CycleView({
                 ] as { k: string; label: string }[]
               ).map((m) => (
                 <div key={m.k} className="bg-[#fffefa] px-3.5 py-3 dark:bg-[#12141a]">
-                  <dt className="eyebrow text-[7.5px] tracking-[0.18em]">{m.label}</dt>
+                  <dt className="eyebrow text-[10px] tracking-[0.08em]">{m.label}</dt>
                   <dd className="mt-1.5 font-display text-[19px] font-bold leading-none tracking-[-0.02em] tabular text-ink-900 dark:text-white">
                     {fmtNum(analytics[m.k] ?? 0)}
                   </dd>
@@ -6592,7 +6916,7 @@ export function CycleView({
       </Card>
       <Card
         title="Stored tender documents"
-        sub={ref ? `${ref} · STORAGE, STAGING AND AUDIT STATUS` : "SELECT A TENDER TO BROWSE ITS DOCUMENTS"}
+        sub={ref ? `${currentReferenceLabel} · STORAGE, STAGING AND AUDIT STATUS` : "SELECT A TENDER TO BROWSE ITS DOCUMENTS"}
         workflow
         busy={busy}
         actionLabel="Manage stored documents"
@@ -6606,7 +6930,7 @@ export function CycleView({
       <Card title="Consolidated procurement file" sub="ONE BUNDLE FOR THE AUDITORS — EVERY ARTIFACT, HASH AND SIGNATURE, WITH THE LOG-CHAIN VERDICT">
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink-100 bg-paper px-4 py-3.5">
           <div className="min-w-0">
-            <p className="text-[12.5px] font-semibold text-ink-900">{ref || "Select a tender"}</p>
+            <p className="text-[12.5px] font-semibold text-ink-900">{ref ? currentReferenceLabel : "Select a tender"}</p>
             <p className="text-[11px] text-ink-400">Composes live from the append-only log — the auditors' single entry point.</p>
           </div>
           <a
@@ -6614,7 +6938,7 @@ export function CycleView({
             target="_blank"
             rel="noreferrer"
             className={cn(
-              "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3.5 text-[12.5px] font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-950/20 active:scale-[0.98]",
+              "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-3.5 text-[12.5px] font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-950/20 active:scale-[0.98]",
               ref ? "bg-brand-600 text-white shadow-sm hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-400" : "pointer-events-none bg-ink-100 text-ink-400",
             )}
           >
@@ -6639,6 +6963,11 @@ export function CycleView({
     tab === "deadlines" || tab === "complaints" || tab === "analytics" || tab === "reporting" ? DESK_TOOL_BRIEFS[tab] : null;
   return (
     <section id="mc-cycle" aria-labelledby="mc-cycle-h" className="scroll-mt-24">
+      <p className="sr-only" role="status" aria-atomic="true">
+        {activeStage
+          ? `Tender Cycle, stage ${stageIndex + 1} of ${STAGE_TABS.length}: ${activeStage.label}.${activeStageRecord?.held ? " Awaiting a human decision." : activeStageRecord?.state === "done" ? " Complete." : ""}`
+          : `Tender Cycle desk tool: ${UTILITY_TABS.find((item) => item.id === tab)?.label ?? "selected"}.`}
+      </p>
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
@@ -6701,11 +7030,11 @@ export function CycleView({
               {activeStage ? (
                 <header className="mb-5 flex flex-wrap items-end justify-between gap-3 border-b border-ink-200/70 pb-4 dark:border-white/[0.08]">
                   <div className="min-w-0">
-                    <p className="font-code text-[8px] font-bold tracking-[0.18em] text-brand-600 dark:text-brand-300">
+                    <p aria-current="step" className="font-code text-[10.5px] font-bold tracking-[0.12em] text-brand-600 dark:text-brand-300">
                       STAGE {String(stageIndex + 1).padStart(2, "0")} / {String(STAGE_TABS.length).padStart(2, "0")}
                     </p>
                     <h3 className="mt-1 font-display text-[20px] font-bold tracking-[-0.025em] text-ink-950 dark:text-white">{activeStage.label}</h3>
-                    <p className="mt-1 max-w-[70ch] text-[11.5px] leading-relaxed text-ink-500">{STAGE_INTROS[activeStage.id]}</p>
+                    <p className="mt-1 max-w-[70ch] text-[12.5px] leading-relaxed text-ink-600 dark:text-ink-300">{STAGE_INTROS[activeStage.id]}</p>
                   </div>
                   {cycle && activeStageRecord ? <Chip tone={activeStageRecord.state === "done" ? "ok" : activeStageRecord.held ? "warn" : "muted"}>
                     {activeStageRecord.state === "done"
@@ -6719,7 +7048,7 @@ export function CycleView({
                 </header>
               ) : (
                 <header className="mb-5 border-b border-ink-200/70 pb-4 dark:border-white/[0.08]">
-                  <p className="font-code text-[8px] font-bold tracking-[0.18em] text-brand-600 dark:text-brand-300">TENDER CYCLE · DESK TOOLS</p>
+                  <p className="font-code text-[10.5px] font-bold tracking-[0.12em] text-brand-600 dark:text-brand-300">TENDER CYCLE · DESK TOOLS</p>
                   <h3 className="mt-1 font-display text-[20px] font-bold tracking-[-0.025em] text-ink-950 dark:text-white">
                     {UTILITY_TABS.find((item) => item.id === tab)?.label}
                   </h3>
@@ -6749,8 +7078,8 @@ export function CycleView({
                 >
                   <div className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_minmax(250px,0.72fr)] lg:gap-8">
                     <div>
-                      <p className="font-code text-[8px] font-bold tracking-[0.16em] text-brand-600 dark:text-brand-300">
-                        {ref ? `NO CYCLE RECORD · ${ref}` : "SELECT A TENDER TO VIEW ITS RECORD"}
+                      <p className="font-code text-[10.5px] font-bold tracking-[0.1em] text-brand-600 dark:text-brand-300">
+                        {ref ? `NO CYCLE RECORD · ${currentReferenceLabel}` : "SELECT A TENDER TO VIEW ITS RECORD"}
                       </p>
                       <h3 id="cycle-empty-guide-title" className="mt-2 font-display text-[19px] font-bold tracking-[-0.025em] text-ink-950 dark:text-white">
                         {emptyGuide.title}
@@ -6760,7 +7089,7 @@ export function CycleView({
                         <button
                           type="button"
                           onClick={() => selectTab("solicitation")}
-                          className="focus-brand inline-flex h-9 items-center gap-2 rounded-lg bg-brand-600 px-3.5 text-[11.5px] font-semibold text-white transition-colors hover:bg-brand-500"
+                          className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg bg-brand-600 px-3.5 text-[12px] font-semibold text-white transition-colors hover:bg-brand-500"
                         >
                           <Plus className="h-3.5 w-3.5" aria-hidden="true" />
                           {ref ? "Open Solicitation" : "Plan a tender"}
@@ -6772,7 +7101,7 @@ export function CycleView({
                               const next = tenders.find((t) => cycles.some((c) => c.tenderId === t.ref))?.ref ?? tenders[0]?.ref;
                               if (next) setRef(next);
                             }}
-                            className="focus-brand inline-flex h-9 items-center gap-2 rounded-lg border border-ink-200 bg-paper px-3.5 text-[11.5px] font-semibold text-ink-700 transition-colors hover:border-ink-400 dark:border-white/[0.12] dark:bg-white/[0.04] dark:text-ink-300 dark:hover:border-white/25 dark:hover:text-white"
+                            className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg border border-ink-200 bg-paper px-3.5 text-[12px] font-semibold text-ink-700 transition-colors hover:border-ink-400 dark:border-white/[0.12] dark:bg-white/[0.04] dark:text-ink-300 dark:hover:border-white/25 dark:hover:text-white"
                           >
                             <Search className="h-3.5 w-3.5" aria-hidden="true" />
                             View a recorded tender
@@ -6781,11 +7110,11 @@ export function CycleView({
                       </div>
                     </div>
                     <div className="rounded-xl border border-ink-100 bg-paper/80 p-3.5 dark:border-white/[0.08] dark:bg-white/[0.025]">
-                      <p className="font-code text-[8px] font-bold tracking-[0.14em] text-ink-400">THIS PAGE BRINGS TOGETHER</p>
+                      <p className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-600 dark:text-ink-300">This page brings together</p>
                       <ul className="mt-2.5 space-y-2">
                         {emptyGuide.records.map((record, index) => (
-                          <li key={record} className="flex items-start gap-2.5 text-[11px] leading-relaxed text-ink-700 dark:text-ink-300">
-                            <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border border-ink-200 font-code text-[8px] text-ink-500 dark:border-white/[0.12] dark:text-ink-400">
+                          <li key={record} className="flex items-start gap-2.5 text-[12px] leading-relaxed text-ink-700 dark:text-ink-300">
+                            <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border border-ink-200 font-code text-[10px] text-ink-600 dark:border-white/[0.12] dark:text-ink-300">
                               {String(index + 1).padStart(2, "0")}
                             </span>
                             {record}
@@ -6803,22 +7132,44 @@ export function CycleView({
                     type="button"
                     onClick={() => previousStage && selectTab(previousStage.id)}
                     disabled={!previousStage}
-                    className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-ink-200 bg-paper px-3.5 text-[11.5px] font-semibold text-ink-700 transition-colors hover:border-ink-400 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/[0.12] dark:bg-white/[0.03] dark:text-ink-300 dark:hover:border-white/25 dark:hover:text-white"
+                    className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg border border-ink-200 bg-paper px-3.5 text-[12px] font-semibold text-ink-700 transition-colors hover:border-ink-400 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/[0.12] dark:bg-white/[0.03] dark:text-ink-300 dark:hover:border-white/25 dark:hover:text-white"
                   >
                     <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                     {previousStage ? `Previous: ${previousStage.label}` : "First stage"}
                   </button>
-                  <span className="font-code text-[8px] font-bold tracking-[0.15em] text-ink-400">
-                    PAGE {String(stageIndex + 1).padStart(2, "0")} OF {String(STAGE_TABS.length).padStart(2, "0")}
+                  <span className="font-code text-[10.5px] font-bold tracking-[0.1em] text-ink-600 dark:text-ink-300">
+                    Page {String(stageIndex + 1).padStart(2, "0")} of {String(STAGE_TABS.length).padStart(2, "0")}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => selectTab((nextStage ?? STAGE_TABS[0]).id)}
-                    className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-brand-600 px-4 text-[11.5px] font-semibold text-white shadow-[0_8px_18px_-12px_rgba(217,38,22,0.8)] transition-colors hover:bg-brand-500"
-                  >
-                    {nextStage ? `Next: ${nextStage.label}` : "Return to Solicitation"}
-                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {activeStage.id === "solicitation" ? (
+                      <button
+                        type="button"
+                        onClick={() => currentNotice && void publishTenderNotice(currentNotice.id)}
+                        disabled={busy || !currentNotice || !!currentNotice.issuedAt || noticeMissing.length > 0 || !noticeCriteriaValid}
+                        title={
+                          currentNotice?.issuedAt
+                            ? "The notice is already published — registered suppliers can read it."
+                            : !currentNotice
+                              ? "Draft the tender notice before publishing."
+                              : noticeMissing.length > 0 || !noticeCriteriaValid
+                                ? "Complete the notice's mandatory fields and evaluation criteria before publishing."
+                                : "Publish the notice to registered suppliers — the procurement unit signs the gate."
+                        }
+                        className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg bg-brand-600 px-4 text-[12px] font-semibold text-white shadow-[0_8px_18px_-12px_rgba(217,38,22,0.8)] transition-colors hover:bg-brand-500 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Stamp className="h-4 w-4" aria-hidden="true" />
+                        Publish
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => selectTab((nextStage ?? STAGE_TABS[0]).id)}
+                      className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg bg-brand-600 px-4 text-[12px] font-semibold text-white shadow-[0_8px_18px_-12px_rgba(217,38,22,0.8)] transition-colors hover:bg-brand-500"
+                    >
+                      {nextStage ? `Next: ${nextStage.label}` : "Return to Solicitation"}
+                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </div>
                 </nav>
               ) : null}
             </motion.div>
@@ -6826,682 +7177,6 @@ export function CycleView({
         </div>
       </motion.div>
     </section>
-  );
-}
-
-/* ── Plan a tender — one question at a time ──────────────────────────────────
-   The same intake shape as the supplier register: a section, a progress meter,
-   one question, one control. The notice is an optional first step; every
-   answer after it can be skipped and revisited from the review. */
-
-type PlanStepKey = "notice" | "title" | "office" | "publication" | "budget" | "review";
-
-const PLAN_STEPS: {
-  key: PlanStepKey;
-  section: string;
-  prompt: string;
-  hint: string;
-  required?: boolean;
-}[] = [
-  {
-    key: "notice",
-    section: "HEAD START",
-    prompt: "Start from the tender notice?",
-    hint: "Optional. Choose the notice and Quorum reads it, then fills the answers for you to check. Nothing is filed yet.",
-  },
-  {
-    key: "title",
-    section: "THE PACK",
-    prompt: "What is this tender called?",
-    hint: "The title the market will see. This is the only required answer.",
-    required: true,
-  },
-  {
-    key: "office",
-    section: "ACCOUNTABILITY",
-    prompt: "Which office owns this pack?",
-    hint: "The desk accountable for the record — skip if it is not settled yet.",
-  },
-  {
-    key: "publication",
-    section: "TIMING",
-    prompt: "When do you expect to publish?",
-    hint: "Optional. The date you expect the pack to reach the market — it shows on the pipeline entry.",
-  },
-  {
-    key: "budget",
-    section: "BUDGET",
-    prompt: "What is the budget estimate?",
-    hint: "Optional. Leave it blank until the figure is settled.",
-  },
-  {
-    key: "review",
-    section: "REVIEW",
-    prompt: "Ready to stage this tender?",
-    hint: "Check the answers. The reference is issued only when you create the record.",
-  },
-];
-
-type NoticeField = {
-  key: string;
-  label: string;
-  value: string | null;
-  applyValue?: string | null;
-  confidence: number;
-  evidence: string | null;
-};
-
-type PlanTenderIntakeProps = {
-  d: Record<string, string>;
-  set: (key: string, value: string) => void;
-  autoRef: string;
-  refLoading: boolean;
-  busy: boolean;
-  noticeFile: File | null;
-  onPickNotice: (file: File) => void;
-  noticeAnalysis: NoticeAnalysisState;
-  noticeUploadMessage: string;
-  metaConsent: boolean;
-  onMetaConsent: (value: boolean) => void;
-  pendingUploadRef: string;
-  onApplyExtracted: (key: string, value: string) => void;
-  onCreate: () => Promise<boolean>;
-  onCreated: () => void;
-};
-
-function PlanTenderIntake({
-  d,
-  set,
-  autoRef,
-  refLoading,
-  busy,
-  noticeFile,
-  onPickNotice,
-  noticeAnalysis,
-  noticeUploadMessage,
-  metaConsent,
-  onMetaConsent,
-  pendingUploadRef,
-  onApplyExtracted,
-  onCreate,
-  onCreated,
-}: PlanTenderIntakeProps) {
-  /* A failed notice upload lands directly on the retry — the record already
-     exists, so the review is the only useful next screen. */
-  const [step, setStep] = useState(() => (pendingUploadRef ? PLAN_STEPS.length - 1 : 0));
-  const [error, setError] = useState("");
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const current = PLAN_STEPS[step];
-  const last = PLAN_STEPS.length - 1;
-  const title = (d.pipeTitle ?? "").trim();
-  const analyzing = noticeAnalysis.status === "analyzing";
-  const extracted = noticeAnalysis.fields;
-
-  const extractedFields: NoticeField[] = extracted
-    ? [
-        { key: "pipeTitle", label: "Tender title", value: extracted.title.value, confidence: extracted.title.confidence, evidence: extracted.title.evidence },
-        { key: "pipeOffice", label: "Responsible office", value: extracted.responsibleOffice.value ? OFFICE_LABELS[extracted.responsibleOffice.value] : null, applyValue: extracted.responsibleOffice.value, confidence: extracted.responsibleOffice.confidence, evidence: extracted.responsibleOffice.evidence },
-        { key: "pipePub", label: "Publication date", value: extracted.publicationDate.value, confidence: extracted.publicationDate.confidence, evidence: extracted.publicationDate.evidence },
-        { key: "pipeEst", label: "Budget estimate", value: extracted.budgetEstimate.value === null ? null : fmtMoney(extracted.budgetEstimate.value), applyValue: extracted.budgetEstimate.value === null ? null : String(extracted.budgetEstimate.value), confidence: extracted.budgetEstimate.confidence, evidence: extracted.budgetEstimate.evidence },
-        { key: "pipeCur", label: "Currency", value: extracted.currency.value, confidence: extracted.currency.confidence, evidence: extracted.currency.evidence },
-      ]
-    : [];
-
-  const notes = extracted ? extracted.warnings.length + (noticeAnalysis.extractionNote ? 1 : 0) : 0;
-  const titleFromNotice = !!extracted?.title.value && extracted.title.value === d.pipeTitle;
-  const budget = d.pipeEst && Number.isFinite(Number(d.pipeEst)) ? Number(d.pipeEst) : null;
-
-  /* Each answer is the screen's whole focus: move the eye to the top of the
-     question, then put the caret in the one control that answers it. */
-  useEffect(() => {
-    /* Wait out the 180ms step transition — the next question owns focus. */
-    const timer = window.setTimeout(() => {
-      const body = rootRef.current?.closest<HTMLElement>("[data-cycle-workflow-body]");
-      body?.scrollTo?.({ top: 0, behavior: "smooth" });
-      rootRef.current?.querySelector<HTMLElement>("[data-plan-focus]")?.focus({ preventScroll: true });
-    }, 220);
-    return () => window.clearTimeout(timer);
-  }, [step]);
-
-  const go = (next: number) => {
-    setError("");
-    setStep(Math.max(0, Math.min(next, last)));
-  };
-
-  const advance = () => {
-    if (current.key === "title" && !title) {
-      setError("Give the tender a title to continue.");
-      return;
-    }
-    setError("");
-    setStep((s) => Math.min(s + 1, last));
-  };
-
-  const submit = async () => {
-    if (!title) {
-      setError("Give the tender a title before staging it.");
-      setStep(1);
-      return;
-    }
-    setError("");
-    const created = await onCreate();
-    if (created) onCreated();
-  };
-
-  const onFieldKeyDown = (event: React.KeyboardEvent<HTMLInputElement | HTMLSelectElement>) => {
-    if (event.key !== "Enter") return;
-    event.preventDefault();
-    advance();
-  };
-
-  const rows: { label: string; value: string; step: number | null }[] = [
-    { label: "Title", value: title || "—", step: 1 },
-    { label: "Office", value: d.pipeOffice ? OFFICE_LABELS[d.pipeOffice] ?? d.pipeOffice : "Not set", step: 2 },
-    { label: "Publication", value: d.pipePub ? fmtDate(d.pipePub) : "Not set", step: 3 },
-    { label: "Budget", value: budget !== null ? `${d.pipeCur || "No currency"} ${fmtMoney(budget)}` : "Not set", step: 4 },
-    { label: "Notice", value: noticeFile ? noticeFile.name : "None attached", step: 0 },
-    { label: "Reference", value: refLoading ? "Issuing…" : autoRef || "Issued on save", step: null },
-  ];
-
-  const renderStep = () => {
-    if (current.key === "notice") {
-      return (
-        <div className="space-y-3">
-          <div className="rounded-[10px] border border-ink-100 bg-paper/60 p-4 dark:border-white/[0.07] dark:bg-white/[0.02]">
-            <label className="flex cursor-pointer items-start gap-2.5 text-[11.5px] leading-relaxed text-ink-600 dark:text-ink-300">
-              <input
-                type="checkbox"
-                checked={metaConsent}
-                onChange={(event) => onMetaConsent(event.target.checked)}
-                data-plan-focus=""
-                className="mt-0.5 h-4 w-4 shrink-0 accent-[#d92616]"
-              />
-              <span>
-                I authorize the notice&apos;s extracted text to be sent to Meta AI for analysis. The original file is not
-                sent by this step.
-              </span>
-            </label>
-
-            <label
-              className={cn(
-                "mt-3 inline-flex min-h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-ink-200 bg-white px-3 text-[12px] font-semibold text-ink-700 transition-colors hover:border-brand-400 hover:text-brand-700 dark:border-white/15 dark:bg-white/[0.04] dark:text-ink-200 dark:hover:border-brand-400",
-                analyzing && "pointer-events-none opacity-60",
-              )}
-            >
-              {analyzing ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Upload className="h-4 w-4" aria-hidden="true" />
-              )}
-              {analyzing ? "Reading the notice…" : noticeFile ? "Choose a different notice" : "Choose notice document"}
-              <input
-                type="file"
-                accept=".pdf,.docx,.xlsx,.txt,.md,.csv,.eml"
-                className="sr-only"
-                disabled={analyzing}
-                onChange={(event) => {
-                  const file = event.currentTarget.files?.[0];
-                  event.currentTarget.value = "";
-                  if (file) onPickNotice(file);
-                }}
-              />
-            </label>
-
-            {noticeFile && !noticeUploadMessage ? (
-              <p
-                role="status"
-                className="mt-2 rounded-lg border border-ink-200/70 bg-white/70 px-3 py-2 text-[10.5px] leading-relaxed text-ink-600 dark:border-white/10 dark:bg-black/10 dark:text-ink-300"
-              >
-                <span className="font-semibold">{noticeFile.name}</span> attaches when you create the record.
-              </p>
-            ) : null}
-            {noticeUploadMessage ? (
-              <p
-                role="alert"
-                className="mt-2 flex items-start gap-2 rounded-lg border border-brand-300/70 bg-brand-50 px-3 py-2 text-[11px] leading-relaxed text-brand-800 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-brand-200"
-              >
-                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                <span>{noticeUploadMessage}</span>
-              </p>
-            ) : null}
-            {noticeAnalysis.error ? (
-              <div
-                role="alert"
-                className="mt-2 flex items-start gap-2 rounded-lg border border-brand-300/70 bg-brand-50 px-3 py-2 text-[11px] leading-relaxed text-brand-800 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-brand-200"
-              >
-                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                <span className="min-w-0 flex-1">
-                  {noticeAnalysis.error}
-                  {noticeAnalysis.extractionNote ? ` ${noticeAnalysis.extractionNote}` : ""}
-                </span>
-                {noticeFile && metaConsent ? (
-                  <button
-                    type="button"
-                    onClick={() => onPickNotice(noticeFile)}
-                    className="shrink-0 rounded-md border border-brand-300/70 bg-white/70 px-2 py-1 font-code text-[7.5px] font-bold tracking-[0.1em] transition-colors hover:bg-white dark:border-brand-500/30 dark:bg-transparent dark:hover:bg-brand-500/10"
-                  >
-                    RETRY READ
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-
-          {noticeAnalysis.status === "ready" && extracted ? (
-            <div
-              aria-live="polite"
-              className="rounded-[10px] border border-ink-100 bg-white p-3.5 dark:border-white/[0.07] dark:bg-white/[0.025]"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="font-code text-[8px] font-bold tracking-[0.16em] text-emerald-700 dark:text-emerald-300">
-                    READ FROM THE NOTICE · {noticeAnalysis.model ?? "META MODEL"}
-                  </p>
-                  <p className="mt-1 text-[11px] leading-relaxed text-ink-500 dark:text-ink-400">
-                    Added to empty answers. Check each one as you go — every value is still yours to change.
-                  </p>
-                </div>
-                {noticeAnalysis.conflicts.length ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-1 font-code text-[7.5px] font-bold tracking-[0.1em] text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">
-                    <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-                    {noticeAnalysis.conflicts.length} TO CHECK
-                  </span>
-                ) : null}
-              </div>
-
-              <ul className="mt-3 divide-y divide-ink-100 dark:divide-white/[0.06]">
-                {extractedFields.map((field) => {
-                  const conflict = noticeAnalysis.conflicts.includes(field.key);
-                  const lowConfidence = field.value !== null && field.confidence < 0.75;
-                  return (
-                    <li key={field.key} className="flex flex-wrap items-start gap-2 py-2 first:pt-0 last:pb-0">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="text-[10px] font-semibold text-ink-800 dark:text-ink-100">{field.label}</span>
-                          <span
-                            className={cn(
-                              "font-code text-[7px] font-bold tracking-[0.1em]",
-                              conflict || lowConfidence || field.value === null
-                                ? "text-brand-700 dark:text-brand-300"
-                                : "text-emerald-700 dark:text-emerald-300",
-                            )}
-                          >
-                            {field.value === null
-                              ? "NOT FOUND"
-                              : conflict
-                                ? "NEEDS YOUR CALL"
-                                : lowConfidence
-                                  ? "CHECK"
-                                  : "ADDED"}
-                          </span>
-                        </div>
-                        <p className="mt-0.5 break-words text-[11px] text-ink-600 dark:text-ink-300">
-                          {field.value ?? "No unambiguous value in the document."}
-                          {conflict && d[field.key] ? (
-                            <span className="text-brand-700 dark:text-brand-300"> · currently “{d[field.key]}”</span>
-                          ) : null}
-                        </p>
-                        {(conflict || lowConfidence) && field.evidence ? (
-                          <p className="mt-0.5 line-clamp-2 text-[9.5px] italic leading-relaxed text-ink-400">
-                            “{field.evidence}”
-                          </p>
-                        ) : null}
-                      </div>
-                      {conflict && field.value ? (
-                        <button
-                          type="button"
-                          onClick={() => onApplyExtracted(field.key, field.applyValue ?? field.value ?? "")}
-                          className="shrink-0 rounded-md border border-brand-200 px-2 py-1 font-code text-[7.5px] font-bold tracking-[0.08em] text-brand-700 hover:bg-brand-50 dark:border-brand-500/20 dark:text-brand-300 dark:hover:bg-brand-500/10"
-                        >
-                          USE NOTICE
-                        </button>
-                      ) : null}
-                    </li>
-                  );
-                })}
-              </ul>
-
-              {notes ? (
-                <details className="mt-3 rounded-lg border border-brand-200/70 bg-brand-50/60 dark:border-brand-500/15 dark:bg-brand-500/[0.06]">
-                  <summary className="cursor-pointer list-none px-3 py-2 font-code text-[8px] font-bold tracking-[0.14em] text-brand-700 dark:text-brand-300">
-                    REVIEW NOTES · {notes}
-                  </summary>
-                  <ul className="space-y-1 border-t border-brand-200/60 px-3 py-2 text-[10px] leading-relaxed text-ink-600 dark:border-brand-500/15 dark:text-ink-300">
-                    {noticeAnalysis.extractionNote ? <li>{noticeAnalysis.extractionNote}</li> : null}
-                    {extracted.warnings.map((warning, index) => (
-                      <li key={`${index}-${warning}`}>{warning}</li>
-                    ))}
-                  </ul>
-                </details>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-      );
-    }
-
-    if (current.key === "title") {
-      return (
-        <div className="max-w-2xl">
-          <input
-            id="plan-title"
-            data-plan-focus=""
-            className={`${planInput} py-3.5 text-[15px] sm:py-4 sm:text-base`}
-            value={d.pipeTitle ?? ""}
-            onChange={(event) => set("pipeTitle", event.target.value)}
-            onKeyDown={onFieldKeyDown}
-            placeholder="e.g. Supply & delivery of MRI scanners (1.5T)"
-            autoComplete="off"
-            aria-required="true"
-            aria-label="Tender title"
-          />
-          <p className="mt-2 flex items-start gap-1.5 font-code text-[8px] leading-[1.9] tracking-[0.14em] text-ink-400">
-            <span className="mt-[5px] h-1 w-1 shrink-0 rounded-full bg-brand-500" aria-hidden="true" />
-            {titleFromNotice
-              ? "FILLED FROM THE NOTICE — EDIT IT IF THE NOTICE SAYS OTHERWISE."
-              : "THIS IS THE TITLE THE MARKET WILL SEE."}
-          </p>
-        </div>
-      );
-    }
-
-    if (current.key === "office") {
-      return (
-        <div className="max-w-2xl">
-          <div role="radiogroup" aria-label={current.prompt} className="grid gap-2 sm:grid-cols-2">
-            {OFFICES.map((office, index) => {
-              const on = d.pipeOffice === office;
-              return (
-                <button
-                  key={office}
-                  type="button"
-                  role="radio"
-                  aria-checked={on}
-                  data-plan-focus={on || (!d.pipeOffice && index === 0) ? "" : undefined}
-                  onClick={() => {
-                    set("pipeOffice", on ? "" : office);
-                    setError("");
-                  }}
-                  className={cn(
-                    "rounded-xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45",
-                    on
-                      ? "border-ink-950 bg-ink-950 text-white dark:border-brand-400 dark:bg-brand-500/[0.14] dark:text-brand-200"
-                      : "border-ink-200 bg-white text-ink-900 hover:border-ink-400 dark:border-white/[0.1] dark:bg-white/[0.025] dark:text-ink-100 dark:hover:border-white/25",
-                  )}
-                >
-                  <span className="flex items-center justify-between gap-2">
-                    <span className="text-[12.5px] font-semibold">{OFFICE_LABELS[office]}</span>
-                    {on ? <Check className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> : null}
-                  </span>
-                  <span
-                    className={cn(
-                      "mt-1 block text-[10.5px] leading-relaxed",
-                      on ? "text-white/70 dark:text-brand-200/70" : "text-ink-400",
-                    )}
-                  >
-                    {OFFICE_BLURBS[office]}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          <p className="mt-2 font-code text-[8px] leading-[1.9] tracking-[0.14em] text-ink-400">
-            CLICK THE CHOSEN OFFICE AGAIN TO CLEAR IT.
-          </p>
-        </div>
-      );
-    }
-
-    if (current.key === "publication") {
-      return (
-        <div className="max-w-md">
-          <input
-            id="plan-publication"
-            data-plan-focus=""
-            type="date"
-            className={planInput}
-            value={d.pipePub ?? ""}
-            onChange={(event) => set("pipePub", event.target.value)}
-            onKeyDown={onFieldKeyDown}
-            aria-label="Expected publication date"
-          />
-          <p className="mt-2 font-code text-[8px] leading-[1.9] tracking-[0.14em] text-ink-400">
-            {d.pipePub
-              ? `${fmtDate(d.pipePub).toUpperCase()} · ${relDays(d.pipePub).toUpperCase()}`
-              : "OPTIONAL — THE PACK CAN BE STAGED WITHOUT A DATE."}
-          </p>
-        </div>
-      );
-    }
-
-    if (current.key === "budget") {
-      return (
-        <div className="max-w-md">
-          <div className="flex h-11 items-stretch overflow-hidden rounded-xl border border-ink-200/90 bg-[#fffdfb] shadow-[inset_0_1px_1px_rgba(11,12,15,0.03)] transition-[border-color,box-shadow] duration-150 focus-within:border-ink-950 focus-within:ring-[3px] focus-within:ring-ink-950/[0.08] hover:border-ink-300 dark:border-white/[0.13] dark:bg-[#0b0d12] dark:focus-within:border-white/40 dark:focus-within:ring-white/[0.07] dark:hover:border-white/25">
-            <div className="relative shrink-0">
-              <select
-                aria-label="Currency"
-                data-plan-focus={d.pipeCur ? undefined : ""}
-                value={d.pipeCur ?? ""}
-                onChange={(event) => set("pipeCur", event.target.value)}
-                className="h-full cursor-pointer appearance-none bg-ink-50/70 pl-3 pr-6 font-code text-[10px] font-bold tracking-[0.1em] text-ink-600 outline-none dark:bg-white/[0.05] dark:text-ink-300 dark:[color-scheme:dark]"
-              >
-                <option value="">—</option>
-                {CURRENCIES.map((currency) => (
-                  <option key={currency} value={currency}>
-                    {currency}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-ink-400"
-                aria-hidden="true"
-              />
-            </div>
-            <span className="w-px shrink-0 bg-ink-200/80 dark:bg-white/10" aria-hidden="true" />
-            <input
-              className="h-full min-w-0 flex-1 bg-transparent px-3 font-code text-[13px] tabular text-ink-900 outline-none placeholder:text-ink-400 dark:text-ink-900"
-              type="number"
-              min={0}
-              inputMode="decimal"
-              data-plan-focus={d.pipeCur ? "" : undefined}
-              value={d.pipeEst ?? ""}
-              onChange={(event) => set("pipeEst", event.target.value)}
-              onKeyDown={onFieldKeyDown}
-              placeholder="25 000 000"
-              aria-label="Budget estimate"
-            />
-          </div>
-          <p className="mt-2 font-code text-[8px] leading-[1.9] tracking-[0.14em] text-ink-400">
-            {budget !== null ? `RECORDED AS ${d.pipeCur || "NO CURRENCY"} ${fmtMoney(budget)}` : "OPTIONAL — THE FIGURE CAN BE ADDED LATER."}
-          </p>
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-3">
-        {pendingUploadRef ? (
-          <p
-            role="alert"
-            className="flex items-start gap-2 rounded-xl border border-brand-300/70 bg-brand-50 px-3.5 py-2.5 text-[11.5px] leading-relaxed text-brand-800 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-brand-200"
-          >
-            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            <span>
-              Tender {pendingUploadRef} is already in the pipeline. The notice did not attach — retry below to add it
-              without creating a duplicate.
-            </span>
-          </p>
-        ) : null}
-
-        <dl className="divide-y divide-ink-100 overflow-hidden rounded-[10px] border border-ink-100 dark:divide-white/[0.06] dark:border-white/[0.07]">
-          {rows.map((row) => (
-            <div key={row.label} className="flex items-start gap-3 px-3.5 py-2.5">
-              <dt className="w-[104px] shrink-0 font-code text-[8px] font-bold tracking-[0.14em] text-ink-400">
-                {row.label.toUpperCase()}
-              </dt>
-              <dd className="min-w-0 flex-1 break-words text-[12px] font-medium leading-relaxed text-ink-900 dark:text-ink-100">
-                {row.value}
-              </dd>
-              {row.step !== null ? (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => go(row.step as number)}
-                  className="shrink-0 rounded-md px-1.5 py-0.5 font-code text-[8px] font-bold tracking-[0.12em] text-brand-700 transition-colors hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-brand-300 dark:hover:bg-brand-500/10"
-                >
-                  EDIT
-                </button>
-              ) : null}
-            </div>
-          ))}
-        </dl>
-
-        <p className="flex items-start gap-2 text-[11px] leading-relaxed text-ink-400">
-          <span className="mt-[6px] h-1 w-1 shrink-0 rounded-full bg-brand-500" aria-hidden="true" />
-          Planning is free. The entry links to a live tender when its pack lands — the cycle rail then takes over the
-          record.
-        </p>
-      </div>
-    );
-  };
-
-  return (
-    <div ref={rootRef}>
-      <div aria-label="Tender intake progress">
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <span className="font-code text-[8px] font-bold tracking-[0.18em] text-brand-700 dark:text-brand-300">
-            {current.section}
-          </span>
-          <span className="font-code text-[8px] tracking-[0.14em] text-ink-400">
-            {String(step + 1).padStart(2, "0")} / {String(PLAN_STEPS.length).padStart(2, "0")}
-          </span>
-        </div>
-        <div
-          className="flex gap-1"
-          role="progressbar"
-          aria-label="Tender intake progress"
-          aria-valuemin={1}
-          aria-valuemax={PLAN_STEPS.length}
-          aria-valuenow={step + 1}
-        >
-          {PLAN_STEPS.map((planStep, index) => (
-            <span
-              key={planStep.key}
-              className={cn(
-                "h-1 flex-1 rounded-full transition-colors",
-                index <= step ? "bg-brand-600 dark:bg-brand-400" : "bg-ink-100 dark:bg-white/10",
-              )}
-            />
-          ))}
-        </div>
-      </div>
-
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.section
-          key={current.key}
-          initial={{ opacity: 0, x: 18 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -18 }}
-          transition={{ duration: 0.18, ease: EASE }}
-          aria-live="polite"
-          className="mt-6 min-h-[210px]"
-        >
-          <p className="font-code text-[8px] font-semibold tracking-[0.2em] text-ink-400">
-            {current.section} · QUESTION {String(step + 1).padStart(2, "0")}
-          </p>
-          <h4
-            tabIndex={-1}
-            data-plan-focus={current.key === "review" ? "" : undefined}
-            className="mt-2 font-display text-[21px] font-black tracking-[-0.02em] text-ink-950 outline-none dark:text-white sm:text-[25px]"
-          >
-            {current.prompt}
-            {current.required ? (
-              <span className="ml-1 text-brand-600 dark:text-brand-400" aria-label="required">
-                *
-              </span>
-            ) : null}
-          </h4>
-          <p className="mt-1.5 text-[12px] leading-relaxed text-ink-500 dark:text-ink-400">{current.hint}</p>
-          <div className="mt-5">{renderStep()}</div>
-        </motion.section>
-      </AnimatePresence>
-
-      {error ? (
-        <p
-          role="alert"
-          className="mt-3 rounded-xl border border-brand-200 bg-brand-50 px-3.5 py-2.5 text-[12px] leading-relaxed text-brand-800 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-brand-200"
-        >
-          {error}
-        </p>
-      ) : null}
-
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-ink-100 pt-5 dark:border-white/[0.06]">
-        <p className="max-w-[230px] font-code text-[7.5px] leading-[2] tracking-[0.16em] text-ink-400 sm:max-w-none">
-          {refLoading ? "ISSUING THE REFERENCE…" : autoRef ? `NEXT REFERENCE ${autoRef}` : "THE REFERENCE IS ISSUED ON SAVE"}
-        </p>
-        <div className="ml-auto flex items-center gap-2">
-          {step > 0 ? (
-            <button
-              type="button"
-              onClick={() => go(step - 1)}
-              disabled={busy}
-              className="inline-flex h-10 items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 font-code text-[9px] font-bold tracking-[0.14em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/[0.12] dark:bg-white/[0.04] dark:text-ink-300 dark:hover:border-white/30 dark:hover:text-white"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
-              BACK
-            </button>
-          ) : null}
-
-          {step < last && !current.required ? (
-            <button
-              type="button"
-              onClick={advance}
-              disabled={busy}
-              className="inline-flex h-10 items-center rounded-xl px-3 font-code text-[8px] font-bold tracking-[0.12em] text-ink-500 transition-colors hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-60 dark:text-ink-400 dark:hover:text-white"
-            >
-              SKIP
-            </button>
-          ) : null}
-
-          {step < last ? (
-            <button
-              type="button"
-              onClick={advance}
-              disabled={busy}
-              className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-5 font-code text-[9px] font-bold tracking-[0.14em] text-white shadow-[0_10px_26px_rgba(217,38,22,0.28)] transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              CONTINUE
-              <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => void submit()}
-              disabled={busy || analyzing}
-              className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-5 font-code text-[9px] font-bold tracking-[0.14em] text-white shadow-[0_10px_26px_rgba(217,38,22,0.28)] transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {busy ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-              ) : pendingUploadRef ? (
-                <Upload className="h-3.5 w-3.5" aria-hidden="true" />
-              ) : (
-                <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-              )}
-              {busy
-                ? "SAVING TENDER…"
-                : analyzing
-                  ? "READING THE NOTICE…"
-                  : pendingUploadRef
-                    ? `RETRY NOTICE UPLOAD · ${pendingUploadRef}`
-                    : noticeFile
-                      ? "CREATE TENDER + ATTACH NOTICE"
-                      : "CREATE TENDER"}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -7514,274 +7189,4 @@ function DeadlineIcon({ kind }: { kind: string }) {
   if (k.includes("ALB")) return <CircleAlert className="h-4 w-4" aria-hidden="true" />;
   if (k.includes("COMPLAINT")) return <Scale className="h-4 w-4" aria-hidden="true" />;
   return <CalendarClock className="h-4 w-4" aria-hidden="true" />;
-}
-
-function PipelineRow({
-  p,
-  tenders,
-  onLink,
-  onValidateRequisition,
-  busy,
-}: {
-  p: PipelineDto;
-  tenders: { ref: string; title: string }[];
-  onLink: (tenderId: string) => Promise<boolean>;
-  onValidateRequisition: (budgetReference: string, note: string) => Promise<boolean>;
-  busy: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const [requisitionOpen, setRequisitionOpen] = useState(false);
-  const [budgetReference, setBudgetReference] = useState(p.requisition?.budgetReference ?? "");
-  const [budgetNote, setBudgetNote] = useState(p.requisition?.note ?? "");
-  const dialogId = useId();
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const linked = p.status === "LINKED";
-  const pubRel = relDays(p.expectedPublication);
-  const pubSoon = (daysUntil(p.expectedPublication) ?? 999) <= 30;
-  const close = useCallback(() => {
-    setOpen(false);
-    window.requestAnimationFrame(() => triggerRef.current?.focus());
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const focusTimer = window.setTimeout(() => dialogRef.current?.focus(), 0);
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !busy) close();
-      if (event.key !== "Tab") return;
-      const nodes = Array.from(
-        dialogRef.current?.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
-        ) ?? [],
-      );
-      if (!nodes.length) return;
-      const first = nodes[0];
-      const last = nodes[nodes.length - 1];
-      if (event.shiftKey && (document.activeElement === first || !dialogRef.current?.contains(document.activeElement))) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.clearTimeout(focusTimer);
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [busy, close, open]);
-
-  return (
-    <li
-      className="group panel-inset relative overflow-hidden rounded-xl px-3.5 py-3 transition-colors duration-150 hover:border-ink-300/80 dark:hover:border-white/[0.14]"
-    >
-      <span
-        className={cn(
-          "absolute inset-y-2.5 left-0 w-[2px] rounded-full transition-colors",
-          linked ? "bg-emerald-500/70" : pubSoon ? "bg-brand-500/80" : "bg-transparent",
-        )}
-        aria-hidden="true"
-      />
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <span className="font-code text-[8.5px] font-bold tracking-[0.14em] text-ink-400">{p.ref}</span>
-            {!linked && p.expectedPublication ? (
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-full px-1.5 py-[2px] font-code text-[7px] font-bold tracking-[0.1em]",
-                  pubSoon
-                    ? "bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
-                    : "bg-ink-100/70 text-ink-500 dark:bg-white/[0.05] dark:text-ink-400",
-                )}
-              >
-                <CalendarClock className="h-2.5 w-2.5" aria-hidden="true" /> {pubRel.toUpperCase()}
-              </span>
-            ) : null}
-            {linked ? <Chip tone="ok">LINKED</Chip> : null}
-          </div>
-          <p className="mt-1.5 truncate text-[13px] font-semibold leading-tight text-ink-900">{p.title}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-code text-[8px] tracking-[0.1em] text-ink-400">
-            {p.office ? <span className="text-ink-500">{OFFICE_LABELS[p.office] ?? p.office}</span> : null}
-            {p.expectedPublication ? <span>PUB {fmtDate(p.expectedPublication)}</span> : null}
-            {p.budgetEstimate ? (
-              <span className="tabular font-semibold text-ink-600">
-                {p.currency ?? ""} {fmtMoney(p.budgetEstimate)}
-              </span>
-            ) : null}
-            {linked && p.linkedTenderId ? (
-              <span className="text-emerald-600 dark:text-emerald-400">{p.linkedTenderId}</span>
-            ) : null}
-          </div>
-        </div>
-        {!linked ? (
-          <button
-            ref={triggerRef}
-            type="button"
-            onClick={() => setOpen(true)}
-            aria-haspopup="dialog"
-            aria-expanded={open}
-            aria-controls={`link-dialog-${dialogId}`}
-            disabled={busy}
-            aria-label={`Link ${p.ref} to a live tender`}
-            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-ink-200/90 bg-[#fffdfb] px-2.5 font-code text-[9px] font-bold tracking-[0.1em] text-ink-600 shadow-[0_1px_2px_rgba(11,12,15,0.03)] transition-colors hover:border-ink-950 hover:text-ink-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/45 dark:border-white/[0.12] dark:bg-white/[0.04] dark:text-ink-300 dark:hover:border-white/30 dark:hover:text-white"
-          >
-            LINK <ArrowRight className="h-3 w-3" aria-hidden="true" />
-          </button>
-        ) : null}
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        {p.requisition?.budgetValidated ? (
-          <>
-            <Chip tone="ok">BUDGET VALIDATED</Chip>
-            <span className="font-code text-[8px] tracking-[0.08em] text-ink-400">
-              {p.requisition.budgetReference}
-              {p.requisition.validatedBy ? ` · BY ${p.requisition.validatedBy.toUpperCase()}` : ""}
-            </span>
-          </>
-        ) : (
-          <Chip tone="warn">BUDGET NOT YET VALIDATED</Chip>
-        )}
-        <button
-          type="button"
-          onClick={() => setRequisitionOpen((value) => !value)}
-          aria-expanded={requisitionOpen}
-          disabled={busy}
-          className="inline-flex h-7 items-center gap-1 rounded-lg border border-ink-200/90 bg-[#fffdfb] px-2.5 font-code text-[8px] font-bold tracking-[0.1em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:opacity-50 dark:border-white/[0.12] dark:bg-white/[0.04] dark:text-ink-300 dark:hover:border-white/30 dark:hover:text-white"
-        >
-          {p.requisition?.budgetValidated ? "UPDATE REQUISITION" : "VALIDATE BUDGET"}
-        </button>
-      </div>
-
-      {requisitionOpen ? (
-        <div className="mt-3 grid gap-2 rounded-xl border border-ink-200/80 bg-paper/80 p-3 dark:border-white/[0.1] dark:bg-white/[0.025]">
-          <Field label="Vote-book / budget reference" hint="REQUIRED">
-            <input
-              value={budgetReference}
-              onChange={(event) => setBudgetReference(event.target.value)}
-              maxLength={120}
-              required
-              className={inputCls}
-              placeholder="e.g. FY2026-27 / Vote 05 / Line 1203"
-            />
-          </Field>
-          <Field label="Validation note" hint="OPTIONAL · 300 CHARACTERS MAX">
-            <textarea
-              value={budgetNote}
-              onChange={(event) => setBudgetNote(event.target.value)}
-              maxLength={300}
-              rows={2}
-              className="w-full rounded-xl border border-ink-200/90 bg-[#fffdfb] px-3 py-2 text-[12px] text-ink-900 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-950 dark:border-white/[0.13] dark:bg-[#0b0d12] dark:text-ink-200 dark:placeholder:text-ink-500 dark:focus:border-white/40"
-              placeholder="Add a short note for the requisition record"
-            />
-          </Field>
-          <div className="flex flex-wrap justify-end gap-2">
-            <Btn onClick={() => setRequisitionOpen(false)} variant="ghost" disabled={busy}>Cancel</Btn>
-            <Btn
-              onClick={() => {
-                if (!budgetReference.trim()) return;
-                void onValidateRequisition(budgetReference.trim(), budgetNote.trim()).then((ok) => {
-                  if (ok) setRequisitionOpen(false);
-                });
-              }}
-              disabled={busy || !budgetReference.trim()}
-            >
-              {busy ? "Saving…" : "Record validation"}
-            </Btn>
-          </div>
-        </div>
-      ) : null}
-
-      {typeof document !== "undefined"
-        ? createPortal(
-            <AnimatePresence initial={false}>
-              {open && !linked ? (
-                <motion.div
-                  key={`cycle-link-${dialogId}`}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="fixed inset-0 z-[90] grid place-items-center bg-night/70 p-3 backdrop-blur-sm sm:p-5"
-                  onMouseDown={(event) => {
-                    if (event.target === event.currentTarget && !busy) close();
-                  }}
-                  role="dialog"
-                  aria-modal="true"
-                  aria-labelledby={`link-dialog-${dialogId}`}
-                >
-                  <motion.div
-                    ref={dialogRef}
-                    tabIndex={-1}
-                    initial={{ opacity: 0, y: 18, scale: 0.985 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 12, scale: 0.99 }}
-                    transition={{ duration: 0.28, ease: EASE }}
-                    className="panel panel-lift flex max-h-[92dvh] w-full max-w-2xl flex-col overflow-hidden rounded-[12px] outline-none"
-                  >
-                    <header className="flex shrink-0 items-start justify-between gap-4 border-b border-ink-100 px-5 py-4 dark:border-white/[0.06] sm:px-7 sm:py-5">
-                      <div className="min-w-0">
-                        <p className="font-code text-[8.5px] font-bold tracking-[0.2em] text-brand-700 dark:text-brand-300">TENDER CYCLE · PIPELINE</p>
-                        <h3 id={`link-dialog-${dialogId}`} className="mt-1 font-display text-[20px] font-black tracking-[-0.02em] text-ink-950 dark:text-white sm:text-[22px]">Link {p.ref} to a live tender</h3>
-                        <p className="mt-1.5 text-[11.5px] leading-relaxed text-ink-500 dark:text-ink-400">{p.title}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={close}
-                        disabled={busy}
-                        aria-label={`Close link workflow for ${p.ref}`}
-                        className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-900 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-white/[0.06] dark:hover:text-white"
-                      >
-                        <X className="h-4 w-4" aria-hidden="true" />
-                      </button>
-                    </header>
-                    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-7 sm:py-5">
-                      <p className="mb-3 eyebrow text-[8px] tracking-[0.2em]">Choose the live tender record</p>
-                      {tenders.length ? (
-                        <ul role="listbox" aria-label={`Link ${p.ref} to a live tender`} className="space-y-2">
-                          {tenders.map((t) => (
-                            <li key={t.ref}>
-                              <button
-                                type="button"
-                                role="option"
-                                aria-selected={false}
-                                disabled={busy}
-                                onClick={() => {
-                                  void onLink(t.ref).then((ok) => {
-                                    if (ok) close();
-                                  });
-                                }}
-                                className="flex w-full items-center gap-3 rounded-xl border border-ink-200/80 bg-white px-3.5 py-3 text-left transition-colors hover:border-brand-400 hover:bg-brand-50/40 disabled:cursor-wait disabled:opacity-60 dark:border-white/[0.1] dark:bg-white/[0.025] dark:hover:border-brand-400 dark:hover:bg-brand-500/[0.06]"
-                              >
-                                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-ink-100/70 text-ink-500 dark:bg-white/[0.06]">
-                                  <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-                                </span>
-                                <span className="min-w-0 flex-1">
-                                  <span className="block font-code text-[9px] font-bold tracking-[0.08em] text-ink-900 dark:text-white">{t.ref}</span>
-                                  <span className="mt-0.5 block truncate text-[11px] text-ink-500 dark:text-ink-400">{t.title}</span>
-                                </span>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="rounded-xl border border-dashed border-ink-200 px-4 py-8 text-center text-[12px] text-ink-500 dark:border-white/[0.12] dark:text-ink-400">
-                          No live tenders are available to link yet.
-                        </p>
-                      )}
-                    </div>
-                  </motion.div>
-                </motion.div>
-              ) : null}
-            </AnimatePresence>,
-            document.body,
-          )
-        : null}
-    </li>
-  );
 }

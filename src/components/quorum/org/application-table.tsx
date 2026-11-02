@@ -1,11 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ArrowUpRight, CircleAlert, Download, Inbox, Loader2, Pencil, Undo2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowUpRight, CircleAlert, Download, FileText, Inbox, Loader2, Pencil, Undo2, X } from "lucide-react";
+import { HorizontalScrollRegion } from "@/components/quorum/horizontal-scroll-region";
+import { trapTabFocus } from "@/lib/a11y";
 import { cn } from "@/lib/utils";
 import {
   fmtStamp,
   money,
+  publicReferenceLabel,
   statusMeta,
   type Application,
   type StatusTone,
@@ -32,7 +35,7 @@ const dotCls: Record<StatusTone, string> = {
 };
 
 const TH =
-  "whitespace-nowrap py-2.5 font-code text-[9.5px] font-semibold uppercase tracking-[0.16em] text-ink-500";
+  "whitespace-nowrap py-2.5 font-code text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-500";
 
 function saveJson(filename: string, payload: unknown) {
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -45,9 +48,10 @@ function saveJson(filename: string, payload: unknown) {
 }
 
 function exportRecord(a: Application, tender: Tender | undefined) {
+  const displayReference = publicReferenceLabel(a.systemReference ?? tender?.systemReference);
   saveJson(`${a.id}-record.json`, {
-    application: a,
-    tender: tender ?? null,
+    application: { ...a, tenderId: displayReference },
+    tender: tender ? { ...tender, ref: displayReference } : null,
     attestedAs: `org:${a.orgName}`,
     exportedAt: new Date().toISOString(),
   });
@@ -78,8 +82,47 @@ export function ApplicationTable({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [amendTarget, setAmendTarget] = useState<{ application: Application; tender?: Tender } | null>(null);
+  const [withdrawTarget, setWithdrawTarget] = useState<{ application: Application; tender?: Tender } | null>(null);
   const [amendAmount, setAmendAmount] = useState("");
   const [amendCurrency, setAmendCurrency] = useState("");
+  const amendDialogRef = useRef<HTMLDivElement | null>(null);
+  const amendAmountRef = useRef<HTMLInputElement | null>(null);
+  const amendReturnFocusRef = useRef<HTMLElement | null>(null);
+  const withdrawDialogRef = useRef<HTMLDivElement | null>(null);
+  const withdrawCancelRef = useRef<HTMLButtonElement | null>(null);
+  const withdrawReturnFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (amendTarget) {
+      requestAnimationFrame(() => amendAmountRef.current?.focus());
+      return;
+    }
+    const target = amendReturnFocusRef.current;
+    amendReturnFocusRef.current = null;
+    if (target?.isConnected) requestAnimationFrame(() => target.focus());
+  }, [amendTarget]);
+
+  useEffect(() => {
+    if (!amendTarget) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || busyId === `amend:${amendTarget.application.id}`) return;
+      const focusedModal = document.activeElement?.closest('[role="dialog"][aria-modal="true"]');
+      if (focusedModal && focusedModal !== amendDialogRef.current) return;
+      setAmendTarget(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [amendTarget, busyId]);
+
+  useEffect(() => {
+    if (withdrawTarget) {
+      requestAnimationFrame(() => withdrawCancelRef.current?.focus());
+      return;
+    }
+    const target = withdrawReturnFocusRef.current;
+    withdrawReturnFocusRef.current = null;
+    if (target?.isConnected) requestAnimationFrame(() => target.focus());
+  }, [withdrawTarget]);
 
   const counts = useMemo(() => {
     const map = new Map<string, number>();
@@ -133,13 +176,13 @@ export function ApplicationTable({
   };
 
   const withdraw = async (a: Application) => {
-    if (!window.confirm(`Withdraw ${a.id}? The bid leaves the opening register and cannot be reopened.`)) return;
     setBusyId(`withdraw:${a.id}`);
     setActionError(null);
     try {
       const res = await fetch(`/api/org/applications/${encodeURIComponent(a.id)}/withdraw`, { method: "POST" });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(data.error ?? "Withdrawal refused.");
+      setWithdrawTarget(null);
       onChanged?.();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "The bid could not be withdrawn.");
@@ -149,9 +192,16 @@ export function ApplicationTable({
   };
 
   const openAmend = (a: Application, t: Tender | undefined) => {
+    amendReturnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setAmendTarget({ application: a, tender: t });
     setAmendAmount(typeof a.amount === "number" ? String(a.amount) : "");
     setAmendCurrency(a.currency ?? t?.currency ?? "");
+    setActionError(null);
+  };
+
+  const openWithdraw = (a: Application, t: Tender | undefined) => {
+    withdrawReturnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setWithdrawTarget({ application: a, tender: t });
     setActionError(null);
   };
 
@@ -200,7 +250,7 @@ export function ApplicationTable({
           <button
             type="button"
             onClick={onBrowse}
-            className="mt-4 inline-flex h-9 items-center gap-1.5 rounded-lg bg-ink-950 px-3.5 text-[12px] font-semibold text-white transition-colors hover:bg-brand-600 dark:bg-white dark:text-night dark:hover:bg-brand-500 dark:hover:text-white"
+            className="focus-brand mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-ink-950 px-3.5 text-[12px] font-semibold text-white transition-colors hover:bg-brand-600 dark:bg-white dark:text-night dark:hover:bg-brand-500 dark:hover:text-white"
           >
             Browse opportunities
             <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -214,7 +264,7 @@ export function ApplicationTable({
     <div>
       {filterable ? (
         <div className="flex flex-wrap items-center gap-2 px-5 pb-3">
-          <div className="inline-flex rounded-lg border border-ink-100 bg-sand/70 p-0.5 dark:border-white/10 dark:bg-white/[0.03]">
+          <div role="group" aria-label="Filter applications by status" className="inline-flex flex-wrap rounded-lg border border-ink-100 bg-sand/70 p-0.5 dark:border-white/10 dark:bg-white/[0.03]">
             {filters.map((f) => (
               <button
                 key={f.id}
@@ -222,7 +272,7 @@ export function ApplicationTable({
                 onClick={() => setFilter(f.id)}
                 aria-pressed={filter === f.id}
                 className={cn(
-                  "rounded-md px-2.5 py-1 font-code text-[10.5px] font-semibold tracking-[0.06em] transition-colors",
+                  "min-h-11 rounded-md px-2.5 py-1 font-code text-[10.5px] font-semibold tracking-[0.06em] transition-colors",
                   filter === f.id
                     ? "bg-white text-ink-950 shadow-sm dark:bg-white/10 dark:text-white"
                     : "text-ink-500 hover:text-ink-900 dark:hover:text-white",
@@ -235,18 +285,22 @@ export function ApplicationTable({
         </div>
       ) : null}
 
-      {actionError ? (
-        <div className="mx-5 mb-3 flex items-start gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-[12px] text-brand-800 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-brand-200">
+      {actionError && !amendTarget && !withdrawTarget ? (
+        <div role="alert" className="mx-5 mb-3 flex items-start gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-[12px] text-brand-800 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-brand-200">
           <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           <span className="min-w-0 flex-1">{actionError}</span>
-          <button type="button" onClick={() => setActionError(null)} aria-label="Dismiss error" className="shrink-0 text-brand-700">
+          <button type="button" onClick={() => setActionError(null)} aria-label="Dismiss error" className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-md text-brand-700">
             <X className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
         </div>
       ) : null}
 
-      <div className="overflow-x-auto">
+      <HorizontalScrollRegion
+        label="Supplier applications table"
+        hint="Swipe or scroll the table to see bid status, timestamps and actions."
+      >
         <table className="w-full min-w-[980px] border-collapse text-left">
+          <caption className="sr-only">{limit ? "Latest supplier applications" : "Supplier applications on this record"}</caption>
           <thead>
             <tr className="border-y border-ink-100 dark:border-white/[0.06]">
               <th scope="col" className={cn(TH, "pl-5 pr-3")}>
@@ -287,18 +341,23 @@ export function ApplicationTable({
                     <div className="flex items-center gap-2">
                       <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dotCls[meta.tone])} aria-hidden="true" />
                       <span className="font-code text-[11.5px] font-semibold tracking-[0.02em] text-ink-900 dark:text-ink-800">
-                        {a.tenderId}
+                        {publicReferenceLabel(a.systemReference ?? t?.systemReference)}
                       </span>
                     </div>
-                    <p className="mt-0.5 pl-3.5 font-code text-[9.5px] tracking-[0.08em] text-ink-500">{a.id}</p>
+                    <p className="mt-0.5 pl-3.5 font-code text-[10px] tracking-[0.08em] text-ink-500">{a.id}</p>
                   </td>
                   <td className="px-3 py-3.5">
                     <p className="max-w-[280px] truncate text-[13px] font-medium text-ink-900 dark:text-ink-800">
-                      {t?.title ?? a.tenderId}
+                      {t?.title ?? "Tender pack no longer staged"}
                     </p>
                     <p className="mt-0.5 max-w-[280px] truncate text-[11.5px] text-ink-500">
                       {t ? `${t.buyer} · ${t.format}` : "Tender pack no longer staged"}
                     </p>
+                    {a.bidDocuments?.length ? (
+                      <p className="mt-1 inline-flex items-center gap-1 text-[10.5px] font-medium text-emerald-700 dark:text-emerald-300">
+                        <FileText className="h-3 w-3" aria-hidden="true" /> {a.bidDocuments.length} required document{a.bidDocuments.length === 1 ? "" : "s"} attached
+                      </p>
+                    ) : null}
                   </td>
                   <td className="whitespace-nowrap px-3 py-3.5 text-right">
                     <span className="font-code text-[12px] font-semibold tabular text-ink-900 dark:text-ink-800">
@@ -316,7 +375,7 @@ export function ApplicationTable({
                   </td>
                   <td className="whitespace-nowrap px-3 py-3.5">
                     <p className="font-code text-[11px] text-ink-700 dark:text-ink-700">{stamp.day}</p>
-                    <p className="mt-0.5 font-code text-[9.5px] tracking-[0.08em] text-ink-500">{stamp.time}</p>
+                    <p className="mt-0.5 font-code text-[10px] tracking-[0.08em] text-ink-500">{stamp.time}</p>
                   </td>
                   <td className="whitespace-nowrap px-3 py-3.5">
                     <span
@@ -335,7 +394,7 @@ export function ApplicationTable({
                       <button
                         type="button"
                         onClick={() => onViewTender(a.tenderId)}
-                        className="inline-flex h-8 items-center gap-1 rounded-md border border-ink-100 bg-white px-2.5 text-[11px] font-semibold text-ink-700 transition-colors hover:border-brand-300 hover:text-brand-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-700 dark:hover:border-brand-500/40 dark:hover:text-brand-300"
+                        className="focus-brand inline-flex h-11 items-center gap-1 rounded-md border border-ink-100 bg-white px-2.5 text-[11px] font-semibold text-ink-700 transition-colors hover:border-brand-300 hover:text-brand-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-700 dark:hover:border-brand-500/40 dark:hover:text-brand-300"
                       >
                         View tender
                       </button>
@@ -346,17 +405,17 @@ export function ApplicationTable({
                             onClick={() => openAmend(a, t)}
                             title="Amend this bid before closing"
                             aria-label={`Amend application ${a.id}`}
-                            className="grid h-8 w-8 place-items-center rounded-md text-ink-400 transition-colors hover:bg-ink-50 hover:text-brand-700 dark:hover:bg-white/[0.06] dark:hover:text-brand-300"
+                            className="focus-brand grid h-11 w-11 place-items-center rounded-md text-ink-400 transition-colors hover:bg-ink-50 hover:text-brand-700 dark:hover:bg-white/[0.06] dark:hover:text-brand-300"
                           >
                             <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                           </button>
                           <button
                             type="button"
-                            onClick={() => void withdraw(a)}
+                            onClick={() => openWithdraw(a, t)}
                             disabled={busyId === `withdraw:${a.id}`}
                             title="Withdraw this bid before closing"
                             aria-label={`Withdraw application ${a.id}`}
-                            className="grid h-8 w-8 place-items-center rounded-md text-ink-400 transition-colors hover:bg-brand-50 hover:text-brand-700 disabled:cursor-wait dark:hover:bg-brand-950/40 dark:hover:text-brand-300"
+                            className="focus-brand grid h-11 w-11 place-items-center rounded-md text-ink-400 transition-colors hover:bg-brand-50 hover:text-brand-700 disabled:cursor-wait dark:hover:bg-brand-950/40 dark:hover:text-brand-300"
                           >
                             {busyId === `withdraw:${a.id}` ? (
                               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -372,7 +431,7 @@ export function ApplicationTable({
                         disabled={busyId === `receipt:${a.id}`}
                         title="Download the signed sealed-bid receipt"
                         aria-label={`Download the receipt for application ${a.id}`}
-                        className="grid h-8 w-8 place-items-center rounded-md text-ink-400 transition-colors hover:bg-ink-50 hover:text-brand-700 disabled:cursor-wait dark:hover:bg-white/[0.06] dark:hover:text-brand-300"
+                        className="focus-brand grid h-11 w-11 place-items-center rounded-md text-ink-400 transition-colors hover:bg-ink-50 hover:text-brand-700 disabled:cursor-wait dark:hover:bg-white/[0.06] dark:hover:text-brand-300"
                       >
                         {busyId === `receipt:${a.id}` ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -387,31 +446,37 @@ export function ApplicationTable({
             })}
           </tbody>
         </table>
-      </div>
+      </HorizontalScrollRegion>
 
       {amendTarget ? (
         <div
           className="fixed inset-0 z-[80] grid place-items-center bg-ink-950/60 p-4 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-label={`Amend application ${amendTarget.application.id}`}
         >
-          <div className="w-full max-w-[460px] rounded-xl border border-ink-200/70 bg-white p-6 shadow-[0_36px_90px_rgba(0,0,0,0.4)] dark:border-white/10 dark:bg-night-2">
+          <div
+            ref={amendDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Amend application ${amendTarget.application.id}`}
+            tabIndex={-1}
+            onKeyDown={(event) => trapTabFocus(event, amendDialogRef.current)}
+            className="w-full max-w-[460px] rounded-xl border border-ink-200/70 bg-white p-6 shadow-[0_36px_90px_rgba(0,0,0,0.4)] dark:border-white/10 dark:bg-night-2"
+          >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="font-code text-[9px] font-semibold tracking-[0.18em] text-brand-700 dark:text-brand-400">
+                <p className="font-code text-[10px] font-semibold tracking-[0.18em] text-brand-700 dark:text-brand-400">
                   AMEND BEFORE CLOSING
                 </p>
                 <h3 className="mt-1 text-[16px] font-bold text-ink-950 dark:text-white">
-                  {amendTarget.application.tenderId}
+                  {publicReferenceLabel(amendTarget.application.systemReference ?? tenderOf(amendTarget.application.tenderId)?.systemReference)}
                 </h3>
-                <p className="mt-1 font-code text-[9.5px] tracking-[0.1em] text-ink-400">{amendTarget.application.id}</p>
+                <p className="mt-1 font-code text-[10px] tracking-[0.1em] text-ink-400">{amendTarget.application.id}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setAmendTarget(null)}
+                disabled={busyId === `amend:${amendTarget.application.id}`}
                 aria-label="Close amendment dialog"
-                className="grid h-8 w-8 place-items-center rounded-md text-ink-400 hover:bg-ink-50 hover:text-ink-900 dark:hover:bg-white/[0.06]"
+                className="focus-brand grid h-11 w-11 place-items-center rounded-md text-ink-400 hover:bg-ink-50 hover:text-ink-900 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-white/[0.06]"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -424,33 +489,33 @@ export function ApplicationTable({
               }}
             >
               <label className="block">
-                <span className="font-code text-[9px] font-semibold tracking-[0.16em] text-ink-500">NEW BID AMOUNT</span>
+                <span className="font-code text-[10px] font-semibold tracking-[0.16em] text-ink-500">NEW BID AMOUNT</span>
                 <input
-                  autoFocus
+                  ref={amendAmountRef}
                   type="number"
                   min="1"
                   step="any"
                   value={amendAmount}
                   onChange={(e) => setAmendAmount(e.target.value)}
-                  className="mt-1.5 h-10 w-full rounded-lg border border-ink-200 bg-white px-3 text-[13px] text-ink-900 outline-none focus:border-brand-500 dark:border-white/15 dark:bg-white/[0.04] dark:text-white"
+                  className="focus-brand mt-1.5 h-11 w-full rounded-lg border border-ink-200 bg-white px-3 text-[13px] text-ink-900 outline-none focus:border-brand-500 dark:border-white/15 dark:bg-white/[0.04] dark:text-white"
                 />
               </label>
               <label className="block">
-                <span className="font-code text-[9px] font-semibold tracking-[0.16em] text-ink-500">CURRENCY</span>
+                <span className="font-code text-[10px] font-semibold tracking-[0.16em] text-ink-500">CURRENCY</span>
                 <input
                   type="text"
                   maxLength={8}
                   value={amendCurrency}
                   onChange={(e) => setAmendCurrency(e.target.value.toUpperCase())}
                   placeholder="ZMW"
-                  className="mt-1.5 h-10 w-full rounded-lg border border-ink-200 bg-white px-3 font-code text-[12px] uppercase text-ink-900 outline-none focus:border-brand-500 dark:border-white/15 dark:bg-white/[0.04] dark:text-white"
+                  className="focus-brand mt-1.5 h-11 w-full rounded-lg border border-ink-200 bg-white px-3 font-code text-[12px] uppercase text-ink-900 outline-none focus:border-brand-500 dark:border-white/15 dark:bg-white/[0.04] dark:text-white"
                 />
               </label>
               <p className="text-[12px] leading-relaxed text-ink-500">
                 The new amount is sealed in a fresh envelope. The prior version is marked amended and cannot be reopened or withdrawn.
               </p>
               {actionError ? (
-                <p className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-[12px] text-brand-800 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-brand-200">
+                <p role="alert" className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-[12px] text-brand-800 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-brand-200">
                   {actionError}
                 </p>
               ) : null}
@@ -458,14 +523,14 @@ export function ApplicationTable({
                 <button
                   type="button"
                   onClick={() => setAmendTarget(null)}
-                  className="inline-flex h-10 items-center justify-center rounded-lg border border-ink-200 px-4 text-[12.5px] font-semibold text-ink-700 transition-colors hover:bg-ink-50 dark:border-white/15 dark:text-ink-300 dark:hover:bg-white/[0.05]"
+                  className="focus-brand inline-flex h-11 items-center justify-center rounded-lg border border-ink-200 px-4 text-[12.5px] font-semibold text-ink-700 transition-colors hover:bg-ink-50 dark:border-white/15 dark:text-ink-300 dark:hover:bg-white/[0.05]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={busyId === `amend:${amendTarget.application.id}`}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-700 disabled:cursor-wait disabled:opacity-70"
+                  className="focus-brand inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-700 disabled:cursor-wait disabled:opacity-70"
                 >
                   {busyId === `amend:${amendTarget.application.id}` ? (
                     <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -474,6 +539,70 @@ export function ApplicationTable({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {withdrawTarget ? (
+        <div className="fixed inset-0 z-[80] grid place-items-center bg-ink-950/65 p-4 backdrop-blur-sm">
+          <div
+            ref={withdrawDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="supplier-withdraw-title"
+            aria-describedby="supplier-withdraw-description"
+            tabIndex={-1}
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && busyId !== `withdraw:${withdrawTarget.application.id}`) {
+                event.stopPropagation();
+                setWithdrawTarget(null);
+                return;
+              }
+              trapTabFocus(event, withdrawDialogRef.current);
+            }}
+            className="w-full max-w-[460px] rounded-xl border border-ink-200/70 bg-white p-6 shadow-[0_36px_90px_rgba(0,0,0,0.4)] dark:border-white/10 dark:bg-night-2"
+          >
+            <div className="flex items-start gap-3">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">
+                <Undo2 className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <p className="font-code text-[10px] font-semibold tracking-[0.16em] text-brand-700 dark:text-brand-300">WITHDRAW BID</p>
+                <h3 id="supplier-withdraw-title" className="mt-1 break-words text-[16px] font-bold text-ink-950 dark:text-white">
+                  Withdraw application {withdrawTarget.application.id}?
+                </h3>
+              </div>
+            </div>
+            <p id="supplier-withdraw-description" className="mt-4 text-[12.5px] leading-relaxed text-ink-600 dark:text-ink-300">
+              {withdrawTarget.tender?.title ? <span className="font-semibold text-ink-800 dark:text-ink-100">{withdrawTarget.tender.title}. </span> : null}
+              This bid will leave the opening register and cannot be reopened. The procurement record will retain the withdrawal.
+            </p>
+            {actionError ? (
+              <p role="alert" className="mt-4 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-[12px] text-brand-800 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-brand-200">
+                {actionError}
+              </p>
+            ) : null}
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                ref={withdrawCancelRef}
+                type="button"
+                onClick={() => setWithdrawTarget(null)}
+                disabled={busyId === `withdraw:${withdrawTarget.application.id}`}
+                className="focus-brand inline-flex h-11 items-center justify-center rounded-lg border border-ink-200 px-4 text-[12.5px] font-semibold text-ink-700 transition-colors hover:bg-ink-50 disabled:cursor-wait disabled:opacity-50 dark:border-white/15 dark:text-ink-200 dark:hover:bg-white/[0.05]"
+              >
+                Keep bid
+              </button>
+              <button
+                type="button"
+                onClick={() => void withdraw(withdrawTarget.application)}
+                disabled={busyId === `withdraw:${withdrawTarget.application.id}`}
+                aria-busy={busyId === `withdraw:${withdrawTarget.application.id}`}
+                className="focus-brand inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-700 disabled:cursor-wait disabled:opacity-70"
+              >
+                {busyId === `withdraw:${withdrawTarget.application.id}` ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Undo2 className="h-4 w-4" aria-hidden="true" />}
+                {busyId === `withdraw:${withdrawTarget.application.id}` ? "Withdrawing…" : "Withdraw bid"}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

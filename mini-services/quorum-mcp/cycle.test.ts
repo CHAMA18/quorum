@@ -22,6 +22,8 @@ import {
   noticeFieldCheck,
   parseBidSecurity,
   parseClosingDate,
+  parseEvaluationCriteria,
+  renderEvaluationCriteria,
   responsivenessLadder,
   scoreMatrix,
   technicalTotal,
@@ -30,6 +32,7 @@ import {
   variationNeedsGate,
   variationPctOfContract,
   weightsSum,
+  withEvaluationCriteria,
   workingDaysBetween,
 } from "./cycle";
 import type { EvalMatrix, EvalCriterion, Finding } from "./store";
@@ -366,6 +369,63 @@ describe("notice authoring (G20)", () => {
     });
     const missing = noticeFieldCheck(md).filter((f) => !f.present).map((f) => f.field);
     expect(missing).toEqual(["Closing date", "Budget ceiling"]);
+  });
+});
+
+/* ── Evaluation criteria authoring ─────────────────────────────────────────── */
+
+describe("evaluation criteria authoring", () => {
+  const criteria: EvalCriterion[] = [
+    { id: "C-01", title: "Technical compliance", weight: 40 },
+    { id: "C-02", title: "Relevant experience", weight: 35 },
+    { id: "C-03", title: "Delivery plan", weight: 25 },
+  ];
+
+  test("the rendered table round-trips through the publication parser", () => {
+    const md = renderEvaluationCriteria(criteria);
+    expect(parseEvaluationCriteria(md)).toEqual(criteria);
+  });
+
+  test("an existing table is replaced without touching the clauses around it", () => {
+    const spec = [
+      "# SPECIFICATION / TERMS OF REFERENCE",
+      "",
+      "## 5. Evaluation criteria (published with the notice)",
+      "| Criterion | Weight (%) |",
+      "| --- | --- |",
+      "| Old row | 100 |",
+      "",
+      "Weights must sum to 100 — the matrix validator enforces exactly that.",
+      "",
+      "## 6. Reporting, acceptance and payment terms",
+      "Pay on acceptance.",
+    ].join("\n");
+    const updated = withEvaluationCriteria(spec, criteria);
+    expect(parseEvaluationCriteria(updated)).toEqual(criteria);
+    expect(updated).not.toContain("Old row");
+    expect(updated).toContain("Weights must sum to 100 — the matrix validator enforces exactly that.");
+    expect(updated).toContain("## 6. Reporting, acceptance and payment terms\nPay on acceptance.");
+  });
+
+  test("a specification with no criteria section gains one at the end", () => {
+    const updated = withEvaluationCriteria("# SPECIFICATION\n\n## 1. Scope\nSupply kits.", criteria);
+    expect(updated.startsWith("# SPECIFICATION\n\n## 1. Scope\nSupply kits.\n\n## Evaluation criteria")).toBe(true);
+    expect(parseEvaluationCriteria(updated)).toEqual(criteria);
+  });
+
+  test("a heading with no table gets the table inserted beneath it", () => {
+    const spec = "## Evaluation criteria\n\nWeights are published before the deadline.\n\n## Payment\nOn acceptance.";
+    const updated = withEvaluationCriteria(spec, criteria);
+    expect(parseEvaluationCriteria(updated)).toEqual(criteria);
+    expect(updated).toContain("Weights are published before the deadline.");
+    expect(updated).toContain("## Payment\nOn acceptance.");
+  });
+
+  test("a pipe in a title cannot corrupt the table", () => {
+    const piped = [{ id: "C-01", title: "Price | whole-of-life", weight: 100 }];
+    const updated = withEvaluationCriteria("## Evaluation criteria", piped);
+    expect(updated).toContain("| Price / whole-of-life | 100 |");
+    expect(parseEvaluationCriteria(updated)).toEqual([{ id: "C-01", title: "Price / whole-of-life", weight: 100 }]);
   });
 });
 

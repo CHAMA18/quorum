@@ -13,6 +13,8 @@ import { NextResponse } from "next/server";
 const SIDECAR = (process.env.QUORUM_SIDECAR_URL?.trim() || "http://127.0.0.1:3031").replace(/\/+$/, "");
 
 interface SidecarRun {
+  id?: string;
+  reference?: string;
   tenderId?: string;
   status?: string;
   findings?: unknown[];
@@ -80,10 +82,10 @@ export async function GET() {
         ts: entry.ts,
       })),
       supplierActivity,
-      /* A redacted sample run: which tender, how it ended, how much it produced. */
+      /* A redacted sample run: Quorum's public reference, outcome and counts. */
       sample: runs[0]
         ? {
-            tenderId: runs[0].tenderId,
+            reference: runs[0].reference ?? runs[0].id ?? "Tender record",
             status: runs[0].status,
             findings: runs[0].findings?.length ?? 0,
             drafts: runs[0].drafts?.length ?? 0,

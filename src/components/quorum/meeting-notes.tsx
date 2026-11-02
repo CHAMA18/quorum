@@ -100,7 +100,7 @@ function MinutesBody({ minutes }: { minutes: MeetingMinutes }) {
   return (
     <div className="space-y-4">
       <div>
-        <p className="font-code text-[7.5px] font-bold tracking-[0.2em] text-ink-400">SUMMARY</p>
+        <p className="font-code text-[10px] font-bold tracking-[0.14em] text-ink-400">SUMMARY</p>
         <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-800 dark:text-ink-200">
           {minutes.summary || "No summary was produced."}
         </p>
@@ -108,7 +108,7 @@ function MinutesBody({ minutes }: { minutes: MeetingMinutes }) {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <p className="font-code text-[7.5px] font-bold tracking-[0.2em] text-ink-400">DECISIONS</p>
+          <p className="font-code text-[10px] font-bold tracking-[0.14em] text-ink-400">DECISIONS</p>
           {minutes.decisions.length ? (
             <ul className="mt-1.5 space-y-1.5">
               {minutes.decisions.map((decision, i) => (
@@ -124,13 +124,13 @@ function MinutesBody({ minutes }: { minutes: MeetingMinutes }) {
         </div>
 
         <div>
-          <p className="font-code text-[7.5px] font-bold tracking-[0.2em] text-ink-400">ATTENDEES</p>
+          <p className="font-code text-[10px] font-bold tracking-[0.14em] text-ink-400">ATTENDEES</p>
           {minutes.attendees.length ? (
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {minutes.attendees.map((attendee, i) => (
                 <span
                   key={i}
-                  className="inline-flex items-center gap-1 rounded-full border border-ink-200/80 bg-white px-2 py-0.5 font-code text-[8px] font-semibold tracking-[0.06em] text-ink-600 dark:border-white/[0.1] dark:bg-white/[0.04] dark:text-ink-300"
+                  className="inline-flex items-center gap-1 rounded-full border border-ink-200/80 bg-white px-2 py-0.5 font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600 dark:border-white/[0.1] dark:bg-white/[0.04] dark:text-ink-300"
                 >
                   <Users className="h-2.5 w-2.5" aria-hidden="true" />
                   {attendee}
@@ -144,7 +144,7 @@ function MinutesBody({ minutes }: { minutes: MeetingMinutes }) {
       </div>
 
       <div>
-        <p className="font-code text-[7.5px] font-bold tracking-[0.2em] text-ink-400">ACTIONS</p>
+        <p className="font-code text-[10px] font-bold tracking-[0.14em] text-ink-400">ACTIONS</p>
         {minutes.actions.length ? (
           <ul className="mt-1.5 divide-y divide-ink-100 dark:divide-white/[0.05]">
             {minutes.actions.map((action, i) => (
@@ -155,7 +155,7 @@ function MinutesBody({ minutes }: { minutes: MeetingMinutes }) {
                 />
                 <span className="min-w-0 flex-1 text-[12px] leading-relaxed text-ink-700 dark:text-ink-300">
                   {action.action}
-                  <span className="mt-0.5 block font-code text-[7.5px] tracking-[0.1em] text-ink-400">
+                  <span className="mt-0.5 block font-code text-[10px] tracking-[0.1em] text-ink-400">
                     {action.owner.toUpperCase()}
                     {action.due ? ` · DUE ${action.due.toUpperCase()}` : ""}
                   </span>
@@ -170,7 +170,7 @@ function MinutesBody({ minutes }: { minutes: MeetingMinutes }) {
 
       {minutes.quotes.length ? (
         <div>
-          <p className="font-code text-[7.5px] font-bold tracking-[0.2em] text-ink-400">VERBATIM</p>
+          <p className="font-code text-[10px] font-bold tracking-[0.14em] text-ink-400">VERBATIM</p>
           <div className="mt-1.5 space-y-1.5">
             {minutes.quotes.map((quote, i) => (
               <blockquote
@@ -210,6 +210,10 @@ export function MeetingNotes({
   const [copied, setCopied] = useState(false);
   const recogRef = useRef<SpeechRecognitionLike | null>(null);
   const listeningRef = useRef(false);
+  const captureDialogRef = useRef<HTMLDivElement>(null);
+  const viewerDialogRef = useRef<HTMLDivElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const modalOpenRef = useRef(false);
 
   const diary = useMemo(
     () =>
@@ -266,28 +270,69 @@ export function MeetingNotes({
   useEffect(() => {
     if (!capture && !viewing) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      listeningRef.current = false;
-      try {
-        recogRef.current?.stop();
-      } catch {
-        /* already closed */
+      const dialog = viewing ? viewerDialogRef.current : captureDialogRef.current;
+      if (!dialog) return;
+
+      if (event.key === "Escape") {
+        if (capture && busy) return;
+        event.preventDefault();
+        modalOpenRef.current = false;
+        listeningRef.current = false;
+        try {
+          recogRef.current?.stop();
+        } catch {
+          /* already closed */
+        }
+        setListening(false);
+        setInterim("");
+        setCapture(null);
+        setViewing(null);
+        return;
       }
-      setListening(false);
-      setInterim("");
-      setCapture(null);
-      setViewing(null);
+
+      if (event.key !== "Tab") return;
+      const focusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((element) => element.getClientRects().length > 0 && element.getAttribute("aria-hidden") !== "true");
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (!first || !last) {
+        event.preventDefault();
+        dialog.focus();
+      } else if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     const prior = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const dialog = viewing ? viewerDialogRef.current : captureDialogRef.current;
+    if (dialog && !dialog.contains(document.activeElement)) {
+      const first = dialog.querySelector<HTMLElement>(
+        '[autofocus], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+      );
+      (first ?? dialog).focus();
+    }
     window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = prior;
       window.removeEventListener("keydown", onKey);
+      if (!modalOpenRef.current) {
+        if (returnFocusRef.current?.isConnected) returnFocusRef.current.focus();
+        returnFocusRef.current = null;
+      }
     };
-  }, [capture, viewing]);
+  }, [capture, viewing, busy]);
 
   const openCapture = (meeting: NotesMeeting) => {
+    modalOpenRef.current = true;
+    returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     stopHearing();
     setTranscript("");
     setError(null);
@@ -296,8 +341,20 @@ export function MeetingNotes({
   };
 
   const closeCapture = () => {
+    modalOpenRef.current = false;
     stopHearing();
     setCapture(null);
+  };
+
+  const openViewer = (note: MeetingNotePayload) => {
+    modalOpenRef.current = true;
+    returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setViewing(note);
+  };
+
+  const closeViewer = () => {
+    modalOpenRef.current = false;
+    setViewing(null);
   };
 
   const startHearing = () => {
@@ -432,7 +489,7 @@ export function MeetingNotes({
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-ink-200/80 px-3 font-code text-[8px] font-bold tracking-[0.14em] text-ink-500 dark:border-white/10 dark:text-ink-300">
+            <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-ink-200/80 px-3 font-code text-[10px] font-bold tracking-[0.14em] text-ink-500 dark:border-white/10 dark:text-ink-300">
               <FileText className="h-3 w-3" aria-hidden="true" />
               {notes.length} {notes.length === 1 ? "NOTE" : "NOTES"} FILED
             </span>
@@ -440,7 +497,7 @@ export function MeetingNotes({
               type="button"
               onClick={() => void loadNotes()}
               aria-label="Refresh meeting notes"
-              className="grid h-8 w-8 place-items-center rounded-lg border border-ink-200/80 text-ink-500 transition-colors hover:border-ink-950 hover:text-ink-950 dark:border-white/10 dark:text-ink-400 dark:hover:border-white/30 dark:hover:text-white"
+              className="focus-brand grid h-11 w-11 place-items-center rounded-lg border border-ink-200/80 text-ink-500 transition-colors hover:border-ink-950 hover:text-ink-950 dark:border-white/10 dark:text-ink-400 dark:hover:border-white/30 dark:hover:text-white"
             >
               <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
@@ -451,8 +508,8 @@ export function MeetingNotes({
           {/* Meetings the agent can attend */}
           <div className="border-b border-ink-100/80 lg:border-b-0 lg:border-r dark:border-white/[0.06]">
             <div className="flex items-center justify-between gap-3 px-5 pb-1 pt-3.5">
-              <p className="font-code text-[8px] font-bold tracking-[0.2em] text-ink-400">MEETINGS ON THE DIARY</p>
-              <span className="font-code text-[8px] font-bold tracking-[0.12em] text-ink-400 tabular">{diary.length}</span>
+              <p className="font-code text-[10px] font-bold tracking-[0.14em] text-ink-400">MEETINGS ON THE DIARY</p>
+              <span className="font-code text-[10px] font-bold tracking-[0.12em] text-ink-400 tabular">{diary.length}</span>
             </div>
             <ul className="max-h-[340px] divide-y divide-ink-100/70 overflow-y-auto px-2 py-1.5 dark:divide-white/[0.05]">
               {diary.map((meeting) => {
@@ -465,11 +522,11 @@ export function MeetingNotes({
                         <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="font-code text-[8px] tracking-[0.12em] text-ink-400">{whenOf(meeting.startsAt)}</p>
+                        <p className="font-code text-[10px] tracking-[0.12em] text-ink-400">{whenOf(meeting.startsAt)}</p>
                         <p className="mt-0.5 truncate text-[12.5px] font-semibold text-ink-900 dark:text-ink-100">
                           {meeting.title}
                         </p>
-                        <p className="mt-0.5 font-code text-[7.5px] tracking-[0.1em] text-ink-400">
+                        <p className="mt-0.5 font-code text-[10px] tracking-[0.1em] text-ink-400">
                           {invited} INVITED · CALLED BY {meeting.scheduledBy.toUpperCase()}
                           {filed > 0 ? ` · ${filed} ${filed === 1 ? "NOTE" : "NOTES"} FILED` : ""}
                         </p>
@@ -477,7 +534,7 @@ export function MeetingNotes({
                       <button
                         type="button"
                         onClick={() => openCapture(meeting)}
-                        className="focus-brand inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-ink-200 bg-white px-2.5 font-code text-[8px] font-bold tracking-[0.1em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950 dark:border-white/[0.12] dark:bg-white/[0.04] dark:text-ink-200 dark:hover:border-white/30 dark:hover:text-white"
+                        className="focus-brand inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg border border-ink-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.08em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950 dark:border-white/[0.12] dark:bg-white/[0.04] dark:text-ink-200 dark:hover:border-white/30 dark:hover:text-white"
                       >
                         TAKE NOTES
                         <ArrowRight className="h-3 w-3" aria-hidden="true" />
@@ -488,7 +545,7 @@ export function MeetingNotes({
               })}
               {diary.length === 0 && (
                 <li className="px-4 py-8 text-center">
-                  <p className="font-code text-[9px] font-bold tracking-[0.2em] text-ink-400">NO MEETING ON THE DIARY</p>
+                  <p className="font-code text-[10px] font-bold tracking-[0.14em] text-ink-400">NO MEETING ON THE DIARY</p>
                   <p className="mx-auto mt-2 max-w-[260px] text-[12px] leading-relaxed text-ink-500">
                     Schedule a meeting from the committee register and the agent will be ready to take its notes.
                   </p>
@@ -500,16 +557,16 @@ export function MeetingNotes({
           {/* Filed notes */}
           <div>
             <div className="flex items-center justify-between gap-3 px-5 pb-1 pt-3.5">
-              <p className="font-code text-[8px] font-bold tracking-[0.2em] text-ink-400">NOTES ON THE RECORD</p>
-              <span className="font-code text-[8px] font-bold tracking-[0.12em] text-ink-400 tabular">{notes.length}</span>
+              <p className="font-code text-[10px] font-bold tracking-[0.14em] text-ink-400">NOTES ON THE RECORD</p>
+              <span className="font-code text-[10px] font-bold tracking-[0.12em] text-ink-400 tabular">{notes.length}</span>
             </div>
             <ul className="max-h-[340px] divide-y divide-ink-100/70 overflow-y-auto px-2 py-1.5 dark:divide-white/[0.05]">
               {notes.map((note) => (
                 <li key={note.id}>
                   <button
                     type="button"
-                    onClick={() => setViewing(note)}
-                    className="focus-brand w-full rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-paper dark:hover:bg-white/[0.03]"
+                    onClick={() => openViewer(note)}
+                    className="focus-brand min-h-11 w-full rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-paper dark:hover:bg-white/[0.03]"
                   >
                     <span className="flex items-center gap-2">
                       <FileText className="h-3.5 w-3.5 shrink-0 text-brand-600 dark:text-brand-400" aria-hidden="true" />
@@ -518,7 +575,7 @@ export function MeetingNotes({
                       </span>
                       <span
                         className={cn(
-                          "shrink-0 rounded-full px-2 py-0.5 font-code text-[6.5px] font-bold tracking-[0.12em]",
+                          "shrink-0 rounded-full px-2 py-0.5 font-code text-[10px] font-bold tracking-[0.12em]",
                           note.provider === "meta"
                             ? "bg-brand-50 text-brand-700 dark:bg-brand-500/12 dark:text-brand-300"
                             : "bg-ink-100 text-ink-500 dark:bg-white/[0.06] dark:text-ink-300",
@@ -527,7 +584,7 @@ export function MeetingNotes({
                         {note.provider === "meta" ? "META AGENT" : "LOCAL DRAFT"}
                       </span>
                     </span>
-                    <span className="mt-1 block font-code text-[7.5px] tracking-[0.1em] text-ink-400">
+                    <span className="mt-1 block font-code text-[10px] tracking-[0.1em] text-ink-400">
                       {filedAt(note.createdAt)} · {note.createdBy.toUpperCase()} · {note.minutes.decisions.length} DECISIONS ·{" "}
                       {note.minutes.actions.length} ACTIONS
                     </span>
@@ -536,7 +593,7 @@ export function MeetingNotes({
               ))}
               {notes.length === 0 && (
                 <li className="px-4 py-8 text-center">
-                  <p className="font-code text-[9px] font-bold tracking-[0.2em] text-ink-400">NO MINUTES FILED YET</p>
+                  <p className="font-code text-[10px] font-bold tracking-[0.14em] text-ink-400">NO MINUTES FILED YET</p>
                   <p className="mx-auto mt-2 max-w-[260px] text-[12px] leading-relaxed text-ink-500">
                     {notesFailed
                       ? "The notes service could not be read. Refresh to try again — nothing is lost."
@@ -564,9 +621,12 @@ export function MeetingNotes({
             }}
             role="dialog"
             aria-modal="true"
+            aria-busy={busy}
             aria-labelledby="meeting-note-capture-title"
           >
             <motion.div
+              ref={captureDialogRef}
+              tabIndex={-1}
               initial={{ opacity: 0, y: 18, scale: 0.985 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12, scale: 0.99 }}
@@ -575,7 +635,7 @@ export function MeetingNotes({
             >
               <header className="flex shrink-0 items-start justify-between gap-4 border-b border-ink-100 px-5 py-4 dark:border-white/[0.06] sm:px-7">
                 <div className="min-w-0">
-                  <p className="font-code text-[8.5px] font-bold tracking-[0.2em] text-brand-700 dark:text-brand-300">
+                  <p className="font-code text-[10px] font-bold tracking-[0.14em] text-brand-700 dark:text-brand-300">
                     MEETING NOTES · {whenOf(capture.startsAt).toUpperCase()}
                   </p>
                   <h3
@@ -594,7 +654,7 @@ export function MeetingNotes({
                   onClick={closeCapture}
                   disabled={busy}
                   aria-label="Close meeting notes capture"
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-900 disabled:opacity-50 dark:hover:bg-white/[0.06] dark:hover:text-white"
+                  className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-900 disabled:opacity-50 dark:hover:bg-white/[0.06] dark:hover:text-white"
                 >
                   <X className="h-4 w-4" aria-hidden="true" />
                 </button>
@@ -606,7 +666,7 @@ export function MeetingNotes({
                     <button
                       type="button"
                       onClick={stopHearing}
-                      className="inline-flex h-9 items-center gap-2 rounded-full bg-brand-600 px-4 font-code text-[8.5px] font-bold tracking-[0.14em] text-white transition-colors hover:bg-brand-700"
+                      className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-full bg-brand-600 px-4 font-code text-[10px] font-bold tracking-[0.1em] text-white transition-colors hover:bg-brand-700"
                     >
                       <Square className="h-3 w-3" aria-hidden="true" />
                       STOP LISTENING
@@ -616,14 +676,14 @@ export function MeetingNotes({
                       type="button"
                       onClick={startHearing}
                       disabled={busy}
-                      className="inline-flex h-9 items-center gap-2 rounded-full bg-ink-950 px-4 font-code text-[8.5px] font-bold tracking-[0.14em] text-white transition-colors hover:bg-brand-600 disabled:opacity-50 dark:bg-white dark:text-ink-950 dark:hover:bg-brand-400"
+                      className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-full bg-ink-950 px-4 font-code text-[10px] font-bold tracking-[0.1em] text-white transition-colors hover:bg-brand-600 disabled:opacity-50 dark:bg-white dark:text-ink-950 dark:hover:bg-brand-400"
                     >
                       <Mic className="h-3 w-3" aria-hidden="true" />
                       START LISTENING
                     </button>
                   )}
                   {listening && (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 font-code text-[7.5px] font-bold tracking-[0.14em] text-emerald-700 dark:text-emerald-300">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.14em] text-emerald-700 dark:text-emerald-300">
                       <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
                         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-70" />
                         <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -631,13 +691,13 @@ export function MeetingNotes({
                       LIVE
                     </span>
                   )}
-                  <span className="font-code text-[7.5px] tracking-[0.1em] text-ink-400">
+                  <span className="font-code text-[10px] tracking-[0.1em] text-ink-400">
                     {canListen ? "BROWSER TRANSCRIPTION · AUDIO NEVER UPLOADED" : "PASTE THE TRANSCRIPT BELOW"}
                   </span>
                 </div>
 
                 {interim ? (
-                  <p className="mt-2 rounded-lg bg-paper-2/70 px-3 py-2 text-[11.5px] italic text-ink-500 dark:bg-white/[0.03] dark:text-ink-400">
+                  <p aria-live="off" className="mt-2 rounded-lg bg-paper-2/70 px-3 py-2 text-[11.5px] italic text-ink-500 dark:bg-white/[0.03] dark:text-ink-400">
                     … {interim}
                   </p>
                 ) : null}
@@ -653,18 +713,18 @@ export function MeetingNotes({
                     className="focus-brand w-full resize-y rounded-[10px] border border-ink-200/80 bg-[#fffdfb] px-3 py-2.5 text-[12.5px] leading-relaxed text-ink-900 shadow-[inset_0_1px_1px_rgba(11,12,15,0.03)] outline-none transition-[border-color] duration-200 placeholder:text-ink-400 focus:border-ink-950 dark:border-white/[0.1] dark:bg-white/[0.04] dark:text-white dark:focus:border-white/35"
                   />
                 </label>
-                <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 font-code text-[7.5px] tracking-[0.12em] text-ink-400">
+                <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 font-code text-[10px] tracking-[0.12em] text-ink-400">
                   <span>{transcript.trim() ? `${transcript.trim().split(/\s+/).length} WORDS CAPTURED` : "NOTHING CAPTURED YET"}</span>
                   <span>THE TRANSCRIPT IS KEPT WITH THE NOTE</span>
                 </div>
 
                 {voiceNote ? (
-                  <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-[11.5px] text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+                  <p role="status" className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-[11.5px] text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
                     {voiceNote}
                   </p>
                 ) : null}
                 {error ? (
-                  <p className="mt-2 rounded-lg bg-brand-50 px-3 py-2 text-[11.5px] text-brand-800 dark:bg-brand-500/10 dark:text-brand-300">
+                  <p role="alert" className="mt-2 rounded-lg bg-brand-50 px-3 py-2 text-[11.5px] text-brand-800 dark:bg-brand-500/10 dark:text-brand-300">
                     {error}
                   </p>
                 ) : null}
@@ -681,7 +741,7 @@ export function MeetingNotes({
                     type="button"
                     onClick={closeCapture}
                     disabled={busy}
-                    className="inline-flex h-9 items-center rounded-lg border border-ink-200/80 px-3.5 font-code text-[8px] font-bold tracking-[0.16em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:opacity-50 dark:border-white/[0.12] dark:text-ink-300 dark:hover:border-white/30 dark:hover:text-white"
+                    className="focus-brand inline-flex min-h-11 items-center rounded-lg border border-ink-200/80 px-4 font-code text-[10px] font-bold tracking-[0.1em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:opacity-50 dark:border-white/[0.12] dark:text-ink-300 dark:hover:border-white/30 dark:hover:text-white"
                   >
                     CANCEL
                   </button>
@@ -689,7 +749,7 @@ export function MeetingNotes({
                     type="button"
                     onClick={() => void draft()}
                     disabled={busy || transcript.trim().length < 20}
-                    className="inline-flex h-9 items-center gap-2 rounded-lg bg-brand-600 px-4 font-code text-[8.5px] font-bold tracking-[0.14em] text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg bg-brand-600 px-4 font-code text-[10px] font-bold tracking-[0.1em] text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {busy ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
@@ -716,13 +776,15 @@ export function MeetingNotes({
             transition={{ duration: 0.2 }}
             className="fixed inset-0 z-[95] grid place-items-center bg-night/70 p-3 backdrop-blur-sm sm:p-5"
             onMouseDown={(event) => {
-              if (event.target === event.currentTarget) setViewing(null);
+              if (event.target === event.currentTarget) closeViewer();
             }}
             role="dialog"
             aria-modal="true"
             aria-labelledby="meeting-note-view-title"
           >
             <motion.div
+              ref={viewerDialogRef}
+              tabIndex={-1}
               initial={{ opacity: 0, y: 18, scale: 0.985 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12, scale: 0.99 }}
@@ -731,7 +793,7 @@ export function MeetingNotes({
             >
               <header className="flex shrink-0 items-start justify-between gap-4 border-b border-ink-100 px-5 py-4 dark:border-white/[0.06] sm:px-7">
                 <div className="min-w-0">
-                  <p className="font-code text-[8.5px] font-bold tracking-[0.2em] text-brand-700 dark:text-brand-300">
+                  <p className="font-code text-[10px] font-bold tracking-[0.14em] text-brand-700 dark:text-brand-300">
                     FILED MINUTES · {filedAt(viewing.createdAt)}
                   </p>
                   <h3
@@ -742,16 +804,16 @@ export function MeetingNotes({
                   </h3>
                   <p className="mt-1 flex flex-wrap items-center gap-2 text-[11.5px] text-ink-500 dark:text-ink-400">
                     {whenOf(viewing.meetingStartsAt)} · recorded by {viewing.createdBy}
-                    <span className="rounded-full bg-ink-100 px-2 py-0.5 font-code text-[6.5px] font-bold tracking-[0.12em] text-ink-500 dark:bg-white/[0.06] dark:text-ink-300">
+                    <span className="rounded-full bg-ink-100 px-2 py-0.5 font-code text-[10px] font-bold tracking-[0.12em] text-ink-500 dark:bg-white/[0.06] dark:text-ink-300">
                       {viewing.provider === "meta" ? `META · ${viewing.model.toUpperCase()}` : "DETERMINISTIC DRAFT"}
                     </span>
                   </p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setViewing(null)}
+                  onClick={closeViewer}
                   aria-label="Close the filed minutes"
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-900 dark:hover:bg-white/[0.06] dark:hover:text-white"
+                  className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-900 dark:hover:bg-white/[0.06] dark:hover:text-white"
                 >
                   <X className="h-4 w-4" aria-hidden="true" />
                 </button>
@@ -760,7 +822,7 @@ export function MeetingNotes({
               <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-7">
                 <MinutesBody minutes={viewing.minutes} />
                 <details className="mt-4 rounded-[10px] border border-ink-100/80 dark:border-white/[0.07]">
-                  <summary className="cursor-pointer px-3 py-2 font-code text-[7.5px] font-bold tracking-[0.16em] text-ink-500 dark:text-ink-400">
+                  <summary className="cursor-pointer px-3 py-2 font-code text-[10px] font-bold tracking-[0.16em] text-ink-500 dark:text-ink-400">
                     FULL TRANSCRIPT · {viewing.transcript.length.toLocaleString("en-US")} CHARS
                   </summary>
                   <pre className="max-h-[280px] overflow-y-auto whitespace-pre-wrap border-t border-ink-100/80 px-3 py-2.5 font-code text-[10px] leading-relaxed text-ink-600 dark:border-white/[0.06] dark:text-ink-400">
@@ -773,7 +835,7 @@ export function MeetingNotes({
                 <button
                   type="button"
                   onClick={() => downloadNote(viewing)}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-ink-200/80 px-3.5 font-code text-[8px] font-bold tracking-[0.14em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 dark:border-white/[0.12] dark:text-ink-300 dark:hover:border-white/30 dark:hover:text-white"
+                  className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-ink-200/80 px-4 font-code text-[10px] font-bold tracking-[0.1em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 dark:border-white/[0.12] dark:text-ink-300 dark:hover:border-white/30 dark:hover:text-white"
                 >
                   <Download className="h-3 w-3" aria-hidden="true" />
                   DOWNLOAD
@@ -782,15 +844,15 @@ export function MeetingNotes({
                   <button
                     type="button"
                     onClick={() => void copyNote(viewing)}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-ink-200/80 px-3.5 font-code text-[8px] font-bold tracking-[0.14em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 dark:border-white/[0.12] dark:text-ink-300 dark:hover:border-white/30 dark:hover:text-white"
+                    className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-ink-200/80 px-4 font-code text-[10px] font-bold tracking-[0.1em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 dark:border-white/[0.12] dark:text-ink-300 dark:hover:border-white/30 dark:hover:text-white"
                   >
                     <Copy className="h-3 w-3" aria-hidden="true" />
                     {copied ? "COPIED" : "COPY"}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setViewing(null)}
-                    className="inline-flex h-9 items-center rounded-lg bg-ink-950 px-4 font-code text-[8.5px] font-bold tracking-[0.14em] text-white transition-colors hover:bg-brand-600 dark:bg-white dark:text-ink-950 dark:hover:bg-brand-400"
+                    onClick={closeViewer}
+                    className="focus-brand inline-flex min-h-11 items-center rounded-lg bg-ink-950 px-4 font-code text-[10px] font-bold tracking-[0.1em] text-white transition-colors hover:bg-brand-600 dark:bg-white dark:text-ink-950 dark:hover:bg-brand-400"
                   >
                     DONE
                   </button>

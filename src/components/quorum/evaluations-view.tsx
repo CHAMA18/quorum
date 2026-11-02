@@ -172,7 +172,7 @@ function EvaluationRow({
           {/* Deterministic rank chip — stable per reference, readable at a glance */}
           <span
             className={cn(
-              "shrink-0 rounded-full bg-white/5 px-1.5 py-0.5 font-code text-[9px] font-bold tracking-wider text-ink-400",
+              "shrink-0 rounded-full bg-white/5 px-1.5 py-0.5 font-code text-[10px] font-bold tracking-wider text-ink-400",
               statusRank < 2 && "text-ink-300"
             )}
           >
@@ -180,7 +180,7 @@ function EvaluationRow({
           </span>
 
           {run.attempt && run.attempt > 1 && (
-            <span className="shrink-0 rounded-full bg-white/5 px-1.5 py-0.5 font-code text-[9px] font-bold tracking-wider text-ink-300">
+            <span className="shrink-0 rounded-full bg-white/5 px-1.5 py-0.5 font-code text-[10px] font-bold tracking-wider text-ink-300">
               Attempt {run.attempt}
             </span>
           )}
@@ -289,7 +289,7 @@ function EvaluationRow({
           >
             {run.startedAt}
           </span>
-          <span className="inline-flex items-center gap-1 font-code text-[9px] tracking-wider text-ink-500">
+          <span className="inline-flex items-center gap-1 font-code text-[10px] tracking-wider text-ink-500">
             <Clock className="h-2.5 w-2.5" aria-hidden="true" />
             opened
           </span>
@@ -299,7 +299,7 @@ function EvaluationRow({
           {/* The status chip — the single source of truth for where this sits */}
           <span
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-code text-[9px] font-bold tracking-[0.14em] tabular",
+              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.14em] tabular",
               isWaiting
                 ? "border-brand-500/30 bg-brand-500/10 text-brand-300 hover:bg-brand-500/15"
                 : isLive
@@ -327,7 +327,7 @@ function EvaluationRow({
             aria-expanded={expanded}
             onClick={() => void toggleExpanded()}
             className={cn(
-              "flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-ink-400 transition-colors hover:bg-white/5 hover:text-white",
+              "flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-lg px-2 py-1 text-ink-400 transition-colors hover:bg-white/5 hover:text-white",
               isWaiting && "text-brand-300 hover:text-brand-200"
             )}
           >
@@ -348,8 +348,8 @@ function EvaluationRow({
                     <li key={finding.id} className="rounded-xl border border-white/[0.08] bg-black/15 p-3.5">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-code text-[10px] font-bold text-white">{finding.id} · {finding.rule}</span>
-                        <span className={cn("rounded-full px-2 py-0.5 font-code text-[9px] font-bold", finding.severity === "HIGH" ? "bg-brand-500/15 text-brand-300" : finding.severity === "MEDIUM" ? "bg-amber-400/10 text-amber-300" : "bg-white/5 text-ink-300")}>{finding.severity}</span>
-                        {finding.repaired ? <span className="font-code text-[9px] text-emerald-300">VERIFIED / REPAIRED</span> : null}
+                        <span className={cn("rounded-full px-2 py-0.5 font-code text-[10px] font-bold", finding.severity === "HIGH" ? "bg-brand-500/15 text-brand-300" : finding.severity === "MEDIUM" ? "bg-amber-400/10 text-amber-300" : "bg-white/5 text-ink-300")}>{finding.severity}</span>
+                        {finding.repaired ? <span className="font-code text-[10px] text-emerald-300">VERIFIED / REPAIRED</span> : null}
                       </div>
                       <p className="mt-2 text-[12px] font-semibold text-ink-100">{finding.item}</p>
                       {finding.evidence ? <blockquote className="mt-2 border-l-2 border-white/15 pl-3 text-[11px] leading-relaxed text-ink-300">{finding.evidence}</blockquote> : null}
@@ -360,7 +360,7 @@ function EvaluationRow({
               ) : <p className="mt-3 text-[12px] text-ink-400">{run.findings ? "Detailed findings are unavailable for this run." : "No findings were recorded."}</p>}
               {run.progress?.length ? (
                 <details className="mt-3 rounded-xl border border-white/[0.08] bg-black/15 p-3">
-                  <summary className="cursor-pointer font-code text-[9px] font-bold tracking-[0.12em] text-ink-300">REVIEW PROGRESS · {run.progress.length} STEPS</summary>
+                  <summary className="cursor-pointer font-code text-[10px] font-bold tracking-[0.12em] text-ink-300">REVIEW PROGRESS · {run.progress.length} STEPS</summary>
                   <ol className="mt-2 list-inside list-decimal space-y-1 text-[10px] leading-relaxed text-ink-400">
                     {run.progress.map((step, i) => <li key={`${i}-${step}`}>{step}</li>)}
                   </ol>
@@ -370,7 +370,7 @@ function EvaluationRow({
             <section>
               <div className="flex items-center justify-between gap-3">
                 <h3 className="font-code text-[10px] font-bold tracking-[0.16em] text-ink-400 uppercase">Audit Trail</h3>
-                <span className="font-code text-[9px] text-ink-500">{audit.entries.length} entries</span>
+                <span className="font-code text-[10px] text-ink-500">{audit.entries.length} entries</span>
               </div>
               {audit.loading ? <p className="mt-3 text-[11px] text-ink-400">Loading audit entries…</p> : null}
               {audit.error ? <p role="alert" className="mt-3 text-[11px] text-brand-300">{audit.error}</p> : null}
@@ -380,16 +380,16 @@ function EvaluationRow({
                   <li key={entry.seq} className="rounded-lg border border-white/[0.07] bg-black/15 p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="font-code text-[10px] font-bold text-white">#{entry.seq} · {entry.tool}</span>
-                      <span className="font-code text-[9px] text-ink-400">{entry.status} · {entry.durationMs} ms</span>
+                      <span className="font-code text-[10px] text-ink-400">{entry.status} · {entry.durationMs} ms</span>
                     </div>
                     <p className="mt-1 text-[10px] text-ink-500">{entry.actor} · {entry.ts ? new Date(entry.ts).toLocaleString() : "—"}</p>
                     <details className="mt-2">
-                      <summary className="cursor-pointer font-code text-[9px] text-ink-400">INPUTS, OUTPUTS & HASH LINKS</summary>
+                      <summary className="cursor-pointer font-code text-[10px] text-ink-400">INPUTS, OUTPUTS & HASH LINKS</summary>
                       <div className="mt-2 grid gap-2 lg:grid-cols-2">
-                        <pre className="max-h-36 overflow-auto whitespace-pre-wrap break-all rounded bg-black/20 p-2 font-code text-[9px] text-ink-300">{JSON.stringify(entry.inputs, null, 2)}</pre>
-                        <pre className="max-h-36 overflow-auto whitespace-pre-wrap break-all rounded bg-black/20 p-2 font-code text-[9px] text-ink-300">{JSON.stringify(entry.outputs, null, 2)}</pre>
+                        <pre className="max-h-36 overflow-auto whitespace-pre-wrap break-all rounded bg-black/20 p-2 font-code text-[10px] text-ink-300">{JSON.stringify(entry.inputs, null, 2)}</pre>
+                        <pre className="max-h-36 overflow-auto whitespace-pre-wrap break-all rounded bg-black/20 p-2 font-code text-[10px] text-ink-300">{JSON.stringify(entry.outputs, null, 2)}</pre>
                       </div>
-                      <p className="mt-1 break-all font-code text-[8px] text-ink-500">SELF {entry.self ?? "—"} · PREV {entry.prev ?? "—"}</p>
+                      <p className="mt-1 break-all font-code text-[10px] text-ink-500">SELF {entry.self ?? "—"} · PREV {entry.prev ?? "—"}</p>
                     </details>
                   </li>
                 ))}
@@ -439,7 +439,7 @@ function FilterPills({
           onClick={() => onChange(f.value)}
           aria-pressed={active === f.value}
           className={cn(
-            "inline-flex items-center rounded-full border px-4 py-1.5 font-code text-[10px] font-bold tracking-[0.16em] uppercase transition-all duration-150",
+            "inline-flex min-h-11 items-center rounded-full border px-4 py-1.5 font-code text-[10px] font-bold tracking-[0.16em] uppercase transition-all duration-150",
             active === f.value
               ? "border-white/10 bg-ink-950/95 text-white shadow-[0_1px_2px_rgba(0,0,0,0.4)]"
               : "border-white/8 bg-transparent text-ink-400 hover:border-white/20 hover:text-white/80"
@@ -491,7 +491,7 @@ function EmptyState({
         <button
           type="button"
           onClick={onClearQuery}
-          className="mt-3 font-code text-[9px] font-bold tracking-[0.16em] text-brand-300 transition-colors hover:text-brand-200"
+          className="focus-brand mt-2 inline-flex min-h-11 items-center rounded px-2 font-code text-[10px] font-bold tracking-[0.16em] text-brand-300 transition-colors hover:text-brand-200"
         >
           CLEAR SEARCH
         </button>
@@ -577,7 +577,7 @@ function NewRunPrompt({ onNewRun }: { onNewRun: () => void }) {
         <button
           type="button"
           onClick={onNewRun}
-          className="mt-5 inline-flex items-center gap-2 rounded-full bg-brand-500 px-5 py-2.5 text-[12px] font-bold tracking-[0.08em] text-brand-950 transition-colors hover:bg-brand-400 active:scale-[0.98]"
+          className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-brand-500 px-5 py-2.5 text-[12px] font-bold tracking-[0.08em] text-brand-950 transition-colors hover:bg-brand-400 active:scale-[0.98]"
         >
           <Terminal className="h-3.5 w-3.5" aria-hidden="true" />
           QUEUE A RUN
@@ -618,7 +618,7 @@ function StandingRuleCard() {
       </div>
       <a
         href="/docs/rules"
-        className="mt-4 inline-flex items-center gap-1.5 text-[11px] font-medium tracking-wide text-ink-300 transition-colors hover:text-white"
+        className="mt-2 inline-flex min-h-11 items-center gap-1.5 rounded px-1 text-[11px] font-medium tracking-wide text-ink-300 transition-colors hover:text-white"
       >
         Read the rules
         <ChevronRight className="h-3 w-3" aria-hidden="true" />
@@ -689,7 +689,7 @@ export function EvaluationsSubview({
           {/* Reachability indicator — quiet, never alarming */}
           <span
             className={cn(
-              "flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-code text-[9px] tracking-[0.14em]",
+              "flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-code text-[10px] tracking-[0.14em]",
               reachable
                 ? "border-brand-500/25 bg-brand-500/5 text-brand-300"
                 : "border-ink-200 bg-white/5 text-ink-500"
@@ -725,21 +725,21 @@ export function EvaluationsSubview({
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search evaluations…"
                 aria-label="Search evaluations by reference, title or buyer"
-                className="h-9 w-full rounded-full border border-white/10 bg-white/[0.03] pl-9 pr-3.5 font-code text-[11px] text-white outline-none transition-colors placeholder:text-ink-500 focus:border-brand-500/50 focus:ring-2 focus:ring-brand-500/15"
+                className="focus-brand h-11 w-full rounded-full border border-white/10 bg-white/[0.03] pl-9 pr-3.5 text-[14px] text-white outline-none transition-colors placeholder:text-ink-500 focus:border-brand-500/50 focus:ring-2 focus:ring-brand-500/15"
               />
             </label>
             {query && (
               <button
                 type="button"
                 onClick={() => setQuery("")}
-                className="font-code text-[9px] font-bold tracking-[0.16em] text-ink-400 transition-colors hover:text-white"
+                className="focus-brand inline-flex min-h-11 items-center rounded px-2 text-[10px] font-bold tracking-[0.04em] text-ink-300 transition-colors hover:text-white"
               >
                 CLEAR
               </button>
             )}
             <span
               aria-live="polite"
-              className="shrink-0 font-code text-[9px] font-bold tracking-[0.14em] text-ink-500 tabular"
+              className="shrink-0 font-code text-[10px] font-bold tracking-[0.14em] text-ink-500 tabular"
             >
               {filtered.length} OF {runs.length} RESULTS
             </span>

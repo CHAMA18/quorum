@@ -128,11 +128,11 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
         </div>
       </div>
 
-      <div className="relative mx-auto w-full max-w-7xl px-4 pb-16 pt-10 sm:px-6 sm:pt-14 lg:px-8 lg:pb-20 lg:pt-16">
+      <div className="relative mx-auto w-full max-w-7xl px-4 pb-14 pt-8 sm:px-6 sm:pb-16 sm:pt-14 lg:px-8 lg:pb-20 lg:pt-16">
         <motion.div
-          initial={{ opacity: 0 }}
+          initial={reduce ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, ease: EASE }}
+          transition={reduce ? { duration: 0 } : { duration: 0.6, ease: EASE }}
         >
           <SpecBar
             index="00"
@@ -141,7 +141,7 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
           />
         </motion.div>
 
-        <div className="mt-10 grid items-start gap-14 lg:mt-14 lg:grid-cols-12 lg:gap-10">
+        <div className="mt-8 grid items-start gap-12 sm:mt-10 lg:mt-14 lg:grid-cols-12 lg:gap-10">
           {/* ── The claim ─────────────────────────────────────────────────── */}
           <div className="lg:col-span-6">
             {/* Headline — per-word masked reveal; the accent phrase set in the
@@ -153,7 +153,7 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
               <span aria-hidden="true">
                 <MaskedWord delay={0.06}>Do</MaskedWord>{" "}
                 <MaskedWord delay={0.12}>in</MaskedWord>{" "}
-                <span className="relative inline-block whitespace-nowrap">
+                <span className="relative inline-block sm:whitespace-nowrap">
                   <MaskedWord
                     delay={0.18}
                     className="font-editorial text-[1.04em] font-normal tracking-normal text-brand-500 dark:text-brand-400"
@@ -186,7 +186,7 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
                       fill="none"
                       initial={reduce ? false : { pathLength: 0 }}
                       animate={{ pathLength: 1 }}
-                      transition={{ duration: 1.1, delay: 1.05, ease: EASE }}
+                      transition={reduce ? { duration: 0 } : { duration: 1.1, delay: 1.05, ease: EASE }}
                     />
                   </svg>
                 </span>{" "}
@@ -201,69 +201,24 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
             </h1>
 
             <motion.p
-              initial={{ opacity: 0, y: 20 }}
+              initial={reduce ? false : { opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.55, ease: EASE }}
-              className="type-lede mt-7 max-w-[54ch] text-ink-600 dark:text-ink-400"
+              transition={reduce ? { duration: 0 } : { duration: 0.7, delay: 0.55, ease: EASE }}
+              className="type-lede mt-6 max-w-[54ch] text-ink-600 dark:text-ink-400"
             >
-              Quorum reads a health tender end to end — specs against clinical need, quantities
-              against real consumption, prices against other buyers. Every finding cited. Then it
-              stops and hands over:{" "}
-              <span className="font-semibold text-ink-900 dark:text-ink-100">
-                the committee decides.
-              </span>
+              Quorum compares specs with clinical need, quantities with real consumption and prices
+              with other buyers. Every finding is cited;{" "}
+              <span className="font-semibold text-ink-900 dark:text-ink-100">the committee decides.</span>
             </motion.p>
 
-            {/* Institutional standing */}
+            {/* Put the next step directly after the product promise; the
+                credentials remain available below without pushing it off
+                the first mobile screen. */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={reduce ? false : { opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.62, ease: EASE }}
-              className="mt-7"
-            >
-              <span className="inline-flex items-center gap-2.5 rounded-full border border-brand-500/25 bg-brand-500/[0.06] py-2 pl-2 pr-4 text-[13.5px] font-semibold text-brand-700 dark:border-brand-500/30 dark:text-brand-300">
-                <span className="grid h-6 w-6 place-items-center rounded-full bg-brand-500/12">
-                  <Landmark className="h-3.5 w-3.5" aria-hidden="true" />
-                </span>
-                Built for ministries, medical stores &amp; oversight bodies
-              </span>
-            </motion.div>
-
-            {/* Hackathon + model attribution — a judge should see, before any
-                sign-in, that this is a Meta build and which models carry it. */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.66, ease: EASE }}
-              className="mt-3 flex flex-wrap items-center gap-2"
-            >
-              <a
-                href="https://d1n7mv5t5hn4xe.cloudfront.net"
-                className="focus-brand group inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white/70 px-3.5 py-1.5 text-[12px] font-semibold text-ink-800 transition-colors hover:border-brand-300 hover:text-brand-700 dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-200"
-              >
-                <Sparkles className="h-3.5 w-3.5 text-brand-600" aria-hidden="true" />
-                Meta Global AI Developer Hackathon 2026 · Indie track
-                <ArrowUpRight
-                  className="h-3.5 w-3.5 text-ink-400 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-                  aria-hidden="true"
-                />
-              </a>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-200/70 bg-paper/60 px-3.5 py-1.5 font-code text-[10.5px] font-medium tracking-[0.08em] text-ink-500 dark:border-white/10 dark:text-ink-400">
-                MUSE SPARK 1.3
-                <span className="text-ink-300" aria-hidden="true">·</span>
-                LLAMA 3.2 IN-REGION
-                <span className="text-ink-300" aria-hidden="true">·</span>
-                SAM 3.1
-              </span>
-            </motion.div>
-
-            {/* Calls to action — the primary pulls toward the cursor and its
-                arrow rolls in a struck circle; the secondary falls into the page. */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.7, ease: EASE }}
-              className="mt-9 flex flex-wrap items-center gap-3.5"
+              transition={reduce ? { duration: 0 } : { duration: 0.7, delay: 0.7, ease: EASE }}
+              className="mt-7 flex flex-wrap items-center gap-3.5 sm:mt-9"
             >
               <Magnetic strength={0.22}>
                 <button
@@ -297,21 +252,65 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
             </motion.div>
 
             <motion.p
-              initial={{ opacity: 0 }}
+              initial={reduce ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ duration: 0.7, delay: 0.9 }}
-              className="type-micro mt-5 flex items-center gap-2.5 text-ink-400"
+              transition={reduce ? { duration: 0 } : { duration: 0.7, delay: 0.9 }}
+              className="type-micro mt-4 flex items-center gap-2.5 text-ink-500"
             >
               <CircleDot className="h-3 w-3 text-brand-500" aria-hidden="true" />
               Pilot tier — free for your first three tenders
             </motion.p>
+
+            {/* Institutional standing */}
+            <motion.div
+              initial={reduce ? false : { opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={reduce ? { duration: 0 } : { duration: 0.7, delay: 0.62, ease: EASE }}
+              className="mt-6 sm:mt-7"
+            >
+              <span className="inline-flex items-center gap-2.5 rounded-full border border-brand-500/25 bg-brand-500/[0.06] py-2 pl-2 pr-4 text-[13.5px] font-semibold text-brand-700 dark:border-brand-500/30 dark:text-brand-300">
+                <span className="grid h-6 w-6 place-items-center rounded-full bg-brand-500/12">
+                  <Landmark className="h-3.5 w-3.5" aria-hidden="true" />
+                </span>
+                Built for ministries, medical stores &amp; oversight bodies
+              </span>
+            </motion.div>
+
+            {/* Hackathon + model attribution — a judge should see, before any
+                sign-in, that this is a Meta build and which models carry it. */}
+            <motion.div
+              initial={reduce ? false : { opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={reduce ? { duration: 0 } : { duration: 0.7, delay: 0.66, ease: EASE }}
+              className="mt-3 flex flex-wrap items-center gap-2"
+            >
+              <a
+                href="https://d1n7mv5t5hn4xe.cloudfront.net"
+                className="focus-brand group inline-flex min-h-11 items-center gap-2 rounded-full border border-ink-200 bg-white/70 px-3.5 py-1.5 text-[12px] font-semibold text-ink-800 transition-colors hover:border-brand-300 hover:text-brand-700 dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-800"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-brand-600" aria-hidden="true" />
+                Meta Global AI Developer Hackathon 2026 · Indie track
+                <ArrowUpRight
+                  className="h-3.5 w-3.5 text-ink-400 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                  aria-hidden="true"
+                />
+              </a>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-200/70 bg-paper/60 px-3.5 py-1.5 font-code text-[10.5px] font-medium tracking-[0.08em] text-ink-500 dark:border-white/10 dark:text-ink-400">
+                MUSE SPARK 1.3
+                <span className="text-ink-300" aria-hidden="true">·</span>
+                LLAMA 3.2 IN-REGION
+                <span className="text-ink-300" aria-hidden="true">·</span>
+                SAM 3.1
+              </span>
+            </motion.div>
+
           </div>
 
           {/* ── The proof ─────────────────────────────────────────────────── */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.98, y: 22 }}
+            initial={reduce ? false : { opacity: 0, scale: 0.98, y: 22 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.25, ease: EASE }}
+            transition={reduce ? { duration: 0 } : { duration: 0.9, delay: 0.25, ease: EASE }}
             className="relative lg:col-span-6"
           >
             <div className="relative">
@@ -367,10 +366,10 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
 
         {/* ── The counted contract ──────────────────────────────────────── */}
         <motion.div
-          initial={{ opacity: 0, y: 24 }}
+          initial={reduce ? false : { opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-60px" }}
-          transition={{ duration: 0.8, ease: EASE }}
+          transition={reduce ? { duration: 0 } : { duration: 0.8, ease: EASE }}
           className="mt-16 lg:mt-20"
         >
           <SpecBar

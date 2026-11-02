@@ -11,6 +11,7 @@ import {
   ShieldQuestion,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { HorizontalScrollRegion } from "@/components/quorum/horizontal-scroll-region";
 import type { AdminAuditEntry } from "@/lib/admin-types";
 import {
   Button,
@@ -129,7 +130,7 @@ export function AuditPanel({ data, query, setQuery, refresh }: PanelProps) {
         >
           <div className="flex items-center gap-1.5">
             <Dot tone={chainOk ? "emerald" : "red"} pulse={!chainOk} />
-            <p className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-500">CHAIN STATE</p>
+            <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Chain state</p>
           </div>
           <p
             className={cn(
@@ -139,7 +140,7 @@ export function AuditPanel({ data, query, setQuery, refresh }: PanelProps) {
           >
             {chainOk ? "INTACT" : verify || ledger ? "BROKEN" : "UNREAD"}
           </p>
-          <p className="mt-0.5 text-[9.5px] text-ink-500">
+          <p className="mt-0.5 text-[10.5px] leading-relaxed text-ink-600">
             {chainOk
               ? `${fmtNum(verify?.checked ?? ledger?.checked ?? entries.length)} rows re-walked, every link holds`
               : verify?.brokenAt != null
@@ -167,16 +168,16 @@ export function AuditPanel({ data, query, setQuery, refresh }: PanelProps) {
           },
         ].map((stat) => (
           <div key={stat.label} className="panel rounded-2xl px-4 py-3.5">
-            <p className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">{stat.label}</p>
+            <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">{stat.label}</p>
             <p className="mt-1.5 type-num text-[24px] text-ink-950">{fmtNum(stat.value)}</p>
-            <p className="mt-0.5 text-[9.5px] text-ink-400">{stat.note}</p>
+            <p className="mt-0.5 text-[10.5px] leading-relaxed text-ink-600">{stat.note}</p>
           </div>
         ))}
       </div>
 
       {verify && verify.restarts.length > 0 && (
         <div className="rounded-xl border border-ink-200 bg-paper-2/60 px-4 py-3 text-[10.5px] leading-relaxed text-ink-500 dark:border-white/10 dark:bg-white/[0.02]">
-          <span className="font-code text-[7.5px] font-bold uppercase tracking-[0.2em] text-ink-500">EPOCHS</span>{" "}
+          <span className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Epochs</span>{" "}
           The log holds {verify.segments} sealed segment{verify.segments === 1 ? "" : "s"} across {verify.restarts.length}{" "}
           restart{verify.restarts.length === 1 ? "" : "s"}. Each restart re-anchors the chain explicitly, so continuity is
           declared rather than assumed.
@@ -216,9 +217,9 @@ export function AuditPanel({ data, query, setQuery, refresh }: PanelProps) {
             onClick={() => setOkOnly((value) => !value)}
             aria-pressed={okOnly}
             className={cn(
-              "focus-brand rounded-full border px-2.5 py-1 font-code text-[7.5px] font-bold uppercase tracking-[0.12em] transition-colors",
+              "focus-brand inline-flex min-h-11 items-center rounded-lg border px-3 py-2 font-code text-[10px] font-bold uppercase tracking-[0.06em] transition-colors",
               okOnly
-                ? "border-ink-950 bg-ink-950 text-white dark:border-white dark:bg-white dark:text-ink-950"
+                ? "border-ink-950 bg-ink-950 text-white dark:border-white dark:bg-white dark:text-[#0b0c0f]"
                 : "border-ink-200 bg-white text-ink-500 hover:border-ink-400 dark:border-white/12 dark:bg-transparent dark:text-ink-400",
             )}
           >
@@ -248,7 +249,7 @@ export function AuditPanel({ data, query, setQuery, refresh }: PanelProps) {
             }
           />
         ) : (
-          <div className="overflow-x-auto">
+          <HorizontalScrollRegion label="Admin audit log table">
             <table className="w-full min-w-[760px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-ink-100 dark:border-white/8">
@@ -256,7 +257,7 @@ export function AuditPanel({ data, query, setQuery, refresh }: PanelProps) {
                     <th
                       key={head}
                       scope="col"
-                      className="px-4 py-2 font-code text-[7px] font-bold uppercase tracking-[0.18em] text-ink-400 first:pl-5 last:pr-5"
+                      className="px-4 py-3 font-code text-[10px] font-bold uppercase tracking-[0.08em] text-ink-600 first:pl-5 last:pr-5"
                     >
                       {head}
                     </th>
@@ -274,11 +275,11 @@ export function AuditPanel({ data, query, setQuery, refresh }: PanelProps) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </HorizontalScrollRegion>
         )}
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ink-100 px-5 py-3 dark:border-white/8">
-          <p className="text-[9.5px] text-ink-400">
+          <p className="text-[10.5px] leading-relaxed text-ink-600">
             Showing {fmtNum(shown.length)} of {fmtNum(filtered.length)} matching rows. Newer rows are read first; older
             rows stay on disk.
           </p>
@@ -294,7 +295,7 @@ export function AuditPanel({ data, query, setQuery, refresh }: PanelProps) {
         <div className="rounded-2xl border border-ink-200/80 bg-paper-2/60 px-5 py-4 dark:border-white/10 dark:bg-white/[0.02]">
           <div className="flex items-center gap-2">
             <ShieldQuestion className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
-            <p className="font-code text-[7.5px] font-bold uppercase tracking-[0.2em] text-ink-500">WHAT A REFUSAL MEANS</p>
+            <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">What a refusal means</p>
           </div>
           <p className="mt-2 text-[10.5px] leading-relaxed text-ink-500">
             A refused row is the boundary doing its job: an agent asked for a tool outside its scope, a path outside the
@@ -305,7 +306,7 @@ export function AuditPanel({ data, query, setQuery, refresh }: PanelProps) {
         <div className="rounded-2xl border border-ink-200/80 bg-paper-2/60 px-5 py-4 dark:border-white/10 dark:bg-white/[0.02]">
           <div className="flex items-center gap-2">
             <Link2 className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
-            <p className="font-code text-[7.5px] font-bold uppercase tracking-[0.2em] text-ink-500">HOW THE SEAL WORKS</p>
+            <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">How the seal works</p>
           </div>
           <p className="mt-2 text-[10.5px] leading-relaxed text-ink-500">
             Each row stores the SHA-256 of its own payload chained to the previous row&apos;s hash. Verification recomputes
@@ -333,34 +334,39 @@ function AuditRow({
   return (
     <>
       <tr
-        onClick={onToggle}
         className={cn(
-          "cursor-pointer border-b border-ink-100/80 transition-colors last:border-0 dark:border-white/6",
+          "border-b border-ink-100/80 transition-colors last:border-0 dark:border-white/6",
           open ? "bg-paper-2/70 dark:bg-white/[0.04]" : "hover:bg-paper-2/50 dark:hover:bg-white/[0.025]",
         )}
       >
-        <td className="py-2 pl-5 pr-4 font-code text-[9px] tabular-nums text-ink-400">
-          <span className="inline-flex items-center gap-1">
-            <Chevron className="h-3 w-3 shrink-0" aria-hidden="true" />
+        <td className="py-1 pl-4 pr-2 font-code text-[10px] tabular-nums text-ink-600">
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-expanded={open}
+            aria-label={`${open ? "Collapse" : "Expand"} audit entry ${entry.seq}`}
+            className="focus-brand inline-flex min-h-11 min-w-11 items-center gap-1 rounded-md px-1"
+          >
+            <Chevron className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             {entry.seq}
-          </span>
+          </button>
         </td>
         <td className="px-4 py-2">
-          <span className="font-code text-[9.5px] font-semibold tracking-[0.03em] text-ink-800">{entry.tool}</span>
-          <span className="ml-1.5 font-code text-[7px] uppercase tracking-[0.12em] text-ink-400">{entry.kind}</span>
+          <span className="font-code text-[10px] font-semibold tracking-[0.02em] text-ink-900">{entry.tool}</span>
+          <span className="ml-1.5 font-code text-[10px] uppercase tracking-[0.05em] text-ink-600">{entry.kind}</span>
         </td>
         <td className="max-w-[150px] truncate px-4 py-2 text-[10px] text-ink-500">{entry.actor}</td>
-        <td className="px-4 py-2 font-code text-[9px] text-ink-400">{entry.runId ? entry.runId : "—"}</td>
+        <td className="px-4 py-2 font-code text-[10px] text-ink-600">{entry.runId ? entry.runId : "—"}</td>
         <td className="px-4 py-2">
           <span className="inline-flex items-center gap-1.5">
             <Dot tone={tone.dot} />
-            <span className={cn("font-code text-[7.5px] font-bold uppercase tracking-[0.12em]", tone.text)}>
+            <span className={cn("font-code text-[10px] font-bold uppercase tracking-[0.05em]", tone.text)}>
               {tone.label}
             </span>
           </span>
         </td>
-        <td className="px-4 py-2 font-code text-[8.5px] tracking-[0.04em] text-ink-400">{shortHash(entry.self, 10)}</td>
-        <td className="py-2 pl-4 pr-5 font-code text-[9px] tabular-nums text-ink-400">{fmtStamp(entry.ts)}</td>
+        <td className="px-4 py-2 font-code text-[10px] tracking-[0.02em] text-ink-600">{shortHash(entry.self, 10)}</td>
+        <td className="py-2 pl-4 pr-5 font-code text-[10px] tabular-nums text-ink-600">{fmtStamp(entry.ts)}</td>
       </tr>
       {open && (
         <tr className="border-b border-ink-100 dark:border-white/8">
@@ -368,30 +374,30 @@ function AuditRow({
             <div className="grid gap-3 md:grid-cols-2">
               <div>
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">INPUTS</p>
+                  <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Inputs</p>
                   <CopyButton value={entry.inputs} label="inputs" />
                 </div>
-                <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-lg border border-ink-200/70 bg-white/70 p-2.5 font-code text-[9px] leading-relaxed text-ink-600 dark:border-white/10 dark:bg-black/20 dark:text-ink-300">
+                <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-lg border border-ink-200/70 bg-white/70 p-2.5 font-code text-[10px] leading-relaxed text-ink-700 dark:border-white/10 dark:bg-black/20 dark:text-ink-200">
                   {entry.inputs || "—"}
                 </pre>
               </div>
               <div>
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">OUTPUTS</p>
+                  <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Outputs</p>
                   <CopyButton value={entry.outputs} label="outputs" />
                 </div>
-                <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-lg border border-ink-200/70 bg-white/70 p-2.5 font-code text-[9px] leading-relaxed text-ink-600 dark:border-white/10 dark:bg-black/20 dark:text-ink-300">
+                <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-lg border border-ink-200/70 bg-white/70 p-2.5 font-code text-[10px] leading-relaxed text-ink-700 dark:border-white/10 dark:bg-black/20 dark:text-ink-200">
                   {entry.outputs || "—"}
                 </pre>
               </div>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-ink-200/70 pt-2.5 dark:border-white/10">
-              <span className="font-code text-[7px] font-bold uppercase tracking-[0.18em] text-ink-400">PREV</span>
-              <span className="font-code text-[8.5px] text-ink-600">{shortHash(entry.prev, 16)}</span>
-              <span className="font-code text-[7px] font-bold uppercase tracking-[0.18em] text-ink-400">SELF</span>
-              <span className="font-code text-[8.5px] text-ink-600">{shortHash(entry.self, 16)}</span>
+              <span className="font-code text-[10px] font-bold uppercase tracking-[0.08em] text-ink-600">Previous</span>
+              <span className="font-code text-[10px] text-ink-700">{shortHash(entry.prev, 16)}</span>
+              <span className="font-code text-[10px] font-bold uppercase tracking-[0.08em] text-ink-600">Current</span>
+              <span className="font-code text-[10px] text-ink-700">{shortHash(entry.self, 16)}</span>
               <CopyButton value={entry.self ?? ""} label="row hash" />
-              <span className="ml-auto font-code text-[8px] text-ink-400">
+              <span className="ml-auto text-[10px] text-ink-600">
                 id {entry.id} · {entry.server} · {entry.durationMs} ms
               </span>
             </div>

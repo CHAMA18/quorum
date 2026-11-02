@@ -27,20 +27,20 @@ export default function DocsPage() {
             <a href="/" aria-label="Quorum — back to the site" className="shrink-0">
               <QuorumLogo tagline={false} />
             </a>
-            <span className="hidden font-code text-[9px] font-bold tracking-[0.26em] text-ink-400 sm:inline">
+            <span className="hidden font-code text-[10px] font-bold tracking-[0.12em] text-ink-500 sm:inline">
               · DOCUMENTATION
             </span>
           </div>
           <div className="flex items-center gap-2">
             <a
               href="/"
-              className="hidden h-10 items-center rounded-xl border border-ink-200 bg-white px-4 font-code text-[9px] font-bold tracking-[0.16em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 sm:inline-flex"
+              className="hidden min-h-11 items-center rounded-xl border border-ink-200 bg-white px-4 font-code text-[10px] font-bold tracking-[0.08em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 sm:inline-flex"
             >
               BACK TO SITE
             </a>
             <a
               href="/#/dashboard"
-              className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-4 font-code text-[9px] font-bold tracking-[0.16em] text-white shadow-[0_10px_26px_rgba(217,38,22,0.28)] transition-colors hover:bg-brand-700"
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-4 font-code text-[10px] font-bold tracking-[0.08em] text-white shadow-[0_10px_26px_rgba(217,38,22,0.28)] transition-colors hover:bg-brand-700"
             >
               OPEN WORKSPACE
               <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -57,10 +57,10 @@ export default function DocsPage() {
       {/* Footer — the rule, one last time. */}
       <footer className="border-t border-ink-100">
         <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-6">
-          <p className="font-code text-[8px] tracking-[0.22em] text-ink-400">
+          <p className="font-code text-[10px] tracking-[0.08em] text-ink-500">
             QUORUM · AGENTIC PROCUREMENT · THE HANDBOOK
           </p>
-          <p className="font-code text-[8px] tracking-[0.22em] text-ink-400">
+          <p className="font-code text-[10px] tracking-[0.08em] text-ink-500">
             THE AGENT PREPARES THE FILE — THE COMMITTEE SIGNS
           </p>
         </div>

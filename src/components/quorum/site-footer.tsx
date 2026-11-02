@@ -53,21 +53,21 @@ export function SiteFooter() {
       <div className="relative mx-auto w-full max-w-[1440px] px-5 pb-6 pt-12 sm:px-8 sm:pt-16 lg:px-12 lg:pt-[76px]">
         {/* The closing statement */}
         <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-3 border-y border-white/[0.09] py-3.5">
-          <p className="flex items-center gap-2.5 font-code text-[8px] font-bold tracking-[0.2em] text-ink-300 sm:text-[9px]">
+          <p className="flex items-center gap-2.5 font-code text-[10px] font-bold tracking-[0.08em] text-ink-200">
             <span className="relative flex h-2 w-2" aria-hidden="true">
               <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-brand-500/60" />
               <span className="relative h-2 w-2 rounded-full bg-brand-500" />
             </span>
             QUORUM · PROCUREMENT WITH A TRACE
           </p>
-          <p className="font-code text-[8px] font-semibold tracking-[0.16em] text-ink-400 sm:text-[9px]">
+          <p className="font-code text-[10px] font-semibold tracking-[0.06em] text-ink-300">
             NOTICE <span className="mx-1.5 text-brand-500">/</span> EVIDENCE <span className="mx-1.5 text-brand-500">/</span> HUMAN DECISION
           </p>
         </div>
 
         <div className="grid gap-10 py-12 sm:py-16 lg:grid-cols-12 lg:items-center lg:gap-12 lg:py-[76px]">
           <Reveal delay={0.02} className="min-w-0 lg:col-span-7">
-            <p className="font-code text-[8px] font-bold tracking-[0.24em] text-brand-300 sm:text-[9px]">
+            <p className="font-code text-[10px] font-bold tracking-[0.1em] text-brand-300">
               FROM PUBLIC NOTICE TO SIGNED DECISION
             </p>
             <h2
@@ -121,11 +121,11 @@ export function SiteFooter() {
                     <Fingerprint className="h-4 w-4" aria-hidden="true" />
                   </span>
                   <div>
-                    <p className="font-code text-[8px] font-bold tracking-[0.15em] text-white">THE PROCUREMENT RECORD</p>
-                    <p className="mt-0.5 font-code text-[8px] tracking-[0.1em] text-ink-400">ONE TRACE · FOUR CHECKPOINTS</p>
+                    <p className="font-code text-[10px] font-bold tracking-[0.06em] text-white">THE PROCUREMENT RECORD</p>
+                    <p className="mt-0.5 font-code text-[10px] tracking-[0.04em] text-ink-300">ONE TRACE · FOUR CHECKPOINTS</p>
                   </div>
                 </div>
-                <span className="rounded-full border border-white/[0.1] px-2.5 py-1 font-code text-[8px] font-bold tracking-[0.12em] text-ink-400">END TO END</span>
+                <span className="rounded-full border border-white/[0.1] px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.04em] text-ink-300">END TO END</span>
               </div>
 
               <div className="relative mt-5">
@@ -136,7 +136,7 @@ export function SiteFooter() {
                     return (
                       <li key={step.number} className="relative grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3 rounded-xl px-1.5 py-2.5">
                         <span
-                          className={`relative z-10 grid h-[31px] w-[31px] place-items-center rounded-full border font-code text-[8px] font-bold ${
+                          className={`relative z-10 grid h-8 w-8 place-items-center rounded-full border font-code text-[10px] font-bold ${
                             finalStep
                               ? "border-brand-400/55 bg-[#2a1516] text-brand-300 shadow-[0_0_22px_rgba(217,38,22,0.18)]"
                               : "border-white/[0.12] bg-[#15171c] text-ink-400"
@@ -148,7 +148,7 @@ export function SiteFooter() {
                           <p className={`text-[12.5px] font-semibold ${finalStep ? "text-white" : "text-ink-200"}`}>{step.title}</p>
                           <p className="mt-0.5 truncate text-[10.5px] text-ink-400">{step.detail}</p>
                         </div>
-                        <span className={`font-code text-[8px] font-bold tracking-[0.12em] ${finalStep ? "text-brand-300" : "text-ink-400"}`}>
+                        <span className={`font-code text-[10px] font-bold tracking-[0.04em] ${finalStep ? "text-brand-300" : "text-ink-300"}`}>
                           {step.mark}
                         </span>
                       </li>
@@ -176,14 +176,14 @@ export function SiteFooter() {
             <p className="mt-5 max-w-[370px] text-[12.5px] leading-[1.8] text-ink-400">
               Agentic procurement software for public institutions. Open standards, in-country control, and a record that holds up after the meeting ends.
             </p>
-            <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/[0.1] bg-white/[0.025] px-3.5 py-2 font-code text-[8px] font-semibold tracking-[0.12em] text-ink-300 sm:text-[9px]">
+            <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/[0.1] bg-white/[0.025] px-3.5 py-2 font-code text-[10px] font-semibold tracking-[0.05em] text-ink-200">
               OPEN WEIGHTS <span className="text-brand-400">·</span> ON-PREM READY <span className="text-brand-400">·</span> AUDIT-GRADE LOGS
             </p>
           </Reveal>
 
           <Reveal delay={0.08} className="lg:col-span-2">
             <nav aria-label="Product">
-              <p className="font-code text-[9px] font-bold tracking-[0.2em] text-ink-400">PRODUCT</p>
+              <p className="font-code text-[10px] font-bold tracking-[0.2em] text-ink-400">PRODUCT</p>
               <ul className="mt-4 space-y-3">
                 {PRODUCT_LINKS.map((link) => (
                   <li key={link.label}>
@@ -199,7 +199,7 @@ export function SiteFooter() {
 
           <Reveal delay={0.13} className="lg:col-span-3">
             <nav aria-label="Open data portals">
-              <p className="font-code text-[9px] font-bold tracking-[0.2em] text-ink-400">OPEN DATA · AFRICA</p>
+              <p className="font-code text-[10px] font-bold tracking-[0.2em] text-ink-400">OPEN DATA · AFRICA</p>
               <ul className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
                 {DATA_LINKS.map((link) => (
                   <li key={link.label}>
@@ -210,14 +210,14 @@ export function SiteFooter() {
                       className="group inline-flex items-baseline gap-1.5 text-[11.5px] text-ink-300 transition-colors hover:text-white focus-visible:outline-none focus-visible:text-white"
                     >
                       <span>{link.label}</span>
-                      <span className="text-[9px] text-ink-400">{link.country}</span>
+                      <span className="text-[10px] text-ink-400">{link.country}</span>
                     </a>
                   </li>
                 ))}
               </ul>
               <div className="mt-7 flex flex-wrap gap-1.5">
                 {STANDARDS.map((standard) => (
-                  <span key={standard} className="rounded-full border border-white/[0.1] px-2.5 py-1 font-code text-[7.5px] text-ink-400">
+                  <span key={standard} className="rounded-full border border-white/[0.1] px-2.5 py-1 font-code text-[10px] text-ink-300">
                     {standard}
                   </span>
                 ))}
@@ -227,7 +227,7 @@ export function SiteFooter() {
 
           <Reveal delay={0.18} className="lg:col-span-3">
             <nav aria-label="Resources">
-              <p className="font-code text-[9px] font-bold tracking-[0.2em] text-ink-400">GO DEEPER</p>
+              <p className="font-code text-[10px] font-bold tracking-[0.2em] text-ink-400">GO DEEPER</p>
               <ul className="mt-4 space-y-3">
                 <li>
                   <Link href="/docs" className="group inline-flex items-center gap-1.5 text-[12px] text-ink-300 transition-colors hover:text-white focus-visible:outline-none focus-visible:text-white">
@@ -255,9 +255,9 @@ export function SiteFooter() {
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <p className="text-[11px] text-ink-400">© 2026 Quorum · Agentic procurement for Africa</p>
               <span className="hidden h-3 w-px bg-white/10 sm:block" aria-hidden="true" />
-              <span className="font-code text-[8px] font-semibold tracking-[0.14em] text-ink-400">NAIROBI · EAT</span>
+              <span className="font-code text-[10px] font-semibold tracking-[0.04em] text-ink-300">NAIROBI · EAT</span>
             </div>
-            <p className="font-code text-[8px] font-bold tracking-[0.14em] text-ink-400">
+            <p className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-300">
               AGENTS PREPARE <span className="mx-1 text-brand-500">·</span> COMMITTEES DECIDE
             </p>
           </div>

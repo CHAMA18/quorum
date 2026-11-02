@@ -55,6 +55,8 @@ import {
   composeOpeningMinutes,
   composeProcurementFile,
   collectDeadlines,
+  cleanEvaluationCriterionDetail,
+  cleanEvaluationProcedure,
   composeDebriefLetter,
   contractValueCheck,
   cycleAnalytics,
@@ -63,12 +65,16 @@ import {
   noticeFieldCheck,
   parseClosingDate,
   parseEvaluationCriteria,
+  parseEvaluationProcedure,
   scoreMatrix,
   validateCriteria,
+  validateCriteriaDisclosure,
   validateScores,
   variationPctOfContract,
   responsivenessLadder,
   weightsSum,
+  withEvaluationCriteria,
+  withEvaluationProcedure,
 } from "./cycle";
 import {
   computeDivergences,
@@ -114,7 +120,7 @@ import {
   variationBlockReason,
 } from "./finance";
 import { TENDER_REF_RE } from "./marketplace";
-import { listSampleTenders } from "./samples";
+import { listSampleTenders, SAMPLE_SYSTEM_REFERENCES, sampleSystemReferenceForTender } from "./samples";
 import { llmConfigFromEnv, callLlama } from "./engine";
 import { executeExceptionApproval, executeExceptionRejection } from "./exceptions";
 import { complianceSummary } from "./rulepack";
@@ -124,6 +130,22 @@ import { listDocuments } from "./documents";
 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 const SAFE_REF = TENDER_REF_RE;
+const isSystemReference = (value: unknown): value is string =>
+  typeof value === "string" && /^QRM-\d{4}-\d{3,6}$/i.test(value);
+
+export function publicSystemReferenceForTender(tenderId: string, workspaceId = currentWorkspaceId()): string | undefined {
+  const pipeline = state.pipeline.find((entry) =>
+    (entry.workspaceId ?? "demo") === workspaceId &&
+    (entry.linkedTenderId === tenderId || entry.ref === tenderId),
+  );
+  if (isSystemReference(pipeline?.systemReference)) return pipeline.systemReference;
+  if (isSystemReference(pipeline?.ref)) return pipeline.ref;
+  const cycle = state.cycle.find((entry) => entry.tenderId === tenderId && (entry.workspaceId ?? "demo") === workspaceId);
+  if (isSystemReference(cycle?.systemReference)) return cycle.systemReference;
+  const run = state.runs.find((entry) => entry.tenderId === tenderId && (entry.workspaceId ?? "demo") === workspaceId);
+  if (isSystemReference(run?.reference)) return run.reference;
+  return isSystemReference(tenderId) ? tenderId : sampleSystemReferenceForTender(tenderId);
+}
 
 function cycleFor(tenderId: string, workspaceId = currentWorkspaceId()): TenderCycle {
   const existing = state.cycle.find((c) => c.tenderId === tenderId && (c.workspaceId ?? "demo") === workspaceId);
@@ -132,9 +154,15 @@ function cycleFor(tenderId: string, workspaceId = currentWorkspaceId()): TenderC
        arrays are backfilled on read, in one place, not per caller. */
     return normalizeCycle(existing);
   }
+  const pipeline = state.pipeline.find((entry) =>
+    (entry.workspaceId ?? "demo") === workspaceId &&
+    (entry.linkedTenderId === tenderId || entry.ref === tenderId),
+  );
+  const linkedReference = pipeline?.systemReference ?? pipeline?.ref;
   const fresh: TenderCycle = {
     tenderId,
     workspaceId,
+    systemReference: isSystemReference(linkedReference) ? linkedReference : nextPipelineRef({}),
     coi: [],
     alb: [],
     debriefs: [],
@@ -3167,10 +3195,89 @@ async function coreDraftSpec(tenderId: string, brief: string) {
   return { spec };
 }
 
+/** Author the evaluation table once, for both documents that carry it.
+ *
+ * The specification is the working source; an unissued notice draft is a
+ * snapshot of it, so the same edit lands in both. Once a publication gate is
+ * raised or the notice is issued the table is no longer editable here: a
+ * gate is testing a fixed artefact, and an issued notice can only change by
+ * addendum. */
+function coreSetEvaluationCriteria(tenderId: string, criteriaRaw: unknown, procedureRaw: unknown) {
+  if (!SAFE_REF.test(tenderId)) throw new Error(`invalid tenderId: "${tenderId}"`);
+  const cycle = cycleFor(tenderId);
+  const issued = [...(cycle.notices ?? [])].reverse().find((notice) => !!notice.issuedAt);
+  if (issued) {
+    throw new Error("the issued notice fixes the evaluation criteria — change them by addendum, not by rewriting the file");
+  }
+  const latestNotice = cycle.notices?.at(-1);
+  if (latestNotice?.gateId) {
+    throw new Error("a publication gate is already testing this notice — withdraw the gate before changing its criteria");
+  }
+  if (!Array.isArray(criteriaRaw) || criteriaRaw.length === 0) {
+    throw new Error("at least one evaluation criterion is required");
+  }
+  if (criteriaRaw.length > 12) {
+    throw new Error("at most 12 criteria — a matrix is meant to be read");
+  }
+  const criteria = (criteriaRaw as { title?: unknown; weight?: unknown; evidence?: unknown; scoringMethod?: unknown }[]).map((item, index) => ({
+    id: `C-${String(index + 1).padStart(2, "0")}`,
+    title: str(item?.title).replace(/\|/g, " / ").replace(/\s+/g, " ").trim().slice(0, 120),
+    /* The matrix rounds published weights to one decimal; author at the same
+       precision so the notice and the matrix can never disagree. */
+    weight: Math.round(Number(item?.weight) * 10) / 10,
+    evidence: cleanEvaluationCriterionDetail(item?.evidence),
+    scoringMethod: cleanEvaluationCriterionDetail(item?.scoringMethod),
+  }));
+  const criteriaError = validateCriteria(criteria);
+  if (criteriaError) throw new Error(criteriaError);
+  const disclosureError = validateCriteriaDisclosure(criteria);
+  if (disclosureError) throw new Error(disclosureError);
+
+  const currentSpec = cycle.specs?.at(-1);
+  const base = currentSpec?.md?.trim()
+    ? currentSpec.md
+    : `# SPECIFICATION / TERMS OF REFERENCE — ${tenderId}`;
+  const procedure = cleanEvaluationProcedure(procedureRaw);
+  const now = new Date().toISOString();
+  const spec = {
+    id: `spec_${randomUUID().slice(0, 8)}`,
+    tenderId,
+    md: withEvaluationProcedure(withEvaluationCriteria(base, criteria), procedure),
+    source: "officer" as const,
+    createdAt: now,
+  };
+  cycle.specs.push(spec);
+
+  let updatedNotice: (typeof cycle.notices)[number] | undefined;
+  if (latestNotice) {
+    const md = withEvaluationProcedure(withEvaluationCriteria(latestNotice.md, criteria), procedure);
+    latestNotice.md = md;
+    latestNotice.fieldCheck = noticeFieldCheck(md);
+    latestNotice.updatedAt = now;
+    updatedNotice = latestNotice;
+  }
+
+  appendLog({
+    actor: "web-app",
+    server: "quorum-mcp",
+    tool: "set_evaluation_criteria",
+    kind: "WRITES",
+    runId: "cycle",
+    inputs: { tenderId, criteria: criteria.length, weightsSum: weightsSum(criteria) },
+    outputs: { specId: spec.id, noticeId: updatedNotice?.id ?? null },
+    status: "OK",
+    durationMs: 0,
+  });
+  saveState();
+  return { spec, criteria, notice: updatedNotice ?? null };
+}
+
 function coreDraftNotice(tenderId: string, fields: Record<string, unknown>) {
   if (!SAFE_REF.test(tenderId)) throw new Error(`invalid tenderId: "${tenderId}"`);
   const cycle = cycleFor(tenderId);
-  const reference = str(fields.reference).trim() || tenderId;
+  /* A notice gets its own neutral, system-issued reference. The tenderId is
+     still the stable lookup key for legacy and externally published tenders. */
+  const reference = cycle.systemReference ?? nextPipelineRef({});
   const buyer = str(fields.buyer).trim() || "—";
   const method = str(fields.method).trim() || "Open competitive selection";
   const subject = str(fields.subject).trim() || "—";
@@ -3202,9 +3309,24 @@ function coreDraftNotice(tenderId: string, fields: Record<string, unknown>) {
   const foreignBiddersPermitted = fields.foreignBiddersPermitted === true;
   const evaluationCurrency = normalizeCurrency(fields.evaluationCurrency) ?? jurisdictionCurrency(state.jurisdictionId);
   const procurementScope = fields.procurementScope === "International" ? "International" : "National";
-  const requiredDocs = Array.isArray(fields.requiredDocs) ? fields.requiredDocs.map((d) => str(d)).filter(Boolean).slice(0, 12) : undefined;
+  const requiredDocsInput = Array.isArray(fields.requiredDocs) ? fields.requiredDocs : undefined;
+  if (requiredDocsInput && requiredDocsInput.length > 100) {
+    throw new Error("requiredDocs can contain at most 100 documents");
+  }
+  const normalizedRequiredDocs = requiredDocsInput?.map((document) =>
+    str(document).replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim(),
+  ).filter(Boolean) ?? [];
+  if (normalizedRequiredDocs.some((document) => document.length > 180)) {
+    throw new Error("required document names must be 180 characters or fewer");
+  }
+  const requiredDocs = requiredDocsInput
+    ? [...new Map(normalizedRequiredDocs.map((document) => [document.toLocaleLowerCase(), document] as const)).values()]
+    : undefined;
   const sourceCriteria = parseEvaluationCriteria(cycle.specs?.at(-1)?.md ?? "");
-  const evaluationCriteria = sourceCriteria.length && !validateCriteria(sourceCriteria) ? sourceCriteria : undefined;
+  const evaluationCriteria = sourceCriteria.length && !validateCriteria(sourceCriteria) && !validateCriteriaDisclosure(sourceCriteria)
+    ? sourceCriteria
+    : undefined;
+  const evaluationProcedure = parseEvaluationProcedure(cycle.specs?.at(-1)?.md ?? "");
   const md = draftNoticeMd({
     reference,
     buyer,
@@ -3215,6 +3337,7 @@ function coreDraftNotice(tenderId: string, fields: Record<string, unknown>) {
     ...(ceiling ? { ceiling } : {}),
     ...(requiredDocs ? { requiredDocs } : {}),
     ...(evaluationCriteria ? { evaluationCriteria } : {}),
+    ...(evaluationProcedure ? { evaluationProcedure } : {}),
     technicalWeightPct: requestedTechnicalWeight,
     ...(financialFormula ? { financialFormula } : {}),
     ...(fxBasis ? { fxBasis } : {}),
@@ -3228,6 +3351,7 @@ function coreDraftNotice(tenderId: string, fields: Record<string, unknown>) {
   const draft = {
     id: `ntc_${randomUUID().slice(0, 8)}`,
     tenderId,
+    reference,
     md,
     fieldCheck: noticeFieldCheck(md),
     createdAt: new Date().toISOString(),
@@ -3258,15 +3382,20 @@ function coreDraftNotice(tenderId: string, fields: Record<string, unknown>) {
 
 function corePipelineEntry(input: Record<string, unknown>) {
   const provided = str(input.ref).trim().slice(0, 60);
-  const ref = provided || nextPipelineRef(input);
+  if (provided && !isSystemReference(provided)) {
+    throw new Error("pipeline references are assigned by Quorum; source-pack IDs cannot be used as public references");
+  }
+  const ref = nextPipelineRef(input);
   const title = str(input.title).trim().slice(0, 200);
   if (!ref || !title) throw new Error("ref and title are required for a pipeline entry");
-  const exists = [...state.pipeline.map((p) => p.ref), ...state.cycle.map((c) => c.tenderId), ...state.runs.map((r) => r.tenderId)]
-    .some((r) => r.toLowerCase() === ref.toLowerCase());
+  const exists = [...state.pipeline.flatMap((p) => [p.ref, p.systemReference ?? ""]), ...state.cycle.flatMap((c) => [c.tenderId, c.systemReference ?? ""]), ...state.runs.flatMap((r) => [r.tenderId, r.reference ?? ""])]
+    .some((r) => r.toLowerCase() === ref.toLowerCase()) ||
+    state.cycle.some((cycle) => cycle.notices.some((notice) => notice.reference?.toLowerCase() === ref.toLowerCase()));
   if (exists) throw new Error(`reference "${ref}" is already on record — wait for the system to issue the next one`);
   const entry = {
     id: `pip_${randomUUID().slice(0, 8)}`,
     workspaceId: currentWorkspaceId(),
+    systemReference: ref,
     ref,
     title,
     ...(input.office ? { office: str(input.office).trim().slice(0, 80) } : {}),
@@ -3295,16 +3424,12 @@ function corePipelineEntry(input: Record<string, unknown>) {
 /**
  * System-issued pipeline reference.
  *
- * Officers do not invent references: a tender reference is an identifier the
- * register owns. The prefix follows the workspace currency (Zambia → ZM,
- * Kenya → KE, Rwanda → RW), the year follows the expected publication date,
- * and the sequence is the next free number across every live register —
- * pipeline, cycle and review runs — so two planners cannot collide.
+ * Officers do not invent references: the register issues neutral Quorum IDs.
+ * The year follows the expected publication date and the sequence is the next
+ * free number across the live pipeline, cycles, review runs, and notice drafts.
  */
 export function nextPipelineRef(input: Record<string, unknown>): string {
-  const currency = str(input.currency).trim().toUpperCase();
-  const byCurrency: Record<string, string> = { ZMW: "ZM", KES: "KE", RWF: "RW", USD: "ZM" };
-  const prefix = (process.env.QUORUM_REF_PREFIX?.trim().toUpperCase() || byCurrency[currency] || "ZM").slice(0, 4);
+  const prefix = "QRM";
   const publication = str(input.expectedPublication ?? input.publication).trim();
   const parsed = publication ? new Date(publication) : null;
   const year = parsed && !Number.isNaN(parsed.getTime()) ? parsed.getUTCFullYear() : new Date().getUTCFullYear();
@@ -3312,8 +3437,13 @@ export function nextPipelineRef(input: Record<string, unknown>): string {
   const used = new Set<number>();
   for (const ref of [
     ...state.pipeline.map((p) => p.ref),
+    ...state.pipeline.map((p) => p.systemReference ?? ""),
     ...state.cycle.map((c) => c.tenderId),
+    ...state.cycle.map((c) => c.systemReference ?? ""),
     ...state.runs.map((r) => r.tenderId),
+    ...state.runs.map((r) => r.reference ?? ""),
+    ...state.cycle.flatMap((c) => c.notices.map((notice) => notice.reference ?? "")),
+    ...Object.values(SAMPLE_SYSTEM_REFERENCES),
   ]) {
     const match = ref.match(matcher);
     if (match) used.add(Number(match[1]));
@@ -3634,6 +3764,7 @@ export async function handleCycleRoutes(
           : {}),
         notices: (cycle.notices ?? []).map((notice) => ({
           ...notice,
+          fieldCheck: noticeFieldCheck(notice.md),
           evaluationCriteria: parseEvaluationCriteria(notice.md),
         })),
         findings: runs()
@@ -3663,7 +3794,12 @@ export async function handleCycleRoutes(
     return json(cycleAnalytics({ cycles: cycles(), runs: runs() }));
   }
   if (path === "/api/cycle/deadlines" && method === "GET") {
-    return json({ deadlines: collectDeadlines(cycles(), undefined, jurisdictionPack(state.jurisdictionId)) });
+    const references = new Map(cycles().map((cycle) => [cycle.tenderId, cycle.systemReference]));
+    const deadlines = collectDeadlines(cycles(), undefined, jurisdictionPack(state.jurisdictionId)).map((deadline) => ({
+      ...deadline,
+      ...(references.get(deadline.tenderId) ? { systemReference: references.get(deadline.tenderId) } : {}),
+    }));
+    return json({ deadlines });
   }
   if (path === "/api/cycle/quarterly-reports" && method === "GET") {
     const now = new Date();
@@ -4425,13 +4561,21 @@ export async function handleCycleRoutes(
     const cycle = state.cycle.find((c) => c.tenderId === ref);
     const notice = cycle?.notices.find((n) => n.id === noticeId);
     if (!notice) return json({ error: "notice draft not found" }, 404);
-    if (notice.fieldCheck.some((f) => !f.present))
-      return json({ error: `the notice is missing mandatory fields: ${notice.fieldCheck.filter((f) => !f.present).map((f) => f.field).join(", ")}`, code: "FIELDS_MISSING" }, 422);
+    const missingNoticeFields = noticeFieldCheck(notice.md).filter((field) => !field.present);
+    if (missingNoticeFields.length)
+      return json({ error: `the notice is missing mandatory fields: ${missingNoticeFields.map((field) => field.field).join(", ")}`, code: "FIELDS_MISSING" }, 422);
     const criteriaError = validateCriteria(parseEvaluationCriteria(notice.md));
     if (criteriaError) {
       return json({
         error: `the notice cannot be published until its evaluation criteria are complete and sum to exactly 100: ${criteriaError}`,
         code: "EVALUATION_CRITERIA_MISSING",
+      }, 422);
+    }
+    const disclosureError = validateCriteriaDisclosure(parseEvaluationCriteria(notice.md));
+    if (disclosureError && !notice.issuedAt) {
+      return json({
+        error: `the notice cannot be published until every criterion states the bidder evidence or subcriteria and scoring method: ${disclosureError}`,
+        code: "EVALUATION_DISCLOSURE_MISSING",
       }, 422);
     }
     const gate = raiseCycleGate({
@@ -4449,6 +4593,14 @@ export async function handleCycleRoutes(
     const ref = tenderRef(/^\/api\/tenders\/([A-Za-z0-9._-]+)\/specs\/draft$/);
     try {
       return json(await coreDraftSpec(ref, str(body.brief)), 201);
+    } catch (err) {
+      return json({ error: (err as Error).message }, 422);
+    }
+  }
+  if (/^\/api\/tenders\/[A-Za-z0-9._-]+\/specs\/criteria$/.test(path) && mustPost()) {
+    const ref = tenderRef(/^\/api\/tenders\/([A-Za-z0-9._-]+)\/specs\/criteria$/);
+    try {
+      return json(coreSetEvaluationCriteria(ref, body.criteria, body.procedure), 200);
     } catch (err) {
       return json({ error: (err as Error).message }, 422);
     }

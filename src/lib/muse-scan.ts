@@ -30,7 +30,7 @@ export async function transcribeTenderScan(
   const started = performance.now();
   const model = process.env.MUSE_SCAN_MODEL?.trim() || process.env.MUSE_MODEL?.trim() || "muse-spark-1.3";
   const baseUrl = (process.env.MUSE_BASE_URL?.trim() || process.env.LLM_BASE_URL?.trim() || "https://api.meta.ai/v1").replace(/\/+$/, "");
-  const apiKey = process.env.MUSE_API_KEY?.trim() || process.env.LLM_API_KEY?.trim() || "";
+  const apiKey = process.env.META_MODEL_API_KEY?.trim() || process.env.MUSE_API_KEY?.trim() || process.env.LLM_API_KEY?.trim() || "";
   const policy = process.env.MODEL_RESIDENCY?.trim().toUpperCase() || "IN_REGION";
   const accepted = process.env.MUSE_SCAN_HOSTED_ACCEPT?.trim().toUpperCase() === "I ACCEPT";
   const base: MuseScanResult = { ok: false, model, text: "", pages: [], latencyMs: 0, note: "" };

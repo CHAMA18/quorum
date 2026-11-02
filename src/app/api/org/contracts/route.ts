@@ -29,8 +29,13 @@ export async function GET(req: NextRequest) {
     (ref) => ref && /^[A-Za-z0-9._-]+$/.test(ref),
   ).slice(0, 20);
 
-  type ContractRow = { tenderRef: string; contract: unknown; acceptance: unknown; openedAt: string };
+  type ContractRow = { tenderRef: string; systemReference?: string; contract: unknown; acceptance: unknown; openedAt: string };
   const wanted = org.name.trim().toLowerCase();
+  const systemReferenceByTender = new Map(rows.flatMap((row) =>
+    typeof row.tenderId === "string" && typeof row.systemReference === "string"
+      ? [[row.tenderId, row.systemReference] as const]
+      : [],
+  ));
   const reads = await Promise.all(
     refs.map(async (tenderRef): Promise<ContractRow | null> => {
       const out = await sidecarFetch(`/api/tenders/${encodeURIComponent(tenderRef)}/contract`);
@@ -38,8 +43,10 @@ export async function GET(req: NextRequest) {
       const contract = out.data.contract as { supplier?: unknown; openedAt?: unknown } | undefined;
       const named = typeof contract?.supplier === "string" ? contract.supplier.trim().toLowerCase() : "";
       if (!named || named !== wanted) return null;
+      const systemReference = systemReferenceByTender.get(tenderRef);
       return {
         tenderRef,
+        ...(systemReference ? { systemReference } : {}),
         contract: out.data.contract,
         acceptance: out.data.acceptance ?? null,
         openedAt: typeof contract?.openedAt === "string" ? contract.openedAt : "",
@@ -50,7 +57,7 @@ export async function GET(req: NextRequest) {
   const contracts = reads
     .filter((row): row is ContractRow => row !== null)
     .sort((a, b) => b.openedAt.localeCompare(a.openedAt))
-    .map((row) => ({ tenderRef: row.tenderRef, contract: row.contract, acceptance: row.acceptance }));
+    .map((row) => ({ tenderRef: row.tenderRef, systemReference: row.systemReference, contract: row.contract, acceptance: row.acceptance }));
 
   return NextResponse.json({ contracts }, { headers: { "cache-control": "no-store" } });
 }

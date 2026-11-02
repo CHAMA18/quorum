@@ -246,12 +246,12 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
                 }
               />
               <div className="sm:col-span-2 rounded-xl border border-ink-200/80 bg-paper-2/50 px-3.5 py-3 dark:border-white/10 dark:bg-white/[0.02]">
-                <p className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">LAST ACTUAL ANSWER</p>
+                <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Last actual answer</p>
                 {model?.lastCall ? (
                   <>
                     <p className="mt-1 text-[12px] font-semibold text-ink-900">
                       {model.lastCall.model}{" "}
-                      <span className="font-code text-[8px] font-bold uppercase tracking-[0.14em] text-ink-400">
+                      <span className="font-code text-[10px] font-bold uppercase tracking-[0.06em] text-ink-600">
                         via {model.lastCall.tool.replace(/_/g, " ")} · {model.lastCall.source}
                       </span>
                     </p>
@@ -333,7 +333,7 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
                       {readiness.summary.pass} pass · {readiness.summary.pending} pending · {readiness.summary.fail} fail.
                       A failing criterion is not a warning; it is a stop.
                     </p>
-                    <div className="mt-2 flex flex-wrap gap-3 font-code text-[8px] font-semibold uppercase tracking-[0.12em] text-ink-400">
+                    <div className="mt-2 flex flex-wrap gap-3 text-[10px] font-semibold text-ink-600">
                       <span>{readiness.pilotMetrics.runsFiled}/{readiness.pilotMetrics.runsLaunched} runs filed</span>
                       <span>{readiness.pilotMetrics.findingsDisposed}/{readiness.pilotMetrics.findingsRaised} findings disposed</span>
                       <span>{readiness.pilotMetrics.humanOverrides} human override{readiness.pilotMetrics.humanOverrides === 1 ? "" : "s"}</span>
@@ -355,7 +355,7 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
                       </span>
                       <div className="min-w-0">
                         <p className="text-[11.5px] font-semibold text-ink-900">
-                          <span className="mr-1.5 font-code text-[8px] text-ink-400">{String(index + 1).padStart(2, "0")}</span>
+                          <span className="mr-1.5 font-code text-[10px] text-ink-600">{String(index + 1).padStart(2, "0")}</span>
                           {criterion.label}
                         </p>
                         <p className="mt-0.5 text-[10px] leading-relaxed text-ink-500">{criterion.detail}</p>
@@ -419,7 +419,7 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
                   {committee.present}
                   <span className="text-[14px] text-ink-400"> / {committee.required}</span>
                 </p>
-                <p className="font-code text-[8px] font-bold uppercase tracking-[0.16em] text-ink-400">
+                <p className="font-code text-[10px] font-bold uppercase tracking-[0.08em] text-ink-600">
                   {committee.seats} SEATS
                 </p>
               </div>
@@ -435,7 +435,7 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
                     <Dot tone={member.status === "PRESENT" ? "emerald" : "neutral"} />
                     <span className="min-w-0 flex-1 truncate text-[11px] text-ink-800">{member.name}</span>
                     {member.isChair && <Chip tone="violet">CHAIR</Chip>}
-                    <span className="font-code text-[7px] uppercase tracking-[0.1em] text-ink-400">
+                    <span className="font-code text-[10px] uppercase tracking-[0.05em] text-ink-600">
                       {member.office.replace(/_/g, " ").slice(0, 14)}
                     </span>
                   </li>
@@ -448,7 +448,7 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
               </ul>
             </div>
             <div className="border-t border-ink-100 px-5 py-2.5 dark:border-white/8">
-              <a href="/#/committee" className="font-code text-[8px] font-bold uppercase tracking-[0.16em] text-brand-700 hover:underline dark:text-brand-400">
+              <a href="/#/committee" className="focus-brand inline-flex min-h-11 items-center rounded-lg px-2 font-code text-[10px] font-bold uppercase tracking-[0.06em] text-brand-800 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-500/10">
                 SEAT THE COMMITTEE IN THE WORKSPACE →
               </a>
             </div>
@@ -476,9 +476,9 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="text-[11px] font-medium text-ink-800">{flag.label}</p>
-                        <p className="text-[9.5px] text-ink-400">{flag.note}</p>
+                        <p className="text-[10px] leading-relaxed text-ink-600">{flag.note}</p>
                       </div>
-                      <span className={cn("font-code text-[9px] font-bold tabular", tripped ? "text-red-600 dark:text-red-400" : "text-emerald-700 dark:text-emerald-400")}>
+                      <span className={cn("font-code text-[10px] font-bold tabular", tripped ? "text-red-600 dark:text-red-400" : "text-emerald-700 dark:text-emerald-400")}>
                         {typeof raw === "number" ? fmtNum(raw) : tripped ? "TRIPPED" : "CLEAR"}
                       </span>
                     </li>
@@ -488,9 +488,9 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
                   <Lock className="h-3.5 w-3.5 shrink-0 text-ink-400" aria-hidden="true" />
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] font-medium text-ink-800">Sealed chain</p>
-                    <p className="text-[9.5px] text-ink-400">entries bound by hash</p>
+                    <p className="text-[10px] leading-relaxed text-ink-600">Entries bound by hash</p>
                   </div>
-                  <span className="font-code text-[9px] font-bold tabular text-ink-700">{fmtNum(spine.logChainEntries)}</span>
+                  <span className="font-code text-[10px] font-bold tabular text-ink-700">{fmtNum(spine.logChainEntries)}</span>
                 </li>
               </ul>
             ) : (
@@ -541,7 +541,7 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
                   <p className="flex flex-wrap items-center gap-1.5">
                     <span className="font-code text-[10px] font-semibold tracking-[0.03em] text-ink-900">{tool.name}</span>
                     {tool.irreversible && <Chip tone="amber">GATED</Chip>}
-                    {tool.kind && <span className="font-code text-[7px] uppercase tracking-[0.12em] text-ink-400">{tool.kind}</span>}
+                    {tool.kind && <span className="font-code text-[10px] uppercase tracking-[0.05em] text-ink-600">{tool.kind}</span>}
                   </p>
                   {tool.description && <p className="mt-0.5 line-clamp-2 text-[10px] leading-relaxed text-ink-500">{tool.description}</p>}
                 </div>
@@ -555,7 +555,7 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
         <div className="rounded-2xl border border-ink-200/80 bg-paper-2/60 px-5 py-4 dark:border-white/10 dark:bg-white/[0.02]">
           <div className="flex items-center gap-2">
             <KeyRound className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
-            <p className="font-code text-[7.5px] font-bold uppercase tracking-[0.2em] text-ink-500">SEALED AT THE EDGE</p>
+            <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Sealed at the edge</p>
           </div>
           <p className="mt-2 text-[10.5px] leading-relaxed text-ink-500">
             The web layer signs every mutation it forwards with an HMAC over method, path, actor and timestamp. The
@@ -565,7 +565,7 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
         <div className="rounded-2xl border border-ink-200/80 bg-paper-2/60 px-5 py-4 dark:border-white/10 dark:bg-white/[0.02]">
           <div className="flex items-center gap-2">
             <Radio className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
-            <p className="font-code text-[7.5px] font-bold uppercase tracking-[0.2em] text-ink-500">GRAPH BOUNDARY</p>
+            <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Graph boundary</p>
           </div>
           <p className="mt-2 text-[10.5px] leading-relaxed text-ink-500">
             {(health?.graphs ?? []).length > 0
@@ -576,7 +576,7 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
         <div className="rounded-2xl border border-ink-200/80 bg-paper-2/60 px-5 py-4 dark:border-white/10 dark:bg-white/[0.02]">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
-            <p className="font-code text-[7.5px] font-bold uppercase tracking-[0.2em] text-ink-500">FAIL-CLOSED</p>
+            <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Fail-closed</p>
           </div>
           <p className="mt-2 text-[10.5px] leading-relaxed text-ink-500">
             If the roster, the log or the seal cannot be read, the gate refuses. Nothing falls open on error — the
@@ -605,10 +605,10 @@ function ReadoutCard({
     <div className="panel rounded-2xl px-4 py-3.5">
       <div className="flex items-center gap-1.5">
         <Dot tone={tone} pulse={pulse} />
-        <p className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">{label}</p>
+        <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">{label}</p>
       </div>
       <p className="mt-1.5 truncate font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">{value}</p>
-      <p className="mt-0.5 line-clamp-2 text-[9.5px] leading-relaxed text-ink-400">{note}</p>
+      <p className="mt-0.5 line-clamp-2 text-[10.5px] leading-relaxed text-ink-600">{note}</p>
     </div>
   );
 }
@@ -616,9 +616,9 @@ function ReadoutCard({
 function Field({ label, value, note }: { label: string; value: string; note: string }) {
   return (
     <div>
-      <p className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">{label}</p>
+      <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">{label}</p>
       <p className="mt-1 truncate font-code text-[10.5px] font-semibold tracking-[0.02em] text-ink-900">{value}</p>
-      <p className="mt-0.5 line-clamp-2 text-[9.5px] leading-relaxed text-ink-500">{note}</p>
+      <p className="mt-0.5 line-clamp-2 text-[10.5px] leading-relaxed text-ink-600">{note}</p>
     </div>
   );
 }
@@ -627,10 +627,10 @@ function Row({ label, value, note }: { label: string; value: string; note?: stri
   return (
     <div className="flex items-start justify-between gap-3 px-5 py-2">
       <div className="min-w-0">
-        <dt className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">{label}</dt>
-        {note && <dd className="mt-0.5 text-[9.5px] text-ink-400">{note}</dd>}
+        <dt className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">{label}</dt>
+        {note && <dd className="mt-0.5 text-[10.5px] text-ink-600">{note}</dd>}
       </div>
-      <dd className="max-w-[58%] truncate text-right font-code text-[9.5px] font-semibold text-ink-800">{value}</dd>
+      <dd className="max-w-[58%] truncate text-right font-code text-[10.5px] font-semibold text-ink-800">{value}</dd>
     </div>
   );
 }

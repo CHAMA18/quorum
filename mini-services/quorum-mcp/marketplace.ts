@@ -34,6 +34,22 @@ export interface MarketplaceTender {
   /** Whole days until closing, when OPEN and the closing date is known. */
   daysLeft?: number;
   applications: number;
+  /** Required bid documents from the latest issued notice; never inferred from a draft. */
+  requiredDocuments: string[];
+}
+
+export function requiredDocumentsFromNotice(markdown: string): string[] {
+  const seen = new Set<string>();
+  const documents: string[] = [];
+  for (const match of markdown.matchAll(/^- \[REQUIRED\]\s*(.+)$/gm)) {
+    const label = match[1].trim().replace(/\s+/g, " ").slice(0, 180);
+    const normalized = label.toLowerCase();
+    if (!label || label.startsWith("(none listed") || seen.has(normalized)) continue;
+    seen.add(normalized);
+    documents.push(label);
+    if (documents.length >= 100) break;
+  }
+  return documents;
 }
 
 export function marketplaceEntries(
@@ -42,6 +58,7 @@ export function marketplaceEntries(
   closingFromNotices: Record<string, string | undefined>,
   applicationCounts: Record<string, number>,
   now: Date,
+  requiredFromNotices: Record<string, string[]> = {},
 ): MarketplaceTender[] {
   return samples.map((s) => {
     const cycle = cycles.find((c) => c.tenderId === s.ref);
@@ -67,6 +84,7 @@ export function marketplaceEntries(
       status: open ? "OPEN" : "CLOSED",
       daysLeft,
       applications: applicationCounts[s.ref] ?? 0,
+      requiredDocuments: requiredFromNotices[s.ref] ?? [],
     };
   });
 }

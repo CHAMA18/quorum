@@ -1,399 +1,399 @@
 {
-  "updatedAt": "2026-10-30T04:32:42.232Z",
+  "updatedAt": "2026-11-01T10:06:51.606Z",
   "links": {
     "3": {
       "publicationId": 3,
-      "checkedAt": "2026-10-30T04:32:42.232Z",
+      "checkedAt": "2026-11-01T10:06:51.606Z",
       "registry": {
         "ok": true,
         "status": 206,
         "bytes": 262144,
         "ocid": "ocds-23g63a01-19284597",
-        "ms": 1530,
+        "ms": 2585,
         "error": null
       },
       "portal": {
         "ok": true,
         "status": 200,
-        "ms": 177,
+        "ms": 339,
         "error": null
       }
     },
     "13": {
       "publicationId": 13,
-      "checkedAt": "2026-10-17T23:12:17.478Z",
+      "checkedAt": "2026-11-01T10:05:44.711Z",
       "registry": {
         "ok": true,
         "status": 206,
         "bytes": 262144,
         "ocid": "ocds-muq5cl-124059",
-        "ms": 1750,
+        "ms": 2871,
         "error": null
       },
       "portal": {
         "ok": false,
         "status": null,
-        "ms": 518,
+        "ms": 811,
         "error": "getaddrinfo ENOTFOUND opencontracting.makueni.go.ke"
       }
     },
     "37": {
       "publicationId": 37,
-      "checkedAt": "2026-10-17T23:12:33.565Z",
+      "checkedAt": "2026-11-01T10:06:02.230Z",
       "registry": {
         "ok": true,
         "status": 206,
         "bytes": 262144,
         "ocid": "ocds-azam7x-6a867fng-oauth",
-        "ms": 2089,
+        "ms": 2639,
         "error": null
       },
       "portal": {
         "ok": true,
         "status": 200,
-        "ms": 3176,
+        "ms": 2841,
         "error": null
       }
     },
     "64": {
       "publicationId": 64,
-      "checkedAt": "2026-10-17T23:18:51.364Z",
+      "checkedAt": "2026-11-01T10:06:05.417Z",
       "registry": {
         "ok": true,
         "status": 206,
         "bytes": 262144,
         "ocid": "ocds-gyl66f-0517018034-000001",
-        "ms": 3296,
+        "ms": 3185,
         "error": null
       },
       "portal": {
         "ok": true,
         "status": 200,
-        "ms": 668,
+        "ms": 1494,
         "error": null
       }
     },
     "85": {
       "publicationId": 85,
-      "checkedAt": "2026-10-17T23:12:15.726Z",
+      "checkedAt": "2026-11-01T10:05:41.838Z",
       "registry": {
         "ok": true,
         "status": 206,
         "bytes": 262144,
         "ocid": "ocds-uhveoc-711879",
-        "ms": 1589,
+        "ms": 4185,
         "error": null
       },
       "portal": {
         "ok": true,
         "status": 206,
-        "ms": 1929,
+        "ms": 1882,
         "error": null
       }
     },
     "86": {
       "publicationId": 86,
-      "checkedAt": "2026-10-17T23:12:51.714Z",
+      "checkedAt": "2026-11-01T10:06:14.446Z",
       "registry": {
         "ok": true,
         "status": 206,
         "bytes": 152943,
         "ocid": "ocds-zinqhl-002431/EB/WTR/EP002/2020/NG",
-        "ms": 2137,
+        "ms": 2255,
         "error": null
       },
       "portal": {
         "ok": true,
         "status": 200,
-        "ms": 6563,
+        "ms": 7527,
         "error": null
       }
     },
     "102": {
       "publicationId": 102,
-      "checkedAt": "2026-10-17T23:12:53.151Z",
+      "checkedAt": "2026-11-01T10:06:16.167Z",
       "registry": {
         "ok": true,
         "status": 206,
         "bytes": 154716,
         "ocid": "ocds-fmoaoq-edsg-dca8-00002",
-        "ms": 1436,
+        "ms": 1720,
         "error": null
       },
       "portal": {
         "ok": false,
         "status": null,
-        "ms": 93,
+        "ms": 327,
         "error": "getaddrinfo ENOTFOUND edpms.edostate.gov.ng"
       }
     },
     "103": {
       "publicationId": 103,
-      "checkedAt": "2026-10-17T23:13:06.247Z",
+      "checkedAt": "2026-11-01T10:06:34.497Z",
       "registry": {
         "ok": true,
         "status": 206,
         "bytes": 35997,
         "ocid": "ocds-l6turf-6-000031",
-        "ms": 1189,
+        "ms": 1301,
         "error": null
       },
       "portal": {
         "ok": false,
         "status": null,
-        "ms": 71,
+        "ms": 139,
         "error": "getaddrinfo ENOTFOUND gombe.stateopencontracting.com"
       }
     },
     "104": {
       "publicationId": 104,
-      "checkedAt": "2026-10-17T23:13:05.057Z",
+      "checkedAt": "2026-11-01T10:06:33.195Z",
       "registry": {
         "ok": true,
         "status": 206,
         "bytes": 82324,
         "ocid": "ocds-bmokzh-006603-EN/WRK/03",
-        "ms": 1270,
+        "ms": 1396,
         "error": null
       },
       "portal": {
         "ok": true,
         "status": 200,
-        "ms": 9186,
+        "ms": 8716,
         "error": null
       }
     },
     "105": {
       "publicationId": 105,
-      "checkedAt": "2026-10-17T23:12:45.150Z",
+      "checkedAt": "2026-11-01T10:06:06.918Z",
       "registry": {
         "ok": true,
         "status": 206,
         "bytes": 9886,
         "ocid": "ocds-8gbwyb-moin0320",
-        "ms": 1169,
+        "ms": 1477,
         "error": null
       },
       "portal": {
         "ok": true,
         "status": 200,
-        "ms": 1095,
+        "ms": 1031,
         "error": null
       }
     },
     "106": {
       "publicationId": 106,
-      "checkedAt": "2026-10-17T23:13:12.552Z",
+      "checkedAt": "2026-11-01T10:06:39.974Z",
       "registry": {
         "ok": true,
         "status": 206,
         "bytes": 39914,
         "ocid": "ocds-vsryzs-5f3b5cdc4f63f",
-        "ms": 1139,
+        "ms": 1592,
         "error": null
       },
       "portal": {
         "ok": false,
-        "status": 403,
-        "ms": 2663,
-        "error": "HTTP 403"
+        "status": 404,
+        "ms": 3076,
+        "error": "HTTP 404"
       }
     },
     "107": {
       "publicationId": 107,
-      "checkedAt": "2026-10-17T23:12:23.528Z",
+      "checkedAt": "2026-11-01T10:05:52.020Z",
       "registry": {
         "ok": true,
         "status": 206,
         "bytes": 37861,
         "ocid": "ocds-slk1v3-006066-07-NG",
-        "ms": 1318,
+        "ms": 2078,
         "error": null
       },
       "portal": {
         "ok": false,
         "status": 404,
-        "ms": 2656,
+        "ms": 2408,
         "error": "HTTP 404"
       }
     },
     "116": {
       "publicationId": 116,
-      "checkedAt": "2026-10-17T23:12:55.869Z",
+      "checkedAt": "2026-11-01T10:06:24.442Z",
       "registry": {
         "ok": true,
         "status": 206,
         "bytes": 46749,
         "ocid": "ocds-6olpk7-0408101035718249",
-        "ms": 897,
+        "ms": 2205,
         "error": null
       },
       "portal": {
-        "ok": false,
-        "status": 403,
-        "ms": 2717,
-        "error": "HTTP 403"
+        "ok": true,
+        "status": 200,
+        "ms": 8274,
+        "error": null
       }
     },
     "118": {
       "publicationId": 118,
-      "checkedAt": "2026-10-17T23:13:09.887Z",
+      "checkedAt": "2026-11-01T10:06:36.896Z",
       "registry": {
         "ok": true,
         "status": 206,
         "bytes": 135568,
         "ocid": "ocds-xwwr9a-049057-OS/EDU/03",
-        "ms": 1505,
+        "ms": 1758,
         "error": null
       },
       "portal": {
         "ok": true,
         "status": 200,
-        "ms": 3639,
+        "ms": 2398,
         "error": null
       }
     },
     "125": {
       "publicationId": 125,
-      "checkedAt": "2026-10-17T23:13:13.889Z",
+      "checkedAt": "2026-11-01T10:06:41.131Z",
       "registry": {
         "ok": true,
         "status": 206,
         "bytes": 25261,
         "ocid": "ocds-u6fq4x-JWSC001-126262",
-        "ms": 1245,
+        "ms": 672,
         "error": null
       },
       "portal": {
         "ok": true,
         "status": 200,
-        "ms": 1336,
+        "ms": 1137,
         "error": null
       }
     },
     "127": {
       "publicationId": 127,
-      "checkedAt": "2026-10-17T23:12:30.388Z",
+      "checkedAt": "2026-11-01T10:05:59.387Z",
       "registry": {
         "ok": true,
         "status": 206,
         "bytes": 67878,
         "ocid": "ocds-j74acu-000632-AN/WRK/01-NG",
-        "ms": 1526,
+        "ms": 1518,
         "error": null
       },
       "portal": {
         "ok": true,
         "status": 200,
-        "ms": 6858,
+        "ms": 7366,
         "error": null
       }
     },
     "130": {
       "publicationId": 130,
-      "checkedAt": "2026-10-17T23:13:22.749Z",
+      "checkedAt": "2026-11-01T10:06:49.020Z",
       "registry": {
         "ok": true,
         "status": 206,
         "bytes": 262144,
-        "ocid": "ocds-rdvc92-401573631468",
-        "ms": 2126,
+        "ocid": "ocds-rdvc92-101737636115",
+        "ms": 1597,
         "error": null
       },
       "portal": {
         "ok": true,
         "status": 200,
-        "ms": 1075,
+        "ms": 625,
         "error": null
       }
     },
     "143": {
       "publicationId": 143,
-      "checkedAt": "2026-10-17T23:13:18.402Z",
+      "checkedAt": "2026-11-01T10:06:45.004Z",
       "registry": {
         "ok": true,
         "status": 206,
         "bytes": 262144,
         "ocid": "ocds-9t57fa-100034",
-        "ms": 1977,
+        "ms": 1945,
         "error": null
       },
       "portal": {
         "ok": false,
         "status": 404,
-        "ms": 978,
+        "ms": 387,
         "error": "HTTP 404"
       }
     },
     "145": {
       "publicationId": 145,
-      "checkedAt": "2026-10-17T23:13:16.423Z",
+      "checkedAt": "2026-11-01T10:06:43.058Z",
       "registry": {
         "ok": true,
         "status": 206,
         "bytes": 262144,
         "ocid": "ocds-ozzobm-000001/C/NCB/2017/2018/1600000000",
-        "ms": 1778,
+        "ms": 1926,
         "error": null
       },
       "portal": {
         "ok": true,
         "status": 200,
-        "ms": 2528,
+        "ms": 1080,
         "error": null
       }
     },
     "147": {
       "publicationId": 147,
-      "checkedAt": "2026-10-17T23:12:19.178Z",
+      "checkedAt": "2026-11-01T10:05:47.678Z",
       "registry": {
         "ok": true,
         "status": 206,
         "bytes": 262144,
         "ocid": "ocds-5whusi-0",
-        "ms": 1699,
+        "ms": 2966,
         "error": null
       },
       "portal": {
         "ok": true,
         "status": 200,
-        "ms": 674,
+        "ms": 1223,
         "error": null
       }
     },
     "152": {
       "publicationId": 152,
-      "checkedAt": "2026-10-17T23:13:20.622Z",
+      "checkedAt": "2026-11-01T10:06:47.402Z",
       "registry": {
         "ok": true,
         "status": 206,
         "bytes": 262144,
         "ocid": "ocds-mv5oob-00016c81-1709-4c3d-8182-65aa5bfeca03",
-        "ms": 2219,
+        "ms": 2376,
         "error": null
       },
       "portal": {
         "ok": true,
         "status": 200,
-        "ms": 611,
+        "ms": 2397,
         "error": null
       }
     },
     "156": {
       "publicationId": 156,
-      "checkedAt": "2026-10-17T23:12:20.872Z",
+      "checkedAt": "2026-11-01T10:05:49.589Z",
       "registry": {
         "ok": true,
         "status": 206,
         "bytes": 262144,
         "ocid": "ocds-dwjm7l-272135",
-        "ms": 1694,
+        "ms": 1910,
         "error": null
       },
       "portal": {
         "ok": true,
         "status": 200,
-        "ms": 1628,
+        "ms": 1700,
         "error": null
       }
     }

@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Activity,
   Building2,
   CheckCircle2,
   CircleAlert,
@@ -12,7 +11,6 @@ import {
   Plus,
   RefreshCw,
   RotateCcw,
-  ScrollText,
   ShieldCheck,
   ShieldOff,
   UserCog,
@@ -21,6 +19,7 @@ import {
 } from "lucide-react";
 import { SpecBar } from "@/components/quorum/reveal";
 import { TeamInviteDeliveryActions } from "@/components/quorum/team-invite-delivery-actions";
+import { trapTabFocus } from "@/lib/a11y";
 import type { AuthUser } from "@/lib/auth-types";
 import {
   ASSIGNABLE_ROLES,
@@ -35,12 +34,9 @@ import { cn } from "@/lib/utils";
 /**
  * Oversight — the scoped governance console.
  *
- * OWNER and ADMIN hold the writable console; AUDITOR sees the same people,
- * organizations and governance log with every mutation removed. The server
- * repeats the capability check on every route, so a hidden button is not the
- * permission. The audit trail (the sidecar's hash-chained tool log) stays a
- * separate read: this log records workspace authority, that one records the
- * agent's work.
+ * OWNER and ADMIN hold the writable console; AUDITOR sees the same people and
+ * organizations with every mutation removed. The server repeats the capability
+ * check on every route, so a hidden button is not the permission.
  */
 
 type TeamMember = {
@@ -139,19 +135,6 @@ const ROLE_TONE: Record<WorkspaceRole, string> = {
   AUDITOR: "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300",
 };
 
-const ACTION_LABEL: Record<string, string> = {
-  ROLE_CHANGED: "Role changed",
-  USER_SUSPENDED: "Member suspended",
-  USER_REACTIVATED: "Member reactivated",
-  SESSIONS_REVOKED: "Sessions revoked",
-  ORG_SUSPENDED: "Organization suspended",
-  ORG_REACTIVATED: "Organization reinstated",
-  ORG_APPEAL_FILED: "Suspension appeal filed",
-  ORG_APPEAL_UPHELD: "Suspension upheld on appeal",
-  ORG_REINSTATED_ON_APPEAL: "Reinstated on appeal",
-  INVITE_REVOKED: "Invite revoked",
-};
-
 function stamp(value: string): string {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "—";
@@ -179,7 +162,7 @@ function RoleChip({ role }: { role: WorkspaceRole }) {
   return (
     <span
       className={cn(
-        "inline-flex h-6 items-center rounded-full border px-2.5 font-code text-[8px] font-bold tracking-[0.16em]",
+        "inline-flex h-7 items-center rounded-full border px-2.5 font-code text-[10px] font-bold tracking-[0.1em]",
         ROLE_TONE[role],
       )}
     >
@@ -191,11 +174,9 @@ function RoleChip({ role }: { role: WorkspaceRole }) {
 export function OversightView({
   actor,
   onToast,
-  onOpenAudit,
 }: {
   actor: AuthUser | null;
   onToast: (message: string) => void;
-  onOpenAudit: () => void;
 }) {
   const [team, setTeam] = useState<TeamPayload | null>(null);
   const [orgs, setOrgs] = useState<OrgPayload | null>(null);
@@ -215,6 +196,31 @@ export function OversightView({
   const [copied, setCopied] = useState(false);
   const [suspendTarget, setSuspendTarget] = useState<OrgRow | null>(null);
   const [suspendReason, setSuspendReason] = useState("");
+  const suspendDialogRef = useRef<HTMLDivElement | null>(null);
+  const suspendReasonRef = useRef<HTMLTextAreaElement | null>(null);
+  const suspendReturnFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (suspendTarget) {
+      requestAnimationFrame(() => suspendReasonRef.current?.focus());
+      return;
+    }
+    const target = suspendReturnFocusRef.current;
+    suspendReturnFocusRef.current = null;
+    if (target?.isConnected) requestAnimationFrame(() => target.focus());
+  }, [suspendTarget]);
+
+  useEffect(() => {
+    if (!suspendTarget) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || busy !== null) return;
+      const focusedModal = document.activeElement?.closest('[role="dialog"][aria-modal="true"]');
+      if (focusedModal && focusedModal !== suspendDialogRef.current) return;
+      setSuspendTarget(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [suspendTarget, busy]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -488,7 +494,7 @@ export function OversightView({
   };
 
   const card = "rounded-[12px] panel overflow-hidden";
-  const label = "font-code text-[8px] font-semibold uppercase tracking-[0.22em] text-ink-400";
+  const label = "font-code text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-500";
 
   return (
     <div className="space-y-6">
@@ -500,12 +506,12 @@ export function OversightView({
               Oversight<span className="text-brand-600">.</span>
             </h1>
             <p className="type-lede mt-3 text-ink-600">
-              Who holds workspace authority, which organizations may use the desk, and every change to either. The
+              Who holds workspace authority and which organizations may use the desk. The
               console is scoped by role: owners and admins hold the writable surface, auditors read it.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex h-8 items-center gap-2 rounded-full border border-ink-200 bg-white px-3 font-code text-[8.5px] font-bold tracking-[0.16em] text-ink-600">
+            <span className="inline-flex min-h-10 items-center gap-2 rounded-full border border-ink-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">
               <Lock className="h-3 w-3" aria-hidden="true" />
               {actorRole} · {readOnly ? "READ-ONLY" : "WRITABLE"}
             </span>
@@ -513,7 +519,7 @@ export function OversightView({
               type="button"
               onClick={() => void load()}
               disabled={loading}
-              className="focus-brand inline-flex h-8 items-center gap-2 rounded-full border border-ink-200 bg-white px-3 font-code text-[8px] font-bold tracking-[0.14em] text-ink-600 transition-colors hover:border-ink-400 hover:text-ink-950 disabled:opacity-50"
+              className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-full border border-ink-200 bg-white px-3 font-code text-[10.5px] font-bold tracking-[0.06em] text-ink-600 transition-colors hover:border-ink-400 hover:text-ink-950 disabled:opacity-50"
             >
               <RefreshCw className={cn("h-3 w-3", loading && "animate-spin")} aria-hidden="true" />
               REFRESH
@@ -532,7 +538,7 @@ export function OversightView({
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Oversight summary">
             {stats.map((stat) => (
               <div key={stat.label} className="rounded-xl border border-ink-200/80 bg-white px-4 py-3.5">
-                <p className="font-code text-[7.5px] font-bold tracking-[0.2em] text-ink-400">{stat.label}</p>
+                <p className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-500">{stat.label}</p>
                 <p className="mt-2 text-[24px] font-semibold tracking-[-0.02em] text-ink-950 tabular">{stat.value}</p>
                 <p className="mt-0.5 text-[10.5px] text-ink-500">{stat.note}</p>
               </div>
@@ -543,9 +549,8 @@ export function OversightView({
             <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3.5 text-[12px] leading-relaxed text-emerald-900">
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               <p>
-                You are signed in as an <strong>auditor</strong>. You can read the roster, organization register and
-                governance log, but no control on this page writes. That is enforced on the server, not by hiding
-                buttons.
+                You are signed in as an <strong>auditor</strong>. You can read the roster and organization register,
+                but no control on this page writes. That is enforced on the server, not by hiding buttons.
               </p>
             </div>
           )}
@@ -564,7 +569,7 @@ export function OversightView({
                       an office before a gate accepts their signature.
                     </p>
                   </div>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-paper px-2.5 py-1 font-code text-[8px] font-bold tracking-[0.14em] text-ink-500">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-paper px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">
                     <Users className="h-3 w-3" aria-hidden="true" />
                     {team?.members.length ?? 0}
                   </span>
@@ -595,17 +600,17 @@ export function OversightView({
                                 <p className="truncate text-[13px] font-semibold text-ink-950">{member.name}</p>
                                 <RoleChip role={member.role} />
                                 {member.status === "SUSPENDED" && (
-                                  <span className="rounded-full border border-red-300 bg-red-50 px-2 py-0.5 font-code text-[7.5px] font-bold tracking-[0.14em] text-red-700">
+                                  <span className="rounded-full border border-red-300 bg-red-50 px-2 py-0.5 font-code text-[10px] font-bold tracking-[0.08em] text-red-700">
                                     SUSPENDED
                                   </span>
                                 )}
                                 {member.currentAccount && (
-                                  <span className="rounded-full border border-ink-200 bg-white px-2 py-0.5 font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-500">
+                                  <span className="rounded-full border border-ink-200 bg-white px-2 py-0.5 font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">
                                     YOU
                                   </span>
                                 )}
                               </div>
-                              <p className="mt-0.5 truncate font-code text-[8px] tracking-[0.12em] text-ink-500">
+                              <p className="mt-0.5 truncate text-[11px] leading-relaxed text-ink-600">
                                 {member.email.toUpperCase()}
                                 {member.organization ? ` · ${member.organization}` : ""}
                               </p>
@@ -621,7 +626,7 @@ export function OversightView({
                                   disabled={busy === `role:${member.id}`}
                                   onChange={(e) => void changeRole(member, e.target.value as WorkspaceRole)}
                                   aria-label={`Role for ${member.name}`}
-                                  className="h-8 rounded-lg border border-ink-200 bg-white px-2 font-code text-[8px] font-bold tracking-[0.14em] text-ink-700 outline-none focus:border-ink-950 disabled:opacity-50"
+                                  className="min-h-11 rounded-lg border border-ink-200 bg-white px-2.5 font-code text-[10.5px] font-bold tracking-[0.06em] text-ink-700 outline-none focus:border-ink-950 disabled:opacity-50"
                                 >
                                   {roleOptions.map((role) => (
                                     <option
@@ -638,7 +643,7 @@ export function OversightView({
                                   onClick={() => void revokeSessions(member)}
                                   disabled={busy !== null || member.sessions === 0}
                                   title="Revoke every live session for this member"
-                                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2.5 font-code text-[7.5px] font-bold tracking-[0.12em] text-ink-600 transition-colors hover:border-ink-400 hover:text-ink-950 disabled:opacity-40"
+                                  className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-400 hover:text-ink-950 disabled:opacity-40"
                                 >
                                   {busy === `sessions:${member.id}` ? (
                                     <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
@@ -652,7 +657,7 @@ export function OversightView({
                                     type="button"
                                     onClick={() => void setMemberStatus(member, "SUSPENDED")}
                                     disabled={busy !== null}
-                                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2.5 font-code text-[7.5px] font-bold tracking-[0.12em] text-red-700 transition-colors hover:bg-red-100 disabled:opacity-40"
+                                    className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 font-code text-[10px] font-bold tracking-[0.06em] text-red-700 transition-colors hover:bg-red-100 disabled:opacity-40"
                                   >
                                     <ShieldOff className="h-3 w-3" aria-hidden="true" />
                                     SUSPEND
@@ -662,7 +667,7 @@ export function OversightView({
                                     type="button"
                                     onClick={() => void setMemberStatus(member, "ACTIVE")}
                                     disabled={busy !== null}
-                                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 font-code text-[7.5px] font-bold tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-40"
+                                    className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 font-code text-[10px] font-bold tracking-[0.06em] text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-40"
                                   >
                                     <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
                                     REACTIVATE
@@ -703,13 +708,13 @@ export function OversightView({
                         onChange={(e) => setInviteEmail(e.target.value)}
                         placeholder="colleague@authority.go.ke"
                         aria-label="Colleague email"
-                        className="h-10 min-w-0 flex-1 rounded-lg border border-ink-200 bg-white px-3 text-[13px] text-ink-950 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-400"
+                        className="h-11 min-w-0 flex-1 rounded-lg border border-ink-200 bg-white px-3 text-[14px] text-ink-950 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-400"
                       />
                       <select
                         value={inviteRole}
                         onChange={(e) => setInviteRole(e.target.value as AssignableRole)}
                         aria-label="Role for this invite"
-                        className="h-10 rounded-lg border border-ink-200 bg-white px-3 font-code text-[9px] font-bold tracking-[0.14em] text-ink-700 outline-none"
+                        className="h-11 rounded-lg border border-ink-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700 outline-none"
                       >
                         {inviteRoles.map((role) => (
                           <option key={role} value={role}>
@@ -721,7 +726,7 @@ export function OversightView({
                         type="button"
                         onClick={() => void invite()}
                         disabled={busy !== null}
-                        className="inline-flex h-10 items-center gap-2 rounded-lg bg-ink-950 px-4 font-code text-[9px] font-bold tracking-[0.16em] text-white transition-colors hover:bg-ink-800 disabled:opacity-60"
+                        className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg bg-ink-950 px-4 font-code text-[10px] font-bold tracking-[0.06em] text-white transition-colors hover:bg-ink-800 disabled:opacity-60"
                       >
                         {busy === "invite" ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Plus className="h-3.5 w-3.5" aria-hidden="true" />}
                         CREATE INVITE
@@ -738,7 +743,7 @@ export function OversightView({
                         <span className="font-code text-[13px] font-bold tracking-[0.18em] text-brand-800" aria-live="polite">
                           {freshInvite.code}
                         </span>
-                        <span className="rounded-full border border-brand-200 bg-white px-2 py-0.5 font-code text-[7.5px] font-bold tracking-[0.14em] text-brand-800">
+                        <span className="rounded-full border border-brand-200 bg-white px-2 py-0.5 font-code text-[10px] font-bold tracking-[0.08em] text-brand-800">
                           {freshInvite.role}
                         </span>
                         {freshInvite.email && <span className="truncate text-[11px] text-brand-800">for {freshInvite.email}</span>}
@@ -748,7 +753,7 @@ export function OversightView({
                         <button
                           type="button"
                           onClick={() => void copyInvite()}
-                          className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-white px-3 py-1 font-code text-[8px] font-bold tracking-[0.14em] text-brand-800 transition-colors hover:bg-brand-100"
+                          className="focus-brand ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-full border border-brand-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.06em] text-brand-800 transition-colors hover:bg-brand-100"
                         >
                           <Copy className="h-3 w-3" aria-hidden="true" />
                           {copied ? "COPIED" : "COPY CODE"}
@@ -786,7 +791,7 @@ export function OversightView({
                                 type="button"
                                 onClick={() => void revokeInvite(inviteRow.id)}
                                 disabled={busy !== null}
-                                className="ml-auto rounded-full border border-ink-200 px-2.5 py-1 font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-500 transition-colors hover:border-brand-200 hover:text-brand-800 disabled:opacity-40"
+                                className="focus-brand ml-auto inline-flex min-h-11 items-center rounded-full border border-ink-200 px-3 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-brand-200 hover:text-brand-800 disabled:opacity-40"
                               >
                                 REVOKE
                               </button>
@@ -811,7 +816,7 @@ export function OversightView({
                       request, so an old cookie cannot outlive the decision.
                     </p>
                   </div>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-paper px-2.5 py-1 font-code text-[8px] font-bold tracking-[0.14em] text-ink-500">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-paper px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">
                     <Building2 className="h-3 w-3" aria-hidden="true" />
                     {orgs?.organizations.length ?? 0}
                   </span>
@@ -822,7 +827,7 @@ export function OversightView({
                   <ul className="divide-y divide-ink-100">
                     {orgs?.organizations.map((org) => (
                       <li key={org.id} className="flex flex-wrap items-start gap-3 px-5 py-4">
-                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-ink-200 bg-paper font-code text-[9px] font-bold text-ink-600" aria-hidden="true">
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-ink-200 bg-paper font-code text-[10px] font-bold text-ink-600" aria-hidden="true">
                           {initialsOf(org.name)}
                         </span>
                         <div className="min-w-0 flex-1">
@@ -830,7 +835,7 @@ export function OversightView({
                             <p className="truncate text-[13px] font-semibold text-ink-950">{org.name}</p>
                             <span
                               className={cn(
-                                "rounded-full border px-2 py-0.5 font-code text-[7.5px] font-bold tracking-[0.14em]",
+                                "rounded-full border px-2 py-0.5 font-code text-[10px] font-bold tracking-[0.08em]",
                                 org.status === "ACTIVE"
                                   ? "border-emerald-300 bg-emerald-50 text-emerald-800"
                                   : "border-red-300 bg-red-50 text-red-700",
@@ -839,7 +844,7 @@ export function OversightView({
                               {org.status}
                             </span>
                           </div>
-                          <p className="mt-0.5 truncate font-code text-[8px] tracking-[0.12em] text-ink-500">
+                          <p className="mt-0.5 truncate text-[11px] leading-relaxed text-ink-600">
                             {org.registrationNo.toUpperCase()} · {org.country.toUpperCase()} · {org.email.toUpperCase()}
                           </p>
                           <p className="mt-1 text-[10.5px] text-ink-400">
@@ -852,11 +857,12 @@ export function OversightView({
                               <button
                                 type="button"
                                 onClick={() => {
+                                  suspendReturnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
                                   setSuspendTarget(org);
                                   setSuspendReason("");
                                 }}
                                 disabled={busy !== null}
-                                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2.5 font-code text-[7.5px] font-bold tracking-[0.12em] text-red-700 transition-colors hover:bg-red-100 disabled:opacity-40"
+                                className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 font-code text-[10px] font-bold tracking-[0.06em] text-red-700 transition-colors hover:bg-red-100 disabled:opacity-40"
                               >
                                 <ShieldOff className="h-3 w-3" aria-hidden="true" />
                                 SUSPEND
@@ -866,7 +872,7 @@ export function OversightView({
                                 type="button"
                                 onClick={() => void patchOrg(org, "ACTIVE", "Reinstated from the oversight console")}
                                 disabled={busy !== null}
-                                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 font-code text-[7.5px] font-bold tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-40"
+                                className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 font-code text-[10px] font-bold tracking-[0.06em] text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-40"
                               >
                                 <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
                                 REINSTATE
@@ -892,7 +898,7 @@ export function OversightView({
                       revokes live sessions; upholding leaves the suspension standing. Both decisions are logged.
                     </p>
                   </div>
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-paper px-2.5 py-1 font-code text-[8px] font-bold tracking-[0.14em] text-ink-500">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-paper px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">
                     <ShieldCheck className="h-3 w-3" aria-hidden="true" />
                     {appeals.filter((appeal) => appeal.status === "OPEN").length} OPEN
                   </span>
@@ -911,7 +917,7 @@ export function OversightView({
                             </p>
                             <span
                               className={cn(
-                                "rounded-full border px-2 py-0.5 font-code text-[7.5px] font-bold tracking-[0.14em]",
+                                "rounded-full border px-2 py-0.5 font-code text-[10px] font-bold tracking-[0.08em]",
                                 appeal.status === "OPEN"
                                   ? "border-amber-300 bg-amber-50 text-amber-900"
                                   : appeal.status === "REINSTATED"
@@ -921,9 +927,9 @@ export function OversightView({
                             >
                               {appeal.status}
                             </span>
-                            <span className="font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-400">{appeal.reference}</span>
+                            <span className="text-[10px] font-semibold tracking-[0.04em] text-ink-500">{appeal.reference}</span>
                           </div>
-                          <p className="mt-0.5 truncate font-code text-[8px] tracking-[0.12em] text-ink-500">
+                          <p className="mt-0.5 truncate text-[11px] leading-relaxed text-ink-600">
                             {appeal.organization?.registrationNo.toUpperCase() ?? "—"} · FILED {stamp(appeal.createdAt).toUpperCase()}
                           </p>
                           <p className="mt-1.5 text-[12px] leading-relaxed text-ink-600">{appeal.reason}</p>
@@ -940,13 +946,13 @@ export function OversightView({
                                 maxLength={600}
                                 placeholder="Reason for the decision (required)"
                                 aria-label={`Decision reason for ${appeal.reference}`}
-                                className="h-8 rounded-lg border border-ink-200 bg-white px-2.5 text-[11.5px] text-ink-950 outline-none placeholder:text-ink-400 focus:border-ink-400"
+                                className="min-h-11 rounded-lg border border-ink-200 bg-white px-3 text-[13px] text-ink-950 outline-none placeholder:text-ink-400 focus:border-ink-400"
                               />
                               <button
                                 type="button"
                                 onClick={() => void decideAppeal(appeal, "REINSTATED")}
                                 disabled={busy !== null || (appealDrafts[appeal.id] ?? "").trim().length < 4}
-                                className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 font-code text-[7.5px] font-bold tracking-[0.12em] text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-40"
+                                className="focus-brand inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 font-code text-[10px] font-bold tracking-[0.06em] text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-40"
                               >
                                 {busy === `appeal:${appeal.id}` ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="h-3 w-3" aria-hidden="true" />}
                                 REINSTATE
@@ -955,7 +961,7 @@ export function OversightView({
                                 type="button"
                                 onClick={() => void decideAppeal(appeal, "UPHELD")}
                                 disabled={busy !== null || (appealDrafts[appeal.id] ?? "").trim().length < 4}
-                                className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2.5 font-code text-[7.5px] font-bold tracking-[0.12em] text-ink-600 transition-colors hover:border-ink-400 disabled:opacity-40"
+                                className="focus-brand inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-400 disabled:opacity-40"
                               >
                                 <ShieldOff className="h-3 w-3" aria-hidden="true" />
                                 UPHOLD
@@ -971,54 +977,6 @@ export function OversightView({
             </div>
 
             <aside className="space-y-5">
-              <section className={cn(card, "xl:sticky xl:top-[76px]")} aria-labelledby="oversight-log">
-                <div className="border-b border-ink-100 px-4 py-4">
-                  <p className={label}>GOVERNANCE</p>
-                  <h2 id="oversight-log" className="mt-1 font-display text-[16px] font-black tracking-[-0.01em] text-ink-950">
-                    Change log
-                  </h2>
-                  <p className="mt-1 text-[11px] leading-relaxed text-ink-500">
-                    Workspace authority, recorded in the desk store.
-                  </p>
-                </div>
-                <ol className="max-h-[520px] divide-y divide-ink-100 overflow-y-auto">
-                  {(orgs?.events ?? []).map((event) => (
-                    <li key={event.id} className="px-4 py-3">
-                      <div className="flex items-center gap-1.5">
-                        <Activity className="h-3 w-3 shrink-0 text-ink-400" aria-hidden="true" />
-                        <p className="font-code text-[8px] font-bold tracking-[0.14em] text-ink-700">
-                          {(ACTION_LABEL[event.action] ?? event.action).toUpperCase()}
-                        </p>
-                      </div>
-                      <p className="mt-1 text-[11.5px] font-semibold text-ink-950">{event.targetName}</p>
-                      <p className="mt-0.5 text-[10.5px] leading-relaxed text-ink-500">{event.detail}</p>
-                      <p className="mt-1 font-code text-[7.5px] tracking-[0.1em] text-ink-400">
-                        {event.actorName.toUpperCase()} · {stamp(event.createdAt).toUpperCase()}
-                      </p>
-                    </li>
-                  ))}
-                  {orgs?.events.length === 0 && (
-                    <li className="px-4 py-8 text-[11.5px] text-ink-400">No governance change has been recorded yet.</li>
-                  )}
-                </ol>
-                <div className="border-t border-ink-100 px-4 py-3">
-                  <button
-                    type="button"
-                    onClick={onOpenAudit}
-                    className="focus-brand inline-flex w-full items-center justify-between gap-2 rounded-lg border border-ink-200 bg-white px-3 py-2.5 font-code text-[8px] font-bold tracking-[0.14em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <ScrollText className="h-3.5 w-3.5" aria-hidden="true" />
-                      OPEN THE AUDIT TRAIL
-                    </span>
-                    <span aria-hidden="true">→</span>
-                  </button>
-                  <p className="mt-2 text-[10px] leading-relaxed text-ink-400">
-                    The tool log is separate from this register: it records every agent step and gate receipt.
-                  </p>
-                </div>
-              </section>
-
               <section className="rounded-[12px] border border-ink-200 bg-paper/70 p-4">
                 <p className={label}>SCOPE</p>
                 <dl className="mt-3 space-y-2.5">
@@ -1043,15 +1001,18 @@ export function OversightView({
           }}
         >
           <div
+            ref={suspendDialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="suspend-org-title"
+            tabIndex={-1}
             className="w-full max-w-md rounded-[12px] panel panel-lift p-5 sm:p-6"
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(event) => trapTabFocus(event, suspendDialogRef.current)}
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="font-code text-[8px] font-semibold uppercase tracking-[0.22em] text-brand-700">SUPPLIER ACCESS</p>
+                <p className="font-code text-[10px] font-semibold uppercase tracking-[0.12em] text-brand-800">SUPPLIER ACCESS</p>
                 <h2 id="suspend-org-title" className="mt-2 font-display text-[22px] font-black tracking-[-0.02em] text-ink-950">
                   Suspend {suspendTarget.name}?
                 </h2>
@@ -1061,7 +1022,7 @@ export function OversightView({
                 onClick={() => setSuspendTarget(null)}
                 disabled={busy !== null}
                 aria-label="Close"
-                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-ink-200 text-ink-500 hover:bg-ink-50 disabled:opacity-50"
+                className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-ink-200 text-ink-600 hover:bg-ink-50 disabled:opacity-50"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -1070,8 +1031,9 @@ export function OversightView({
               Every live portal session is revoked immediately. The reason goes on the governance log.
             </p>
             <label className="mt-4 block">
-              <span className="font-code text-[8px] font-semibold uppercase tracking-[0.2em] text-ink-400">Reason</span>
+              <span className="font-code text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-600">Reason</span>
               <textarea
+                ref={suspendReasonRef}
                 value={suspendReason}
                 onChange={(e) => setSuspendReason(e.target.value)}
                 rows={3}
@@ -1085,7 +1047,7 @@ export function OversightView({
                 type="button"
                 onClick={() => setSuspendTarget(null)}
                 disabled={busy !== null}
-                className="h-9 rounded-lg border border-ink-200 px-4 font-code text-[8px] font-bold tracking-[0.14em] text-ink-600 hover:border-ink-400 disabled:opacity-50"
+                className="focus-brand min-h-11 rounded-lg border border-ink-200 px-4 font-code text-[10.5px] font-bold tracking-[0.06em] text-ink-700 hover:border-ink-400 disabled:opacity-50"
               >
                 CANCEL
               </button>
@@ -1093,7 +1055,7 @@ export function OversightView({
                 type="button"
                 onClick={() => void patchOrg(suspendTarget, "SUSPENDED", suspendReason)}
                 disabled={busy !== null || suspendReason.trim().length < 4}
-                className="inline-flex h-9 items-center gap-2 rounded-lg bg-red-700 px-4 font-code text-[8px] font-bold tracking-[0.14em] text-white transition-colors hover:bg-red-800 disabled:opacity-50"
+                className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg bg-red-700 px-4 font-code text-[10.5px] font-bold tracking-[0.06em] text-white transition-colors hover:bg-red-800 disabled:opacity-50"
               >
                 {busy === `org:${suspendTarget.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <ShieldOff className="h-3.5 w-3.5" aria-hidden="true" />}
                 SUSPEND ACCESS

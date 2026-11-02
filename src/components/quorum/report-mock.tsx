@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight, CirclePause, FileText, PenLine } from "lucide-react";
 import { Reveal, SpecBar } from "@/components/quorum/reveal";
 import { cn } from "@/lib/utils";
+import { nextRovingTabIndex } from "@/lib/a11y";
 
 type TabId = "report" | "flags" | "audit";
 
@@ -30,6 +31,7 @@ interface LiveRunModel {
 interface LiveRun {
   id: string;
   tenderId: string;
+  reference?: string;
   status: string;
   updatedAt: string;
   requirements: { id: string }[];
@@ -71,7 +73,7 @@ function SeverityChip({ severity, tag }: { severity: "red" | "amber" | "green"; 
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-code text-[9px] font-bold uppercase tracking-[0.12em]",
+        "inline-flex shrink-0 items-center rounded px-1.5 py-0.5 font-code text-[10px] font-bold uppercase tracking-[0.12em]",
         severity === "red" && "bg-brand-600/12 text-brand-700",
         severity === "amber" && "bg-amber-500/15 text-amber-700",
         severity === "green" && "bg-emerald-500/15 text-emerald-700"
@@ -115,14 +117,16 @@ export function ReportMock() {
            ended and how much it produced — never a bidder's name or price. */
         const summaryRes = await fetch("/api/public/summary");
         const summary = (await summaryRes.json()) as {
-          sample?: { tenderId?: string; status?: string; updatedAt?: string };
+          sample?: { reference?: string; status?: string; updatedAt?: string };
           activity?: LiveLogEntry[];
         };
         if (!alive) return;
         setRun(
           summary.sample
             ? ({
-                tenderId: summary.sample.tenderId,
+                id: summary.sample.reference ?? "Tender record",
+                tenderId: "",
+                reference: summary.sample.reference,
                 status: summary.sample.status,
                 updatedAt: summary.sample.updatedAt,
                 findings: [],
@@ -154,6 +158,15 @@ export function ReportMock() {
     { id: "flags", label: "FLAGS", count: flags.length },
     { id: "audit", label: "AUDIT LOG", count: auditRows.length },
   ];
+
+  const handleReportTabKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const next = nextRovingTabIndex(event.key, TABS.findIndex((item) => item.id === tab), TABS.length);
+    if (next === null) return;
+    event.preventDefault();
+    const nextTab = TABS[next].id;
+    setTab(nextTab);
+    requestAnimationFrame(() => document.getElementById(`tab-${nextTab}`)?.focus());
+  };
 
   return (
     <section id="report" className="scroll-mt-20 border-y border-ink-100 bg-sand/60">
@@ -190,7 +203,7 @@ export function ReportMock() {
             <Reveal delay={0.24}>
               <a
                 href="#inside"
-                className="group mt-8 inline-flex items-center gap-2 text-[15px] font-semibold text-brand-700 transition-colors hover:text-brand-800"
+                className="focus-brand group mt-8 inline-flex min-h-11 items-center gap-2 py-2 text-[15px] font-semibold text-brand-700 transition-colors hover:text-brand-800"
               >
                 See everything inside the run
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
@@ -212,35 +225,37 @@ export function ReportMock() {
                 {/* Doc header */}
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 px-5 py-4 sm:px-7">
                   <p className="font-code text-[10px] font-bold tracking-[0.2em] text-ink-950">
-                    {run ? `SOURCED REPORT · TENDER ${run.tenderId}` : "SOURCED REPORT"}
+                    {run ? `SOURCED REPORT · TENDER ${run.reference ?? run.id}` : "SOURCED REPORT"}
                   </p>
                   {run && (
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-300 bg-brand-50 px-3 py-1 font-code text-[9px] font-bold tracking-[0.14em] text-brand-700">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-300 bg-brand-50 px-3 py-1 font-code text-[10px] font-bold tracking-[0.14em] text-brand-700">
                       <CirclePause className="h-3 w-3" aria-hidden="true" />
                       {run.status === "AWAITING_GATE" ? "GATE: PENDING SIGN-OFF" : `STATUS: ${run.status}`}
                     </span>
                   )}
                 </div>
-                <p className="border-b border-ink-100 bg-paper px-5 py-2.5 font-code text-[9.5px] tracking-[0.14em] text-ink-400 sm:px-7">
+                <p className="border-b border-ink-100 bg-paper px-5 py-2.5 font-code text-[10px] tracking-[0.14em] text-ink-400 sm:px-7">
                   {run
                     ? `${run.requirements?.length ?? 0} REQUIREMENTS · ${findings.length} FINDINGS · ${run.drafts?.length ?? 0} DRAFTS · MODEL ${(run.model?.models?.length ? run.model.models.join(", ") : "template").toUpperCase()} · EVERY CLAIM CITED`
                     : "NO RUN YET · EVERY CLAIM CITED"}
                 </p>
 
                 {/* Tabs */}
-                <div role="tablist" aria-label="Report panes" className="flex gap-1 border-b border-ink-100 px-4 pt-3 sm:px-6">
+                <div role="tablist" aria-label="Report panes" onKeyDown={handleReportTabKeyDown} className="flex gap-1 border-b border-ink-100 px-4 pt-3 sm:px-6">
                   {TABS.map((t) => {
                     const active = tab === t.id;
                     return (
                       <button
                         key={t.id}
+                        type="button"
                         role="tab"
                         id={`tab-${t.id}`}
                         aria-selected={active}
-                        aria-controls={`pane-${t.id}`}
+                        aria-controls={active ? `pane-${t.id}` : undefined}
+                        tabIndex={active ? 0 : -1}
                         onClick={() => setTab(t.id)}
                         className={cn(
-                          "relative -mb-px inline-flex items-center gap-1.5 rounded-t-lg px-3.5 py-2.5 font-code text-[10px] font-bold tracking-[0.16em] transition-colors",
+                          "focus-brand relative -mb-px inline-flex min-h-11 items-center gap-1.5 rounded-t-lg px-3.5 py-2.5 font-code text-[10px] font-bold tracking-[0.16em] transition-colors",
                           active
                             ? "border border-b-white border-ink-100 bg-white text-ink-950"
                             : "border border-transparent text-ink-400 hover:text-ink-700"
@@ -249,7 +264,7 @@ export function ReportMock() {
                         {t.label}
                         <span
                           className={cn(
-                            "rounded px-1 py-0.5 text-[8.5px] tabular",
+                            "rounded px-1 py-0.5 text-[10px] tabular",
                             active ? "bg-brand-600 text-white" : "bg-ink-100 text-ink-500"
                           )}
                         >
@@ -261,7 +276,7 @@ export function ReportMock() {
                 </div>
 
                 {/* Panes */}
-                <div className="min-h-[352px] px-5 py-5 sm:px-7">
+                <div role="tabpanel" id={`pane-${tab}`} aria-labelledby={`tab-${tab}`} tabIndex={0} className="min-h-[352px] px-5 py-5 sm:px-7">
                   {!run && (
                     <p className="pt-10 text-center font-code text-[11px] tracking-[0.12em] text-ink-400">
                       {loaded
@@ -271,7 +286,7 @@ export function ReportMock() {
                   )}
 
                   {run && tab === "report" && (
-                    <div role="tabpanel" id="pane-report" aria-labelledby="tab-report" className="relative divide-y divide-ink-100">
+                    <div className="relative divide-y divide-ink-100">
                       <Annotation className="-right-2 top-1">every claim cited to a page</Annotation>
                       {findings.length === 0 && (
                         <p className="py-6 font-code text-[11px] text-ink-400">NO FINDINGS RAISED IN THIS RUN.</p>
@@ -284,7 +299,7 @@ export function ReportMock() {
                               <span className="font-semibold text-ink-900">{f.item}</span> — {f.evidence}
                             </p>
                             <p className="mt-1.5 flex flex-wrap items-center gap-2">
-                              <span className="inline-flex items-center gap-1.5 rounded border border-ink-200 bg-paper px-1.5 py-0.5 font-code text-[9.5px] tracking-[0.06em] text-ink-500">
+                              <span className="inline-flex items-center gap-1.5 rounded border border-ink-200 bg-paper px-1.5 py-0.5 font-code text-[10px] tracking-[0.06em] text-ink-500">
                                 <FileText className="h-2.5 w-2.5" aria-hidden="true" />
                                 {f.citation}
                               </span>
@@ -296,7 +311,7 @@ export function ReportMock() {
                   )}
 
                   {run && tab === "flags" && (
-                    <div role="tabpanel" id="pane-flags" aria-labelledby="tab-flags" className="relative space-y-3">
+                    <div className="relative space-y-3">
                       <Annotation className="-right-2 top-0">nothing buried in prose</Annotation>
                       {flags.length === 0 && (
                         <p className="py-6 font-code text-[11px] text-ink-400">NO HIGH-SEVERITY FLAGS IN THIS RUN.</p>
@@ -305,7 +320,7 @@ export function ReportMock() {
                         <div key={f.id} className="relative rounded-xl border border-ink-100 bg-paper p-4">
                           <div className="flex flex-wrap items-center gap-2.5">
                             <span className="font-code text-[10px] font-bold text-ink-400">FLAG-{String(i + 1).padStart(2, "0")}</span>
-                            <span className="inline-flex items-center rounded bg-brand-600/12 px-1.5 py-0.5 font-code text-[9px] font-bold tracking-[0.12em] text-brand-700">
+                            <span className="inline-flex items-center rounded bg-brand-600/12 px-1.5 py-0.5 font-code text-[10px] font-bold tracking-[0.12em] text-brand-700">
                               {f.rule}
                             </span>
                           </div>
@@ -313,14 +328,14 @@ export function ReportMock() {
                           <p className="mt-1 text-[12.5px] text-ink-500">{f.evidence}</p>
                         </div>
                       ))}
-                      <p className="pt-1 font-code text-[9.5px] tracking-[0.14em] text-ink-400">
+                      <p className="pt-1 font-code text-[10px] tracking-[0.14em] text-ink-400">
                         FLAGS ARE ADVICE — THE RULING BELONGS TO THE COMMITTEE.
                       </p>
                     </div>
                   )}
 
                   {run && tab === "audit" && (
-                    <div role="tabpanel" id="pane-audit" aria-labelledby="tab-audit" className="relative space-y-1.5">
+                    <div className="relative space-y-1.5">
                       <Annotation className="-right-2 top-0">inputs, outputs, timestamps</Annotation>
                       {auditRows.length === 0 && (
                         <p className="py-6 font-code text-[11px] text-ink-400">NO TOOL CALLS LOGGED FOR THIS RUN YET.</p>
@@ -349,10 +364,10 @@ export function ReportMock() {
 
                 {/* Doc footer */}
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ink-100 px-5 py-3 sm:px-7">
-                  <p className="font-code text-[9px] tracking-[0.18em] text-ink-400">
+                  <p className="font-code text-[10px] tracking-[0.18em] text-ink-400">
                     {run ? `UPDATED ${clock(run.updatedAt)} · QUORUM` : "QUORUM"}
                   </p>
-                  <p className="font-code text-[9px] tracking-[0.18em] text-brand-600">
+                  <p className="font-code text-[10px] tracking-[0.18em] text-brand-600">
                     THE COMMITTEE SIGNS — THE AGENT NEVER DOES
                   </p>
                 </div>

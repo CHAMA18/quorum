@@ -170,7 +170,17 @@ export const OFFICE_LABELS: Record<Office, string> = {
    and by a deterministic pack inspection otherwise. Every field changes downstream
    behaviour (which parsers run, which rule families are drafted first, how many drafts). */
 export interface ReviewPlan {
-  pack: { files: number; bids: number; ocdsRecords: number; markdownValueBids: number; ocdsValueBids: number };
+  pack: {
+    files: number;
+    /* Bid documents read from the pack. */
+    bids: number;
+    /* Distinct firms those documents belong to — the figure the desk reports as
+       "No. of bidders". Absent on plans persisted before it was recorded. */
+    bidders?: number;
+    ocdsRecords: number;
+    markdownValueBids: number;
+    ocdsValueBids: number;
+  };
   /* Deep value parsing: markdown "**Bid value:**" lines join OCDS values for outlier/budget rules. */
   parseMarkdownValues: boolean;
   focusRules: string[];
@@ -197,6 +207,8 @@ export interface Run {
   id: string;
   tenantId?: string;
   workspaceId?: string;
+  /** Quorum-issued public reference. `tenderId` remains the source-pack lookup key. */
+  reference?: string;
   tenderId: string;
   status: "RUNNING" | "AWAITING_GATE" | "REJECTED" | "FILED" | "FAILED";
   /* The attested officer who launched the review — four eyes compares the
@@ -509,6 +521,10 @@ export interface EvalCriterion {
   id: string;
   title: string;
   weight: number; /* percent — all weights must sum to 100 */
+  /** Bidder-facing evidence or subcriteria needed for this row. */
+  evidence?: string;
+  /** Published scoring anchors or formula for this row. */
+  scoringMethod?: string;
 }
 
 export interface EvalEvidence {
@@ -1029,9 +1045,14 @@ export interface NoticeFieldCheck {
 export interface NoticeDraft {
   id: string;
   tenderId: string;
+  /** System-issued public reference for this notice; absent on legacy drafts. */
+  reference?: string;
   md: string;
   fieldCheck: NoticeFieldCheck[];
   createdAt: string;
+  /* Set when an unissued draft is amended in place (e.g. one table replaced).
+     The original authoring time stays intact. */
+  updatedAt?: string;
   gateId?: string;
   issuedAt?: string;
   issuedBy?: string;
@@ -1042,7 +1063,9 @@ export interface SpecDraft {
   tenderId?: string;
   pipelineId?: string;
   md: string;
-  source: "llm" | "template";
+  /* "officer" is an explicit edit of the specification's criteria table, not
+     a generated draft — the desk can see the document left the template. */
+  source: "llm" | "template" | "officer";
   model?: string;
   createdAt: string;
 }
@@ -1051,6 +1074,8 @@ export interface PipelineEntry {
   id: string;
   tenantId?: string;
   workspaceId?: string;
+  /** Stable public Quorum reference. `ref` remains the legacy lookup key. */
+  systemReference?: string;
   ref: string;
   title: string;
   office?: string;
@@ -1076,6 +1101,8 @@ export interface TenderCycle {
   tenderId: string;
   tenantId?: string;
   workspaceId?: string;
+  /** Public Quorum reference; `tenderId` remains the source-pack lookup key. */
+  systemReference?: string;
   /* The lawful method this tender runs under (methods.ts), and the record
      that makes a non-open choice defensible: a stated justification, the
      accounting officer's method gate, and — where the law requires it — the
@@ -1315,6 +1342,17 @@ export interface SupplierApplication {
   amount?: number;
   currency?: string;
   coverNote?: string;
+  /** Private R2 objects supplied against the issued notice's required-document list. */
+  bidDocuments?: {
+    requirement: string;
+    key: string;
+    filename: string;
+    bytes: number;
+    contentType: string;
+    sha256: string;
+    firebaseUid: string;
+    uploadedAt: string;
+  }[];
   sealed?: SealedBidEnvelope;
   receiptId?: string;
   version?: number;

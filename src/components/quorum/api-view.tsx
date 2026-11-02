@@ -164,7 +164,7 @@ export function ApiView() {
                 <Braces className="h-5 w-5" aria-hidden="true" />
               </span>
               <div className="min-w-0">
-                <p className="font-code text-[8px] font-bold tracking-[0.2em] text-brand-700 dark:text-brand-300">DEVELOPER · REST API</p>
+                <p className="font-code text-[10px] font-bold tracking-[0.08em] text-brand-700 dark:text-brand-300">DEVELOPER · REST API</p>
                 <h1 id="api-view-title" className="mt-1 text-[22px] font-black tracking-tight text-ink-950 dark:text-white">Connect to Quorum’s API.</h1>
                 <p className="mt-2 max-w-3xl text-[12px] leading-relaxed text-ink-600 dark:text-ink-300">
                   Explore the live API surfaces, see how each one is protected, and check the web service, procurement runtime, and authenticated gateway from this workspace.
@@ -175,7 +175,7 @@ export function ApiView() {
               type="button"
               onClick={() => void runDiagnostics()}
               disabled={checking}
-              className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-ink-950 px-3.5 text-[11px] font-semibold text-white transition hover:bg-ink-800 disabled:cursor-wait disabled:opacity-60 dark:bg-white dark:text-ink-950 dark:hover:bg-ink-100"
+              className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg bg-ink-950 px-3.5 text-[12px] font-semibold text-white transition hover:bg-ink-800 disabled:cursor-wait disabled:opacity-60 dark:bg-white dark:text-ink-950 dark:hover:bg-ink-100"
             >
               <RefreshCw className={cn("h-3.5 w-3.5", checking && "animate-spin")} aria-hidden="true" />
               {checking ? "Checking API…" : "Run API checks"}
@@ -183,9 +183,9 @@ export function ApiView() {
           </div>
 
           <div className="mt-5 flex flex-wrap items-center gap-2 rounded-xl border border-ink-200 bg-white px-3.5 py-3 dark:border-white/10 dark:bg-white/[0.035]">
-            <span className="font-code text-[8px] font-bold tracking-[0.15em] text-ink-500 dark:text-ink-400">BASE URL</span>
+            <span className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-600 dark:text-ink-400">BASE URL</span>
             <code className="min-w-0 flex-1 break-all text-[11px] text-ink-900 dark:text-white">{baseUrl}</code>
-            <button type="button" onClick={() => void copy("base", baseUrl)} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-ink-200 px-2.5 text-[10px] font-semibold text-ink-700 transition hover:bg-ink-50 dark:border-white/10 dark:text-ink-200 dark:hover:bg-white/[0.06]">
+            <button type="button" onClick={() => void copy("base", baseUrl)} className="focus-brand inline-flex h-11 min-h-11 items-center gap-1.5 rounded-lg border border-ink-200 px-2.5 text-[11px] font-semibold text-ink-700 transition hover:bg-ink-50 dark:border-white/10 dark:text-ink-200 dark:hover:bg-white/[0.06]">
               {copied === "base" ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
               {copied === "base" ? "Copied" : "Copy"}
             </button>
@@ -199,7 +199,7 @@ export function ApiView() {
             <Activity className="h-4 w-4 text-brand-600 dark:text-brand-400" aria-hidden="true" />
             <h2 id="api-diagnostics-title" className="text-[14px] font-bold text-ink-950 dark:text-white">Live API diagnostics</h2>
           </div>
-          <span className="font-code text-[8px] font-semibold tracking-[0.12em] text-ink-500 dark:text-ink-400">
+          <span className="font-code text-[10px] font-semibold tracking-[0.05em] text-ink-600 dark:text-ink-400">
             {lastChecked ? "LAST CHECKED " + lastChecked : "CHECKING ROUTES"}
           </span>
         </div>
@@ -208,11 +208,11 @@ export function ApiView() {
             <div key={check.id} className="min-w-0 bg-white p-4 dark:bg-night-2" role="status" aria-live="polite">
               <div className="flex items-center justify-between gap-2">
                 <p className="truncate text-[11px] font-semibold text-ink-900 dark:text-white">{check.label}</p>
-                <span className={cn("shrink-0 rounded-full border px-2 py-1 font-code text-[7px] font-bold tracking-[0.1em]", stateClass(check.state))}>
+                <span className={cn("shrink-0 rounded-full border px-2 py-1 font-code text-[10px] font-bold tracking-[0.04em]", stateClass(check.state))}>
                   {stateLabel(check.state)}
                 </span>
               </div>
-              <p className="mt-2 text-[10px] leading-relaxed text-ink-600 dark:text-ink-300">{check.detail}</p>
+          <p className="mt-2 text-[11.5px] leading-relaxed text-ink-700 dark:text-ink-300">{check.detail}</p>
             </div>
           ))}
         </div>
@@ -222,21 +222,21 @@ export function ApiView() {
         <section className="panel overflow-hidden rounded-[12px]" aria-labelledby="api-surfaces-title">
           <div className="border-b border-ink-100 px-5 py-4 dark:border-white/[0.07] sm:px-6">
             <h2 id="api-surfaces-title" className="text-[14px] font-bold text-ink-950 dark:text-white">API surfaces</h2>
-            <p className="mt-1 text-[10.5px] leading-relaxed text-ink-500 dark:text-ink-400">Routes currently served by Quorum’s web application, procurement sidecar, and supplier portal.</p>
+            <p className="mt-1 text-[11.5px] leading-relaxed text-ink-600 dark:text-ink-400">Routes currently served by Quorum’s web application, procurement sidecar, and supplier portal.</p>
           </div>
           <div className="divide-y divide-ink-100 dark:divide-white/[0.07]">
             {API_DIRECTORY.surfaces.map((surface) => (
               <article key={surface.id} className="px-5 py-4 sm:px-6">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-[12px] font-semibold text-ink-900 dark:text-white">{surface.title}</h3>
-                  <span className="rounded-full border border-ink-200 bg-white px-2 py-1 font-code text-[7px] font-bold tracking-[0.1em] text-ink-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-400">
+                  <span className="rounded-full border border-ink-200 bg-white px-2 py-1 font-code text-[10px] font-bold tracking-[0.04em] text-ink-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-300">
                     {surface.auth}
                   </span>
                 </div>
-                <p className="mt-1 text-[10.5px] leading-relaxed text-ink-600 dark:text-ink-300">{surface.description}</p>
+                <p className="mt-1 text-[11.5px] leading-relaxed text-ink-700 dark:text-ink-300">{surface.description}</p>
                 <ul className="mt-2 space-y-1.5">
                   {surface.endpoints.map((endpoint) => (
-                    <li key={endpoint} className="break-all font-mono text-[9px] leading-relaxed text-ink-700 dark:text-ink-200">{endpoint}</li>
+                    <li key={endpoint} className="break-all font-mono text-[10.5px] leading-relaxed text-ink-800 dark:text-ink-200">{endpoint}</li>
                   ))}
                 </ul>
               </article>
@@ -253,13 +253,13 @@ export function ApiView() {
             <div className="space-y-3 px-5 py-4">
               {Object.entries(API_DIRECTORY.authentication).map(([key, description]) => (
                 <div key={key}>
-                  <p className="font-code text-[7px] font-bold uppercase tracking-[0.15em] text-brand-700 dark:text-brand-300">{key === "remote" ? "REMOTE CLIENTS" : key}</p>
-                  <p className="mt-1 text-[10px] leading-relaxed text-ink-600 dark:text-ink-300">{description}</p>
+                  <p className="font-code text-[10px] font-bold uppercase tracking-[0.06em] text-brand-700 dark:text-brand-300">{key === "remote" ? "REMOTE CLIENTS" : key}</p>
+                  <p className="mt-1 text-[11.5px] leading-relaxed text-ink-700 dark:text-ink-300">{description}</p>
                 </div>
               ))}
             </div>
             <div className="mx-5 mb-5 rounded-lg border border-amber-300/70 bg-amber-50 px-3.5 py-3 dark:border-amber-500/20 dark:bg-amber-500/[0.07]">
-              <p className="flex items-start gap-2 text-[10px] leading-relaxed text-amber-950 dark:text-amber-100">
+              <p className="flex items-start gap-2 text-[11.5px] leading-relaxed text-amber-950 dark:text-amber-100">
                 <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                 REST API access uses the signed-in session; Quorum does not issue generic REST API keys. For remote AI clients, use the authenticated read-only MCP setup in Integrations.
               </p>
@@ -275,18 +275,18 @@ export function ApiView() {
               <button
                 type="button"
                 onClick={() => void copy("example", QUICKSTART)}
-                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-ink-200 px-2.5 text-[9px] font-semibold text-ink-700 transition hover:bg-ink-50 dark:border-white/10 dark:text-ink-200 dark:hover:bg-white/[0.06]"
+                className="focus-brand inline-flex h-11 min-h-11 items-center gap-1.5 rounded-lg border border-ink-200 px-2.5 text-[11px] font-semibold text-ink-700 transition hover:bg-ink-50 dark:border-white/10 dark:text-ink-200 dark:hover:bg-white/[0.06]"
               >
                 {copied === "example" ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
                 {copied === "example" ? "Copied" : "Copy"}
               </button>
             </div>
-            <pre className="overflow-x-auto bg-ink-950 p-4 text-[9px] leading-relaxed text-emerald-100"><code>{QUICKSTART}</code></pre>
+            <pre tabIndex={0} role="region" aria-label="API quickstart code" className="overflow-x-auto bg-ink-950 p-4 text-[10px] leading-relaxed text-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60"><code>{QUICKSTART}</code></pre>
             <div className="flex flex-wrap gap-2 px-5 py-4">
-              <a href="/api" target="_blank" rel="noreferrer" className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-ink-200 px-3 text-[10px] font-semibold text-ink-700 transition hover:bg-ink-50 dark:border-white/10 dark:text-ink-200 dark:hover:bg-white/[0.05]">
+              <a href="/api" target="_blank" rel="noreferrer" className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-ink-200 px-3 text-[11px] font-semibold text-ink-700 transition hover:bg-ink-50 dark:border-white/10 dark:text-ink-200 dark:hover:bg-white/[0.05]">
                 Open API directory <ExternalLink className="h-3 w-3" aria-hidden="true" />
               </a>
-              <a href={API_DIRECTORY.documentation} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-ink-200 px-3 text-[10px] font-semibold text-ink-700 transition hover:bg-ink-50 dark:border-white/10 dark:text-ink-200 dark:hover:bg-white/[0.05]">
+              <a href={API_DIRECTORY.documentation} className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-ink-200 px-3 text-[11px] font-semibold text-ink-700 transition hover:bg-ink-50 dark:border-white/10 dark:text-ink-200 dark:hover:bg-white/[0.05]">
                 Read documentation <BookOpen className="h-3 w-3" aria-hidden="true" />
               </a>
             </div>

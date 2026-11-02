@@ -82,12 +82,12 @@ function deriveName(email: string): string {
 }
 
 const inputCls =
-  "h-11 w-full rounded-xl border border-ink-200 bg-white px-3.5 text-[14px] text-ink-950 outline-none transition-all placeholder:text-ink-300 focus:border-ink-950 focus:ring-4 focus:ring-ink-950/10 dark:bg-night-2 dark:text-white dark:placeholder:text-ink-500";
+  "h-11 w-full rounded-xl border border-ink-200 bg-white px-3.5 text-[14px] text-ink-950 outline-none transition-all placeholder:text-ink-400 focus:border-ink-950 focus:ring-4 focus:ring-ink-950/10 dark:bg-night-2 dark:text-white dark:placeholder:text-ink-500";
 
 function Field({ label, error, children, hint }: { label: string; error?: string; children: React.ReactNode; hint?: string }) {
   return (
     <label className="block space-y-1.5">
-      <span className="font-code text-[9.5px] font-semibold uppercase tracking-[0.16em] text-ink-500 dark:text-ink-400">
+      <span className="font-code text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-600 dark:text-ink-300">
         {label}
       </span>
       {children}
@@ -197,7 +197,7 @@ function MobileBrandBand() {
       <div className="pointer-events-none absolute inset-0 bg-grid-dark opacity-60" aria-hidden="true" />
       <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-brand-600/20 blur-[70px]" aria-hidden="true" />
       <div className="relative">
-        <p className="font-code text-[9px] font-semibold tracking-[0.22em] text-brand-300">OFFICER DESK</p>
+        <p className="font-code text-[10px] font-semibold tracking-[0.12em] text-brand-300">OFFICER DESK</p>
         <h2 className="type-display mt-2 text-[22px] text-white">
           The agent reads. <span className="text-brand-500">You</span> award.
         </h2>
@@ -252,9 +252,10 @@ function VerifyPanel({
       transition={{ duration: 0.28, ease: EASE }}
     >
       <div className="flex items-baseline justify-between">
-        <p className="font-code text-[9px] font-semibold tracking-[0.2em] text-ink-400">OFFICER ACCESS</p>
-        <p className="font-code text-[9px] font-semibold tracking-[0.2em] text-ink-400">FIG. 03 — VERIFY</p>
-      </div>          <h2 className="type-display mt-5 text-[26px] text-ink-950 dark:text-white">
+        <p className="font-code text-[10px] font-semibold tracking-[0.12em] text-ink-600 dark:text-ink-300">OFFICER ACCESS</p>
+        <p className="font-code text-[10px] font-semibold tracking-[0.12em] text-ink-600 dark:text-ink-300">FIG. 03 — VERIFY</p>
+      </div>
+      <h2 className="type-display mt-5 text-[26px] text-ink-950 dark:text-white">
         Check your inbox<span className="text-brand-600">.</span>
       </h2>
       <p className="mt-2.5 text-[13.5px] leading-relaxed text-ink-600 dark:text-ink-300">
@@ -286,7 +287,7 @@ function VerifyPanel({
       <button
         type="button"
         onClick={onBack}
-        className="mt-4 w-full text-center text-[12.5px] font-semibold text-brand-700 underline decoration-brand-300 underline-offset-4 transition-colors hover:text-brand-800 dark:text-brand-300 dark:decoration-brand-800 dark:hover:text-brand-200"
+        className="mt-2 inline-flex min-h-11 w-full items-center justify-center rounded-lg px-2 text-[12.5px] font-semibold text-brand-700 underline decoration-brand-300 underline-offset-4 transition-colors hover:text-brand-800 dark:text-brand-300 dark:decoration-brand-800 dark:hover:text-brand-200"
       >
         Use a different email
       </button>
@@ -368,7 +369,7 @@ function SuccessPanel({
 
         {autoEnter && (
           <div className="mx-auto mt-6 w-full max-w-sm" aria-hidden="true">
-            <div className="flex items-center justify-between font-code text-[8.5px] tracking-[0.2em] text-ink-400">
+            <div className="flex items-center justify-between font-code text-[10px] tracking-[0.06em] text-ink-600 dark:text-ink-300">
               <span>OPENING WORKSPACE</span>
               <span>SESSION · HTTPONLY</span>
             </div>
@@ -397,7 +398,7 @@ function SuccessPanel({
         <button
           type="button"
           onClick={onClose}
-          className="mt-3.5 text-[13px] font-semibold text-ink-500 underline decoration-ink-300 underline-offset-4 transition-colors hover:text-brand-700 hover:decoration-brand-400 dark:text-ink-400 dark:decoration-ink-700 dark:hover:text-brand-300"
+          className="focus-brand mt-3.5 inline-flex min-h-11 items-center justify-center rounded-lg px-2 text-[13px] font-semibold text-ink-600 underline decoration-ink-300 underline-offset-4 transition-colors hover:text-brand-700 hover:decoration-brand-400 dark:text-ink-300 dark:decoration-ink-700 dark:hover:text-brand-300"
         >
           Back to the site
         </button>
@@ -409,7 +410,7 @@ function SuccessPanel({
             ["GATE", "HUMAN"],
           ].map(([k, v]) => (
             <div key={k} className="px-2">
-              <dt className="font-code text-[8.5px] tracking-[0.22em] text-ink-400">{k}</dt>
+              <dt className="font-code text-[10px] tracking-[0.06em] text-ink-600 dark:text-ink-300">{k}</dt>
               <dd className="mt-1 font-code text-[11px] font-bold tracking-[0.06em] text-ink-950 dark:text-white">
                 {v}
               </dd>
@@ -417,7 +418,7 @@ function SuccessPanel({
           ))}
         </dl>
 
-        <p className="mt-4 font-code text-[8.5px] tracking-[0.2em] text-ink-400">
+        <p className="mt-4 font-code text-[10px] leading-relaxed tracking-[0.06em] text-ink-600 dark:text-ink-300">
           SIGNED IN AS {user.email.toUpperCase()}
         </p>
       </motion.div>
@@ -764,7 +765,7 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
   }
 
   return (
-    <div className="grid min-h-screen bg-paper font-body text-ink-900 antialiased lg:grid-cols-[1.05fr_1fr] dark:bg-night dark:text-white">
+    <div className="auth-screen grid min-h-screen bg-paper font-body text-ink-900 antialiased lg:grid-cols-[1.05fr_1fr] dark:bg-night dark:text-white">
       <StoryPanel />
 
       {/* Auth panel */}
@@ -782,7 +783,7 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
           <button
             type="button"
             onClick={onClose}
-            className="font-code text-[10px] font-semibold tracking-[0.16em] text-ink-500 transition-colors hover:text-ink-900 dark:text-ink-400 dark:hover:text-white"
+            className="focus-brand inline-flex min-h-11 items-center rounded-lg px-2 font-code text-[10px] font-semibold tracking-[0.12em] text-ink-600 transition-colors hover:text-ink-900 dark:text-ink-300 dark:hover:text-white"
           >
             MAIN SITE →
           </button>
@@ -794,7 +795,7 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
 
             {/* Portal tag — the Quorum / Supplier switcher sits inside the card, above the brand. */}
             <div className="mb-5 hidden items-center justify-end lg:flex">
-              <span className="font-code text-[9.5px] font-semibold tracking-[0.2em] text-brand-700 dark:text-brand-400">OFFICER PORTAL · /</span>
+              <span className="font-code text-[10px] font-semibold tracking-[0.1em] text-brand-700 dark:text-brand-400">OFFICER PORTAL · /</span>
             </div>
 
             <div className="rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-6 shadow-[0_16px_48px_rgba(11,12,15,0.08)] sm:p-8 dark:bg-night-2">
@@ -836,9 +837,10 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
                         <button
                           key={m}
                           type="button"
+                          aria-pressed={mode === m}
                           onClick={() => onModeChange(m)}
                           className={cn(
-                            "relative rounded-lg py-2.5 text-[13px] font-semibold transition-colors",
+                            "focus-brand relative inline-flex min-h-11 items-center justify-center rounded-lg px-2 text-[13px] font-semibold transition-colors",
                             mode === m ? "text-white dark:text-night" : "text-ink-500 hover:text-ink-900 dark:hover:text-white",
                           )}
                         >
@@ -864,8 +866,8 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
 
                     {/* Mono rail — the organization door's step-rail line */}
                     <div className="flex items-baseline justify-between">
-                      <p className="font-code text-[9px] font-semibold tracking-[0.2em] text-ink-400">OFFICER ACCESS</p>
-                      <p className="font-code text-[9px] font-semibold tracking-[0.2em] text-ink-400">
+                      <p className="font-code text-[10px] font-semibold tracking-[0.12em] text-ink-600 dark:text-ink-300">OFFICER ACCESS</p>
+                      <p className="font-code text-[10px] font-semibold tracking-[0.12em] text-ink-600 dark:text-ink-300">
                         {mode === "register" ? "FIG. 01 — REQUEST ACCESS" : "FIG. 02 — SIGN IN"}
                       </p>
                     </div>
@@ -898,12 +900,12 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
                           </>
                         )}
                       </button>
-                      <div className="flex items-center gap-3" aria-hidden="true">
-                        <span className="h-px flex-1 bg-ink-100 dark:bg-ink-800" />
-                        <span className="font-code text-[8.5px] font-semibold tracking-[0.22em] text-ink-400">
+                      <div className="flex items-center gap-3">
+                        <span aria-hidden="true" className="h-px flex-1 bg-ink-100 dark:bg-ink-800" />
+                        <span className="font-code text-[10px] font-semibold tracking-[0.12em] text-ink-600 dark:text-ink-300">
                           OR CONTINUE WITH EMAIL
                         </span>
-                        <span className="h-px flex-1 bg-ink-100 dark:bg-ink-800" />
+                        <span aria-hidden="true" className="h-px flex-1 bg-ink-100 dark:bg-ink-800" />
                       </div>
 
                       <motion.div animate={shake}>
@@ -1023,7 +1025,8 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
                                 type="button"
                                 onClick={() => setShowPw((v) => !v)}
                                 aria-label={showPw ? "Hide password" : "Show password"}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 transition-colors hover:text-ink-700 dark:hover:text-white"
+                                aria-pressed={showPw}
+                                className="focus-brand absolute right-1 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-lg text-ink-500 transition-colors hover:text-ink-900 dark:text-ink-400 dark:hover:text-white"
                               >
                                 {showPw ? (
                                   <EyeOff className="h-4 w-4" aria-hidden="true" />
@@ -1049,7 +1052,7 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
                                     />
                                   ))}
                                 </div>
-                                <p className="font-code text-[9px] font-bold tracking-[0.18em] text-ink-500 dark:text-ink-400">
+                                <p className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-600 dark:text-ink-300">
                                   {pwMeta.label}
                                 </p>
                               </div>
@@ -1060,9 +1063,9 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
                                     <li
                                       key={c.label}
                                       className={cn(
-                                        "rounded-md px-2 py-1 font-code text-[8.5px] font-semibold tracking-[0.14em] transition-colors duration-300",
+                                        "rounded-md px-2 py-1 font-code text-[10px] font-semibold tracking-[0.06em] transition-colors duration-300",
                                         ok
-                                          ? "bg-ink-950 text-white dark:bg-white dark:text-ink-950"
+                                          ? "bg-ink-950 text-white dark:bg-white dark:text-[#0b0c0f]"
                                           : "bg-ink-50 text-ink-400 dark:bg-ink-900 dark:text-ink-500"
                                       )}
                                     >
@@ -1173,7 +1176,7 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
                                     setMemoOpen((v) => !v);
                                   }}
                                   aria-expanded={memoOpen}
-                                  className="text-[13px] font-semibold text-ink-600 underline decoration-ink-300 underline-offset-4 transition-colors hover:text-brand-700 hover:decoration-brand-400 dark:text-ink-300 dark:decoration-ink-700 dark:hover:text-brand-300"
+                                  className="inline-flex min-h-11 items-center rounded-lg px-2 text-[13px] font-semibold text-ink-600 underline decoration-ink-300 underline-offset-4 transition-colors hover:text-brand-700 hover:decoration-brand-400 dark:text-ink-300 dark:decoration-ink-700 dark:hover:text-brand-300"
                                 >
                                   Forgot access?
                                 </button>
@@ -1191,7 +1194,7 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
                                       className="mt-3 rounded-xl border border-ink-200 bg-sand px-4 py-3.5 dark:bg-ink-900/40"
                                       role="note"
                                     >
-                                      <p className="font-code text-[9px] font-semibold tracking-[0.2em] text-ink-500 dark:text-ink-400">
+                                      <p className="font-code text-[10px] font-semibold tracking-[0.1em] text-ink-600 dark:text-ink-300">
                                         ACCESS RESET
                                       </p>
 
@@ -1209,7 +1212,7 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
                                           <button
                                             type="button"
                                             onClick={requestPasswordReset}
-                                            className="mt-2 text-[12.5px] font-semibold text-brand-700 underline decoration-brand-300 underline-offset-4 transition-colors hover:text-brand-800 dark:text-brand-300 dark:decoration-brand-800 dark:hover:text-brand-200"
+                                            className="mt-1 inline-flex min-h-11 items-center rounded-lg px-2 text-[12.5px] font-semibold text-brand-700 underline decoration-brand-300 underline-offset-4 transition-colors hover:text-brand-800 dark:text-brand-300 dark:decoration-brand-800 dark:hover:text-brand-200"
                                           >
                                             Send it again
                                           </button>
@@ -1245,7 +1248,7 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
                                               type="button"
                                               onClick={requestPasswordReset}
                                               disabled={resetStatus === "sending"}
-                                              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-ink-950 bg-ink-950 px-4 text-[13px] font-semibold text-white transition-all hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 dark:border-white dark:bg-white dark:text-ink-950 dark:hover:bg-brand-500 dark:hover:text-white"
+                                              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-ink-950 bg-ink-950 px-4 text-[13px] font-semibold text-white transition-all hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 dark:border-white dark:bg-white dark:text-[#0b0c0f] dark:hover:bg-brand-500 dark:hover:text-white"
                                             >
                                               {resetStatus === "sending" ? (
                                                 <span
@@ -1328,13 +1331,13 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
                       <button
                         type="button"
                         onClick={() => onModeChange(mode === "register" ? "login" : "register")}
-                        className="font-semibold text-brand-700 underline decoration-brand-300 underline-offset-4 transition-colors hover:text-brand-800 hover:decoration-brand-500 dark:text-brand-300 dark:decoration-brand-800 dark:hover:text-brand-200"
+                        className="inline-flex min-h-11 items-center rounded-lg px-1 font-semibold text-brand-700 underline decoration-brand-300 underline-offset-4 transition-colors hover:text-brand-800 hover:decoration-brand-500 dark:text-brand-300 dark:decoration-brand-800 dark:hover:text-brand-200"
                       >
                         {mode === "register" ? "Sign in" : "Create an account"}
                       </button>
                     </p>
 
-                    <p className="mt-5 text-center font-code text-[8.5px] tracking-[0.22em] text-ink-400">
+                    <p className="mt-5 text-center font-code text-[10px] leading-relaxed tracking-[0.08em] text-ink-500 dark:text-ink-400">
                       SCRYPT-HASHED PASSWORDS · HTTPONLY SESSIONS · NO TRACKERS
                     </p>
                   </motion.div>
@@ -1342,11 +1345,6 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
               </AnimatePresence>
             </div>
 
-            <p className="mt-5 text-center text-[12px] leading-relaxed text-ink-400 dark:text-ink-500">
-              Officers sign in here only — organizations have their own door at /org.
-              <br />
-              The committee signs — the agent never does.
-            </p>
           </div>
         </div>
       </div>

@@ -33,6 +33,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { HorizontalScrollRegion } from "@/components/quorum/horizontal-scroll-region";
 import { formatGateReceipt, type GateReceipt } from "@/lib/gate-receipts";
 import { requestStepUp } from "@/components/quorum/step-up";
 import { SpecBar } from "@/components/quorum/reveal";
@@ -126,6 +127,7 @@ interface RunModelAttribution {
 interface Run {
   id: string;
   tenderId: string;
+  reference?: string;
   status?: string;
   startedAt?: string;
   progress?: string[];
@@ -173,7 +175,7 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 
 function MonoLabel({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <p className={cn("font-code text-[9px] font-semibold uppercase tracking-[0.24em] text-ink-400", className)}>
+    <p className={cn("font-code text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-400", className)}>
       {children}
     </p>
   );
@@ -191,7 +193,7 @@ function KindChip({ kind }: { kind?: string }) {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 font-code text-[8px] font-bold tracking-[0.14em]",
+        "inline-flex min-h-7 shrink-0 items-center rounded-full border px-2 font-code text-[10px] font-bold tracking-[0.05em]",
         map[label] ?? "border-ink-200 bg-white text-ink-500"
       )}
     >
@@ -333,19 +335,19 @@ function OfficerSelect({
   const kindChip = (o: OfficerOption) => {
     if (o.kind === "gavel")
       return (
-        <span className="shrink-0 rounded-full border border-brand-200 bg-brand-50 px-1.5 py-0.5 font-code text-[7.5px] font-bold tracking-[0.14em] text-brand-700">
+        <span className="shrink-0 rounded-full border border-brand-200 bg-brand-50 px-1.5 py-0.5 font-code text-[10px] font-bold tracking-[0.04em] text-brand-700">
           THE GAVEL
         </span>
       );
     if (o.chair)
       return (
-        <span className="shrink-0 rounded-full border border-ink-200 px-1.5 py-0.5 font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-500">
+        <span className="shrink-0 rounded-full border border-ink-200 px-1.5 py-0.5 font-code text-[10px] font-bold tracking-[0.04em] text-ink-600">
           CHAIR
         </span>
       );
     if (o.kind === "excused")
       return (
-        <span className="shrink-0 rounded-full border border-dashed border-ink-200 px-1.5 py-0.5 font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-400">
+        <span className="shrink-0 rounded-full border border-dashed border-ink-200 px-1.5 py-0.5 font-code text-[10px] font-bold tracking-[0.04em] text-ink-600">
           EXCUSED
         </span>
       );
@@ -372,14 +374,14 @@ function OfficerSelect({
           }
         }}
         className={cn(
-          "flex h-10 w-full items-center gap-2.5 rounded-xl border bg-white px-2.5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/15",
+          "flex min-h-11 w-full items-center gap-2.5 rounded-xl border bg-white px-2.5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/15",
           open ? "border-brand-500" : "border-ink-200 hover:border-ink-300"
         )}
       >
         {selected ? (
           <span
             className={cn(
-              "flex h-6 w-6 shrink-0 items-center justify-center rounded-md font-code text-[9px] font-bold",
+              "flex h-7 w-7 shrink-0 items-center justify-center rounded-md font-code text-[10px] font-bold",
               selected.kind === "gavel" ? "bg-night text-ink-200" : "border border-ink-100 bg-paper text-ink-600"
             )}
             aria-hidden="true"
@@ -397,7 +399,7 @@ function OfficerSelect({
           </span>
         </span>
         {selected && (
-          <span className="hidden shrink-0 font-code text-[8px] tracking-[0.16em] text-ink-400 sm:block">
+          <span className="hidden shrink-0 font-code text-[10px] tracking-[0.08em] text-ink-500 sm:block">
             {selected.kind === "gavel" ? "THE GAVEL" : [selected.chair ? "CHAIR" : "PRESENT", selected.office ? OFFICE_SHORT[selected.office] : ""].filter(Boolean).join(" · ")}
           </span>
         )}
@@ -455,7 +457,7 @@ function OfficerSelect({
                           requestAnimationFrame(() => triggerRef.current?.focus());
                         }}
                         className={cn(
-                          "flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors",
+                          "flex min-h-11 w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors",
                           isExcused
                             ? "opacity-55"
                             : "hover:bg-brand-50 focus-visible:bg-brand-50 focus-visible:outline-none"
@@ -463,7 +465,7 @@ function OfficerSelect({
                       >
                         <span
                           className={cn(
-                            "flex h-6 w-6 shrink-0 items-center justify-center rounded-md font-code text-[9px] font-bold",
+                            "flex h-7 w-7 shrink-0 items-center justify-center rounded-md font-code text-[10px] font-bold",
                             o.kind === "gavel" ? "bg-night text-ink-200" : "border border-ink-100 bg-paper text-ink-600"
                           )}
                           aria-hidden="true"
@@ -475,7 +477,7 @@ function OfficerSelect({
                             {o.name}
                             {o.kind === "gavel" && <span className="font-normal text-ink-400"> — you</span>}
                           </span>
-                          <span className="block truncate font-code text-[9px] tracking-[0.12em] text-ink-400">{o.role}</span>
+                          <span className="block truncate font-code text-[10px] tracking-[0.06em] text-ink-500">{o.role}</span>
                         </span>
                         {kindChip(o)}
                         {isSelected && <Check className="h-3.5 w-3.5 shrink-0 text-brand-600" aria-hidden="true" />}
@@ -512,8 +514,11 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
   const [busy, setBusy] = useState(false);
   const [approverDraft, setApproverDraft] = useState<Record<string, { name: string; note: string }>>({});
   const [committee, setCommittee] = useState<CommitteeLite | null>(null);
-  const logAnchor = useRef<HTMLDivElement | null>(null);
   const terminalBody = useRef<HTMLDivElement | null>(null);
+  const latestLogRef = useRef<LogEntry[]>([]);
+  const terminalFollowRef = useRef(true);
+  const [terminalLog, setTerminalLog] = useState<LogEntry[]>([]);
+  const [terminalPaused, setTerminalPaused] = useState(false);
   const [lastPolledAt, setLastPolledAt] = useState<Date | null>(null);
 
   const pull = useCallback(async () => {
@@ -542,7 +547,16 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
         setCommittee({ members: c.members, you: c.you ?? null });
       }
       const l = await fetch(`${SVC}/log?limit=60&XTransformPort=3031`).then((x) => x.json());
-      setLog(l.entries ?? []);
+      const entries = Array.isArray(l.entries) ? (l.entries as LogEntry[]) : [];
+      const previousEntries = latestLogRef.current;
+      const logChanged =
+        previousEntries.length !== entries.length ||
+        entries.some((entry, index) => entry.id !== previousEntries[index]?.id);
+      latestLogRef.current = entries;
+      if (logChanged) {
+        setLog(entries);
+        if (terminalFollowRef.current) setTerminalLog(entries);
+      }
       setLastPolledAt(new Date());
     } catch {
       /* service briefly down — keep last snapshot */
@@ -557,8 +571,8 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
 
   useEffect(() => {
     const panel = terminalBody.current;
-    if (panel) panel.scrollTop = panel.scrollHeight;
-  }, [log]);
+    if (panel && terminalFollowRef.current) panel.scrollTop = panel.scrollHeight;
+  }, [terminalLog]);
 
   const launchRun = async () => {
     /* Re-run the most recent real tender — nothing is launched without one. */
@@ -575,7 +589,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
         body: JSON.stringify({ tenderId }),
       });
       if (!res.ok) throw new Error("run failed");
-      onToast(`REVIEW GRAPH INVOKED — LANGGRAPH.JS PICKING UP ${tenderId}`);
+      onToast(`REVIEW GRAPH INVOKED${runs[0]?.reference ? ` — ${runs[0].reference}` : ""}`);
     } catch {
       onToast("STACK UNREACHABLE — quorum-mcp NOT RESPONDING");
     } finally {
@@ -678,9 +692,38 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
     : model.configured
       ? `${model.providerLabel ?? "Model"} at ${model.endpoint ?? "configured endpoint"} · residency ${model.residency ?? "IN_REGION"}${fallbackDetail}${lastCallDetail}`
       : "No drafting endpoint on this host — redlines are deterministic template output";
-  const visibleLog = log.slice(0, 32).reverse();
+  const fsStatus = health?.fsMcp?.status;
+  const fsMobileStatus = fsStatus === "connected" ? "UP" : fsStatus === "fallback" ? "LOCAL" : fsStatus === "connecting" ? "WAIT" : "…";
+  const modelMobileLabel = !model ? "MODEL · …" : model.configured ? "MODEL · SET" : "MODEL · TEMPLATE";
+  const quorumMcpState = !health ? "loading" : health.ok ? "online" : "offline";
+  const toolCallCount = health?.counts?.toolCalls ?? log.length;
+  const visibleLog = terminalLog.slice(0, 32).reverse();
   const metaCalls = log.filter(isMetaModelCall);
   const successfulMetaCalls = metaCalls.filter((entry) => entry.status === "OK").length;
+
+  const handleTerminalScroll = () => {
+    const panel = terminalBody.current;
+    if (!panel) return;
+    const atLatest = panel.scrollHeight - panel.scrollTop - panel.clientHeight <= 32;
+    if (atLatest && !terminalFollowRef.current) {
+      terminalFollowRef.current = true;
+      setTerminalPaused(false);
+      setTerminalLog(latestLogRef.current);
+    } else if (!atLatest && terminalFollowRef.current) {
+      terminalFollowRef.current = false;
+      setTerminalPaused(true);
+    }
+  };
+
+  const resumeTerminalFollow = () => {
+    terminalFollowRef.current = true;
+    setTerminalPaused(false);
+    setTerminalLog(latestLogRef.current);
+    requestAnimationFrame(() => {
+      const panel = terminalBody.current;
+      if (panel) panel.scrollTop = panel.scrollHeight;
+    });
+  };
 
   return (
     <div className="space-y-8">
@@ -694,65 +737,90 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
           A live view of Meta model requests, MCP tool calls, and the review graph. Each line comes from the
           hash-chained service log; prompts and document contents stay out of this stream.
         </p>
-        <div className="mt-5 flex flex-wrap items-center gap-2.5">
-          <span
+        <nav aria-label="Live runtime sections" className="mt-5 grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:items-center">
+          <a
+            href="#stack-mcp-tools"
+            aria-label={`Quorum MCP ${quorumMcpState}; open MCP tools`}
+            aria-controls="stack-mcp-tools"
+            title={`Quorum MCP status: ${quorumMcpState}`}
             className={cn(
-              "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-code text-[8.5px] font-bold tracking-[0.18em]",
-              health?.ok ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-brand-300 bg-brand-50 text-brand-700"
+              "focus-brand col-span-2 inline-flex min-h-11 w-full min-w-0 items-center justify-center gap-2 rounded-full border px-3 font-code text-[10px] font-bold tracking-[0.06em] transition-colors sm:col-span-1 sm:w-[10rem] sm:flex-none",
+              quorumMcpState === "online"
+                ? "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                : quorumMcpState === "loading"
+                  ? "border-ink-200 bg-white text-ink-600 hover:bg-ink-50"
+                  : "border-brand-300 bg-brand-50 text-brand-700 hover:bg-brand-100"
             )}
           >
             <span className="relative flex h-1.5 w-1.5">
-              <span className={cn("absolute inline-flex h-full w-full animate-ping-slow rounded-full", health?.ok ? "bg-emerald-500" : "bg-brand-500")} aria-hidden="true" />
-              <span className={cn("relative inline-flex h-1.5 w-1.5 rounded-full", health?.ok ? "bg-emerald-600" : "bg-brand-600")} aria-hidden="true" />
+              {quorumMcpState === "online" ? <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-emerald-500" aria-hidden="true" /> : null}
+              <span
+                className={cn(
+                  "relative inline-flex h-1.5 w-1.5 rounded-full",
+                  quorumMcpState === "online" ? "bg-emerald-600" : quorumMcpState === "loading" ? "bg-ink-400" : "bg-brand-600",
+                )}
+                aria-hidden="true"
+              />
             </span>
-            {health?.ok ? "QUORUM-MCP ONLINE" : "QUORUM-MCP OFFLINE"}
-          </span>
-          <span
+            {quorumMcpState === "online" ? "QUORUM-MCP ONLINE" : quorumMcpState === "loading" ? "QUORUM-MCP CHECKING" : "QUORUM-MCP OFFLINE"}
+          </a>
+          <a
+            href="#stack-architecture"
+            aria-label={`Open server-filesystem MCP architecture; status ${fsStatus ?? "loading"}`}
+            aria-controls="stack-architecture"
             className={cn(
-              "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-code text-[8.5px] font-bold tracking-[0.18em]",
+              "focus-brand inline-flex min-h-11 w-full min-w-0 items-center justify-center gap-2 rounded-full border px-3 font-code text-[10px] font-bold tracking-[0.06em] transition-colors hover:bg-ink-50 sm:w-[17rem] sm:flex-none",
               health?.fsMcp?.status === "connected" ? "border-ink-200 bg-white text-ink-700" : "border-ink-200 bg-white text-ink-400"
             )}
+            title={`Server-filesystem MCP status: ${health?.fsMcp?.status ?? "loading"}`}
           >
             <Server className="h-3 w-3" aria-hidden="true" />
-            SERVER-FILESYSTEM MCP · {health?.fsMcp?.status?.toUpperCase() ?? "…"}
-          </span>
-          <span
+            <span className="min-w-0 truncate sm:hidden">FS MCP · {fsMobileStatus}</span>
+            <span className="hidden min-w-0 truncate sm:inline">SERVER-FILESYSTEM MCP · {fsStatus?.toUpperCase() ?? "…"}</span>
+          </a>
+          <a
+            href="#stack-live-api"
+            aria-label={`Open model activity: ${modelLabel}`}
+            aria-controls="stack-live-api"
             title={modelTitle}
             className={cn(
-              "inline-flex max-w-full items-center gap-2 truncate rounded-full border px-3 py-1.5 font-code text-[8.5px] font-bold tracking-[0.18em]",
+              "focus-brand inline-flex min-h-11 w-full min-w-0 items-center justify-center gap-2 overflow-hidden rounded-full border px-3 font-code text-[10px] font-bold tracking-[0.06em] transition-colors hover:opacity-80 sm:w-[12rem] sm:flex-none",
               model?.configured ? "border-ink-900 bg-ink-950 text-white" : "border-ink-200 bg-white text-ink-500"
             )}
           >
             <Cpu className="h-3 w-3 shrink-0" aria-hidden="true" />
-            <span className="truncate">{modelLabel.toUpperCase()}</span>
-          </span>
-          <span className="inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white px-3 py-1.5 font-code text-[8.5px] font-bold tracking-[0.18em] text-ink-700">
+            <span className="truncate sm:hidden">{modelMobileLabel}</span>
+            <span className="hidden truncate sm:inline">{modelLabel.toUpperCase()}</span>
+          </a>
+          <a href="#stack-graphs" aria-label="Open LangGraph review section" aria-controls="stack-graphs" className="focus-brand inline-flex min-h-11 w-full min-w-0 items-center justify-center gap-2 rounded-full border border-ink-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:bg-ink-50 sm:w-[13rem] sm:flex-none">
             <GitBranch className="h-3 w-3" aria-hidden="true" />
-            LANGGRAPH.JS · 2 GRAPHS
-          </span>
-          <span className="inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white px-3 py-1.5 font-code text-[8.5px] font-bold tracking-[0.18em] text-ink-700">
+            <span className="sm:hidden">2 GRAPHS</span>
+            <span className="hidden sm:inline">LANGGRAPH.JS · 2 GRAPHS</span>
+          </a>
+          <a href="#stack-log" aria-label={`Open tool-call audit log; ${toolCallCount} calls logged`} aria-controls="stack-log" title={`${toolCallCount} tool calls logged`} className="focus-brand inline-flex min-h-11 w-full min-w-0 items-center justify-center gap-2 rounded-full border border-ink-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:bg-ink-50 sm:w-[13rem] sm:flex-none">
             <Fingerprint className="h-3 w-3" aria-hidden="true" />
-            {health?.counts?.toolCalls ?? 0} TOOL CALLS LOGGED
-          </span>
-        </div>
+            <span className="min-w-0 truncate sm:hidden">{toolCallCount} TOOL CALLS</span>
+            <span className="hidden min-w-0 truncate sm:inline">{toolCallCount} TOOL CALLS LOGGED</span>
+          </a>
+        </nav>
       </section>
 
       {/* Full-width live runtime: the stream and its run outline share one terminal surface. */}
-      <section aria-label="Live model API and MCP activity" className="overflow-hidden rounded-[16px] border border-ink-800 bg-[#090d11] text-white shadow-[0_28px_90px_rgba(9,13,17,0.22)]">
+      <section id="stack-live-api" tabIndex={-1} aria-label="Live model API and MCP activity" className="scroll-mt-24 overflow-hidden rounded-[16px] border border-ink-800 bg-[#090d11] text-white shadow-[0_28px_90px_rgba(9,13,17,0.22)]">
         <div className="flex flex-wrap items-center gap-3 border-b border-white/[0.09] px-4 py-3.5 sm:px-6">
           <div className="flex items-center gap-2.5">
             <span className="relative flex h-2 w-2">
               {health?.ok && <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-emerald-400/70" aria-hidden="true" />}
               <span className={cn("relative inline-flex h-2 w-2 rounded-full", health?.ok ? "bg-emerald-400" : "bg-rose-400")} aria-hidden="true" />
             </span>
-            <span className="font-code text-[9px] font-bold tracking-[0.2em] text-ink-100">AGENT ACTIVITY</span>
-            <span className={cn("rounded-full border px-2 py-0.5 font-code text-[8px] font-bold tracking-[0.15em]", health?.ok ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-300" : "border-rose-400/20 bg-rose-400/10 text-rose-300")}>
+            <span className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-100">Agent activity</span>
+            <span className={cn("rounded-full border px-2 py-1 font-code text-[10px] font-bold tracking-[0.04em]", health?.ok ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-300" : "border-rose-400/20 bg-rose-400/10 text-rose-300")}>
               {health?.ok ? "LIVE" : "OFFLINE"}
             </span>
           </div>
           <span className="hidden h-4 w-px bg-white/10 sm:block" aria-hidden="true" />
-          <span className="font-code text-[8px] tracking-[0.15em] text-ink-400">META API · MCP · LANGGRAPH</span>
-          <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-1 font-code text-[8px] tracking-[0.12em] text-ink-400">
+          <span className="font-code text-[10px] tracking-[0.06em] text-ink-300">META API · MCP · LANGGRAPH</span>
+          <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-1 font-code text-[10px] tracking-[0.04em] text-ink-300">
             <span>{metaCalls.length} MODEL CALLS</span>
             <span>{successfulMetaCalls} OK</span>
             <span>{health?.counts?.toolCalls ?? log.length} TOTAL EVENTS</span>
@@ -764,9 +832,28 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
           <div className="min-w-0 border-b border-white/[0.08] lg:border-b-0 lg:border-r">
             <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] px-4 py-2.5 sm:px-6">
               <MonoLabel className="text-ink-400">LIVE API RUN LOG · NEWEST EVENTS TAILING</MonoLabel>
-              <span className="font-code text-[8px] tracking-[0.13em] text-ink-500">POLL 3.5S</span>
+              <div className="ml-auto flex items-center gap-2">
+                <span className="font-code text-[10px] tracking-[0.05em] text-ink-300">POLL 3.5S</span>
+                {terminalPaused ? (
+                  <button
+                    type="button"
+                    onClick={resumeTerminalFollow}
+                    className="focus-brand inline-flex min-h-11 items-center rounded-lg border border-emerald-400/25 px-2.5 font-code text-[10px] font-bold tracking-[0.05em] text-emerald-200 transition-colors hover:bg-emerald-400/10"
+                  >
+                    SHOW LATEST
+                  </button>
+                ) : null}
+              </div>
             </div>
-            <div ref={terminalBody} className="h-[390px] overflow-auto px-4 py-4 font-code text-[10px] leading-[1.9] [scrollbar-color:#303941_transparent] sm:px-6" aria-live="polite" aria-relevant="additions text">
+            <div
+              ref={terminalBody}
+              onScroll={handleTerminalScroll}
+              role="log"
+              aria-label="Live API run log"
+              className="h-[390px] overflow-auto px-4 py-4 font-code text-[10px] leading-[1.9] [scrollbar-color:#303941_transparent] sm:px-6"
+              aria-live="polite"
+              aria-relevant="additions text"
+            >
               {visibleLog.length ? visibleLog.map((entry) => {
                 const inputs = recordValue(entry.inputs);
                 const outputs = recordValue(entry.outputs);
@@ -788,7 +875,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                       <span className={cn("font-semibold", isError ? "text-rose-300" : metaCall ? "text-sky-300" : "text-emerald-300")}>{eventName}</span>
                       <span className="ml-2 break-all text-ink-400">{note}</span>
                     </span>
-                    <span className={cn("col-start-2 mt-0.5 text-[8px] font-bold tracking-[0.12em] sm:col-start-auto sm:mt-0", isError ? "text-rose-300" : "text-ink-500")}>
+                    <span className={cn("col-start-2 mt-0.5 text-[10px] font-bold tracking-[0.05em] sm:col-start-auto sm:mt-0", isError ? "text-rose-300" : "text-ink-300")}>
                       {textValue(outputs.outcome) || entry.status || "UNRECORDED"}
                     </span>
                   </div>
@@ -797,7 +884,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                 <div className="flex h-full min-h-48 flex-col items-center justify-center text-center">
                   <Radio className="h-4 w-4 text-ink-500" aria-hidden="true" />
                   <p className="mt-3 text-[10px] text-ink-300">Waiting for the first recorded API or tool call.</p>
-                  <p className="mt-1 text-[9px] text-ink-500">No sample events are generated in this view.</p>
+                  <p className="mt-1 text-[10px] text-ink-400">No sample events are generated in this view.</p>
                 </div>
               )}
               <div className="mt-4 flex items-center gap-2 border-t border-white/[0.08] pt-3 text-emerald-300/90">
@@ -811,11 +898,11 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
           <aside className="min-w-0 px-4 py-4 sm:px-6 lg:px-5" aria-label="Latest run outline">
             <div className="flex items-center justify-between gap-3">
               <MonoLabel className="text-ink-300">RUN OUTLINE</MonoLabel>
-              <span className="rounded-full border border-white/10 px-2 py-1 font-code text-[7.5px] tracking-[0.12em] text-ink-400">{lastRun ? (lastRun.status ?? "RUN").replaceAll("_", " ") : "ARCHITECTURE"}</span>
+              <span className="rounded-full border border-white/10 px-2 py-1 font-code text-[10px] tracking-[0.05em] text-ink-300">{lastRun ? (lastRun.status ?? "RUN").replaceAll("_", " ") : "ARCHITECTURE"}</span>
             </div>
             {lastRun ? (
               <>
-                <p className="mt-3 truncate font-code text-[9px] text-sky-300">{lastRun.id} <span className="text-ink-500">/</span> {lastRun.tenderId}</p>
+                <p className="mt-3 truncate font-code text-[10px] text-sky-300">{lastRun.id} <span className="text-ink-300">/</span> {lastRun.reference ?? "Tender record"}</p>
                 <ol className="mt-4 max-h-[300px] space-y-3 overflow-y-auto pr-1 [scrollbar-width:thin]">
                   {(lastRun.progress ?? []).map((step, index) => {
                     const current = lastRun.status === "RUNNING" && index === (lastRun.progress?.length ?? 1) - 1;
@@ -827,15 +914,15 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                     );
                   })}
                 </ol>
-                <div className="mt-4 grid grid-cols-4 gap-2 border-t border-white/[0.08] pt-3">
+                <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-white/[0.08] pt-3 sm:grid-cols-4">
                   {[["REQUIREMENTS", lastRun.requirements?.length ?? 0], ["FINDINGS", lastRun.findings?.length ?? 0], ["DRAFTS", lastRun.drafts?.length ?? 0]].map(([label, value]) => (
                     <div key={label}>
-                      <p className="font-code text-[7px] tracking-[0.12em] text-ink-500">{label}</p>
+                      <p className="font-code text-[10px] tracking-[0.05em] text-ink-300">{label}</p>
                       <p className="mt-1 font-code text-[13px] text-white">{value}</p>
                     </div>
                   ))}
                   <div>
-                    <p className="font-code text-[7px] tracking-[0.12em] text-ink-500">MODEL MAP</p>
+                    <p className="font-code text-[10px] tracking-[0.05em] text-ink-300">MODEL MAP</p>
                     <p className="mt-1 font-code text-[13px] text-white">{lastRun.modelEvidence?.length ?? 0}</p>
                   </div>
                 </div>
@@ -844,23 +931,23 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
               <ol className="mt-4 space-y-3">
                 {stack.map((layer, index) => (
                   <li key={layer.layer} className="flex items-start gap-3">
-                    <span className="pt-px font-code text-[8px] text-ink-500">{String(index + 1).padStart(2, "0")}</span>
+                    <span className="pt-px font-code text-[10px] text-ink-300">{String(index + 1).padStart(2, "0")}</span>
                     <span className="min-w-0">
-                      <span className="block font-code text-[9px] font-semibold text-ink-200">{layer.layer}</span>
-                      <span className="mt-0.5 block text-[9px] leading-relaxed text-ink-500">{layer.name}</span>
+                      <span className="block font-code text-[10px] font-semibold text-ink-200">{layer.layer}</span>
+                      <span className="mt-0.5 block text-[10px] leading-relaxed text-ink-300">{layer.name}</span>
                     </span>
                   </li>
                 ))}
                 {!stack.length && <li className="text-[10px] text-ink-500">Runtime outline is loading from quorum-mcp.</li>}
               </ol>
             )}
-            <p className="mt-5 border-t border-white/[0.08] pt-3 font-code text-[7.5px] tracking-[0.12em] text-ink-500">QUORUM-MCP · TAIL / EVERY TOOL CALL LOGGED</p>
+            <p className="mt-5 border-t border-white/[0.08] pt-3 font-code text-[10px] tracking-[0.05em] text-ink-300">QUORUM-MCP · TAIL / EVERY TOOL CALL LOGGED</p>
           </aside>
         </div>
       </section>
 
       {/* architecture cards */}
-      <section aria-label="Stack architecture">
+      <section id="stack-architecture" tabIndex={-1} aria-label="Stack architecture" className="scroll-mt-24">
         <MonoLabel>ARCHITECTURE — SIX LAYERS, NO HAND-WAVING</MonoLabel>
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {stack.map((c, i) => (
@@ -873,7 +960,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
             >
               <div className="flex items-center justify-between gap-3">
                 <MonoLabel className="text-ink-500">{c.layer}</MonoLabel>
-                <span className="font-code text-[9px] text-ink-400">{String(i + 1).padStart(2, "0")}</span>
+                <span className="font-code text-[10px] text-ink-600">{String(i + 1).padStart(2, "0")}</span>
               </div>
               <p className="mt-2.5 break-words font-code text-[12.5px] font-bold tracking-tight text-ink-950">{c.name}</p>
               <p className="mt-2 text-[12.5px] leading-relaxed text-ink-600">{c.detail}</p>
@@ -883,7 +970,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
       </section>
 
       {/* tools + launcher */}
-      <section aria-label="MCP tools" className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+      <section id="stack-mcp-tools" tabIndex={-1} aria-label="MCP tools" className="scroll-mt-24 grid grid-cols-1 gap-4 lg:grid-cols-5">
         <div data-tour="stack-tools" className="rounded-[12px] panel p-5 lg:col-span-3">
           <div className="flex items-center justify-between gap-3">
             <MonoLabel>OUR OWN MCP SERVER — FIVE TOOLS</MonoLabel>
@@ -902,7 +989,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
           </ul>
         </div>
         <div className="flex flex-col gap-4 lg:col-span-2">
-          <div data-tour="stack-graphs" className="rounded-[10px] border border-ink-100 bg-night p-5 text-white">
+          <div id="stack-graphs" tabIndex={-1} data-tour="stack-graphs" className="scroll-mt-24 rounded-[10px] border border-ink-100 bg-night p-5 text-white">
             <MonoLabel className="text-ink-300">RUN THE GRAPH — LIVE</MonoLabel>
             <p className="mt-2.5 text-[13px] leading-relaxed text-ink-200">
               Fire <span className="font-code text-[11.5px] text-white">review_graph</span> at the MRI tender. Reads via
@@ -923,7 +1010,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
             {lastRun ? (
               <div className="mt-3 max-h-56 overflow-y-auto pr-1 [scrollbar-width:thin]">
                 <p className="font-code text-[10.5px] text-ink-400">
-                  {lastRun.id} · {lastRun.tenderId} ·{" "}
+                  {lastRun.id} · {lastRun.reference ?? "Tender record"} ·{" "}
                   <span
                     className={cn(
                       "font-bold",
@@ -944,18 +1031,18 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                   ))}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <span className="rounded-full border border-ink-200 px-2.5 py-1 font-code text-[9px] tracking-[0.14em] text-ink-600">
+                  <span className="rounded-full border border-ink-200 px-2.5 py-1 font-code text-[10px] tracking-[0.05em] text-ink-700">
                     {(lastRun.requirements ?? []).length} REQUIREMENTS
                   </span>
-                  <span className="rounded-full border border-brand-200 bg-brand-50 px-2.5 py-1 font-code text-[9px] tracking-[0.14em] text-brand-700">
+                  <span className="rounded-full border border-brand-200 bg-brand-50 px-2.5 py-1 font-code text-[10px] tracking-[0.05em] text-brand-700">
                     {(lastRun.findings ?? []).length} FINDINGS
                   </span>
-                  <span className="rounded-full border border-ink-200 px-2.5 py-1 font-code text-[9px] tracking-[0.14em] text-ink-600">
+                  <span className="rounded-full border border-ink-200 px-2.5 py-1 font-code text-[10px] tracking-[0.05em] text-ink-700">
                     {(lastRun.drafts ?? []).length} DRAFTS
                   </span>
                 </div>
                 {lastRun.model && (
-                  <p className="mt-2.5 font-code text-[9.5px] leading-relaxed tracking-[0.08em] text-ink-500">
+                  <p className="mt-2.5 font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600">
                     MODEL ATTRIBUTION ·{" "}
                     <span className="text-ink-800">
                       {(lastRun.model.models ?? []).length > 0 ? (lastRun.model.models ?? []).join(", ") : "template fallback"}
@@ -967,11 +1054,11 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                 )}
                 {(lastRun.modelEvidence ?? []).slice(0, 4).map((item, index) => (
                   <div key={`${lastRun.id}-evidence-${index}`} className="mt-3 rounded-lg border border-ink-100 bg-paper px-3 py-2.5">
-                    <p className="font-code text-[8px] font-semibold uppercase tracking-[0.12em] text-brand-700">{item.category.replaceAll("_", " ")} · {item.confidence}</p>
+                    <p className="font-code text-[10px] font-semibold uppercase tracking-[0.05em] text-brand-700">{item.category.replaceAll("_", " ")} · {item.confidence}</p>
                     <p className="mt-1 text-[11px] leading-relaxed text-ink-800">{item.observation}</p>
                     <p className="mt-1 border-l-2 border-brand-300 pl-2 text-[10px] italic leading-relaxed text-ink-600">“{item.quote}”</p>
                     {item.comparisonQuote && <p className="mt-1 border-l-2 border-sky-300 pl-2 text-[10px] italic leading-relaxed text-ink-600">“{item.comparisonQuote}”</p>}
-                    <p className="mt-1 truncate font-code text-[8px] text-ink-500">{item.citation}{item.comparisonCitation ? ` ↔ ${item.comparisonCitation}` : ""} · {item.reviewQuestion}</p>
+                    <p className="mt-1 truncate font-code text-[10px] text-ink-600">{item.citation}{item.comparisonCitation ? ` ↔ ${item.comparisonCitation}` : ""} · {item.reviewQuestion}</p>
                   </div>
                 ))}
               </div>
@@ -1007,12 +1094,12 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                     <p className="font-code text-[11px] font-bold tracking-tight text-ink-950">
                       {g.tool} <span className="text-ink-400">· {g.id}</span>
                       {g.requiredOffice ? (
-                        <span className="ml-2 rounded-full bg-ink-950 px-2 py-0.5 font-code text-[8px] font-bold tracking-[0.14em] text-white">
+                        <span className="ml-2 rounded-full bg-ink-950 px-2 py-1 font-code text-[10px] font-bold tracking-[0.05em] text-white">
                           {OFFICE_SHORT[g.requiredOffice] ?? g.requiredOffice} SIGNS
                         </span>
                       ) : null}
                     </p>
-                    <span className="ml-auto font-code text-[9.5px] tracking-[0.14em] text-ink-500">
+                    <span className="ml-auto font-code text-[10px] tracking-[0.05em] text-ink-600">
                       RAISED {Clock(g.createdAt)} UTC
                     </span>
                   </div>
@@ -1049,14 +1136,14 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                         value={draft.note}
                         onChange={(e) => setApproverDraft((p) => ({ ...p, [g.id]: { ...draft, note: e.target.value } }))}
                         placeholder="Why this may proceed — or why not"
-                        className="mt-1.5 h-10 w-full rounded-xl border border-ink-200 bg-white px-3 text-[13px] text-ink-950 outline-none transition-all placeholder:text-ink-400 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
+                        className="mt-1.5 h-11 w-full rounded-xl border border-ink-200 bg-white px-3 text-[14px] text-ink-950 outline-none transition-all placeholder:text-ink-400 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
                       />
                       <div className="mt-3.5 flex flex-wrap gap-2.5">
                         <button
                           type="button"
                           onClick={() => void decide(g, "APPROVE")}
                           disabled={busy}
-                          className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-600 px-4 text-[13px] font-semibold text-white transition-all hover:bg-brand-700 disabled:opacity-60"
+                          className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-4 text-[13px] font-semibold text-white transition-all hover:bg-brand-700 disabled:opacity-60"
                         >
                           <FileLock2 className="h-4 w-4" aria-hidden="true" />
                           APPROVE &amp; FILE — IRREVERSIBLE
@@ -1065,7 +1152,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                           type="button"
                           onClick={() => void decide(g, "REJECT")}
                           disabled={busy}
-                          className="inline-flex h-10 items-center gap-2 rounded-xl border border-ink-300 bg-white px-4 text-[13px] font-semibold text-ink-800 transition-all hover:border-ink-400 hover:bg-ink-50 disabled:opacity-60"
+                          className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-xl border border-ink-300 bg-white px-4 text-[13px] font-semibold text-ink-800 transition-all hover:border-ink-400 hover:bg-ink-50 disabled:opacity-60"
                         >
                           RETURN TO AGENT
                         </button>
@@ -1097,7 +1184,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                   <li key={g.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-ink-100 bg-paper px-3.5 py-2.5">
                     <span
                       className={cn(
-                        "rounded-full px-2 py-0.5 font-code text-[8.5px] font-bold tracking-[0.14em]",
+                        "rounded-full px-2 py-1 font-code text-[10px] font-bold tracking-[0.05em]",
                         g.status === "EXECUTED" ? "bg-emerald-100 text-emerald-800" : "bg-ink-100 text-ink-700"
                       )}
                     >
@@ -1110,7 +1197,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                     {g.receipt && (
                       <span className="font-code text-[10.5px] text-ink-500">{formatGateReceipt(g.receipt)}</span>
                     )}
-                    <span className="ml-auto font-code text-[9.5px] tracking-[0.14em] text-ink-400">
+                    <span className="ml-auto font-code text-[10px] tracking-[0.05em] text-ink-600">
                       {(g.executedAt ?? g.decidedAt ?? "").slice(11, 19)} UTC
                     </span>
                   </li>
@@ -1122,19 +1209,25 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
       </section>
 
       {/* audit log */}
-      <section aria-label="Tool call audit log" data-tour="stack-log" ref={logAnchor}>
+      <section id="stack-log" tabIndex={-1} aria-label="Tool call audit log" data-tour="stack-log" className="scroll-mt-24">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <MonoLabel>TOOL LOG — EVERY CALL, APPEND-ONLY</MonoLabel>
           <MonoLabel className="text-ink-400">
             {health?.counts?.toolCalls ?? log.length} ENTRIES · JSONL ON DISK
           </MonoLabel>
         </div>
-        <div className="mt-4 max-h-[26rem] overflow-y-auto rounded-[12px] panel [scrollbar-width:thin]">
-          <table className="w-full border-collapse text-left">
+        <HorizontalScrollRegion
+          label="Tool call audit log table"
+          hint="Swipe or scroll the log to see actor, tool and status details."
+          hintClassName="mt-3 px-2 py-0 text-[11px] leading-relaxed text-ink-500 sm:hidden"
+          className="mt-4 max-h-[26rem] overflow-y-auto rounded-[12px] panel [scrollbar-width:thin]"
+        >
+          <table className={cn("w-full border-collapse text-left", log.length > 0 && "min-w-[720px]")}>
+            <caption className="sr-only">Tool call audit log with time, actor, server, tool and status; expand an entry for inputs and outputs</caption>
             <thead className="sticky top-0 z-10 bg-paper/95 backdrop-blur">
               <tr className="border-b border-ink-100">
                 {["TIME · UTC", "ACTOR", "SERVER", "TOOL", "STATUS", ""].map((h) => (
-                  <th key={h} className="px-3.5 py-2.5 font-code text-[8.5px] font-bold uppercase tracking-[0.18em] text-ink-400">
+                  <th key={h} scope="col" className="px-3.5 py-3 font-code text-[10px] font-bold uppercase tracking-[0.06em] text-ink-600">
                     {h}
                   </th>
                 ))}
@@ -1144,9 +1237,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
               {log.map((e) => (
                 <Fragment key={e.id}>
                   <tr
-                    className="cursor-pointer border-b border-ink-100 transition-colors hover:bg-brand-50/40"
-                    onClick={() => setExpanded((p) => (p === e.id ? null : e.id))}
-                    aria-expanded={expanded === e.id}
+                    className="border-b border-ink-100"
                   >
                     <td className="whitespace-nowrap px-3.5 py-2.5 font-code text-[10.5px] text-ink-500">{Clock(e.ts)}</td>
                     <td className="max-w-[10rem] truncate px-3.5 py-2.5 text-[12px] font-medium text-ink-800">{e.actor}</td>
@@ -1154,20 +1245,29 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                     <td className="px-3.5 py-2.5 font-code text-[11px] font-bold text-ink-950">{e.tool}</td>
                     <td className="px-3.5 py-2.5">                        <span className="inline-flex items-center gap-1.5">
                         <StatusIcon status={e.status ?? ""} />
-                        <span className="font-code text-[9.5px] font-bold tracking-[0.1em] text-ink-600">
+                        <span className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-700">
                           {(e.status ?? "UNRECORDED").replace("_", " ")}
                         </span>
                       </span>
                     </td>
-                    <td className="px-3.5 py-2.5 text-right">
-                      <ChevronDown
-                        className={cn("ml-auto h-3.5 w-3.5 text-ink-400 transition-transform", expanded === e.id && "rotate-180")}
-                        aria-hidden="true"
-                      />
+                    <td className="px-3.5 py-1.5 text-right">
+                      <button
+                        type="button"
+                        aria-label={`${expanded === e.id ? "Hide" : "Show"} inputs and outputs for ${e.tool}`}
+                        aria-expanded={expanded === e.id}
+                        aria-controls={expanded === e.id ? `tool-log-details-${encodeURIComponent(e.id)}` : undefined}
+                        onClick={() => setExpanded((p) => (p === e.id ? null : e.id))}
+                        className="focus-brand ml-auto inline-flex h-11 w-11 items-center justify-center rounded-lg text-ink-400 transition-colors hover:bg-paper"
+                      >
+                        <ChevronDown
+                          className={cn("h-3.5 w-3.5 transition-transform", expanded === e.id && "rotate-180")}
+                          aria-hidden="true"
+                        />
+                      </button>
                     </td>
                   </tr>
                   {expanded === e.id && (
-                    <tr className="border-b border-white/10 bg-night">
+                    <tr id={`tool-log-details-${encodeURIComponent(e.id)}`} className="border-b border-white/10 bg-night">
                       <td colSpan={6} className="px-4 py-3.5">
                         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                           <div>
@@ -1195,8 +1295,8 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
               The log is empty — fire a run and every call will land here.
             </p>
           )}
-        </div>
-        <p className="mt-3 flex items-center gap-2 font-code text-[9px] tracking-[0.2em] text-ink-400">
+        </HorizontalScrollRegion>
+        <p className="mt-3 flex items-center gap-2 font-code text-[10px] tracking-[0.06em] text-ink-600">
           <Radio className="h-3 w-3 text-brand-600" aria-hidden="true" />
           POLLING QUORUM-MCP EVERY 3.5S · ENTRIES TRUNCATED FOR DISPLAY, FULL JSONL ON DISK
         </p>

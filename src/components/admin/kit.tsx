@@ -9,6 +9,7 @@ import {
 } from "react";
 import { Check, Copy, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { trapTabFocus } from "@/lib/a11y";
 
 /**
  * The control room's instrument kit.
@@ -163,7 +164,7 @@ export function Chip({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-code text-[8px] font-bold uppercase tracking-[0.16em]",
+        "inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2.5 py-1 font-code text-[10px] font-bold uppercase tracking-[0.06em]",
         TONE[tone],
         className,
       )}
@@ -212,7 +213,7 @@ export function PanelHead({
     >
       <div className="min-w-0">
         {eyebrow && (
-          <p className="font-code text-[8px] font-semibold uppercase tracking-[0.24em] text-ink-400">
+          <p className="font-code text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-600">
             {eyebrow}
           </p>
         )}
@@ -221,7 +222,7 @@ export function PanelHead({
           {title}
         </h2>
         {description && (
-          <p className="mt-1 max-w-[62ch] text-[11.5px] leading-relaxed text-ink-500">{description}</p>
+          <p className="mt-1 max-w-[62ch] text-[12.5px] leading-relaxed text-ink-600">{description}</p>
         )}
       </div>
       {action && <div className="flex shrink-0 flex-wrap items-center gap-2">{action}</div>}
@@ -248,9 +249,9 @@ export function SectionHead({
     <div className="flex flex-wrap items-end justify-between gap-5">
       <div className="min-w-0">
         <div className="flex items-center gap-2.5">
-          <span className="font-code text-[9px] font-bold tracking-[0.2em] text-brand-600">{index}</span>
+          <span className="font-code text-[10px] font-bold tracking-[0.1em] text-brand-700">{index}</span>
           <span className="h-px w-8 bg-brand-600/40" aria-hidden="true" />
-          <span className="font-code text-[8.5px] font-semibold uppercase tracking-[0.24em] text-ink-400">
+          <span className="font-code text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-600">
             {eyebrow}
           </span>
         </div>
@@ -270,10 +271,10 @@ export function SectionHead({
 /* ── Controls ───────────────────────────────────────────────────────────── */
 
 export const inputCls =
-  "h-9 rounded-lg border border-ink-200 bg-white px-3 text-[12.5px] text-ink-950 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-500 dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-900 dark:placeholder:text-ink-500 dark:focus:border-white/30";
+  "h-11 min-w-0 rounded-lg border border-ink-200 bg-white px-3 text-[13px] text-ink-950 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-500 dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-900 dark:placeholder:text-ink-500 dark:focus:border-white/30";
 
 export const selectCls =
-  "h-9 rounded-lg border border-ink-200 bg-white px-2.5 font-code text-[9px] font-bold uppercase tracking-[0.12em] text-ink-700 outline-none transition-colors focus:border-ink-500 dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-300 dark:focus:border-white/30";
+  "h-11 min-w-0 rounded-lg border border-ink-200 bg-white px-3 text-[12.5px] text-ink-900 outline-none transition-colors focus:border-ink-500 dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-200 dark:focus:border-white/30";
 
 export function Button({
   children,
@@ -298,7 +299,7 @@ export function Button({
     outline:
       "border border-ink-200 bg-white text-ink-700 hover:border-ink-400 hover:text-ink-950 dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-300 dark:hover:border-white/25 dark:hover:text-white",
     solid:
-      "border border-ink-950 bg-ink-950 text-white hover:bg-ink-800 dark:border-white/15 dark:bg-white dark:text-ink-950 dark:hover:bg-ink-100",
+      "border border-ink-950 bg-ink-950 text-white hover:bg-ink-800 dark:border-white/15 dark:bg-white dark:text-[#0b0c0f] dark:hover:bg-[#e9eaec]",
     brand:
       "border border-brand-700 bg-brand-600 text-white hover:bg-brand-700 dark:border-brand-500/50 dark:bg-brand-600 dark:hover:bg-brand-700",
     danger:
@@ -314,7 +315,7 @@ export function Button({
       title={title}
       className={cn(
         "focus-brand inline-flex items-center justify-center gap-1.5 rounded-lg font-code font-bold uppercase tracking-[0.14em] transition-colors disabled:cursor-not-allowed disabled:opacity-40",
-        size === "sm" ? "h-7 px-2.5 text-[8px]" : "h-9 px-3.5 text-[9px]",
+        size === "sm" ? "min-h-11 min-w-11 px-3 text-[10px]" : "min-h-11 px-4 text-[10.5px]",
         variants[variant],
         className,
       )}
@@ -357,11 +358,11 @@ export function CopyButton({
       onClick={() => void copy()}
       title={`${copied ? "Copied" : label}: ${value}`}
       className={cn(
-        "focus-brand inline-flex h-6 items-center gap-1 rounded-md border border-ink-200 bg-white px-1.5 font-code text-[7.5px] font-bold uppercase tracking-[0.12em] text-ink-500 transition-colors hover:border-ink-400 hover:text-ink-950 dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-400 dark:hover:border-white/25 dark:hover:text-white",
+        "focus-brand inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 font-code text-[10px] font-bold uppercase tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-400 hover:text-ink-950 dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-200 dark:hover:border-white/25 dark:hover:text-white",
         className,
       )}
     >
-      {copied ? <Check className="h-2.5 w-2.5 text-emerald-600" aria-hidden="true" /> : <Copy className="h-2.5 w-2.5" aria-hidden="true" />}
+      {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
       {copied ? "COPIED" : label.toUpperCase()}
     </button>
   );
@@ -396,7 +397,7 @@ export function Metric({
         violet: "from-transparent via-violet-500/70 to-transparent",
       }[tone])} aria-hidden="true" />
       <div className="flex items-start justify-between gap-2">
-        <p className="font-code text-[7.5px] font-bold uppercase tracking-[0.22em] text-ink-400">{label}</p>
+        <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">{label}</p>
         {icon && <span className="text-ink-300">{icon}</span>}
       </div>
       <p className="type-num mt-2.5 text-[34px] text-ink-950">{value}</p>
@@ -423,9 +424,9 @@ export function Readout({
     <div className="flex items-center gap-2.5 rounded-xl border border-ink-200/80 bg-white/70 px-3 py-2 dark:border-white/10 dark:bg-white/[0.03]">
       <Dot tone={tone} pulse={pulse} />
       <div className="min-w-0">
-        <p className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">{label}</p>
+        <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">{label}</p>
         <p className="truncate font-code text-[10px] font-bold tracking-[0.06em] text-ink-900">{value}</p>
-        {detail && <p className="truncate text-[9.5px] text-ink-400">{detail}</p>}
+        {detail && <p className="truncate text-[10.5px] leading-relaxed text-ink-500">{detail}</p>}
       </div>
     </div>
   );
@@ -461,13 +462,13 @@ export function DayBars({ points }: { points: DayPoint[] }) {
               )}
               {total === 0 && <div className="h-[2px] w-full rounded bg-ink-200 dark:bg-white/10" />}
               <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden w-[124px] -translate-x-1/2 rounded-lg border border-ink-200 bg-white px-2.5 py-2 shadow-xl group-hover:block dark:border-white/15 dark:bg-ink-950">
-                <p className="font-code text-[7.5px] font-bold uppercase tracking-[0.16em] text-ink-400">{point.label}</p>
-                <p className="mt-1 font-code text-[9px] text-ink-900">{point.read + point.write + point.gate + point.error} calls</p>
-                <p className="text-[9px] text-ink-500">
+                <p className="font-code text-[10px] font-bold uppercase tracking-[0.08em] text-ink-600">{point.label}</p>
+                <p className="mt-1 font-code text-[10.5px] text-ink-900">{point.read + point.write + point.gate + point.error} calls</p>
+                <p className="text-[10px] text-ink-600">
                   {point.read} read · {point.write} write
                 </p>
                 {(point.gate > 0 || point.error > 0) && (
-                  <p className="text-[9px] text-brand-700">
+                  <p className="text-[10px] text-brand-800">
                     {point.gate} gate · {point.error} error
                   </p>
                 )}
@@ -476,12 +477,12 @@ export function DayBars({ points }: { points: DayPoint[] }) {
           );
         })}
       </div>
-      <div className="mt-2 flex items-center justify-between font-code text-[7.5px] font-semibold uppercase tracking-[0.14em] text-ink-400">
+      <div className="mt-2 flex items-center justify-between font-code text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-600">
         <span>{points[points.length - 1]?.label ?? ""}</span>
         <span>{points[Math.floor(points.length / 2)]?.label ?? ""}</span>
         <span>{points[0]?.label ?? ""}</span>
       </div>
-      <div className="mt-3 flex flex-wrap items-center gap-3 font-code text-[7.5px] font-semibold uppercase tracking-[0.14em] text-ink-500">
+      <div className="mt-3 flex flex-wrap items-center gap-3 font-code text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-600">
         <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-3 rounded-sm bg-sky-500/70" /> reads</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-3 rounded-sm bg-amber-500" /> writes</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-3 rounded-sm bg-brand-600" /> gates</span>
@@ -535,7 +536,7 @@ export function Ring({
       </svg>
       <div className="absolute inset-0 grid place-content-center text-center">
         <p className="type-num text-[22px] text-ink-950">{label}</p>
-        {sub && <p className="mt-0.5 font-code text-[7px] font-bold uppercase tracking-[0.16em] text-ink-400">{sub}</p>}
+        {sub && <p className="mt-0.5 font-code text-[10px] font-bold uppercase tracking-[0.06em] text-ink-600">{sub}</p>}
       </div>
     </div>
   );
@@ -579,40 +580,54 @@ export function Modal({
   width?: string;
 }) {
   const id = useId();
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const closeRef = useRef(onClose);
+  useEffect(() => {
+    closeRef.current = onClose;
+  }, [onClose]);
   useEffect(() => {
     if (!open) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const frame = window.requestAnimationFrame(() => dialogRef.current?.focus());
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key !== "Escape") return;
+      const focusedModal = document.activeElement?.closest('[role="dialog"][aria-modal="true"]');
+      if (focusedModal && focusedModal !== dialogRef.current) return;
+      closeRef.current();
     };
     document.addEventListener("keydown", onKey);
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     return () => {
+      window.cancelAnimationFrame(frame);
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = previous;
+      document.body.style.overflow = previousOverflow;
+      if (previousFocus?.isConnected) previousFocus.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[140] grid place-items-center p-4">
-      <button
-        type="button"
-        aria-label="Close dialog"
-        onClick={onClose}
-        className="absolute inset-0 cursor-default bg-ink-950/60 backdrop-blur-[3px]"
-      />
+    <div
+      className="fixed inset-0 z-[140] grid place-items-center bg-ink-950/60 p-4 backdrop-blur-[3px]"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={`${id}-title`}
-        className={cn("panel panel-lift relative w-full overflow-hidden rounded-2xl", width)}
+        tabIndex={-1}
+        onKeyDown={(event) => trapTabFocus(event, dialogRef.current)}
+        className={cn("panel panel-lift relative max-h-[calc(100dvh-2rem)] w-full overflow-y-auto overscroll-contain rounded-2xl", width)}
       >
         <div className="flex items-start justify-between gap-3 border-b border-ink-100 px-5 py-4 dark:border-white/8">
           <div>
             {eyebrow && (
-              <p className="font-code text-[8px] font-bold uppercase tracking-[0.22em] text-brand-600">{eyebrow}</p>
+              <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-brand-700">{eyebrow}</p>
             )}
             <h2 id={`${id}-title`} className="mt-1 font-display text-[17px] font-black tracking-[-0.02em] text-ink-950">
               {title}
@@ -622,7 +637,7 @@ export function Modal({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="focus-brand grid h-7 w-7 place-items-center rounded-lg border border-ink-200 text-ink-500 transition-colors hover:border-ink-400 hover:text-ink-950 dark:border-white/12 dark:hover:border-white/25 dark:hover:text-white"
+            className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-ink-200 text-ink-600 transition-colors hover:border-ink-400 hover:text-ink-950 dark:border-white/12 dark:hover:border-white/25 dark:hover:text-white"
           >
             <X className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
@@ -651,9 +666,9 @@ export function Field({
 }) {
   return (
     <label className="block">
-      <span className="font-code text-[8px] font-bold uppercase tracking-[0.2em] text-ink-400">{label}</span>
+      <span className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">{label}</span>
       <div className="mt-1.5">{children}</div>
-      {hint && <span className="mt-1 block text-[10px] leading-relaxed text-ink-400">{hint}</span>}
+      {hint && <span className="mt-1 block text-[11px] leading-relaxed text-ink-600">{hint}</span>}
     </label>
   );
 }

@@ -71,7 +71,7 @@ export function MasterSwitcher({
             aria-current={isActive ? "page" : undefined}
             title={isActive ? `${tab.label} — this desk is live` : `Switch to ${tab.seat}`}
             className={cn(
-              "relative rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-500/60",
+              "relative min-h-11 rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-500/60",
               floating ? "px-3.5 py-2" : "px-3 py-1.5",
               /* The active pill inverts against the surface beneath it, so the
                  label is pinned to the pill's own colour rather than to the
@@ -131,7 +131,7 @@ export function MasterSwitcher({
             className="flex items-center gap-1 rounded-full bg-ink-950/90 p-1 shadow-[0_18px_50px_rgba(11,12,15,0.45)] ring-1 ring-white/15 backdrop-blur-md"
           >
             <span
-              className="hidden px-2.5 font-code text-[8.5px] font-semibold tracking-[0.3em] text-white/40 sm:inline"
+              className="hidden px-2.5 font-code text-[10px] font-semibold tracking-[0.3em] text-white/40 sm:inline"
               aria-hidden="true"
             >
               MASTER

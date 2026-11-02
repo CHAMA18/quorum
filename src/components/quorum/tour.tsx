@@ -23,6 +23,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, BookOpen, Check, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { trapTabFocus } from "@/lib/a11y";
 import { cn } from "@/lib/utils";
 
 export type TourStep = {
@@ -271,7 +272,6 @@ export function TourLayer({
 
   if (!step) return null;
 
-  const stepNo = String(index + 1).padStart(2, "0");
   const chapterLabel = `CHAPTER ${String(chapterNo).padStart(2, "0")}/${String(chapterTotal).padStart(2, "0")}`;
 
   return (
@@ -321,7 +321,7 @@ export function TourLayer({
       {!box && (
         <div className="fixed left-1/2 top-1/2 z-[95] -translate-x-1/2 -translate-y-1/2">
           <p
-            className="flex items-center gap-2.5 rounded-full border border-white/15 bg-night px-4 py-2 font-code text-[9px] font-bold tracking-[0.22em] text-white shadow-2xl"
+            className="flex items-center gap-2.5 rounded-full border border-white/15 bg-night px-4 py-2 font-code text-[10px] font-bold tracking-[0.22em] text-white shadow-2xl"
             role="status"
           >
             <span className="relative flex h-1.5 w-1.5">
@@ -347,6 +347,7 @@ export function TourLayer({
             className="fixed z-[96] rounded-[12px] panel shadow-[0_30px_80px_rgba(11,12,15,0.45)] outline-none"
             style={{ top: layout.y, left: layout.x, width: layout.width }}
             aria-live="polite"
+            onKeyDown={(event) => trapTabFocus(event, cardRef.current)}
           >
             {/* Progress rail */}
             <div className="absolute inset-x-0 top-0 h-[3px] overflow-hidden rounded-t-[12px] bg-ink-100" aria-hidden="true">
@@ -358,7 +359,7 @@ export function TourLayer({
 
             <div className="px-5 pb-4 pt-5">
               <div className="flex items-start justify-between gap-3">
-                <p className="flex items-center gap-2 font-code text-[8px] font-bold tracking-[0.22em] text-brand-700">
+                <p className="flex items-center gap-2 font-code text-[10px] font-bold tracking-[0.1em] text-brand-800">
                   <BookOpen className="h-3 w-3" aria-hidden="true" />
                   WALKTHROUGH · {chapterLabel}
                 </p>
@@ -366,7 +367,7 @@ export function TourLayer({
                   type="button"
                   onClick={onClose}
                   aria-label="End the walkthrough"
-                  className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-ink-500 transition-colors hover:bg-paper hover:text-ink-700"
+                  className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-lg text-ink-600 transition-colors hover:bg-paper hover:text-ink-900"
                 >
                   <X className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
@@ -377,27 +378,27 @@ export function TourLayer({
               </h3>
               <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-600">{step.body}</p>
 
-              <div className="mt-4 flex items-center justify-between gap-3 border-t border-ink-100 pt-3.5">
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-ink-100 pt-3.5">
                 <div className="flex items-center gap-2.5">
                   <button
                     type="button"
                     onClick={back}
                     disabled={index === 0}
-                    className="inline-flex h-8 items-center gap-1 rounded-lg border border-ink-200 px-2.5 font-code text-[8.5px] font-bold tracking-[0.14em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-35"
+                    className="focus-brand inline-flex min-h-11 items-center gap-1 rounded-lg border border-ink-200 px-3 font-code text-[10.5px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-35"
                   >
                     <ArrowLeft className="h-3 w-3" aria-hidden="true" />
                     BACK
                   </button>
-                  <p className="font-code text-[8px] font-bold tracking-[0.18em] text-ink-400" aria-label={`Step ${index + 1} of ${steps.length}`}>
-                    STEP {stepNo} / {String(steps.length).padStart(2, "0")}
+                  <p className="text-[10.5px] font-semibold text-ink-600" aria-label={`Step ${index + 1} of ${steps.length}`}>
+                    Step {index + 1} of {steps.length}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center justify-end gap-2">
                   {last && onNextChapter && (
                     <button
                       type="button"
                       onClick={onNextChapter}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-ink-200 px-3 font-code text-[8.5px] font-bold tracking-[0.14em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950"
+                      className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-ink-200 px-3 font-code text-[10px] font-bold tracking-[0.05em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950"
                     >
                       NEXT CHAPTER
                       <ArrowRight className="h-3 w-3" aria-hidden="true" />
@@ -406,7 +407,7 @@ export function TourLayer({
                   <button
                     type="button"
                     onClick={last ? onFinish : advance}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 font-code text-[8.5px] font-bold tracking-[0.14em] text-white shadow-[0_8px_20px_rgba(217,38,22,0.28)] transition-colors hover:bg-brand-700"
+                    className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 font-code text-[10.5px] font-bold tracking-[0.06em] text-white shadow-[0_8px_20px_rgba(217,38,22,0.28)] transition-colors hover:bg-brand-700"
                   >
                     {last ? (
                       <>
@@ -423,8 +424,8 @@ export function TourLayer({
                 </div>
               </div>
 
-              <p className="mt-2.5 font-code text-[7.5px] tracking-[0.18em] text-ink-500">
-                CLICK THE HIGHLIGHT OR PRESS → TO CONTINUE · ESC TO EXIT
+              <p className="mt-2.5 text-[10.5px] leading-relaxed text-ink-600">
+                Click the highlighted item or press → to continue · Esc to exit
               </p>
             </div>
           </motion.div>

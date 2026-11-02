@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowUpRight, ChevronDown, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
 import { QuorumLogo } from "@/components/quorum/logo";
 import { MasterSwitcher } from "@/components/quorum/master-switcher";
@@ -77,25 +77,37 @@ export function SiteHeader({
 }) {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const reduceMotion = useReducedMotion();
   const [hovered, setHovered] = useState<string | null>(null);
   const activeSection = useSectionSpy(NAV.map((n) => n.href));
   const lit = hovered ?? activeSection;
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
+  const accountTriggerRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
 
   // Account menu closes on outside click or Escape, the usual dropdown behaviour.
   useEffect(() => {
     if (!accountOpen) return;
-    const onPointer = (e: MouseEvent) => {
+    const frame = requestAnimationFrame(() => {
+      accountRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+    });
+    const onPointer = (e: PointerEvent | FocusEvent) => {
       if (!accountRef.current?.contains(e.target as Node)) setAccountOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setAccountOpen(false);
+      if (e.key === "Escape") {
+        setAccountOpen(false);
+        accountTriggerRef.current?.focus();
+      }
     };
-    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("focusin", onPointer);
     window.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onPointer);
+      cancelAnimationFrame(frame);
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("focusin", onPointer);
       window.removeEventListener("keydown", onKey);
     };
   }, [accountOpen]);
@@ -107,23 +119,26 @@ export function SiteHeader({
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Lock body scroll while the mobile menu is open. Close it on Escape and
-  // when the viewport grows to the desktop layout, so a resize never leaves
-  // the page stuck with scrolling disabled.
+  // This menu expands in document flow, so the page stays scrollable while
+  // open. Escape closes it; resizing to desktop also returns to the rail.
   useEffect(() => {
     if (!open) return;
-    document.body.style.overflow = "hidden";
     const desktop = window.matchMedia("(min-width: 1024px)");
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        mobileMenuButtonRef.current?.focus();
+      }
     };
     const onDesktop = () => {
-      if (desktop.matches) setOpen(false);
+      if (desktop.matches) {
+        setOpen(false);
+        requestAnimationFrame(() => document.querySelector<HTMLAnchorElement>('nav[aria-label="Primary"] a')?.focus());
+      }
     };
     window.addEventListener("keydown", onKey);
     desktop.addEventListener("change", onDesktop);
     return () => {
-      document.body.style.overflow = "";
       window.removeEventListener("keydown", onKey);
       desktop.removeEventListener("change", onDesktop);
     };
@@ -131,8 +146,10 @@ export function SiteHeader({
 
   return (
     <header
+      style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       className={cn(
-        "sticky top-0 z-50 w-full border-b backdrop-blur-xl transition-[background-color,border-color,box-shadow] duration-500",
+        "sticky top-0 z-50 w-full border-b backdrop-blur-xl transition-[background-color,border-color,box-shadow]",
+        reduceMotion ? "duration-0" : "duration-500",
         scrolled
           ? "border-ink-200/80 bg-paper/80 shadow-[0_18px_44px_-40px_rgba(11,12,15,0.55)] dark:border-white/10 dark:bg-night/80"
           : "border-transparent bg-paper/60"
@@ -163,12 +180,13 @@ export function SiteHeader({
               <a
                 key={item.label}
                 href={item.href}
-                aria-current={isCurrent ? "true" : undefined}
+                aria-current={isCurrent ? "location" : undefined}
                 onMouseEnter={() => setHovered(item.href)}
                 onFocus={() => setHovered(item.href)}
                 onBlur={() => setHovered(null)}
                 className={cn(
-                  "focus-brand relative rounded-full px-4 py-2 text-[13.5px] font-medium transition-colors duration-300",
+                  "focus-brand relative inline-flex min-h-11 items-center rounded-full px-4 text-[13.5px] font-medium transition-colors",
+                  reduceMotion ? "duration-0" : "duration-300",
                   isLit ? "text-white" : "text-ink-600 hover:text-ink-950 dark:text-ink-400 dark:hover:text-white"
                 )}
               >
@@ -177,7 +195,7 @@ export function SiteHeader({
                     layoutId="nav-rail-ink"
                     aria-hidden="true"
                     className="absolute inset-0 rounded-full bg-ink-950 dark:bg-white/10 dark:ring-1 dark:ring-white/10"
-                    transition={{ type: "spring", stiffness: 420, damping: 34, mass: 0.6 }}
+                    transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 34, mass: 0.6 }}
                   />
                 )}
                 <span className="relative">{item.label}</span>
@@ -194,12 +212,14 @@ export function SiteHeader({
             <>
               <div ref={accountRef} className="relative">
                 <button
+                  ref={accountTriggerRef}
                   type="button"
                   onClick={() => setAccountOpen((v) => !v)}
                   aria-haspopup="menu"
                   aria-expanded={accountOpen}
+                  aria-controls={accountOpen ? "site-account-menu" : undefined}
                   aria-label={`Account menu for ${user.name}`}
-                  className="focus-brand flex h-10 items-center gap-2 rounded-full border border-ink-200/80 bg-white py-1 pl-1 pr-2.5 transition-colors hover:border-ink-300 dark:border-white/10 dark:bg-white/[0.04]"
+                  className="focus-brand flex min-h-11 items-center gap-2 rounded-full border border-ink-200/80 bg-white py-1 pl-1 pr-2.5 transition-colors hover:border-ink-300 dark:border-white/10 dark:bg-white/[0.04]"
                 >
                   <span
                     className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ink-950 font-code text-[10px] font-bold text-white ring-2 ring-brand-500/25"
@@ -208,13 +228,37 @@ export function SiteHeader({
                     {initialsOf(user.name)}
                   </span>
                   <ChevronDown
-                    className={cn("h-3.5 w-3.5 text-ink-500 transition-transform duration-200", accountOpen && "rotate-180")}
+                    className={cn("h-3.5 w-3.5 text-ink-500 transition-transform", reduceMotion ? "duration-0" : "duration-200", accountOpen && "rotate-180")}
                     aria-hidden="true"
                   />
                 </button>
                 {accountOpen && (
                   <div
+                    id="site-account-menu"
                     role="menu"
+                    aria-label={`Account actions for ${user.name}`}
+                    onKeyDown={(event) => {
+                      const items = Array.from(
+                        event.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+                      ).filter((item) => item.getClientRects().length > 0);
+                      if (items.length === 0) return;
+                      const current = items.indexOf(document.activeElement as HTMLElement);
+                      let next = -1;
+                      if (event.key === "ArrowDown") next = (current + 1 + items.length) % items.length;
+                      else if (event.key === "ArrowUp") next = (current - 1 + items.length) % items.length;
+                      else if (event.key === "Home") next = 0;
+                      else if (event.key === "End") next = items.length - 1;
+                      if (next >= 0) {
+                        event.preventDefault();
+                        items[next]?.focus();
+                      }
+                    }}
+                    onBlur={(event) => {
+                      const nextFocus = event.relatedTarget;
+                      if (!(nextFocus instanceof Node) || !event.currentTarget.contains(nextFocus)) {
+                        setAccountOpen(false);
+                      }
+                    }}
                     className="absolute right-0 top-[calc(100%+8px)] w-64 overflow-hidden rounded-xl border border-ink-200/80 bg-white p-1.5 shadow-[0_20px_50px_-20px_rgba(11,12,15,0.45)] dark:border-white/10 dark:bg-night"
                   >
                     <div className="px-3 pb-2.5 pt-2">
@@ -231,7 +275,7 @@ export function SiteHeader({
                         setAccountOpen(false);
                         onDashboard();
                       }}
-                      className="focus-brand flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[13.5px] font-medium text-ink-800 transition-colors hover:bg-ink-50 dark:text-ink-200 dark:hover:bg-white/[0.06]"
+                      className="focus-brand flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[13.5px] font-medium text-ink-800 transition-colors hover:bg-ink-50 dark:text-ink-800 dark:hover:bg-white/[0.06]"
                     >
                       <LayoutDashboard className="h-4 w-4 text-ink-500" aria-hidden="true" />
                       Workspace
@@ -243,7 +287,7 @@ export function SiteHeader({
                         setAccountOpen(false);
                         onSignOut();
                       }}
-                      className="focus-brand flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[13.5px] font-medium text-ink-800 transition-colors hover:bg-ink-50 dark:text-ink-200 dark:hover:bg-white/[0.06]"
+                      className="focus-brand flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[13.5px] font-medium text-ink-800 transition-colors hover:bg-ink-50 dark:text-ink-800 dark:hover:bg-white/[0.06]"
                     >
                       <LogOut className="h-4 w-4 text-ink-500" aria-hidden="true" />
                       Sign out
@@ -257,14 +301,14 @@ export function SiteHeader({
               <button
                 type="button"
                 onClick={onSignIn}
-                className="focus-brand inline-flex h-10 items-center rounded-full px-3 text-[13.5px] font-semibold text-ink-950 transition-colors hover:text-brand-600"
+                className="focus-brand inline-flex min-h-11 items-center rounded-full px-3 text-[13.5px] font-semibold text-ink-950 transition-colors hover:text-brand-600"
               >
                 Login
               </button>
               <button
                 type="button"
                 onClick={onGetStarted}
-                className="focus-brand group inline-flex h-10 items-center gap-1.5 rounded-full bg-ink-950 pl-4 pr-3 text-[13.5px] font-semibold text-white shadow-[0_10px_28px_-14px_rgba(11,12,15,0.8)] transition-colors hover:bg-brand-600"
+                className="focus-brand group inline-flex min-h-11 items-center gap-1.5 rounded-full bg-ink-950 pl-4 pr-3 text-[13.5px] font-semibold text-white shadow-[0_10px_28px_-14px_rgba(11,12,15,0.8)] transition-colors hover:bg-brand-600"
               >
                 Register
                 <ArrowUpRight
@@ -277,11 +321,12 @@ export function SiteHeader({
         </div>
 
         <button
+          ref={mobileMenuButtonRef}
           type="button"
           className="focus-brand inline-flex h-11 w-11 items-center justify-center justify-self-end rounded-full border border-ink-200/80 bg-white text-ink-900 lg:hidden dark:border-white/10 dark:bg-white/[0.04]"
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
-          aria-controls="mobile-menu"
+          aria-controls={open ? "mobile-menu" : undefined}
           aria-label={open ? "Close menu" : "Open menu"}
         >
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -292,27 +337,36 @@ export function SiteHeader({
         {open && (
           <motion.div
             id="mobile-menu"
-            initial={{ opacity: 0, height: 0 }}
+            initial={reduceMotion ? false : { opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            exit={reduceMotion ? { opacity: 1, height: "auto" } : { opacity: 0, height: 0 }}
+            transition={reduceMotion ? { duration: 0 } : { duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             className="overflow-hidden border-t border-ink-100 bg-paper lg:hidden dark:border-white/10"
           >
-            <nav aria-label="Mobile" className="flex flex-col px-4 py-3 sm:px-6">
-              {NAV.map((item, i) => (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  onClick={() => setOpen(false)}
-                  className="focus-brand flex items-center gap-3.5 border-b border-ink-100 py-4 last:border-b-0 dark:border-white/10"
-                >
-                  <span className="type-micro text-brand-600 dark:text-brand-400">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <span className="text-[17px] font-semibold text-ink-900">{item.label}</span>
-                  <ArrowUpRight className="ml-auto h-4 w-4 text-ink-300" aria-hidden="true" />
-                </a>
-              ))}
+            <nav aria-label="Primary mobile" className="flex flex-col px-4 py-3 sm:px-6">
+              {NAV.map((item, i) => {
+                const isCurrent = activeSection === item.href;
+                return (
+                  <a
+                    key={item.label}
+                    href={item.href}
+                    aria-current={isCurrent ? "location" : undefined}
+                    onClick={() => setOpen(false)}
+                    className={cn(
+                      "focus-brand flex items-center gap-3.5 rounded-lg border-b border-ink-100 px-3 py-4 last:border-b-0 dark:border-white/10",
+                      isCurrent && "bg-brand-500/[0.06]",
+                    )}
+                  >
+                    <span className={cn("type-micro", isCurrent ? "text-brand-700 dark:text-brand-300" : "text-ink-400 dark:text-ink-500")}>
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <span className={cn("text-[17px] font-semibold", isCurrent ? "text-brand-800 dark:text-brand-300" : "text-ink-900")}>
+                      {item.label}
+                    </span>
+                    <ArrowUpRight className={cn("ml-auto h-4 w-4", isCurrent ? "text-brand-600 dark:text-brand-400" : "text-ink-300")} aria-hidden="true" />
+                  </a>
+                );
+              })}
 
               <div className="flex items-center justify-start pb-1 pt-4">
                 <MasterSwitcher active="quorum" />

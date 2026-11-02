@@ -1,27 +1,30 @@
 {
   "meta": {
     "edition": "Meta Global AI Developer Hackathon 2026",
-    "note": "Frame prompts for the five-chapter Quorum demo film, regenerated with Muse Image (Meta Model API).",
+    "note": "Five-chapter landing-page film. Chapter 1 frame 1 establishes the recurring procurement officer; Muse Image uses it as a visual reference for all following shots.",
+    "model": "muse-image-1.0",
     "frames_per_chapter": 8,
-    "size": "1280x720",
+    "size": "1920x804",
     "fps": 24,
-    "seconds_per_frame": 2
+    "seconds_per_frame": 2,
+    "camera_move": "Alternating slow push-ins and lateral drifts, rendered as silent chapter clips."
   },
-  "style_suffix": "Cinematic documentary still, 16:9. Dark operations-room palette: near-black charcoal surfaces (#14161b, #16181d), warm paper tones, a single signal-red accent (#e8382a). Government procurement office in Lusaka, Zambia. Volumetric light, shallow depth of field, 35mm, photorealistic. No text, no letters, no numbers, no logos, no watermarks.",
+  "style_suffix": "Photorealistic documentary cinema photographed in Lusaka, Zambia. Wide 2.39:1 anamorphic composition with important faces and objects inside the central 80 percent. A warm, lived-in public procurement office: dark walnut, charcoal-green paint, aged ivory paper, practical tungsten desk lamps and cool blue dawn through real windows. Restrained signal-red cloth ribbon is the recurring visual thread. Natural skin texture, honest Zambian faces, precise hands, expressive but unposed human moments, deep shadow detail, refined 35mm grain, restrained highlight bloom, rich amber and blue contrast, considered production design, tactile materials. Shoot as a real documentary unit with motivated light, cinematic foreground depth and deliberate negative space. No sci-fi, no holograms, no floating particles, no generic AI graphics, no dashboards, no legible writing, no letters, no numbers, no logos, no watermark, no extra fingers, no warped hands.",
+  "continuity_suffix": "Use the supplied reference image to preserve the same lead officer: a Zambian woman in her early forties, warm brown skin, short natural coiled hair brushed back, small brass earrings, an indigo jacket over an ivory blouse, an everyday unretouched face. Keep her age, features and wardrobe consistent. Treat the reference as character and color continuity only: compose a genuinely new camera angle and a new moment for this shot. Keep the recurring signal-red cloth ribbon visible when it makes sense. No readable text or graphics.",
   "chapters": [
     {
       "id": 1,
       "title": "The Stack — 14,000 pages",
       "beat": "Every page is someone's money. Nobody can read them all.",
       "frames": [
-        "A towering stack of paper tender files filling a dim government archive room from floor to ceiling, a single desk lamp cutting through the dark",
-        "Extreme close-up of a massive pile of stapled tender documents, paper edges fanned out like feathers, one red ribbon marker between the pages",
-        "A wide shot of an empty review desk at night, three overflowing in-trays casting long shadows under fluorescent light",
-        "Top-down view of tender pages spread across a large table in a grid, hands at the edges of the frame, one page highlighted in red",
-        "A wall of metal archive shelves receding into darkness, one aisle lit in red emergency light",
-        "A lone evaluation officer silhouetted against a window, dwarfed by paper boxes stacked beside and behind them",
-        "Close-up of a rubber date stamp resting on a thick bundle of health-supply requisition forms, red ink pad open beside it",
-        "Slow pull-back: an entire room floor-to-ceiling with paper stacks, a single chair in the middle, lit by one hanging bulb"
+        "Opening image, 06:00 before the office wakes: medium-wide 35mm portrait of one Zambian procurement officer at a beautiful but overwhelmed archive desk, mountains of tender files rising on every side, her face clearly visible and thoughtful, one red cloth ribbon crossing the nearest bundle toward her hand; lived-in Lusaka ministry office, not a generic boardroom.",
+        "Overhead wide shot of the same desk swallowed by carefully stacked procurement files; the officer's hands enter from opposite edges trying to organize the paper, one red ribbon drawing the eye through the chaos.",
+        "Low side angle through two tall columns of paper toward the officer, eye-level, her face in a narrow pool of lamp light and the shelves falling away behind her; human scale against an impossible workload.",
+        "Extreme tactile close-up: the officer's thumb moving across dense page edges, old paper fibers and a red cotton tie sharply in focus, her concentration reflected softly in the dark glass beyond.",
+        "Long corridor of metal archive shelving in a Zambian public office, the officer carrying one overfilled file box toward camera, practical ceiling lights repeating into distance, no theatrical red emergency lighting.",
+        "Wide lateral composition at desk height: the officer seated in profile, paper boxes form a near wall in the foreground, a real window holds the first cool dawn, a single untouched cup of tea beside her.",
+        "Close, decisive moment: the officer finds one file, wraps its loose pages with the red cloth ribbon and sets it apart from the unstable stacks; hands and face both readable, no victory pose.",
+        "Slow-pull-back composition from the ribbon-tied file to reveal the full room and the officer alone at its centre, dawn now visible through the far window; the paper is real, physical and overwhelming."
       ]
     },
     {
@@ -29,14 +32,14 @@
       "title": "The Read — 06:00 local",
       "beat": "The machine has been in the files since before the office wakes.",
       "frames": [
-        "A dark open-plan office at dawn, one workstation glowing with twin monitors showing abstract document layouts, city skyline barely visible through the window",
-        "Close-up of a server-grade workstation tower with a single red status light breathing in the dark, morning blue light through blinds",
-        "An abstract visualization of document pages flowing as luminous sheets of light through a dark room, one red thread weaving through them",
-        "A terminal screen glow reflected in a dark desk surface at 6 AM, a cup of tea steaming beside the keyboard, office still empty",
-        "Abstract network graph of connected document nodes hovering above a desk in the dark, most nodes pale, a few glowing red",
-        "Sunrise light beginning to hit the facade of a government ministry building, one window on the fourth floor already lit",
-        "Close-up of paper documents being scanned under a scanner lid light sweeping across, motion blur, dark room",
-        "The same archive room from chapter one, now with every stack dematerialized into drifting light particles converging toward one desk"
+        "The same officer arrives at first light and opens a document scanner beside the archive desk; a single status lamp and the window's cool dawn are the only bright points, quiet anticipation, medium-wide composition.",
+        "Macro photograph of one tender page entering a real flatbed scanner, clean white scan light travelling across the paper, the officer's careful fingertips at the edge, red ribbon resting in the foreground.",
+        "Top-down view of the officer feeding a measured stack of documents into the scanner; a second stack is aligned neatly, the office still empty, precise practical action rather than magical automation.",
+        "Over-shoulder shot of the same officer checking the scanned page on a real monitor, the screen deliberately out of focus with no readable interface or invented text; her face and hand are crisp.",
+        "Long-lens composition: from the archive doorway, the officer works at the scanner while dawn spreads through slatted windows; paper boxes remain in the foreground, the desk begins to clear.",
+        "Close-up of a page passing under the scanner bar, a narrow line of light crosses the paper and briefly catches the red ribbon; natural reflections, detailed paper grain, no digital particles.",
+        "The officer places scanned and unscanned folders into two distinct physical trays, measured hands, calm purposeful rhythm; warm lamp light begins to mix with morning blue.",
+        "Wide return to the room from chapter one: same angle and lead officer, a clear working surface has appeared among the stacks, first sunlight on the desk, the red-ribbon file now within reach."
       ]
     },
     {
@@ -44,14 +47,14 @@
       "title": "The Evidence — page and line",
       "beat": "Every claim wired to its source. No citation, no finding.",
       "frames": [
-        "A tender page rendered enormous on a dark wall display, thin red leader lines connecting one highlighted line to smaller evidence cards floating beside it",
-        "Macro photograph of a printed paragraph with a translucent red highlight over one clause, paper texture visible, dark desk below",
-        "A dark evidence board with pinned document photocopies connected by red string, one pinned card glowing softly",
-        "Close-up of a finger tracing a line of text on paper, red underline drawing itself along the path, shallow focus",
-        "Split composition: a scanned tender page on the left, an abstract structured requirements checklist on the right, a red thread bridging them across the fold",
-        "A magnifying glass resting on a contract page, the lens catching red light, surrounding documents falling into shadow",
-        "Abstract isometric scene: floating document cards each tethered by a thin red line to a central ledger book, dark void background",
-        "A findings ledger rendered as a heavy bound book on a desk, red bookmark ribbon, faint grid of light rising from its open pages"
+        "The same officer studies one source page beneath a brass task lamp; the red ribbon runs from the file to the exact paper she is checking, intimate over-shoulder shot with her eyes and the source in the same plane.",
+        "Extreme macro of a pencil tip stopping beside one clause on a printed procurement page; the writing is naturally present but entirely unreadable, paper fibers and a narrow red marker tab in razor focus.",
+        "Side view of the officer laying a source document beside a separate evidence note, aligning their edges by hand; red ribbon bridges the two physical sheets, no floating cards or screen graphics.",
+        "A magnifying glass held by the officer over one line of a tender specification, the lens reveals crisp paper texture but no readable words, her face falls softly out of focus behind it.",
+        "Top-down documentary still: a tidy evidence packet assembled from real pages, pencil marks, small paper tabs and the red ribbon; the officer's hands add one final source sheet.",
+        "Medium portrait of the same officer checking a page number against a bound procurement file, a source ledger open in foreground; serious, patient verification, realistic Lusaka office.",
+        "Close shot of the officer's hand tracing the red ribbon from an evidence note back to its bound source volume, shallow depth of field, physical connection is unmistakable.",
+        "A composed wide shot of the officer closing the source file only after placing the verified evidence packet beside it; warm desk light, quiet certainty, no celebratory pose."
       ]
     },
     {
@@ -59,14 +62,14 @@
       "title": "The Flag — the pattern breaks",
       "beat": "Where a price breaks the peer pattern, a flag goes up.",
       "frames": [
-        "A dark wall of small price tiles arranged in a calm grid pattern, one tile cracked open glowing signal red, others dim",
-        "Abstract line chart of many thin parallel price lines flowing smoothly across a dark canvas, one line spiking violently upward in red",
-        "Close-up of a bid table on paper with rows of figures, one row stamped with a red angular flag mark, shallow depth of field",
-        "A procurement officer's desk from above, documents in neat order, a single red flag pin pushed into one bundle, dramatic side light",
-        "Abstract scene of identical grey boxes on conveyor-like rows, one box tipping over glowing red, motion blur at the edges",
-        "A dark room where projected peer-price histograms float in the air, one histogram outlier pulsing red against the blue-grey rest",
-        "Close-up of an abacus-like row of tokens all level, one token raised and glowing red, dark brushed-metal surface",
-        "Wide shot of a quiet review room at night with a large wall display showing an orderly grid, one cell flaring red like an alarm, light spilling onto the floor"
+        "The officer compares several supplier quotations spread across a long dark-wood table; amounts are present but not legible, paper edges carefully aligned, one red ribbon marks a line for human review, no accusation implied.",
+        "Macro still of three printed quotation pages with the same product descriptions implied by repeated package photographs, the officer's pencil hovers over one unusually different entry; no fabricated numbers or readable text.",
+        "Profile close-up of the officer looking from one quotation to another, thoughtful rather than alarmed, window light and task-lamp light split across her face, shallow focus.",
+        "Top-down frame: the officer arranges comparable bids into a simple physical row, paper tabs marking the fields to compare, one red tab flags a variance for review without declaring wrongdoing.",
+        "A quiet procurement review room: one officer checks a line item against a small stack of comparable records, the red ribbon connects the comparison page to its source file, other chairs empty.",
+        "Close-up of the officer writing a short pencil note on a separate review sheet while the original quotation remains untouched beside it; no legible words, measured and auditable action.",
+        "A second committee member leans into frame to inspect the same source page; both people share the evidence, the officer points to the cited line, no glowing alarm or artificial UI.",
+        "Wide room view after the review: the compared quotations and source files are laid out in order, one red paper flag marks a question for the committee, the officer waits for human review."
       ]
     },
     {
@@ -74,14 +77,14 @@
       "title": "The Gate — the human signature",
       "beat": "One button the machine cannot press. It waits.",
       "frames": [
-        "A single physical red signature button under a glass cover on a dark desk, a waiting status light beside it, everything else in shadow",
-        "A dark review room with a large screen showing a sealed bundle icon wrapped in a red ribbon, an empty chair in front of it",
-        "Close-up of a human hand hovering above a glass-covered red button, not yet pressing it, dramatic rim light, dark room",
-        "An abstract vault door made of light grids half-open, a red seal floating in the gap, darkness beyond",
-        "A committee table with name cards in shadow, one name card lit by a red desk lamp, a pen resting on a signature page",
-        "Macro of a wax-like red seal pressing into a dark document bundle, fibers of the ribbon visible, chiaroscuro lighting",
-        "The waiting gate screen in a dark office, a soft red pulse animating across its surface, reflection on the polished table below",
-        "Dawn again: the door of the review room half-open, morning light entering, the desk lamp now off, the button untouched under glass"
+        "A real Zambian procurement committee gathers around a long table in morning light; the same officer lays the cited evidence packet before them, several attentive faces, grounded government meeting room, red ribbon visible.",
+        "Over-shoulder view from behind the officer as committee members examine the original source pages themselves; no presentation screen, no invented approval interface, quiet concentration.",
+        "Close-up of a committee member's hand resting beside an unsigned decision document and a pen, the officer's evidence packet in soft focus beyond; decision remains with the people.",
+        "The officer points to the cited passage in the source file while a committee member follows along with a finger; faces and paper share the frame, respectful disagreement is welcome.",
+        "Medium shot across the table: committee members exchange a brief look and one asks a question, the officer listens with her hands still; documentary realism, no staged applause.",
+        "A committee member signs the decision after reviewing the source packet; pen, signature motion, cited page and red ribbon form a clear grounded composition, no readable name or fabricated text.",
+        "The officer closes the original source volume and hands the reviewed packet to the committee secretary; human custody of the decision is visible, warm morning light fills the room.",
+        "Final wide image: the committee leaves through an open doorway into bright Lusaka morning, the officer remains at the table with the source file and red ribbon, a clear desk and quiet room; restrained, earned resolution."
       ]
     }
   ]

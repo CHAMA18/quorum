@@ -155,42 +155,43 @@ export function SearchSelect({
 
   return (
     <div ref={rootRef} className="relative">
-      <button
-        ref={triggerRef}
-        id={id}
-        type="button"
-        onClick={() => (open ? close(false) : openList())}
-        onKeyDown={onTriggerKeyDown}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label={label}
-        className={cn(
-          triggerCls,
-          selected ? "text-ink-950 dark:text-white" : "text-ink-300 dark:text-ink-500",
-        )}
-      >
-        <span className="truncate">{selected ? selected.value : placeholder}</span>
-        <span className="flex shrink-0 items-center gap-0.5">
-          {clearable && selected ? (
-            <span
-              role="button"
-              tabIndex={-1}
-              aria-label={`Clear ${label}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                onChange("");
-              }}
-              className="grid h-5 w-5 place-items-center rounded-md text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700 dark:hover:bg-ink-800 dark:hover:text-ink-200"
-            >
-              <X className="h-3.5 w-3.5" aria-hidden="true" />
-            </span>
-          ) : null}
+      <div className="flex items-center gap-1.5">
+        <button
+          ref={triggerRef}
+          id={id}
+          type="button"
+          onClick={() => (open ? close(false) : openList())}
+          onKeyDown={onTriggerKeyDown}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-label={label}
+          aria-controls={open ? listboxId : undefined}
+          className={cn(
+            triggerCls,
+            "w-auto min-w-0 flex-1",
+            selected ? "text-ink-950 dark:text-white" : "text-ink-300 dark:text-ink-500",
+          )}
+        >
+          <span className="truncate">{selected ? selected.value : placeholder}</span>
           <ChevronDown
-            className={cn("h-4 w-4 text-ink-400 transition-transform duration-200", open && "rotate-180 text-brand-600")}
+            className={cn("h-4 w-4 shrink-0 text-ink-400 transition-transform duration-200", open && "rotate-180 text-brand-600")}
             aria-hidden="true"
           />
-        </span>
-      </button>
+        </button>
+        {clearable && selected ? (
+          <button
+            type="button"
+            aria-label={`Clear ${label}`}
+            onClick={() => {
+              onChange("");
+              triggerRef.current?.focus();
+            }}
+            className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-lg text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-700 dark:hover:bg-ink-800 dark:hover:text-ink-700"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
+        ) : null}
+      </div>
 
       <AnimatePresence>
         {open ? (
@@ -217,7 +218,7 @@ export function SearchSelect({
                 aria-activedescendant={filtered[active] ? `${listboxId}-opt-${active}` : undefined}
                 aria-label={`Search ${label}`}
                 placeholder={searchPlaceholder}
-                className="h-9 w-full bg-transparent text-[13px] text-ink-950 outline-none placeholder:text-ink-300 dark:text-white dark:placeholder:text-ink-500"
+                className="focus-brand h-11 w-full bg-transparent text-[14px] text-ink-950 outline-none placeholder:text-ink-400 dark:text-white dark:placeholder:text-ink-500"
               />
             </div>
 
@@ -232,7 +233,7 @@ export function SearchSelect({
                   return (
                     <div key={o.value}>
                       {showGroup ? (
-                        <p className="px-3 pb-1 pt-2 font-code text-[8.5px] font-semibold uppercase tracking-[0.2em] text-ink-400 dark:text-ink-500">
+                        <p className="px-3 pb-1 pt-2 font-code text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-500 dark:text-ink-400">
                           {o.group}
                         </p>
                       ) : null}
@@ -258,7 +259,7 @@ export function SearchSelect({
                         <span className="truncate">{o.value}</span>
                         <span className="flex shrink-0 items-center gap-1.5">
                           {o.hint ? (
-                            <span className="font-code text-[9.5px] tracking-[0.08em] text-ink-400 dark:text-ink-500">{o.hint}</span>
+                          <span className="font-code text-[10px] tracking-[0.08em] text-ink-400 dark:text-ink-500">{o.hint}</span>
                           ) : null}
                           {o.value === value ? <Check className="h-3.5 w-3.5 text-brand-600" aria-hidden="true" /> : null}
                         </span>

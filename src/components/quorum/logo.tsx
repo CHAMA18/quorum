@@ -65,7 +65,7 @@ export function QuorumLogo({
         {tagline && (
           <span
             className={cn(
-              "mt-1 block whitespace-nowrap font-code text-[8.5px] font-semibold tracking-[0.32em]",
+              "mt-1 block whitespace-nowrap font-code text-[10px] font-semibold tracking-[0.32em]",
               variant === "dark" ? "text-ink-500" : "text-ink-400"
             )}
           >

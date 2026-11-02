@@ -10,7 +10,7 @@
  */
 
 export interface TenderStorageResult {
-  /** R2 object key, e.g. tenders/KE-MOH-2026-117/…-notice.pdf */
+  /** R2 object key, e.g. tenders/QRM-2026-117/…-notice.pdf */
   key: string;
   bytes: number;
   contentType: string;
@@ -32,7 +32,7 @@ export interface TenderStorageResult {
 }
 
 export interface StoredTenderDocument {
-  /** R2 object key, e.g. tenders/KE-MOH-2026-117/…-notice.pdf */
+  /** R2 object key, e.g. tenders/QRM-2026-117/…-notice.pdf */
   key: string;
   filename: string;
   bytes: number;

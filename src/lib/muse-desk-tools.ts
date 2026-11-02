@@ -170,7 +170,7 @@ type Run = {
   status: string;
   startedAt: string;
   findings?: { id: string; rule: string; item: string; citation: string }[];
-  plan?: { pack?: { bids?: number } } | null;
+  plan?: { pack?: { bids?: number; bidders?: number } } | null;
 };
 
 type Gate = {
@@ -213,6 +213,7 @@ function viewRun(r: Run) {
     status: RUN_STATUS_UI[r.status] ?? r.status,
     startedAt: r.startedAt,
     bids: r.plan?.pack?.bids ?? null,
+    bidders: r.plan?.pack?.bidders ?? r.plan?.pack?.bids ?? null,
     findings: findings.length,
     citations: findings.filter((f) => f.citation).length,
     topFindings: findings.slice(0, 3).map((f) => ({ rule: f.rule, item: f.item, citation: f.citation })),

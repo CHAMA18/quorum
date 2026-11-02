@@ -237,7 +237,16 @@ export function planFromPack(
   if (injectionFindings(pack).length > 0) focus.push("PROMPT-INJECTION");
   focus.push("SPEC-DEVIATION");
   return {
-    pack: { files: files.length, bids: pack.bids.length, ocdsRecords: pack.records.length, markdownValueBids, ocdsValueBids },
+    pack: {
+      files: files.length,
+      /* Bid documents and distinct firms are different facts: one bidder may file
+         more than one document, and one OCDS record may carry several releases. */
+      bids: pack.bids.length,
+      bidders: distinctBidders(pack.bids),
+      ocdsRecords: pack.records.length,
+      markdownValueBids,
+      ocdsValueBids,
+    },
     parseMarkdownValues: markdownValueBids > 0,
     focusRules: focus,
     maxDrafts: 2,
@@ -859,7 +868,7 @@ export const TOOLS = [
         subject: { type: "string" },
         closingDate: { type: "string" },
         ceiling: { type: "string" },
-        requiredDocs: { type: "array", items: { type: "string" } },
+        requiredDocs: { type: "array", maxItems: 100, items: { type: "string", maxLength: 180 } },
         contact: { type: "string" },
       },
       required: ["tenderId", "reference", "buyer", "method", "subject", "contact"],
@@ -1611,6 +1620,26 @@ function progress(runId: string, line: string) {
  * Shared by the review graph and the offline evaluation harness (eval.ts),
  * so both exercise exactly the same parsing path.
  */
+/* A bid is a document filed under the pack's `<NN>-bid-<bidder>.md` convention.
+   A notice, an addendum or any other supporting file is still read by the rules,
+   but it is not a bidder — treating every non-notice file as a bid would let a
+   stray upload inflate the bidder count the desk reports. */
+const BID_FILE = /^\d+-bid-.+\.md$/i;
+
+/**
+ * Pure: how many distinct bidders the pack contains. Bid documents are keyed by
+ * bidder, so two files from the same firm (or the same firm across OCDS releases)
+ * count once; case and spacing never split an identity.
+ */
+export function distinctBidders(bids: BidDoc[]): number {
+  const seen = new Set<string>();
+  for (const b of bids) {
+    const key = b.bidder.trim().toLowerCase().replace(/\s+/g, " ");
+    if (key) seen.add(key);
+  }
+  return seen.size;
+}
+
 export function buildPack(files: string[], sources: Record<string, string>) {
   const bids: BidDoc[] = [];
   const records: OcdsRecord[] = [];
@@ -1622,10 +1651,8 @@ export function buildPack(files: string[], sources: Record<string, string>) {
         records.push(rec);
         bids.push(...rec.bids);
       }
-    } else if (f.startsWith("01-")) {
-      /* markdown notice — read below via sources */
-    } else {
-      const bidder = f.replace(/^\d+-bid-/, "").replace(/\.md$/, "").replace(/-/g, " ").toUpperCase();
+    } else if (BID_FILE.test(f)) {
+      const bidder = f.replace(/^\d+-bid-/i, "").replace(/\.md$/i, "").replace(/-/g, " ").toUpperCase();
       bids.push({ bidder, text, source: f });
     }
   }
@@ -1634,7 +1661,7 @@ export function buildPack(files: string[], sources: Record<string, string>) {
     ...(mdNotice ? [{ file: mdNotice, text: sources[mdNotice] ?? "" }] : []),
     ...records.map((r) => ({ file: r.source, text: r.notice })),
   ];
-  return { bids, records, notices };
+  return { bids, records, notices, bidders: distinctBidders(bids) };
 }
 
 /* ── Prompt-injection guard ────────────────────────────────────────────────
@@ -1915,7 +1942,7 @@ async function nodeLoadDocuments(s: typeof ReviewState.State) {
   const awardCount = pack.records.reduce((n, r) => n + r.awards.length, 0);
   progress(
     s.runId,
-    `▸ ${files.length} documents read · ${pack.bids.length} bids · ${awardCount} awards · ${pack.records.length} OCDS records`,
+    `▸ ${files.length} documents read · ${pack.bidders} bidders · ${awardCount} awards · ${pack.records.length} OCDS records`,
   );
   return { bids: pack.bids, tenderId: s.tenderId, sources, notices: pack.notices, records: pack.records };
 }
@@ -1950,7 +1977,7 @@ async function nodeFlag(s: typeof ReviewState.State) {
     progress(s.runId, `▸ registry cross-check — ${matched} of ${s.bids.length} bidders matched on the platform register`);
   }
   const { kept, rejected } = flagPack(
-    { bids: s.bids, records: s.records, notices: s.notices },
+    { bids: s.bids, records: s.records, notices: s.notices, bidders: distinctBidders(s.bids) },
     Object.keys(s.sources),
     s.plan ?? undefined,
     { guards, registry },
@@ -2003,7 +2030,7 @@ async function nodePlan(s: typeof ReviewState.State) {
     tool: "plan_review",
     kind: "READ",
     runId: s.runId,
-    inputs: { tenderId: s.tenderId, files: plan.pack.files, bids: plan.pack.bids, ocdsRecords: plan.pack.ocdsRecords },
+    inputs: { tenderId: s.tenderId, files: plan.pack.files, bids: plan.pack.bids, bidders: plan.pack.bidders ?? plan.pack.bids, ocdsRecords: plan.pack.ocdsRecords },
     outputs: { source: plan.source, model: plan.model ?? null, parseMarkdownValues: plan.parseMarkdownValues, focusRules: plan.focusRules, maxDrafts: plan.maxDrafts, note: plan.note },
     status: "OK",
     durationMs: Math.round(performance.now() - t0),

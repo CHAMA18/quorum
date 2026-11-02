@@ -117,6 +117,7 @@ export type AdminRunModel = {
 export type AdminRun = {
   id: string;
   tenderId: string;
+  systemReference?: string;
   status: "RUNNING" | "AWAITING_GATE" | "REJECTED" | "FILED" | "FAILED";
   startedBy: string | null;
   startedAt: string;
@@ -136,6 +137,7 @@ export type AdminGate = {
   id: string;
   runId: string;
   tenderId: string;
+  systemReference?: string;
   tool: string;
   status: "PENDING" | "AWAITING_SECOND" | "APPROVED" | "REJECTED" | "EXECUTED";
   createdAt: string;

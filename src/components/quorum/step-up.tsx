@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Fingerprint, KeyRound, Loader2, ShieldCheck, X } from "lucide-react";
+import { trapTabFocus } from "@/lib/a11y";
 
 /**
  * The step-up gate.
@@ -49,6 +50,8 @@ export function StepUpHost() {
   const [enrolBusy, setEnrolBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   const settle = useCallback((token: string | null) => {
     const current = pendingRef.current;
@@ -57,6 +60,9 @@ export function StepUpHost() {
     setValue("");
     setError("");
     setBusy(false);
+    const returnFocus = returnFocusRef.current;
+    returnFocusRef.current = null;
+    if (returnFocus?.isConnected) window.requestAnimationFrame(() => returnFocus.focus());
     current?.resolve(token);
   }, []);
 
@@ -89,6 +95,10 @@ export function StepUpHost() {
   useEffect(() => {
     const onRequest: Listener = (next) => {
       const previous = pendingRef.current;
+      if (!previous) {
+        const active = document.activeElement;
+        returnFocusRef.current = active instanceof HTMLElement && active !== document.body ? active : null;
+      }
       if (previous) previous.resolve(null);
       pendingRef.current = next;
       setPending(next);
@@ -229,11 +239,14 @@ export function StepUpHost() {
           }}
         >
           <motion.div
+            ref={dialogRef}
             initial={{ opacity: 0, y: 14, scale: 0.985 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.99 }}
             transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full max-w-[440px] overflow-hidden rounded-2xl border border-ink-200 bg-[#fffdfb] shadow-[0_24px_80px_-24px_rgba(11,12,15,0.45)]"
+            tabIndex={-1}
+            onKeyDown={(event) => trapTabFocus(event, dialogRef.current)}
+            className="max-h-[calc(100dvh-2rem)] w-full max-w-[440px] overflow-y-auto overscroll-contain rounded-2xl border border-ink-200 bg-[#fffdfb] shadow-[0_24px_80px_-24px_rgba(11,12,15,0.45)]"
           >
             <div className="flex items-start justify-between gap-4 border-b border-ink-100 px-5 py-4">
               <div className="flex items-start gap-3">
@@ -254,8 +267,9 @@ export function StepUpHost() {
               <button
                 type="button"
                 onClick={() => !busy && settle(null)}
+                disabled={busy}
                 aria-label="Cancel step-up"
-                className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-ink-400 transition-colors hover:bg-ink-950/[0.05] hover:text-ink-800"
+                className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink-600 transition-colors hover:bg-ink-950/[0.05] hover:text-ink-900 disabled:opacity-50"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -272,7 +286,7 @@ export function StepUpHost() {
                       setError("");
                       window.setTimeout(() => inputRef.current?.focus(), 30);
                     }}
-                    className={`inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 font-code text-[8px] font-bold tracking-[0.14em] transition-colors ${
+                    className={`focus-brand inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 font-code text-[10px] font-bold tracking-[0.06em] transition-colors ${
                       mode === "password" ? "bg-white text-ink-950 shadow-sm" : "text-ink-500 hover:text-ink-800"
                     }`}
                   >
@@ -286,7 +300,7 @@ export function StepUpHost() {
                       setError("");
                       window.setTimeout(() => inputRef.current?.focus(), 30);
                     }}
-                    className={`inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 font-code text-[8px] font-bold tracking-[0.14em] transition-colors ${
+                    className={`focus-brand inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 font-code text-[10px] font-bold tracking-[0.06em] transition-colors ${
                       mode === "totp" ? "bg-white text-ink-950 shadow-sm" : "text-ink-500 hover:text-ink-800"
                     }`}
                   >
@@ -303,7 +317,7 @@ export function StepUpHost() {
                   </p>
                   {enrolment ? (
                     <>
-                      <p className="mt-3 font-code text-[8px] font-bold tracking-[0.18em] text-ink-500">SETUP KEY</p>
+                      <p className="mt-3 font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">Setup key</p>
                       <div className="mt-1.5 flex items-center gap-2">
                         <code className="flex-1 select-all overflow-hidden rounded-md border border-ink-200 bg-white px-2.5 py-2 font-code text-[10.5px] tracking-[0.06em] text-ink-900">
                           {enrolment.secret.replace(/(.{4})/g, "$1 ").trim()}
@@ -319,14 +333,14 @@ export function StepUpHost() {
                               })
                               .catch(() => setCopied(false));
                           }}
-                          className="h-8 shrink-0 rounded-md border border-ink-200 bg-white px-2.5 font-code text-[8px] font-bold tracking-[0.12em] text-ink-700 transition-colors hover:bg-ink-50"
+                          className="focus-brand min-h-11 shrink-0 rounded-md border border-ink-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.06em] text-ink-800 transition-colors hover:bg-ink-50"
                         >
                           {copied ? "COPIED" : "COPY"}
                         </button>
                       </div>
                       <a
                         href={enrolment.uri}
-                        className="mt-2 inline-block font-code text-[8px] font-bold tracking-[0.12em] text-brand-700 underline decoration-brand-300 underline-offset-2"
+                        className="focus-brand mt-2 inline-flex min-h-11 items-center font-code text-[10px] font-bold tracking-[0.06em] text-brand-800 underline decoration-brand-300 underline-offset-2"
                       >
                         OPEN IN AUTHENTICATOR APP
                       </a>
@@ -340,7 +354,7 @@ export function StepUpHost() {
                 </div>
               )}
 
-              <label htmlFor="stepup-value" className="font-code text-[8px] font-bold tracking-[0.2em] text-ink-500">
+              <label htmlFor="stepup-value" className="font-code text-[10.5px] font-bold tracking-[0.08em] text-ink-600">
                 {stage === "enrol" ? "SIX-DIGIT CODE" : mode === "totp" ? "SIX-DIGIT CODE" : "PASSPHRASE"}
               </label>
               <input
@@ -356,7 +370,7 @@ export function StepUpHost() {
                   if (e.key === "Enter") void submit();
                 }}
                 placeholder={mode === "totp" ? "000000" : "Your Quorum passphrase"}
-                className="focus-brand mt-2 h-11 w-full rounded-lg border border-ink-200 bg-white px-3.5 text-[14px] text-ink-950 outline-none transition-[border-color,box-shadow] placeholder:text-ink-300 focus:border-ink-950 focus:ring-[3px] focus:ring-ink-950/[0.07]"
+                className="focus-brand mt-2 h-11 w-full rounded-lg border border-ink-200 bg-white px-3.5 text-[14px] text-ink-950 outline-none transition-[border-color,box-shadow] placeholder:text-ink-400 focus:border-ink-950 focus:ring-[3px] focus:ring-ink-950/[0.07] dark:placeholder:text-ink-400"
                 aria-invalid={error ? true : undefined}
                 aria-describedby={error ? "stepup-error" : undefined}
               />
@@ -380,7 +394,7 @@ export function StepUpHost() {
                   type="button"
                   onClick={() => settle(null)}
                   disabled={busy}
-                  className="h-10 flex-1 rounded-lg border border-ink-200 bg-white px-3 text-[11px] font-semibold text-ink-700 transition-colors hover:bg-ink-50 disabled:opacity-50"
+                className="focus-brand min-h-11 flex-1 rounded-lg border border-ink-200 bg-white px-3 text-[12px] font-semibold text-ink-800 transition-colors hover:bg-ink-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -388,16 +402,16 @@ export function StepUpHost() {
                   type="button"
                   onClick={() => void submit()}
                   disabled={busy || !value.trim() || (stage === "enrol" && !enrolment)}
-                  className="inline-flex h-10 flex-[1.35] items-center justify-center gap-2 rounded-lg bg-ink-950 px-3 text-[11px] font-semibold text-white transition-colors hover:bg-ink-800 disabled:cursor-not-allowed disabled:opacity-50"
+                className="focus-brand inline-flex min-h-11 flex-[1.35] items-center justify-center gap-2 rounded-lg bg-ink-950 px-3 text-[12px] font-semibold text-white transition-colors hover:bg-ink-800 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Fingerprint className="h-3.5 w-3.5" aria-hidden="true" />}
                   {busy ? "Signing…" : stage === "enrol" ? "Confirm and sign" : "Sign gate"}
                 </button>
               </div>
 
-              <p className="mt-3 flex items-center gap-1.5 font-code text-[7.5px] tracking-[0.12em] text-ink-400">
+              <p className="mt-3 flex items-center gap-1.5 text-[10.5px] leading-relaxed text-ink-600">
                 <ShieldCheck className="h-3 w-3" aria-hidden="true" />
-                NAMED HUMAN · SINGLE USE · HASH-BOUND TO THE BUNDLE
+                A named signer · single use · bound to the signed bundle
               </p>
             </div>
           </motion.div>

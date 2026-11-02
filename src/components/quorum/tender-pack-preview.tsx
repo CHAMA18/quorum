@@ -10,10 +10,12 @@
  * the same-origin gateway (XTransformPort=3031).
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { BookOpen, FileText, Loader2, ScanSearch, X } from "lucide-react";
+import { HorizontalScrollRegion } from "@/components/quorum/horizontal-scroll-region";
+import { trapTabFocus } from "@/lib/a11y";
 import { cn } from "@/lib/utils";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -85,7 +87,7 @@ function DocMarkdown({ text }: { text: string }) {
             {content}
           </h4>
         ) : (
-          <p key={key++} className={cn("mt-1 font-code font-bold tracking-[0.06em] text-ink-950", level === 2 ? "text-[11px]" : "text-[10px]")}>
+          <p key={key++} className={cn("mt-1 font-code font-bold tracking-[0.06em] text-ink-950", level === 2 ? "text-[12px]" : "text-[11px]")}>
             {content}
           </p>
         ),
@@ -105,12 +107,12 @@ function DocMarkdown({ text }: { text: string }) {
       if (rows.length > 0) {
         const [head, ...body] = rows;
         blocks.push(
-          <div key={key++} className="mt-1 overflow-x-auto rounded-lg border border-ink-200">
+          <HorizontalScrollRegion key={key++} label="Tender pack document table" className="mt-1 rounded-lg border border-ink-200">
             <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="bg-paper">
                   {head.map((c, ci) => (
-                    <th key={ci} className="border-b border-ink-200 px-2.5 py-1.5 font-code text-[8px] font-bold tracking-[0.12em] text-ink-500">
+                    <th key={ci} className="border-b border-ink-200 px-2.5 py-2 font-code text-[10px] font-bold tracking-[0.1em] text-ink-500">
                       {renderInline(c, `th${ci}`)}
                     </th>
                   ))}
@@ -120,7 +122,7 @@ function DocMarkdown({ text }: { text: string }) {
                 {body.map((r, ri) => (
                   <tr key={ri} className="odd:bg-paper/40">
                     {r.map((c, ci) => (
-                      <td key={ci} className="border-b border-ink-100 px-2.5 py-1.5 text-[11px] text-ink-800">
+                      <td key={ci} className="border-b border-ink-100 px-2.5 py-2 text-[12.5px] leading-relaxed text-ink-800">
                         {renderInline(c, `td${ri}-${ci}`)}
                       </td>
                     ))}
@@ -128,7 +130,7 @@ function DocMarkdown({ text }: { text: string }) {
                 ))}
               </tbody>
             </table>
-          </div>,
+          </HorizontalScrollRegion>,
         );
       }
       continue;
@@ -146,9 +148,9 @@ function DocMarkdown({ text }: { text: string }) {
       blocks.push(
         <ul key={key++} className="mt-1 space-y-1">
           {items.map((it, ii) => (
-            <li key={ii} className="flex items-start gap-2 text-[11.5px] leading-relaxed text-ink-700">
+            <li key={ii} className="flex items-start gap-2 text-[12.5px] leading-relaxed text-ink-700">
               {it.required ? (
-                <span className="mt-0.5 shrink-0 rounded bg-brand-600 px-1 py-px font-code text-[6.5px] font-bold tracking-[0.1em] text-white">
+                <span className="mt-0.5 shrink-0 rounded bg-brand-600 px-1.5 py-0.5 font-code text-[10px] font-bold tracking-[0.06em] text-white">
                   REQUIRED
                 </span>
               ) : (
@@ -164,7 +166,7 @@ function DocMarkdown({ text }: { text: string }) {
 
     /* paragraph */
     blocks.push(
-      <p key={key++} className="mt-1 text-[11.5px] leading-[1.7] text-ink-700">
+      <p key={key++} className="mt-1 text-[12.5px] leading-[1.7] text-ink-700">
         {renderInline(line, `p${key}`)}
       </p>,
     );
@@ -178,19 +180,49 @@ export function TenderPackPreview({
   sample,
   onClose,
   onStage,
+  onReturnFocusFallback,
 }: {
   sample: TenderPackRow | null;
   onClose: () => void;
   /** Stage the pack being previewed (closes the viewer). */
   onStage: (s: TenderPackRow) => void;
+  /** Used if the preview trigger is removed while staging the pack. */
+  onReturnFocusFallback?: () => void;
 }) {
   const open = !!sample;
   const [selected, setSelected] = useState<string | null>(null);
   const [text, setText] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const docRequestRef = useRef(0);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const closeRef = useRef<HTMLButtonElement | null>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const wasOpenRef = useRef(false);
+  const fallbackFocusRef = useRef(onReturnFocusFallback);
+  const reduceMotion = useReducedMotion();
+  fallbackFocusRef.current = onReturnFocusFallback;
+
+  /* Return to the preview trigger after the sheet finishes closing. */
+  useEffect(() => {
+    if (open) {
+      if (!wasOpenRef.current) {
+        const active = document.activeElement;
+        returnFocusRef.current = active instanceof HTMLElement ? active : null;
+      }
+      wasOpenRef.current = true;
+      return;
+    }
+    if (!wasOpenRef.current) return;
+    wasOpenRef.current = false;
+    const target = returnFocusRef.current;
+    returnFocusRef.current = null;
+    const timer = window.setTimeout(() => {
+      if (target?.isConnected) target.focus();
+      else fallbackFocusRef.current?.();
+    }, reduceMotion ? 0 : 220);
+    return () => window.clearTimeout(timer);
+  }, [open, reduceMotion]);
 
   /* Reset the reader whenever a different pack opens; default to the notice. */
   useEffect(() => {
@@ -204,6 +236,7 @@ export function TenderPackPreview({
   }, [sample]);
 
   const fetchDoc = useCallback(async (ref: string, file: string) => {
+    const requestId = ++docRequestRef.current;
     setLoading(true);
     setError(null);
     try {
@@ -213,20 +246,28 @@ export function TenderPackPreview({
       if (!res.ok) throw new Error(`sidecar ${res.status}`);
       const data = (await res.json()) as { doc?: { name: string; text: string } };
       if (!data.doc?.text) throw new Error("empty");
+      if (requestId !== docRequestRef.current) return;
       setText(data.doc.text);
     } catch {
+      if (requestId !== docRequestRef.current) return;
       setText(null);
       setError("THIS DOCUMENT COULD NOT BE READ — THE AGENT STACK MAY BE OFFLINE. RETRY OR PICK ANOTHER FILE.");
     } finally {
-      setLoading(false);
+      if (requestId === docRequestRef.current) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (sample && selected) {
-      setText(null);
-      fetchDoc(sample.ref, selected);
+    if (!sample || !selected) {
+      docRequestRef.current += 1;
+      setLoading(false);
+      return;
     }
+    setText(null);
+    fetchDoc(sample.ref, selected);
+    return () => {
+      docRequestRef.current += 1;
+    };
   }, [sample, selected, fetchDoc]);
 
   /* Escape closes — consistent with the desk's other sheets. */
@@ -239,25 +280,6 @@ export function TenderPackPreview({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  /* Tab stays inside the dialog. */
-  const trapTab = (e: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (e.key !== "Tab") return;
-    const nodes = Array.from(
-      cardRef.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? [],
-    );
-    if (nodes.length === 0) return;
-    const first = nodes[0];
-    const last = nodes[nodes.length - 1];
-    const active = document.activeElement;
-    if (e.shiftKey && (active === first || !cardRef.current?.contains(active))) {
-      e.preventDefault();
-      last.focus();
-    } else if (!e.shiftKey && active === last) {
-      e.preventDefault();
-      first.focus();
-    }
-  };
-
   const totalChars = useMemo(() => (text ? text.length : 0), [text]);
 
   /* Portalled to document.body: the New Run sheet animates scale, and a
@@ -269,10 +291,10 @@ export function TenderPackPreview({
       {sample && (
         <motion.div
           key="tender-pack-preview"
-          initial={{ opacity: 0 }}
+          initial={reduceMotion ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
+          exit={reduceMotion ? { opacity: 1 } : { opacity: 0 }}
+          transition={{ duration: reduceMotion ? 0 : 0.2 }}
           className="fixed inset-0 z-[85] grid place-items-center bg-night/70 p-3 backdrop-blur-sm sm:p-4"
           onClick={onClose}
           role="dialog"
@@ -281,18 +303,18 @@ export function TenderPackPreview({
         >
           <motion.div
             ref={cardRef}
-            initial={{ opacity: 0, y: 18, scale: 0.98 }}
+            initial={reduceMotion ? false : { opacity: 0, y: 18, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12 }}
-            transition={{ duration: 0.28, ease: EASE }}
+            exit={reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
+            transition={reduceMotion ? { duration: 0 } : { duration: 0.28, ease: EASE }}
             onClick={(e) => e.stopPropagation()}
-            onKeyDown={trapTab}
-            className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[12px] panel shadow-[0_30px_80px_rgba(11,12,15,0.35)]"
+            onKeyDown={(event) => trapTabFocus(event, cardRef.current)}
+            className="flex max-h-[92dvh] w-full max-w-5xl flex-col overflow-hidden rounded-[12px] panel shadow-[0_30px_80px_rgba(11,12,15,0.35)]"
           >
             {/* ── header ── */}
             <div className="flex items-start justify-between gap-4 border-b border-ink-100 px-5 py-4 sm:px-7 sm:py-5">
               <div className="min-w-0">
-                <p className="flex items-center gap-2 font-code text-[8px] font-semibold tracking-[0.24em] text-ink-400">
+                <p className="flex items-center gap-2 font-code text-[10px] font-semibold tracking-[0.16em] text-ink-400">
                   <ScanSearch className="h-3 w-3 text-brand-600" aria-hidden="true" />
                   TENDER PACK PREVIEW · READ-ONLY
                 </p>
@@ -300,19 +322,19 @@ export function TenderPackPreview({
                   id="tender-pack-preview-title"
                   className="mt-1 flex flex-wrap items-center gap-2 font-display text-[20px] font-black tracking-[-0.015em] text-ink-950 sm:text-[22px]"
                 >
-                  <span className="font-code text-[12px] font-bold tracking-[0.08em]">{sample.ref}</span>
-                  <span className="rounded-full bg-ink-950 px-2 py-0.5 font-code text-[7px] font-bold tracking-[0.14em] text-white">
+                  <span className="font-code text-[10px] font-bold tracking-[0.12em] text-ink-500">BUILT-IN SAMPLE PACK</span>
+                  <span className="rounded-full bg-ink-950 px-2 py-1 font-code text-[10px] font-bold tracking-[0.1em] text-white">
                     {sample.sector}
                   </span>
                 </h3>
-                <p className="mt-0.5 truncate text-[12.5px] font-medium text-ink-800">{sample.title}</p>
+                <p className="mt-0.5 truncate text-[13px] font-medium text-ink-800">{sample.title}</p>
               </div>
               <button
                 ref={closeRef}
                 type="button"
                 onClick={onClose}
                 aria-label="Close the tender pack preview"
-                className="rounded-lg border border-ink-100 p-1.5 text-ink-400 transition-colors hover:border-ink-300 hover:text-ink-800"
+                className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-ink-100 text-ink-500 transition-colors hover:border-ink-300 hover:text-ink-800"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -323,17 +345,17 @@ export function TenderPackPreview({
               {[
                 ["BUYER", sample.buyer],
                 ["CEILING", sample.budget],
-                ["FORMAT", `${sample.format} · ${sample.bids} BIDS`],
+                ["FORMAT", `${sample.format} · ${sample.bids} BIDDERS`],
                 ["DOCUMENTS", `${sample.files.length} FILES`],
               ].map(([k, v]) => (
                 <div key={k} className="min-w-0">
-                  <p className="font-code text-[7.5px] font-bold tracking-[0.18em] text-ink-400">{k}</p>
-                  <p className="mt-0.5 truncate text-[11.5px] font-medium text-ink-800" title={v}>
+                  <p className="font-code text-[10px] font-bold tracking-[0.12em] text-ink-400">{k}</p>
+                  <p className="mt-0.5 truncate text-[12.5px] font-medium text-ink-800" title={v}>
                     {v}
                   </p>
                 </div>
               ))}
-              <p className="col-span-2 text-[11.5px] leading-relaxed text-ink-500 sm:col-span-4">{sample.challenges}</p>
+              <p className="col-span-2 text-[12px] leading-relaxed text-ink-500 sm:col-span-4">{sample.challenges}</p>
             </div>
 
             {/* ── body: document list + reader ── */}
@@ -341,9 +363,11 @@ export function TenderPackPreview({
               {/* document list */}
               <nav
                 aria-label="Documents in this pack"
-                className="max-h-40 shrink-0 overflow-y-auto border-b border-ink-100 bg-paper/40 p-2 md:max-h-none md:border-b-0 md:border-r"
+                className="max-h-32 shrink-0 overflow-y-auto border-b border-ink-100 bg-paper/40 p-2 sm:max-h-40 md:max-h-none md:border-b-0 md:border-r"
               >
-                {sample.files.map((file, i) => {
+                {sample.files.length === 0 ? (
+                  <p className="px-2 py-3 text-[12px] leading-relaxed text-ink-500">No files are attached to this sample pack.</p>
+                ) : sample.files.map((file, i) => {
                   const meta = docLabel(file);
                   const active = file === selected;
                   return (
@@ -353,16 +377,16 @@ export function TenderPackPreview({
                       onClick={() => setSelected(file)}
                       aria-current={active ? "true" : undefined}
                       className={cn(
-                        "mb-1 flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors",
+                        "focus-brand mb-1 flex min-h-11 w-full items-start gap-2.5 rounded-lg px-2.5 py-2.5 text-left transition-colors",
                         active ? "bg-ink-950 text-white" : "hover:bg-ink-100/70",
                       )}
                     >
                       <FileText className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", active ? "text-brand-400" : "text-ink-400")} aria-hidden="true" />
                       <span className="min-w-0">
-                        <span className={cn("block font-code text-[7.5px] font-bold tracking-[0.16em]", active ? "text-brand-300" : "text-ink-400")}>
+                        <span className={cn("block font-code text-[10px] font-bold tracking-[0.1em]", active ? "text-brand-300" : "text-ink-400")}>
                           {String(i + 1).padStart(2, "0")} · {meta.kind}
                         </span>
-                        <span className={cn("mt-0.5 block truncate text-[11.5px] font-medium", active ? "text-white" : "text-ink-800")}>
+                        <span className={cn("mt-0.5 block truncate text-[12px] font-medium", active ? "text-white" : "text-ink-800")}>
                           {meta.name}
                         </span>
                       </span>
@@ -374,32 +398,37 @@ export function TenderPackPreview({
               {/* reader pane */}
               <div className="flex min-h-0 flex-col">
                 <div className="flex items-center justify-between gap-3 border-b border-ink-100 px-4 py-2 sm:px-6">
-                  <p className="truncate font-code text-[8px] font-bold tracking-[0.16em] text-ink-500">
+                  <p className="truncate font-code text-[10px] font-bold tracking-[0.1em] text-ink-500">
                     {selected ? selected.toUpperCase() : "NO DOCUMENT SELECTED"}
                   </p>
-                  <p className="shrink-0 font-code text-[7.5px] tracking-[0.14em] text-ink-400" aria-live="polite">
+                  <p className="shrink-0 font-code text-[10px] tracking-[0.08em] text-ink-400" aria-live="polite">
                     {loading ? "READING…" : text ? `${totalChars.toLocaleString()} CHARS · FULL TEXT` : ""}
                   </p>
                 </div>
-                <div className="min-h-[280px] flex-1 overflow-y-auto px-4 py-4 sm:px-6" tabIndex={0} aria-label="Document full text">
+                <div className="min-h-[120px] flex-1 overflow-y-auto px-4 py-4 sm:min-h-[280px] sm:px-6" tabIndex={0} aria-label="Document full text">
                   {loading && (
                     <div className="flex h-full items-center justify-center gap-2.5 text-ink-400">
                       <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                      <span className="font-code text-[9px] tracking-[0.18em]">READING THE PACK…</span>
+                      <span className="font-code text-[10px] tracking-[0.12em]">READING THE PACK…</span>
                     </div>
                   )}
                   {!loading && error && (
                     <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-                      <p className="max-w-sm font-code text-[9px] leading-relaxed tracking-[0.14em] text-brand-700">{error}</p>
+                      <p className="max-w-sm font-code text-[11px] leading-relaxed tracking-[0.06em] text-brand-700">{error}</p>
                       {sample && selected && (
                         <button
                           type="button"
                           onClick={() => fetchDoc(sample.ref, selected)}
-                          className="rounded-lg border border-ink-200 px-3.5 py-1.5 font-code text-[8px] font-bold tracking-[0.16em] text-ink-700 transition-colors hover:border-ink-400"
+                          className="focus-brand inline-flex min-h-11 items-center rounded-lg border border-ink-200 px-4 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-400"
                         >
                           RETRY
                         </button>
                       )}
+                    </div>
+                  )}
+                  {!loading && !error && !selected && (
+                    <div className="flex h-full min-h-28 items-center justify-center px-4 text-center">
+                      <p className="max-w-sm text-[12.5px] leading-relaxed text-ink-500">This sample pack has no documents to preview.</p>
                     </div>
                   )}
                   {!loading && !error && text !== null && (
@@ -414,16 +443,19 @@ export function TenderPackPreview({
 
             {/* ── footer ── */}
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink-100 bg-paper/60 px-5 py-3 sm:px-7">
-              <p className="flex items-center gap-2 text-[11px] leading-snug text-ink-500">
+              <p className="flex items-center gap-2 text-[12px] leading-snug text-ink-500">
                 <BookOpen className="h-3.5 w-3.5 shrink-0 text-brand-600" aria-hidden="true" />
-                The agent reads exactly these files over MCP — the review runs the pack’s own bytes, nothing synthetic.
+                {sample.files.length === 0
+                  ? "This sample has no source files, so it cannot be staged for a review."
+                  : "The agent reads exactly these files over MCP — the review runs the pack’s own bytes, nothing synthetic."}
               </p>
               <button
                 type="button"
                 onClick={() => onStage(sample)}
-                className="flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 font-code text-[8px] font-bold tracking-[0.16em] text-white transition-all hover:bg-brand-700"
+                disabled={sample.files.length === 0}
+                className="focus-brand inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-4 font-code text-[10px] font-bold tracking-[0.1em] text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-45"
               >
-                STAGE THIS PACK &amp; RUN
+                {sample.files.length === 0 ? "NO FILES TO STAGE" : "STAGE THIS PACK"}
               </button>
             </div>
           </motion.div>

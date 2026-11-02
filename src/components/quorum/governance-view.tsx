@@ -191,7 +191,7 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
           <button
             type="button"
             onClick={() => void load()}
-            className="focus-brand inline-flex h-9 items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 font-code text-[8px] font-bold tracking-[0.14em] text-ink-700 transition-colors hover:border-ink-950"
+            className="focus-brand inline-flex h-11 min-h-11 items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.08em] text-ink-700 transition-colors hover:border-ink-950"
           >
             <RefreshCw className="h-3 w-3" aria-hidden="true" />
             REFRESH
@@ -201,7 +201,7 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
               type="button"
               onClick={() => void signOff()}
               disabled={busy === "signoff" || !!gov?.confirmed}
-              className="focus-brand inline-flex h-9 items-center gap-2 rounded-lg bg-ink-950 px-3 font-code text-[8px] font-bold tracking-[0.14em] text-white transition-colors hover:bg-ink-800 disabled:cursor-not-allowed disabled:opacity-40"
+              className="focus-brand inline-flex h-11 min-h-11 items-center gap-2 rounded-lg bg-ink-950 px-3 font-code text-[10px] font-bold tracking-[0.08em] text-white transition-colors hover:bg-ink-800 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {busy === "signoff" ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <BadgeCheck className="h-3 w-3" aria-hidden="true" />}
               {gov?.confirmed ? "SIGN-OFF RECORDED" : "RECORD SIGN-OFF"}
@@ -213,7 +213,7 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
       <section className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Governance summary">
         {stats.map((stat) => (
           <div key={stat.label} className="rounded-xl border border-ink-200/80 bg-white px-4 py-3.5">
-            <p className="font-code text-[7.5px] font-bold tracking-[0.2em] text-ink-400">{stat.label}</p>
+            <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">{stat.label}</p>
             <p className="mt-2 text-[24px] font-semibold tracking-[-0.02em] text-ink-950 tabular">{stat.value}</p>
             <p className="mt-0.5 text-[10.5px] text-ink-500">{stat.note}</p>
           </div>
@@ -242,10 +242,10 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
           {/* Authority matrix */}
           <section className={`${card} mt-5`} aria-labelledby="gov-matrix">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 px-5 py-4">
-              <p id="gov-matrix" className="font-code text-[8px] font-semibold uppercase tracking-[0.22em] text-ink-400">
+              <p id="gov-matrix" className="font-code text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-500">
                 Authority matrix — every governed action
               </p>
-              <p className="font-code text-[8px] tracking-[0.14em] text-ink-400">
+              <p className="font-code text-[10px] tracking-[0.03em] text-ink-500">
                 {gov.updatedBy ? `bands updated by ${gov.updatedBy}${gov.updatedAt ? ` · ${gov.updatedAt.slice(0, 10)}` : ""}` : "defaults in force"}
               </p>
             </div>
@@ -255,21 +255,21 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
                     <span className="text-[13.5px] font-semibold text-ink-950">{action.action}</span>
                     {action.gated && (
-                      <span className="inline-flex h-5 items-center rounded-full border border-brand-300 bg-brand-50 px-2 font-code text-[7.5px] font-bold tracking-[0.14em] text-brand-800 dark:border-brand-500/40 dark:bg-brand-500/10 dark:text-brand-300">
+                      <span className="inline-flex min-h-7 items-center rounded-full border border-brand-300 bg-brand-50 px-2.5 font-code text-[10px] font-bold tracking-[0.04em] text-brand-800 dark:border-brand-500/40 dark:bg-brand-500/10 dark:text-brand-300">
                         GATE
                       </span>
                     )}
                     {action.office && (
-                      <span className="inline-flex h-5 items-center rounded-full border border-ink-200 bg-[#fffdfb] px-2 font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-ink-300">
+                      <span className="inline-flex min-h-7 items-center rounded-full border border-ink-200 bg-[#fffdfb] px-2.5 font-code text-[10px] font-bold tracking-[0.04em] text-ink-700 dark:border-white/10 dark:bg-white/[0.03] dark:text-ink-200">
                         {OFFICE_LABEL[action.office] ?? action.office}
                       </span>
                     )}
                   </div>
-                  <div className="mt-2 grid gap-x-8 gap-y-1 text-[12px] leading-relaxed text-ink-600 md:grid-cols-2">
-                    <p><span className="font-code text-[7.5px] font-bold tracking-[0.16em] text-ink-400">ROLE · </span>{action.role}</p>
-                    <p><span className="font-code text-[7.5px] font-bold tracking-[0.16em] text-ink-400">ESCALATION · </span>{action.escalation}</p>
-                    <p className="md:col-span-2"><span className="font-code text-[7.5px] font-bold tracking-[0.16em] text-ink-400">BASIS · </span>{action.basis}</p>
-                    <p className="md:col-span-2"><span className="font-code text-[7.5px] font-bold tracking-[0.16em] text-ink-400">EVIDENCE · </span>{action.evidence}</p>
+                  <div className="mt-2 grid gap-x-8 gap-y-1 text-[12.5px] leading-relaxed text-ink-700 md:grid-cols-2">
+                    <p><span className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-500">ROLE · </span>{action.role}</p>
+                    <p><span className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-500">ESCALATION · </span>{action.escalation}</p>
+                    <p className="md:col-span-2"><span className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-500">BASIS · </span>{action.basis}</p>
+                    <p className="md:col-span-2"><span className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-500">EVIDENCE · </span>{action.evidence}</p>
                   </div>
                 </li>
               ))}
@@ -280,7 +280,7 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
             {/* Separation of duties */}
             <section className={card} aria-labelledby="gov-duties">
               <div className="border-b border-ink-100 px-5 py-4">
-                <p id="gov-duties" className="font-code text-[8px] font-semibold uppercase tracking-[0.22em] text-ink-400">
+                <p id="gov-duties" className="font-code text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-500">
                   Separation of duties — and how it is enforced
                 </p>
               </div>
@@ -292,7 +292,7 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
                       {duty.rule}
                     </p>
                     <p className="mt-1.5 text-[12px] leading-relaxed text-ink-600">{duty.enforcement}</p>
-                    <p className="mt-1 font-code text-[7.5px] tracking-[0.14em] text-ink-400">ENFORCED BY · {duty.enforcedBy}</p>
+                    <p className="mt-1 font-code text-[10px] tracking-[0.03em] text-ink-500">Enforced by · {duty.enforcedBy}</p>
                   </li>
                 ))}
               </ul>
@@ -302,7 +302,7 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
             <div className="space-y-5">
               <section className={card} aria-labelledby="gov-bands">
                 <div className="border-b border-ink-100 px-5 py-4">
-                  <p id="gov-bands" className="font-code text-[8px] font-semibold uppercase tracking-[0.22em] text-ink-400">
+                  <p id="gov-bands" className="font-code text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-500">
                     Approval bands — value to office
                   </p>
                 </div>
@@ -327,7 +327,7 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
               {access && (
                 <section className={card} aria-labelledby="gov-access">
                   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 px-5 py-4">
-                    <p id="gov-access" className="font-code text-[8px] font-semibold uppercase tracking-[0.22em] text-ink-400">
+                    <p id="gov-access" className="font-code text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-500">
                       Access posture — live
                     </p>
                     {canManagePeople && (
@@ -335,7 +335,7 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
                         type="button"
                         onClick={() => void recordAccessReview()}
                         disabled={busy === "review"}
-                        className="focus-brand inline-flex h-8 items-center gap-2 rounded-lg border border-ink-200 bg-white px-2.5 font-code text-[8px] font-bold tracking-[0.14em] text-ink-700 transition-colors hover:border-ink-950 disabled:opacity-50"
+                        className="focus-brand inline-flex h-11 min-h-11 items-center gap-2 rounded-lg border border-ink-200 bg-white px-2.5 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-950 disabled:opacity-50"
                       >
                         {busy === "review" ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <ClipboardCheck className="h-3 w-3" aria-hidden="true" />}
                         RECORD REVIEW
@@ -345,17 +345,17 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
                   <div className="px-5 py-4">
                     <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-[12.5px]">
                       <div>
-                        <dt className="font-code text-[7.5px] font-bold tracking-[0.16em] text-ink-400">ACCOUNTS</dt>
+                        <dt className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-500">ACCOUNTS</dt>
                         <dd className="mt-0.5 text-ink-900 tabular">{access.totals.users} · by role: {Object.entries(access.byRole).map(([r, n]) => `${r.toLowerCase()} ${n}`).join(", ") || "—"}</dd>
                       </div>
                       <div>
-                        <dt className="font-code text-[7.5px] font-bold tracking-[0.16em] text-ink-400">LIVE SESSIONS</dt>
+                        <dt className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-500">LIVE SESSIONS</dt>
                         <dd className="mt-0.5 text-ink-900 tabular">{access.totals.activeSessions} · {access.totals.pendingInvites} invite(s) pending</dd>
                       </div>
                       <div>
-                        <dt className="font-code text-[7.5px] font-bold tracking-[0.16em] text-ink-400">MFA POLICY</dt>
+                        <dt className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-500">MFA POLICY</dt>
                         <dd className="mt-0.5 flex items-center gap-2">
-                          <span className={cn("inline-flex h-5 items-center rounded-full border px-2 font-code text-[7.5px] font-bold tracking-[0.14em]", mfa?.enabled ? "border-emerald-500/30 bg-emerald-500/[0.06] text-emerald-700" : "border-amber-500/40 bg-amber-500/[0.06] text-amber-700")}>
+                          <span className={cn("inline-flex min-h-7 items-center rounded-full border px-2.5 font-code text-[10px] font-bold tracking-[0.04em]", mfa?.enabled ? "border-emerald-500/30 bg-emerald-500/[0.06] text-emerald-700" : "border-amber-500/40 bg-amber-500/[0.06] text-amber-700")}>
                             {mfa?.enabled ? "ON" : "OFF"}
                           </span>
                           {canManagePeople && (
@@ -363,7 +363,7 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
                               type="button"
                               onClick={() => void toggleMfa(!(mfa?.enabled ?? false))}
                               disabled={busy === "mfa"}
-                              className="focus-brand font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-600 underline decoration-dotted underline-offset-2 hover:text-ink-950 disabled:opacity-50"
+                              className="focus-brand inline-flex min-h-11 items-center rounded px-2 font-code text-[10px] font-bold tracking-[0.04em] text-ink-700 underline decoration-dotted underline-offset-2 hover:text-ink-950 disabled:opacity-50"
                             >
                               {busy === "mfa" ? "…" : mfa?.enabled ? "TURN OFF" : "TURN ON"}
                             </button>
@@ -371,7 +371,7 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
                         </dd>
                       </div>
                       <div>
-                        <dt className="font-code text-[7.5px] font-bold tracking-[0.16em] text-ink-400">LAST ACCESS REVIEW</dt>
+                        <dt className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-500">LAST ACCESS REVIEW</dt>
                         <dd className="mt-0.5 text-ink-900">
                           {access.lastReview ? `${access.lastReview.by} · ${access.lastReview.at.slice(0, 10)}` : "none recorded yet"}
                         </dd>

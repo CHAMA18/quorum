@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { CircleAlert, Eraser, PenLine, ShieldCheck, Stamp, Undo2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { trapTabFocus } from "@/lib/a11y";
 import { cn } from "@/lib/utils";
 
 /**
@@ -164,6 +165,7 @@ export function AwardSignatureHost() {
   const activePointerRef = useRef<number | null>(null);
   const sizeRef = useRef({ w: 0, h: 0 });
   const restoreFocusRef = useRef<HTMLElement | null>(null);
+  const wasPendingRef = useRef(false);
 
   const resetInkState = useCallback(() => {
     strokesRef.current = [];
@@ -249,12 +251,17 @@ export function AwardSignatureHost() {
      review beat — a keyboard officer never lands outside the dialog. */
   useEffect(() => {
     if (!pending) {
+      if (!wasPendingRef.current) return;
+      wasPendingRef.current = false;
       const prev = restoreFocusRef.current;
       restoreFocusRef.current = null;
-      prev?.focus?.();
+      if (prev?.isConnected) prev.focus();
       return;
     }
-    restoreFocusRef.current = (document.activeElement as HTMLElement) ?? null;
+    if (!wasPendingRef.current) {
+      wasPendingRef.current = true;
+      restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    }
     const raf = requestAnimationFrame(() => cardRef.current?.focus());
     return () => cancelAnimationFrame(raf);
   }, [pending]);
@@ -440,22 +447,22 @@ export function AwardSignatureHost() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="award-ink-title"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) settle(null);
           }}
         >
           <motion.div
             ref={cardRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="award-ink-title"
             tabIndex={-1}
-            aria-label="Award signature instrument"
+            onKeyDown={(event) => trapTabFocus(event, cardRef.current)}
             initial={{ opacity: 0, y: 14, scale: 0.985 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.99 }}
             transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="max-h-full w-full max-w-[560px] overflow-y-auto rounded-2xl border border-ink-200 bg-[#fffdfb] shadow-[0_24px_80px_-24px_rgba(11,12,15,0.45)] outline-none"
+            className="max-h-[calc(100dvh-3rem)] w-full max-w-[560px] overflow-y-auto overscroll-contain rounded-2xl border border-ink-200 bg-[#fffdfb] shadow-[0_24px_80px_-24px_rgba(11,12,15,0.45)] outline-none"
           >
             {/* Seal band — the award acts in brand red, the way the gavel does */}
             <div className="h-[3px] w-full bg-gradient-to-r from-brand-700 via-brand-500 to-brand-700" aria-hidden="true" />
@@ -479,7 +486,7 @@ export function AwardSignatureHost() {
                 type="button"
                 onClick={() => settle(null)}
                 aria-label="Cancel signature"
-                className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-ink-400 transition-colors hover:bg-ink-950/[0.05] hover:text-ink-800"
+                className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink-600 transition-colors hover:bg-ink-950/[0.05] hover:text-ink-950"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -487,7 +494,7 @@ export function AwardSignatureHost() {
 
             {/* The instrument — what exactly is being signed */}
             <div className="border-b border-ink-100 bg-paper px-5 py-3.5">
-              <p className="font-code text-[7.5px] font-bold tracking-[0.2em] text-ink-400">THE ACT BEING SIGNED</p>
+              <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">The act being signed</p>
               <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-800">
                 Award <span className="font-semibold">{p.title}</span>
                 {p.supplier && p.supplier !== "—" ? (
@@ -498,12 +505,12 @@ export function AwardSignatureHost() {
                 ) : null}
                 {p.officeLabel ? <span className="text-ink-500"> · office of {p.officeLabel.toLowerCase()}</span> : null}.
               </p>
-              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 font-code text-[8px] font-bold tracking-[0.12em] text-ink-500">
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-semibold text-ink-600">
                 <span>
-                  {p.factLabel.toUpperCase()}: <span className="text-ink-800">{p.factText.toUpperCase()}</span>
+                  {p.factLabel}: <span className="text-ink-900">{p.factText}</span>
                 </span>
                 {p.flags > 0 && <span className="text-brand-700">{p.flags} FLAG{p.flags === 1 ? "" : "S"} CITED IN THE FILE</span>}
-                <span className="text-brand-700">IRREVERSIBLE ONCE SIGNED</span>
+                <span className="font-bold text-brand-800">Irreversible once signed</span>
               </div>
             </div>
 
@@ -521,8 +528,8 @@ export function AwardSignatureHost() {
               {preview ? (
                 <>
                   <div className="flex items-center justify-between">
-                    <label className="font-code text-[8px] font-bold tracking-[0.2em] text-ink-500">REVIEW YOUR SIGNATURE</label>
-                    <span className="font-code text-[7.5px] tracking-[0.14em] text-ink-400">AS IT WILL APPEAR ON THE RECEIPT</span>
+                    <label className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-700">Review your signature</label>
+                    <span className="text-[10px] text-ink-600">As it will appear on the receipt</span>
                   </div>
                   <motion.div
                     initial={{ opacity: 0, y: 8, scale: 0.985 }}
@@ -537,18 +544,18 @@ export function AwardSignatureHost() {
                         className="max-h-[120px] w-auto max-w-full object-contain"
                       />
                     </div>
-                    <span className="absolute right-3 top-2.5 inline-flex items-center gap-1 font-code text-[7px] font-bold tracking-[0.14em] text-ink-400">
+                    <span className="absolute right-3 top-2.5 inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold text-ink-700">
                       <PenLine className="h-2.5 w-2.5" aria-hidden="true" />
                       HAND-AUTHORED · {preview.strokes} {preview.strokes === 1 ? "STROKE" : "STROKES"}
                     </span>
-                    <div className="flex items-end justify-between gap-4 border-t border-dashed border-ink-200 px-4 pb-2.5 pt-2">
+                    <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-t border-dashed border-ink-200 px-4 pb-2.5 pt-2">
                       <div className="min-w-0">
                         <p className="truncate text-[11.5px] font-semibold text-ink-800">{p.signerName || "Authorised officer"}</p>
                         {p.signerRoleLabel ? (
-                          <p className="font-code text-[6.5px] font-bold tracking-[0.16em] text-ink-500">{p.signerRoleLabel.toUpperCase()}</p>
+                          <p className="truncate text-[10px] font-semibold text-ink-600">{p.signerRoleLabel}</p>
                         ) : null}
                       </div>
-                      <p className="shrink-0 font-code text-[6.5px] tracking-[0.12em] text-ink-500">SIGNED {fmtWhen(preview.signedAt).toUpperCase()}</p>
+                      <p className="shrink-0 text-[10px] text-ink-600">Signed {fmtWhen(preview.signedAt)}</p>
                     </div>
                   </motion.div>
                   {inkError ? (
@@ -566,8 +573,8 @@ export function AwardSignatureHost() {
               ) : (
                 <>
                   <div className="flex items-center justify-between">
-                    <label className="font-code text-[8px] font-bold tracking-[0.2em] text-ink-500">YOUR SIGNATURE — FREEFORM</label>
-                    <span className="font-code text-[7.5px] tracking-[0.14em] text-ink-400">MOUSE · FINGER · STYLUS</span>
+                    <label className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-700">Your signature · freeform</label>
+                    <span className="text-[10px] text-ink-600">Mouse · finger · stylus</span>
                   </div>
                   <div
                     ref={wrapRef}
@@ -604,10 +611,10 @@ export function AwardSignatureHost() {
                       <div className="min-w-0">
                         <p className="truncate text-[10.5px] font-semibold text-ink-500">{p.signerName || "Authorised officer"}</p>
                         {p.signerRoleLabel ? (
-                          <p className="font-code text-[6px] font-bold tracking-[0.16em] text-ink-400">{p.signerRoleLabel.toUpperCase()}</p>
+                          <p className="truncate text-[10px] font-semibold text-ink-600">{p.signerRoleLabel}</p>
                         ) : null}
                       </div>
-                      <p className="shrink-0 font-code text-[6px] tracking-[0.12em] text-ink-400">{fmtWhen(openedAt.toISOString()).toUpperCase()}</p>
+                      <p className="shrink-0 text-[10px] text-ink-600">{fmtWhen(openedAt.toISOString())}</p>
                     </motion.div>
                     <canvas
                       ref={canvasRef}
@@ -621,7 +628,7 @@ export function AwardSignatureHost() {
                       role="img"
                     />
                     {hasInk && (
-                      <span className="pointer-events-none absolute right-3 top-2.5 inline-flex items-center gap-1 font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-400">
+                      <span className="pointer-events-none absolute right-3 top-2.5 inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold text-ink-700">
                         <PenLine className="h-2.5 w-2.5" aria-hidden="true" />
                         HAND-AUTHORED · {strokeCount} {strokeCount === 1 ? "STROKE" : "STROKES"}
                       </span>
@@ -629,19 +636,19 @@ export function AwardSignatureHost() {
                   </div>
 
                   <div className="mt-2 flex items-center justify-between">
-                    <p className="font-code text-[7.5px] tracking-[0.14em] text-ink-400">
+                    <p aria-live="polite" className="text-[10.5px] leading-relaxed text-ink-600">
                       {!hasInk
-                        ? "THE INK IS TRIMMED, SCALED AND SEALED WITH THE DECISION"
+                        ? "Your signature will be trimmed and sealed with the decision."
                         : enoughInk
-                          ? "READY — REVIEW, THEN CONFIRM"
-                          : "ADD MORE INK — THE MARK IS TOO SMALL TO SIGN"}
+                          ? "Ready to review and confirm."
+                          : "Add more to your signature; the mark is too small to sign."}
                     </p>
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
                         onClick={undo}
                         disabled={!hasInk}
-                        className="inline-flex h-7 items-center gap-1 rounded-full border border-ink-200/80 bg-white px-2.5 font-code text-[8px] font-bold tracking-[0.12em] text-ink-600 transition-colors hover:border-ink-400 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="focus-brand inline-flex min-h-11 items-center gap-1 rounded-full border border-ink-200/80 bg-white px-3 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-400 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <Undo2 className="h-3 w-3" aria-hidden="true" />
                         UNDO
@@ -650,7 +657,7 @@ export function AwardSignatureHost() {
                         type="button"
                         onClick={clear}
                         disabled={!hasInk}
-                        className="inline-flex h-7 items-center gap-1 rounded-full border border-ink-200/80 bg-white px-2.5 font-code text-[8px] font-bold tracking-[0.12em] text-ink-600 transition-colors hover:border-ink-400 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="focus-brand inline-flex min-h-11 items-center gap-1 rounded-full border border-ink-200/80 bg-white px-3 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-400 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <Eraser className="h-3 w-3" aria-hidden="true" />
                         CLEAR
@@ -675,13 +682,13 @@ export function AwardSignatureHost() {
             {/* Signer + actions */}
             <div className="mt-4 border-t border-ink-100 px-5 py-4">
               <div className="flex items-center gap-2.5">
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ink-950 font-code text-[9px] font-bold text-white">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-ink-950 font-code text-[10px] font-bold text-white">
                   {signerInitials || "Q"}
                 </span>
                 <div className="min-w-0">
                   <p className="truncate text-[12.5px] font-semibold text-ink-950">{p.signerName || "Authorised officer"}</p>
-                  <p className="font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-500">
-                    {p.signerRoleLabel ? `${p.signerRoleLabel.toUpperCase()} · ` : ""}SESSION ATTESTED · {fmtWhen(openedAt.toISOString()).toUpperCase()}
+                  <p className="text-[10px] leading-relaxed text-ink-600">
+                    {p.signerRoleLabel ? `${p.signerRoleLabel} · ` : ""}Session attested · {fmtWhen(openedAt.toISOString())}
                   </p>
                 </div>
               </div>
@@ -691,7 +698,7 @@ export function AwardSignatureHost() {
                     <button
                       type="button"
                       onClick={() => setPreview(null)}
-                      className="h-10 flex-1 rounded-lg border border-ink-200 bg-white px-3 text-[11px] font-semibold text-ink-700 transition-colors hover:bg-ink-50"
+                      className="focus-brand min-h-11 flex-1 rounded-lg border border-ink-200 bg-white px-3 text-[12px] font-semibold text-ink-800 transition-colors hover:bg-ink-50"
                     >
                       Redraw
                     </button>
@@ -699,7 +706,7 @@ export function AwardSignatureHost() {
                       type="button"
                       ref={confirmRef}
                       onClick={confirmInk}
-                      className="inline-flex h-10 flex-[1.5] items-center justify-center gap-2 rounded-lg bg-brand-600 px-3 text-[11px] font-semibold text-white transition-colors hover:bg-brand-700"
+                      className="focus-brand inline-flex min-h-11 flex-[1.5] items-center justify-center gap-2 rounded-lg bg-brand-600 px-3 text-[12px] font-semibold text-white transition-colors hover:bg-brand-700"
                     >
                       <Stamp className="h-3.5 w-3.5" aria-hidden="true" />
                       Confirm &amp; seal
@@ -710,7 +717,7 @@ export function AwardSignatureHost() {
                     <button
                       type="button"
                       onClick={() => settle(null)}
-                      className="h-10 flex-1 rounded-lg border border-ink-200 bg-white px-3 text-[11px] font-semibold text-ink-700 transition-colors hover:bg-ink-50"
+                      className="focus-brand min-h-11 flex-1 rounded-lg border border-ink-200 bg-white px-3 text-[12px] font-semibold text-ink-800 transition-colors hover:bg-ink-50"
                     >
                       Cancel
                     </button>
@@ -720,7 +727,7 @@ export function AwardSignatureHost() {
                       disabled={!hasInk}
                       title={hasInk ? undefined : "Draw your signature in the box first"}
                       className={cn(
-                        "inline-flex h-10 flex-[1.5] items-center justify-center gap-2 rounded-lg px-3 text-[11px] font-semibold text-white transition-colors",
+                        "focus-brand inline-flex min-h-11 flex-[1.5] items-center justify-center gap-2 rounded-lg px-3 text-[12px] font-semibold text-white transition-colors",
                         hasInk ? "bg-brand-600 hover:bg-brand-700" : "cursor-not-allowed bg-ink-300"
                       )}
                     >
@@ -730,11 +737,11 @@ export function AwardSignatureHost() {
                   </>
                 )}
               </div>
-              <p className="mt-3 flex items-center gap-1.5 font-code text-[7.5px] tracking-[0.12em] text-ink-400">
+              <p className="mt-3 flex items-center gap-1.5 text-[10px] leading-relaxed text-ink-600">
                 <ShieldCheck className="h-3 w-3" aria-hidden="true" />
                 {preview
-                  ? "CONFIRMING SEALS THE INK TO THE AWARD · STEP-UP CHECK FOLLOWS"
-                  : "WET-INK LAYER · READ-BACK BEFORE COMMIT · HASH-BOUND TO THE RECEIPT"}
+                  ? "Confirming seals the ink to the award; a re-authentication check follows."
+                  : "Your signature is reviewed before commitment and bound to the receipt."}
               </p>
             </div>
           </motion.div>
@@ -771,6 +778,22 @@ export type SignatureReceipt = {
 };
 
 export function SignatureReceiptDialog({ row, onClose }: { row: SignatureReceipt | null; onClose: () => void }) {
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const closeRef = useRef<HTMLButtonElement | null>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (row) {
+      const active = document.activeElement;
+      returnFocusRef.current = active instanceof HTMLElement ? active : null;
+      requestAnimationFrame(() => closeRef.current?.focus());
+      return;
+    }
+    const target = returnFocusRef.current;
+    returnFocusRef.current = null;
+    if (target?.isConnected) requestAnimationFrame(() => target.focus());
+  }, [row]);
+
   useEffect(() => {
     if (!row) return;
     const onKey = (e: KeyboardEvent) => {
@@ -788,19 +811,22 @@ export function SignatureReceiptDialog({ row, onClose }: { row: SignatureReceipt
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="ink-receipt-title"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) onClose();
           }}
         >
           <motion.div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ink-receipt-title"
+            tabIndex={-1}
             initial={{ opacity: 0, y: 14, scale: 0.985 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.99 }}
             transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="max-h-full w-full max-w-[460px] overflow-y-auto rounded-2xl border border-ink-200 bg-[#fffdfb] shadow-[0_24px_80px_-24px_rgba(11,12,15,0.45)]"
+            onKeyDown={(event) => trapTabFocus(event, dialogRef.current)}
+            className="max-h-[calc(100dvh-3rem)] w-full max-w-[460px] overflow-y-auto overscroll-contain rounded-2xl border border-ink-200 bg-[#fffdfb] shadow-[0_24px_80px_-24px_rgba(11,12,15,0.45)]"
           >
             <div className="flex items-start justify-between gap-4 border-b border-ink-100 px-5 py-4">
               <div className="flex items-start gap-3">
@@ -818,10 +844,11 @@ export function SignatureReceiptDialog({ row, onClose }: { row: SignatureReceipt
                 </div>
               </div>
               <button
+                ref={closeRef}
                 type="button"
                 onClick={onClose}
                 aria-label="Close receipt"
-                className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-ink-400 transition-colors hover:bg-ink-950/[0.05] hover:text-ink-800"
+                className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink-600 transition-colors hover:bg-ink-950/[0.05] hover:text-ink-950"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -830,18 +857,18 @@ export function SignatureReceiptDialog({ row, onClose }: { row: SignatureReceipt
             <div className="px-5 py-4">
               {row.image ? (
                 <div>
-                  <p className="font-code text-[7.5px] font-bold tracking-[0.2em] text-ink-400">APPENDED SIGNATURE</p>
+                  <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">Appended signature</p>
                   <div className="mt-2 overflow-hidden rounded-xl border border-ink-200 bg-white shadow-[inset_0_1px_4px_rgba(11,12,15,0.05)]">
                     <img src={row.image} alt={`Freeform signature of ${row.by}`} className="max-h-[150px] w-full object-contain" />
                   </div>
-                  <p className="mt-1.5 font-code text-[7.5px] tracking-[0.14em] text-ink-400">
-                    HAND-AUTHORED · {row.strokes ?? "—"} {row.strokes === 1 ? "STROKE" : "STROKES"}
-                    {row.signedAt ? ` · SIGNED ${fmtWhen(row.signedAt).toUpperCase()}` : ""}
+                  <p className="mt-1.5 text-[10px] text-ink-600">
+                    Hand-authored · {row.strokes ?? "—"} {row.strokes === 1 ? "stroke" : "strokes"}
+                    {row.signedAt ? ` · Signed ${fmtWhen(row.signedAt)}` : ""}
                   </p>
                 </div>
               ) : (
-                <p className="rounded-md border border-ink-200 bg-paper px-3 py-2.5 font-code text-[8px] font-bold leading-relaxed tracking-[0.12em] text-ink-500">
-                  NO FREEFORM INK ON THIS DECISION — SIGNED THROUGH THE STEP-UP SEAL ONLY
+                <p className="rounded-md border border-ink-200 bg-paper px-3 py-2.5 text-[11px] font-semibold leading-relaxed text-ink-700">
+                  No freeform signature was appended. This decision was signed through the re-authentication seal only.
                 </p>
               )}
 
@@ -874,9 +901,9 @@ export function SignatureReceiptDialog({ row, onClose }: { row: SignatureReceipt
                 )}
               </dl>
 
-              <p className="mt-4 flex items-center gap-1.5 font-code text-[7.5px] tracking-[0.12em] text-ink-400">
+              <p className="mt-4 flex items-center gap-1.5 text-[10px] leading-relaxed text-ink-600">
                 <ShieldCheck className="h-3 w-3" aria-hidden="true" />
-                STEP-UP SEALED · ED25519 RECEIPT · VERIFIABLE OFFLINE
+                Re-authentication sealed · Ed25519 receipt · Verifiable offline
               </p>
             </div>
           </motion.div>

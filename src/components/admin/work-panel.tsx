@@ -11,6 +11,7 @@ import {
   Stamp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { systemReferenceLabel } from "@/lib/system-reference";
 import type { AdminRun } from "@/lib/admin-types";
 import {
   Button,
@@ -54,7 +55,7 @@ export function WorkPanel({ data, query, setQuery, now, navigate }: PanelProps) 
     return runs.filter((run) => {
       if (status !== "ALL" && run.status !== status) return false;
       if (!needle) return true;
-      return `${run.tenderId} ${run.id} ${run.status} ${run.startedBy ?? ""} ${run.model.models?.join(" ") ?? ""}`
+      return `${run.systemReference ?? ""} ${run.id} ${run.status} ${run.startedBy ?? ""} ${run.model.models?.join(" ") ?? ""}`
         .toLowerCase()
         .includes(needle);
     });
@@ -87,7 +88,7 @@ export function WorkPanel({ data, query, setQuery, now, navigate }: PanelProps) 
         actions={
           <a
             href="/#/dashboard"
-            className="focus-brand inline-flex h-9 items-center gap-2 rounded-lg border border-ink-200 bg-white px-3.5 font-code text-[9px] font-bold uppercase tracking-[0.16em] text-ink-700 transition-colors hover:border-ink-400 hover:text-ink-950 dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-300 dark:hover:border-white/25 dark:hover:text-white"
+            className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg border border-ink-200 bg-white px-4 py-2 font-code text-[10px] font-bold uppercase tracking-[0.08em] text-ink-700 transition-colors hover:border-ink-400 hover:text-ink-950 dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-300 dark:hover:border-white/25 dark:hover:text-white"
           >
             <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
             LAUNCH IN WORKSPACE
@@ -103,9 +104,9 @@ export function WorkPanel({ data, query, setQuery, now, navigate }: PanelProps) 
           { label: "Drafts · tokens", value: `${fmtNum(drafts)} · ${fmtNum(tokens)}`, note: `${fmtNum(failed)} failed run${failed === 1 ? "" : "s"}` },
         ].map((stat) => (
           <div key={stat.label} className="px-4 py-3.5">
-            <p className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">{stat.label}</p>
+            <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">{stat.label}</p>
             <p className="mt-1.5 type-num text-[22px] text-ink-950">{stat.value}</p>
-            <p className="mt-0.5 text-[9.5px] text-ink-400">{stat.note}</p>
+            <p className="mt-0.5 text-[10.5px] leading-relaxed text-ink-600">{stat.note}</p>
           </div>
         ))}
       </div>
@@ -136,9 +137,9 @@ export function WorkPanel({ data, query, setQuery, now, navigate }: PanelProps) 
                 onClick={() => setStatus(filter.id)}
                 aria-pressed={status === filter.id}
                 className={cn(
-                  "focus-brand rounded-full border px-2 py-1 font-code text-[7.5px] font-bold uppercase tracking-[0.12em] transition-colors",
+                  "focus-brand inline-flex min-h-11 items-center rounded-lg border px-3 py-2 font-code text-[10px] font-bold uppercase tracking-[0.06em] transition-colors",
                   status === filter.id
-                    ? "border-ink-950 bg-ink-950 text-white dark:border-white dark:bg-white dark:text-ink-950"
+                    ? "border-ink-950 bg-ink-950 text-white dark:border-white dark:bg-white dark:text-[#0b0c0f]"
                     : "border-ink-200 bg-white text-ink-500 hover:border-ink-400 dark:border-white/12 dark:bg-transparent dark:text-ink-400",
                 )}
               >
@@ -177,15 +178,15 @@ export function WorkPanel({ data, query, setQuery, now, navigate }: PanelProps) 
                       <span className="min-w-0 flex-1">
                         <span className="flex flex-wrap items-center gap-1.5">
                           <span className="truncate font-display text-[13.5px] font-black tracking-[-0.01em] text-ink-950">
-                            {run.tenderId}
+                            {systemReferenceLabel(run.systemReference)}
                           </span>
                           <StatusChip status={run.status} />
                           {run.seal && <Chip tone="emerald" dot>SEALED</Chip>}
                         </span>
-                        <span className="mt-0.5 block truncate font-code text-[8px] tracking-[0.08em] text-ink-400">
+                        <span className="mt-0.5 block truncate text-[10.5px] text-ink-600">
                           {run.id} · {run.startedBy ?? "unattributed"} · started {fmtAgo(run.startedAt, now)}
                         </span>
-                        <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-code text-[8px] uppercase tracking-[0.08em] text-ink-500">
+                        <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-ink-600">
                           <span>{fmtNum(run.requirements)} requirements</span>
                           <span>{fmtNum(run.findings)} findings</span>
                           <span>{fmtNum(run.drafts)} drafts</span>
@@ -202,13 +203,13 @@ export function WorkPanel({ data, query, setQuery, now, navigate }: PanelProps) 
                         {model.mode === "llm" ? "MODEL" : model.mode === "mixed" ? "MIXED" : model.mode === "template" ? "TEMPLATE" : "UNATTRIBUTED"}
                       </Chip>
                       {model.models && model.models.length > 0 ? (
-                        <span className="max-w-[150px] truncate font-code text-[8px] tracking-[0.06em] text-ink-500" title={model.models.join(", ")}>
+                        <span className="max-w-[150px] truncate text-[10.5px] text-ink-600" title={model.models.join(", ")}>
                           {model.models[0]}
                         </span>
                       ) : (
-                        <span className="font-code text-[8px] tracking-[0.06em] text-ink-400">deterministic</span>
+                        <span className="text-[10.5px] text-ink-600">deterministic</span>
                       )}
-                      <span className="font-code text-[8px] tabular text-ink-400">
+                      <span className="font-code text-[10px] tabular text-ink-600">
                         {fmtNum((model.promptTokens ?? 0) + (model.completionTokens ?? 0))} tok
                       </span>
                     </div>
@@ -221,7 +222,7 @@ export function WorkPanel({ data, query, setQuery, now, navigate }: PanelProps) 
                       )}
                       <a
                         href={`/api/runs/${encodeURIComponent(run.id)}/report?XTransformPort=3031`}
-                        className="focus-brand inline-flex h-7 items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2.5 font-code text-[8px] font-bold uppercase tracking-[0.14em] text-ink-600 transition-colors hover:border-ink-400 hover:text-ink-950 dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-300 dark:hover:border-white/25 dark:hover:text-white"
+                        className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 py-2 font-code text-[10px] font-bold uppercase tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-400 hover:text-ink-950 dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-200 dark:hover:border-white/25 dark:hover:text-white"
                       >
                         <Download className="h-3 w-3" aria-hidden="true" /> REPORT
                       </a>
@@ -232,7 +233,7 @@ export function WorkPanel({ data, query, setQuery, now, navigate }: PanelProps) 
                     <div className="border-t border-ink-100 bg-paper-2/50 px-5 py-4 dark:border-white/8 dark:bg-white/[0.02]">
                       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                         <div>
-                          <p className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">PLAN</p>
+                          <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Plan</p>
                           <p className="mt-1 text-[11.5px] font-semibold text-ink-950">
                             {model.planSource === "llm" ? model.planModel ?? "model-led" : "deterministic pack inspection"}
                           </p>
@@ -241,7 +242,7 @@ export function WorkPanel({ data, query, setQuery, now, navigate }: PanelProps) 
                           </p>
                         </div>
                         <div>
-                          <p className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">DRAFTS</p>
+                          <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Drafts</p>
                           <p className="mt-1 text-[11.5px] font-semibold text-ink-950">
                             {fmtNum(model.draftLlm ?? 0)} model · {fmtNum(model.draftTemplate ?? 0)} template
                           </p>
@@ -250,14 +251,14 @@ export function WorkPanel({ data, query, setQuery, now, navigate }: PanelProps) 
                           </p>
                         </div>
                         <div>
-                          <p className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">TOKENS</p>
+                          <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Tokens</p>
                           <p className="mt-1 text-[11.5px] font-semibold text-ink-950 tabular">
                             {fmtNum(model.promptTokens ?? 0)} in · {fmtNum(model.completionTokens ?? 0)} out
                           </p>
                           <p className="mt-0.5 text-[10px] text-ink-400">recorded on the run, not estimated here</p>
                         </div>
                         <div>
-                          <p className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">SEAL</p>
+                          <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Seal</p>
                           {run.seal ? (
                             <div className="mt-1 flex flex-wrap items-center gap-1.5">
                               <span className="font-code text-[10px] tracking-[0.06em] text-ink-800">{shortHash(run.seal, 14)}</span>
@@ -281,8 +282,8 @@ export function WorkPanel({ data, query, setQuery, now, navigate }: PanelProps) 
 
                       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ink-200/70 pt-2.5 dark:border-white/8">
                         <ClipboardCheck className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
-                        <p className="font-code text-[7.5px] font-bold uppercase tracking-[0.16em] text-ink-400">
-                          LAST MOVED {fmtAgo(run.updatedAt, now).toUpperCase()}
+                        <p className="text-[10.5px] font-medium text-ink-600">
+                          Last moved {fmtAgo(run.updatedAt, now)}
                         </p>
                         <CopyButton value={run.id} label="run id" className="ml-auto" />
                       </div>

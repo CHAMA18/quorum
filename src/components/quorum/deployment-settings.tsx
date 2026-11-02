@@ -124,7 +124,7 @@ export function DeploymentSettings({ onToast }: { onToast?: (message: string) =>
 
   if (!deployment && !failed) {
     return (
-      <div className="mt-6 rounded-[12px] panel p-5 font-code text-[8px] tracking-[0.2em] text-ink-400">
+      <div role="status" className="mt-6 rounded-[12px] panel p-5 font-code text-[10px] tracking-[0.06em] text-ink-600">
         SYNCING DEPLOYMENT TRUTH…
       </div>
     );
@@ -135,14 +135,14 @@ export function DeploymentSettings({ onToast }: { onToast?: (message: string) =>
       <div className="mt-6 flex items-start gap-3 rounded-[12px] border border-amber-300/70 bg-amber-50 p-5 text-amber-950 dark:border-amber-400/25 dark:bg-amber-400/[0.07] dark:text-amber-100">
         <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
         <div className="min-w-0">
-          <p className="font-code text-[8px] font-bold tracking-[0.2em]">DEPLOYMENT STATUS UNREACHABLE</p>
+          <p className="font-code text-[10px] font-bold tracking-[0.06em]">DEPLOYMENT STATUS UNREACHABLE</p>
           <p className="mt-1 text-[12px] leading-relaxed">
             The sidecar did not answer. Treat the workspace as record-only until the status is verified.
           </p>
           <button
             type="button"
             onClick={() => void load()}
-            className="mt-2 inline-flex items-center gap-1.5 font-code text-[8px] font-bold tracking-[0.18em] underline underline-offset-4"
+            className="focus-brand mt-2 inline-flex min-h-11 items-center gap-1.5 rounded px-2 font-code text-[10px] font-bold tracking-[0.04em] underline underline-offset-4"
           >
             <RefreshCw className="h-3 w-3" aria-hidden="true" /> RETRY
           </button>
@@ -156,14 +156,14 @@ export function DeploymentSettings({ onToast }: { onToast?: (message: string) =>
   return (
     <div className="mt-6 grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
       <section className="rounded-[12px] panel p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
-        <p className="font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400">DEPLOYMENT</p>
+        <p className="font-code text-[10px] font-semibold tracking-[0.08em] text-ink-600">DEPLOYMENT</p>
         <div className="mt-1.5 flex flex-wrap items-center gap-3">
           <h3 className="font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">
             {recordOnly ? "Record-only" : "Connected"}
           </h3>
           <span
             className={cn(
-              "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-code text-[7.5px] font-bold tracking-[0.14em]",
+              "inline-flex min-h-6 items-center gap-1 rounded-full border px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.04em]",
               recordOnly
                 ? "border-amber-300/70 bg-amber-50 text-amber-800 dark:border-amber-400/25 dark:bg-amber-400/[0.08] dark:text-amber-200"
                 : "border-emerald-500/30 bg-emerald-500/[0.08] text-emerald-700 dark:text-emerald-300",
@@ -178,16 +178,16 @@ export function DeploymentSettings({ onToast }: { onToast?: (message: string) =>
             : "A verified external publication receipt is on record. Contract and payment paths are open, subject to every statutory gate."}
         </p>
         <div className="mt-4 rounded-lg border border-ink-100 bg-paper px-3 py-2.5 dark:border-white/10 dark:bg-white/[0.03]">
-          <p className="font-code text-[7.5px] tracking-[0.16em] text-ink-400">PUBLICATION</p>
-          <p className="mt-1 font-code text-[9px] leading-relaxed text-ink-700 dark:text-ink-300">
+          <p className="font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">PUBLICATION</p>
+          <p className="mt-1 font-code text-[10.5px] leading-relaxed text-ink-800 dark:text-ink-200">
             {deployment.publication.portal.toUpperCase()}
           </p>
           {deployment.publication.receiptId ? (
-            <p className="mt-1 font-code text-[8px] text-emerald-700 dark:text-emerald-300">
+            <p className="mt-1 font-code text-[10px] font-medium text-emerald-800 dark:text-emerald-300">
               RECEIPT {deployment.publication.receiptId}
             </p>
           ) : (
-            <p className="mt-1 font-code text-[8px] text-amber-700 dark:text-amber-300">
+            <p className="mt-1 font-code text-[10px] font-medium text-amber-800 dark:text-amber-300">
               NO EXTERNAL RECEIPT — SIMULATED
             </p>
           )}
@@ -197,7 +197,7 @@ export function DeploymentSettings({ onToast }: { onToast?: (message: string) =>
       <section className="rounded-[12px] panel p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400">FEATURE FLAGS</p>
+            <p className="font-code text-[10px] font-semibold tracking-[0.08em] text-ink-600">FEATURE FLAGS</p>
             <h3 className="mt-1.5 font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">
               What has actually shipped
             </h3>
@@ -206,7 +206,7 @@ export function DeploymentSettings({ onToast }: { onToast?: (message: string) =>
             type="button"
             onClick={() => void load()}
             aria-label="Reload feature flags"
-            className="grid h-7 w-7 place-items-center rounded-full border border-ink-100 text-ink-400 transition-colors hover:border-ink-950 hover:text-ink-950"
+            className="focus-brand grid h-11 w-11 place-items-center rounded-full border border-ink-200 text-ink-500 transition-colors hover:border-ink-950 hover:text-ink-950"
           >
             <RefreshCw className="h-3 w-3" aria-hidden="true" />
           </button>
@@ -225,7 +225,7 @@ export function DeploymentSettings({ onToast }: { onToast?: (message: string) =>
                 <div className="min-w-0 flex-1">
                   <p className="text-[12px] font-medium text-ink-900 dark:text-ink-100">
                     {flag.label}{" "}
-                    <span className="ml-1 font-code text-[7px] tracking-[0.14em] text-ink-400">{flag.phase}</span>
+                    <span className="ml-1 font-code text-[10px] tracking-[0.04em] text-ink-600 dark:text-ink-300">{flag.phase}</span>
                   </p>
                   <p className="mt-0.5 text-[11px] leading-relaxed text-ink-500">{flag.description}</p>
                 </div>
@@ -237,7 +237,7 @@ export function DeploymentSettings({ onToast }: { onToast?: (message: string) =>
                   disabled={!!flag.locked || busy === flag.key}
                   onClick={() => void toggle(flag)}
                   className={cn(
-                    "mt-0.5 inline-flex h-7 min-w-[54px] items-center justify-center gap-1 rounded-full border px-2 font-code text-[7.5px] font-bold tracking-[0.12em] transition-colors",
+                    "focus-brand mt-0.5 inline-flex min-h-11 min-w-[64px] items-center justify-center gap-1 rounded-full border px-2.5 font-code text-[10px] font-bold tracking-[0.04em] transition-colors",
                     flag.locked
                       ? "cursor-not-allowed border-ink-200 bg-paper text-ink-400"
                       : on
@@ -266,7 +266,7 @@ export function DeploymentSettings({ onToast }: { onToast?: (message: string) =>
       <section className="rounded-[12px] panel p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)] lg:col-span-2">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400">JURISDICTION CLOCK</p>
+            <p className="font-code text-[10px] font-semibold tracking-[0.08em] text-ink-600">JURISDICTION CLOCK</p>
             <h3 className="mt-1.5 font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">
               The calendar statutory periods run on
             </h3>
@@ -282,7 +282,7 @@ export function DeploymentSettings({ onToast }: { onToast?: (message: string) =>
                 disabled={settingJurisdiction}
                 onClick={() => void chooseJurisdiction(id)}
                 className={cn(
-                  "inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 font-code text-[8px] font-bold tracking-[0.16em] transition-colors",
+                  "focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg border px-3 font-code text-[10px] font-bold tracking-[0.04em] transition-colors",
                   jurisdiction?.id === id
                     ? "border-brand-600 bg-brand-50 text-brand-800 dark:bg-brand-950/40 dark:text-brand-200"
                     : "border-ink-200 bg-white text-ink-500 hover:border-ink-950 hover:text-ink-950 dark:border-white/15 dark:bg-white/[0.03]",
@@ -304,8 +304,8 @@ export function DeploymentSettings({ onToast }: { onToast?: (message: string) =>
                 ["COMPLAINT REPLY", `${jurisdiction.complaintResponseDays} WORKING DAYS`],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-lg border border-ink-100 bg-paper px-3 py-2 dark:border-white/10 dark:bg-white/[0.03]">
-                  <dt className="font-code text-[7px] tracking-[0.16em] text-ink-400">{label}</dt>
-                  <dd className="mt-1 font-code text-[9px] text-ink-700 dark:text-ink-300">{value}</dd>
+                  <dt className="font-code text-[10px] font-semibold tracking-[0.04em] text-ink-600">{label}</dt>
+                  <dd className="mt-1 font-code text-[11px] text-ink-800 dark:text-ink-200">{value}</dd>
                 </div>
               ))}
             </dl>
@@ -317,7 +317,7 @@ export function DeploymentSettings({ onToast }: { onToast?: (message: string) =>
               return (
                 <p
                   className={cn(
-                    "mt-3 rounded-lg border px-3 py-2 font-code text-[8px] leading-relaxed tracking-[0.14em]",
+                    "mt-3 rounded-lg border px-3 py-2 font-code text-[10px] leading-relaxed tracking-[0.04em]",
                     covered
                       ? "border-ink-100 bg-paper text-ink-500 dark:border-white/10 dark:bg-white/[0.03]"
                       : "border-amber-400/40 bg-amber-400/[0.08] text-amber-800 dark:text-amber-200",

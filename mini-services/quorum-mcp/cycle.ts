@@ -324,6 +324,7 @@ export const NOTICE_MANDATORY_FIELDS: { field: string; test: RegExp }[] = [
   { field: "Closing date", test: /\*\*(?:Closing(?: date)?|Deadline|Submission deadline)(?: for submissions)?:?\*\*\s*\S/i },
   { field: "Budget ceiling", test: /^\*\*Budget ceiling:\*\*\s*\S/m },
   { field: "Required documents", test: /^- \[REQUIRED\]/m },
+  { field: "Evaluation procedure", test: /^\*\*Evaluation procedure:\*\*\s*\S/m },
   { field: "Technical/financial weighting", test: /^\*\*Technical\/financial split:\*\*\s*\d+\/\d+$/m },
   { field: "Financial evaluation formula", test: /^\*\*Financial formula:\*\*\s*.+$/m },
   { field: "FX basis and source", test: /^\*\*FX basis:\*\*\s*(?!NOT STATED).+$/im },
@@ -336,6 +337,63 @@ export function noticeFieldCheck(md: string): NoticeFieldCheck[] {
   return NOTICE_MANDATORY_FIELDS.map(({ field, test }) => ({ field, present: test.test(md) }));
 }
 
+/** Keep the disclosed procedure to one plain-text paragraph in the solicitation. */
+export function cleanEvaluationProcedure(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value
+    .replace(/[\u0000-\u001f\u007f]+/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\|/g, "/")
+    .trim()
+    .slice(0, 1600);
+}
+
+/** Normalize bidder-facing details into one safe, bounded Markdown table cell. */
+export function cleanEvaluationCriterionDetail(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value
+    .replace(/[\u0000-\u001f\u007f]+/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\|/g, "/")
+    .trim()
+    .slice(0, 600);
+}
+
+/** Read the procedure disclosed in an evaluation-criteria section. */
+export function parseEvaluationProcedure(markdown: string): string {
+  const lines = markdown.split(/\r?\n/);
+  const heading = lines.findIndex((line) => /^#{1,6}\s+(?:\d+\.?\s*)?evaluation criteria\b/i.test(line.trim()));
+  if (heading < 0) return "";
+  const nextHeading = lines.findIndex((line, index) => index > heading && /^#{1,6}\s/.test(line.trim()));
+  const section = lines.slice(heading + 1, nextHeading < 0 ? lines.length : nextHeading);
+  const procedure = section.find((line) => /^\*\*Evaluation procedure:\*\*/i.test(line.trim()));
+  return procedure ? cleanEvaluationProcedure(procedure.trim().replace(/^\*\*Evaluation procedure:\*\*\s*/i, "")) : "";
+}
+
+/** Insert or replace the procedure paragraph within the criteria section. */
+export function withEvaluationProcedure(markdown: string, procedureRaw: unknown): string {
+  const procedure = cleanEvaluationProcedure(procedureRaw);
+  const lines = markdown.split(/\r?\n/);
+  const heading = lines.findIndex((line) => /^#{1,6}\s+(?:\d+\.?\s*)?evaluation criteria\b/i.test(line.trim()));
+  const procedureLine = procedure ? `**Evaluation procedure:** ${procedure}` : "";
+  if (heading < 0) {
+    if (!procedure) return markdown;
+    const base = markdown.trimEnd();
+    return `${base}${base ? "\n\n" : ""}## Evaluation criteria\n\n${procedureLine}\n`;
+  }
+  const nextHeading = lines.findIndex((line, index) => index > heading && /^#{1,6}\s/.test(line.trim()));
+  const sectionEnd = nextHeading < 0 ? lines.length : nextHeading;
+  const existing = lines.findIndex((line, index) => index > heading && index < sectionEnd && /^\*\*Evaluation procedure:\*\*/i.test(line.trim()));
+  if (existing >= 0) {
+    if (procedureLine) lines[existing] = procedureLine;
+    else lines.splice(existing, 1);
+    return lines.join("\n");
+  }
+  if (!procedureLine) return markdown;
+  lines.splice(heading + 1, 0, "", procedureLine);
+  return lines.join("\n");
+}
+
 /** A compliant notice skeleton — the template fills what the caller provides, checks the rest. Pure. */
 export function draftNoticeMd(input: {
   reference: string;
@@ -346,7 +404,13 @@ export function draftNoticeMd(input: {
   requiredDocs?: string[];
   contact: string;
   subject: string;
-  evaluationCriteria?: { title: string; weight: number }[];
+  evaluationCriteria?: {
+    title: string;
+    weight: number;
+    evidence?: string;
+    scoringMethod?: string;
+  }[];
+  evaluationProcedure?: string;
   technicalWeightPct?: number;
   financialFormula?: string;
   fxBasis?: string;
@@ -395,9 +459,13 @@ export function draftNoticeMd(input: {
       ? [
           "",
           "## Evaluation criteria (published with this notice)",
-          "| Criterion | Weight (%) |",
-          "| --- | ---: |",
-          ...criteria.map((criterion) => `| ${criterion.title.replace(/\|/g, " / ")} | ${criterion.weight} |`),
+          ...(cleanEvaluationProcedure(input.evaluationProcedure)
+            ? [`**Evaluation procedure:** ${cleanEvaluationProcedure(input.evaluationProcedure)}`, ""]
+            : []),
+          ...renderEvaluationCriteria(criteria.map((criterion, index) => ({
+            id: `C-${String(index + 1).padStart(2, "0")}`,
+            ...criterion,
+          }))).split("\n"),
           "",
           "The evaluation matrix must use these criteria and weights exactly; weights must sum to 100.",
         ]
@@ -458,6 +526,16 @@ export function validateCriteria(criteria: EvalCriterion[]): string | null {
   return null;
 }
 
+/** A weighted row is not publishable until bidders can see what is assessed
+    and how the published percentage will be applied. */
+export function validateCriteriaDisclosure(criteria: EvalCriterion[]): string | null {
+  for (const criterion of criteria) {
+    if (!criterion.evidence?.trim()) return `criterion "${criterion.title}" needs its bidder evidence or subcriteria stated`;
+    if (!criterion.scoringMethod?.trim()) return `criterion "${criterion.title}" needs its scoring method stated`;
+  }
+  return null;
+}
+
 /** Read the evaluation table published in a tender notice or specification. */
 export function parseEvaluationCriteria(markdown: string): EvalCriterion[] {
   const lines = markdown.split(/\r?\n/);
@@ -466,6 +544,8 @@ export function parseEvaluationCriteria(markdown: string): EvalCriterion[] {
   const criteria: EvalCriterion[] = [];
   let criterionColumn = 0;
   let weightColumn = 1;
+  let evidenceColumn = -1;
+  let scoringMethodColumn = -1;
   for (const line of lines.slice(heading + 1)) {
     const trimmed = line.trim();
     if (/^#{1,6}\s/.test(trimmed)) break;
@@ -475,17 +555,73 @@ export function parseEvaluationCriteria(markdown: string): EvalCriterion[] {
     }
     const cells = trimmed.slice(1, -1).split("|").map((cell) => cell.trim());
     if (cells.length < 2 || cells.every((cell) => /^:?-{2,}:?$/.test(cell))) continue;
-    if (cells.some((cell) => /criterion|criteria|title/i.test(cell)) && cells.some((cell) => /weight|percentage/i.test(cell))) {
-      criterionColumn = Math.max(0, cells.findIndex((cell) => /criterion|criteria|title/i.test(cell)));
+    const isCriterionHeader = (cell: string) => /\b(?:criterion|criteria|title)\b/i.test(cell);
+    if (cells.some(isCriterionHeader) && cells.some((cell) => /weight|percentage/i.test(cell))) {
+      criterionColumn = Math.max(0, cells.findIndex(isCriterionHeader));
       weightColumn = cells.findIndex((cell) => /weight|percentage/i.test(cell));
+      evidenceColumn = cells.findIndex((cell) => /evidence|basis|subcriteria/i.test(cell));
+      scoringMethodColumn = cells.findIndex((cell) => /scoring method|score method/i.test(cell));
       continue;
     }
     const title = cells[criterionColumn] ?? "";
     const weight = cells[weightColumn]?.match(/^(\d+(?:\.\d+)?)\s*%?$/);
     if (!title || !weight) continue;
-    criteria.push({ id: `C-${String(criteria.length + 1).padStart(2, "0")}`, title: title.slice(0, 120), weight: Number(weight[1]) });
+    criteria.push({
+      id: `C-${String(criteria.length + 1).padStart(2, "0")}`,
+      title: title.slice(0, 120),
+      weight: Number(weight[1]),
+      ...(evidenceColumn >= 0 ? { evidence: cleanEvaluationCriterionDetail(cells[evidenceColumn]) } : {}),
+      ...(scoringMethodColumn >= 0 ? { scoringMethod: cleanEvaluationCriterionDetail(cells[scoringMethodColumn]) } : {}),
+    });
   }
   return criteria;
+}
+
+/** Render the one table the parser reads. Titles cannot carry a pipe into a
+    markdown cell, so it becomes a slash rather than corrupting the row. */
+export function renderEvaluationCriteria(criteria: EvalCriterion[]): string {
+  const includeDetails = criteria.some((criterion) => criterion.evidence?.trim() || criterion.scoringMethod?.trim());
+  return [
+    includeDetails
+      ? "| Criterion | Weight (%) | Evidence / subcriteria | Scoring method |"
+      : "| Criterion | Weight (%) |",
+    includeDetails ? "| --- | ---: | --- | --- |" : "| --- | --- |",
+    ...criteria.map((criterion) => {
+      const title = criterion.title.replace(/\|/g, " / ").replace(/\s+/g, " ").trim();
+      const weight = Number.isInteger(criterion.weight) ? criterion.weight : criterion.weight.toFixed(1);
+      return includeDetails
+        ? `| ${title} | ${weight} | ${cleanEvaluationCriterionDetail(criterion.evidence)} | ${cleanEvaluationCriterionDetail(criterion.scoringMethod)} |`
+        : `| ${title} | ${weight} |`;
+    }),
+  ].join("\n");
+}
+
+/** Replace the criteria table in place, or add the section when the
+    specification has none. Every other clause is left byte-for-byte alone —
+    a criteria edit must never rewrite the technical requirements. */
+export function withEvaluationCriteria(markdown: string, criteria: EvalCriterion[]): string {
+  const table = renderEvaluationCriteria(criteria).split("\n");
+  const lines = markdown.split(/\r?\n/);
+  const heading = lines.findIndex((line) => /^#{1,6}\s+(?:\d+\.?\s*)?evaluation criteria\b/i.test(line.trim()));
+  if (heading < 0) {
+    const base = markdown.trimEnd();
+    return `${base}${base ? "\n\n" : ""}## Evaluation criteria\n\n${table.join("\n")}\n`;
+  }
+  const nextHeading = lines.findIndex((line, index) => index > heading && /^#{1,6}\s/.test(line.trim()));
+  const sectionEnd = nextHeading < 0 ? lines.length : nextHeading;
+  const tableStart = lines.findIndex(
+    (line, index) => index > heading && index < sectionEnd && line.trim().startsWith("|"),
+  );
+  if (tableStart >= 0) {
+    let tableEnd = tableStart;
+    while (tableEnd + 1 < sectionEnd && lines[tableEnd + 1].trim().startsWith("|")) tableEnd += 1;
+    return [...lines.slice(0, tableStart), ...table, ...lines.slice(tableEnd + 1)].join("\n");
+  }
+  /* No table yet: put it directly under the heading and keep the prose that
+     follows, with exactly one blank line on either side. */
+  let restStart = heading + 1;
+  while (restStart < lines.length && lines[restStart].trim() === "") restStart += 1;
+  return [...lines.slice(0, heading + 1), "", ...table, "", ...lines.slice(restStart)].join("\n");
 }
 
 export function validateScores(criteria: EvalCriterion[], scores: EvalScoreInput[]): string | null {

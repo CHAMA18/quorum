@@ -270,9 +270,9 @@ export function PeoplePanel({ data, refresh, notify, query, setQuery, now }: Pan
           { label: "Pending invites", value: fmtNum(pendingInvites.length), note: "single-use · 14 days" },
         ].map((stat) => (
           <div key={stat.label} className="px-4 py-3.5">
-            <p className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">{stat.label}</p>
+            <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">{stat.label}</p>
             <p className="mt-1.5 type-num text-[24px] text-ink-950">{stat.value}</p>
-            <p className="mt-0.5 text-[9.5px] text-ink-400">{stat.note}</p>
+            <p className="mt-0.5 text-[10.5px] leading-relaxed text-ink-600">{stat.note}</p>
           </div>
         ))}
       </div>
@@ -280,7 +280,7 @@ export function PeoplePanel({ data, refresh, notify, query, setQuery, now }: Pan
       {freshInvite && canManage && (
         <div className="panel flex flex-wrap items-center gap-3 rounded-2xl border-brand-200 bg-brand-50/80 px-4 py-3 dark:border-brand-500/30 dark:bg-brand-500/10">
           <div className="min-w-0">
-            <p className="font-code text-[7.5px] font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
+            <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-brand-800 dark:text-brand-300">
               NEW INVITATION · {freshInvite.role}
             </p>
             <p className="mt-1 flex flex-wrap items-center gap-2">
@@ -289,7 +289,7 @@ export function PeoplePanel({ data, refresh, notify, query, setQuery, now }: Pan
               </span>
               {freshInvite.email && <span className="text-[11px] text-brand-800 dark:text-brand-300">for {freshInvite.email}</span>}
             </p>
-            <p className="mt-0.5 text-[10px] text-brand-800/80 dark:text-brand-300/80">{freshInvite.delivery.detail}</p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-brand-800 dark:text-brand-200">{freshInvite.delivery.detail}</p>
           </div>
           <div className="ml-auto flex flex-wrap items-center gap-1.5">
             <Button size="sm" onClick={() => void copy(freshInvite.code, "Invite code")}>
@@ -310,7 +310,7 @@ export function PeoplePanel({ data, refresh, notify, query, setQuery, now }: Pan
               type="button"
               onClick={() => setFreshInvite(null)}
               aria-label="Dismiss invitation"
-              className="focus-brand grid h-7 w-7 place-items-center rounded-lg text-brand-700 transition-colors hover:bg-brand-100 dark:text-brand-300 dark:hover:bg-brand-500/20"
+              className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-lg text-brand-700 transition-colors hover:bg-brand-100 dark:text-brand-300 dark:hover:bg-brand-500/20"
             >
               <X className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
@@ -346,9 +346,9 @@ export function PeoplePanel({ data, refresh, notify, query, setQuery, now }: Pan
                     onClick={() => setRole(value)}
                     aria-pressed={role === value}
                     className={cn(
-                      "focus-brand rounded-full border px-2 py-1 font-code text-[7.5px] font-bold uppercase tracking-[0.12em] transition-colors",
+                      "focus-brand inline-flex min-h-11 items-center rounded-lg border px-3 py-2 font-code text-[10px] font-bold uppercase tracking-[0.06em] transition-colors",
                       role === value
-                        ? "border-ink-950 bg-ink-950 text-white dark:border-white dark:bg-white dark:text-ink-950"
+                        ? "border-ink-950 bg-ink-950 text-white dark:border-white dark:bg-white dark:text-[#0b0c0f]"
                         : "border-ink-200 bg-white text-ink-500 hover:border-ink-400 dark:border-white/12 dark:bg-transparent dark:text-ink-400",
                     )}
                   >
@@ -396,7 +396,7 @@ export function PeoplePanel({ data, refresh, notify, query, setQuery, now }: Pan
                         >
                           <span
                             className={cn(
-                              "grid h-9 w-9 shrink-0 place-items-center rounded-full font-code text-[9px] font-bold text-white",
+                              "grid h-9 w-9 shrink-0 place-items-center rounded-full font-code text-[10px] font-bold text-white",
                               person.status === "SUSPENDED" ? "bg-ink-400" : "bg-brand-600",
                             )}
                             aria-hidden="true"
@@ -414,7 +414,7 @@ export function PeoplePanel({ data, refresh, notify, query, setQuery, now }: Pan
                                 </span>
                               )}
                             </span>
-                            <span className="mt-0.5 block truncate font-code text-[8px] tracking-[0.1em] text-ink-400">
+                            <span className="mt-0.5 block truncate text-[11px] text-ink-600">
                               {person.email}
                               {person.organization ? ` · ${person.organization}` : ""}
                             </span>
@@ -454,10 +454,10 @@ export function PeoplePanel({ data, refresh, notify, query, setQuery, now }: Pan
                         </div>
 
                         <div className="hidden flex-col gap-0.5 lg:flex">
-                          <span className="font-code text-[8px] font-bold uppercase tracking-[0.1em] text-ink-500">
+                          <span className="font-code text-[10px] font-bold uppercase tracking-[0.06em] text-ink-600">
                             {person.sessions} session{person.sessions === 1 ? "" : "s"}
                           </span>
-                          <span className="font-code text-[8px] tracking-[0.08em] text-ink-400">
+                          <span className="font-code text-[10px] tracking-[0.04em] text-ink-600">
                             {person.totpEnabled ? "2FA ON" : "2FA OFF"}
                           </span>
                         </div>
@@ -496,7 +496,7 @@ export function PeoplePanel({ data, refresh, notify, query, setQuery, now }: Pan
                               )}
                             </>
                           ) : (
-                            <span className="font-code text-[7.5px] uppercase tracking-[0.12em] text-ink-400">
+                            <span className="font-code text-[10px] uppercase tracking-[0.06em] text-ink-600">
                               {person.currentAccount ? "SELF" : person.role === "OWNER" ? "OWNER" : "—"}
                             </span>
                           )}
@@ -507,38 +507,38 @@ export function PeoplePanel({ data, refresh, notify, query, setQuery, now }: Pan
                         <div className="border-t border-ink-100 bg-paper-2/50 px-5 py-3.5 dark:border-white/8 dark:bg-white/[0.02]">
                           <div className="grid gap-4 sm:grid-cols-3">
                             <div>
-                              <p className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">JOINED</p>
+                              <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Joined</p>
                               <p className="mt-1 text-[11.5px] text-ink-800">{fmtDay(person.joined)}</p>
-                              <p className="text-[10px] text-ink-400">{fmtAgo(person.joined, now)}</p>
+                              <p className="text-[10.5px] text-ink-600">{fmtAgo(person.joined, now)}</p>
                             </div>
                             <div>
-                              <p className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">AUTHORITY</p>
+                              <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Authority</p>
                               <p className="mt-1 text-[11px] leading-relaxed text-ink-600">{ROLE_DESCRIPTIONS[person.role]}</p>
                             </div>
                             <div>
-                              <p className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">SECOND FACTOR</p>
+                              <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Second factor</p>
                               <p className="mt-1 flex items-center gap-1.5 text-[11.5px] text-ink-800">
                                 <Fingerprint className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
                                 {person.totpEnabled ? "Authenticator enrolled" : "Not enrolled"}
                               </p>
-                              <p className="mt-0.5 text-[10px] text-ink-400">
+                              <p className="mt-0.5 text-[10.5px] leading-relaxed text-ink-600">
                                 {person.sessions} live session{person.sessions === 1 ? "" : "s"} on this deployment
                               </p>
                             </div>
                           </div>
                           {personEvents.length > 0 && (
                             <div className="mt-3 border-t border-ink-200/70 pt-2.5 dark:border-white/8">
-                              <p className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">
-                                GOVERNANCE TOUCHING THIS PERSON
+                              <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">
+                                Governance activity for this person
                               </p>
                               <ul className="mt-1.5 space-y-1">
                                 {personEvents.map((event) => (
                                   <li key={event.id} className="flex flex-wrap items-baseline gap-1.5 text-[10.5px] text-ink-500">
-                                    <span className="font-code text-[7.5px] font-bold uppercase tracking-[0.12em] text-ink-700">
+                                    <span className="font-code text-[10px] font-bold uppercase tracking-[0.06em] text-ink-800">
                                       {ACTION_LABEL[event.action] ?? event.action}
                                     </span>
                                     <span>{event.detail}</span>
-                                    <span className="text-ink-400">· {event.actorName} · {fmtAgo(event.createdAt, now)}</span>
+                                    <span className="text-ink-600">· {event.actorName} · {fmtAgo(event.createdAt, now)}</span>
                                   </li>
                                 ))}
                               </ul>
@@ -581,7 +581,7 @@ export function PeoplePanel({ data, refresh, notify, query, setQuery, now }: Pan
                           type="button"
                           onClick={() => void copy(invite.code ?? "", "Invite code")}
                           aria-label="Copy invite code"
-                          className="focus-brand ml-auto text-ink-400 transition-colors hover:text-ink-950 dark:hover:text-white"
+                          className="focus-brand ml-auto grid min-h-11 min-w-11 place-items-center rounded-lg text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-950 dark:hover:bg-white/[0.06] dark:hover:text-white"
                         >
                           <Copy className="h-3 w-3" aria-hidden="true" />
                         </button>
@@ -629,7 +629,7 @@ export function PeoplePanel({ data, refresh, notify, query, setQuery, now }: Pan
                 <li key={roleName} className="px-5 py-2.5">
                   <div className="flex items-center gap-2">
                     <Chip tone={ROLE_TONE[roleName]}>{ROLE_LABELS[roleName]}</Chip>
-                    <span className="ml-auto font-code text-[8px] tabular text-ink-400">
+                    <span className="ml-auto font-code text-[10px] tabular text-ink-600">
                       {data.people.filter((person) => person.role === roleName).length}
                     </span>
                   </div>
@@ -642,7 +642,7 @@ export function PeoplePanel({ data, refresh, notify, query, setQuery, now }: Pan
           <div className="rounded-2xl border border-ink-200/80 bg-paper-2/60 px-4 py-3.5 dark:border-white/10 dark:bg-white/[0.02]">
             <div className="flex items-center gap-2">
               <UserCog className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
-              <p className="font-code text-[7.5px] font-bold uppercase tracking-[0.2em] text-ink-500">THE LIMITS</p>
+              <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">The limits</p>
             </div>
             <ul className="mt-2 space-y-1.5 text-[10.5px] leading-relaxed text-ink-500">
               <li>You cannot change your own role or suspend yourself.</li>
@@ -676,7 +676,7 @@ export function PeoplePanel({ data, refresh, notify, query, setQuery, now }: Pan
               {ROLE_DESCRIPTIONS[dialog.role]}
             </p>
             <div className="rounded-xl border border-ink-200 bg-paper-2/60 px-3 py-2.5 dark:border-white/10 dark:bg-white/[0.03]">
-              <p className="font-code text-[7.5px] font-bold uppercase tracking-[0.16em] text-ink-400">EFFECT</p>
+                  <p className="font-code text-[10px] font-bold uppercase tracking-[0.08em] text-ink-600">Effect</p>
               <p className="mt-1 text-[11px] leading-relaxed text-ink-600">
                 This takes effect on {dialog.person.name.split(" ")[0]}&apos;s next request. The change is written to the
                 governance log with your name against it.
@@ -791,9 +791,9 @@ export function PeoplePanel({ data, refresh, notify, query, setQuery, now }: Pan
                   onClick={() => setInviteRole(option)}
                   aria-pressed={inviteRole === option}
                   className={cn(
-                    "focus-brand rounded-lg border px-2.5 py-1.5 font-code text-[8px] font-bold uppercase tracking-[0.14em] transition-colors",
+                    "focus-brand inline-flex min-h-11 items-center rounded-lg border px-3 py-2 font-code text-[10px] font-bold uppercase tracking-[0.06em] transition-colors",
                     inviteRole === option
-                      ? "border-ink-950 bg-ink-950 text-white dark:border-white dark:bg-white dark:text-ink-950"
+                      ? "border-ink-950 bg-ink-950 text-white dark:border-white dark:bg-white dark:text-[#0b0c0f]"
                       : "border-ink-200 bg-white text-ink-600 hover:border-ink-400 dark:border-white/12 dark:bg-transparent dark:text-ink-400",
                   )}
                 >
@@ -802,7 +802,7 @@ export function PeoplePanel({ data, refresh, notify, query, setQuery, now }: Pan
               ))}
             </div>
           </Field>
-          <p className="text-[10.5px] leading-relaxed text-ink-400">
+          <p className="text-[11.5px] leading-relaxed text-ink-600">
             {ROLE_DESCRIPTIONS[inviteRole]}{" "}
             {data.actor.role === "ADMIN" ? "Admins can grant officer, committee and auditor access, but never admin." : ""}
           </p>

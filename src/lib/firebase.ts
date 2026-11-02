@@ -138,6 +138,69 @@ export async function syncFirebaseIdentity(input: FirebaseIdentityInput): Promis
   }
 }
 
+/**
+ * Link the supplier's local organization login to a real Firebase Auth
+ * credential. The local login is verified by the server before this runs;
+ * only a genuinely missing Firebase account is created on login. The ID
+ * token is sent to supplier upload routes, where Firebase verifies it again
+ * and the organization record pins the resulting UID.
+ */
+export async function ensureOrgFirebaseIdentity(input: {
+  name?: string;
+  email: string;
+  password: string;
+}): Promise<string | null> {
+  try {
+    const pair = await getAuthLazy();
+    if (!pair) return null;
+    const email = input.email.trim().toLowerCase();
+    let user: import("firebase/auth").User;
+    try {
+      user = (await pair.mod.signInWithEmailAndPassword(pair.auth, email, input.password)).user;
+    } catch (error) {
+      const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
+      if (code !== "auth/user-not-found" && code !== "auth/invalid-credential") return null;
+      try {
+        user = (await pair.mod.createUserWithEmailAndPassword(pair.auth, email, input.password)).user;
+      } catch {
+        return null;
+      }
+      if (user && input.name) await pair.mod.updateProfile(user, { displayName: input.name });
+    }
+    if (user.email?.trim().toLowerCase() !== email) return null;
+    return await user.getIdToken(true);
+  } catch (err) {
+    debugLog("org-identity", err);
+    return null;
+  }
+}
+
+/** Return the current Firebase session token for a protected supplier action. */
+export async function getFirebaseIdToken(): Promise<string | null> {
+  try {
+    const pair = await getAuthLazy();
+    if (!pair) return null;
+    const user = pair.auth.currentUser ?? await new Promise<import("firebase/auth").User | null>((resolve) => {
+      let unsubscribe: (() => void) | undefined;
+      const timeout = setTimeout(() => {
+        unsubscribe?.();
+        resolve(null);
+      }, 5000);
+      unsubscribe = pair.mod.onAuthStateChanged(pair.auth, (currentUser) => {
+        clearTimeout(timeout);
+        unsubscribe?.();
+        resolve(currentUser);
+      });
+    });
+    if (!user) return null;
+    await user.reload();
+    return await user.getIdToken(true);
+  } catch (err) {
+    debugLog("id-token", err);
+    return null;
+  }
+}
+
 /* ── Email verification ────────────────────────────────────────────────────── */
 
 export interface EmailVerificationState {

@@ -587,6 +587,51 @@ describe("flagPack under the plan: over-budget and markdown value outliers", () 
   });
 });
 
+describe("bidder count — distinct firms, never a file count", () => {
+  test("a notice and a supporting addendum are read, but neither is a bidder", () => {
+    const files = ["01-tender-notice.md", "02-bid-acme.md", "91-addendum-r2-gate-verification.md"];
+    const sources: Record<string, string> = {
+      "01-tender-notice.md": "# NOTICE\n**Budget ceiling:** KES 10,000,000\n",
+      "02-bid-acme.md": "**Bid value:** KES 9,000,000\n",
+      "91-addendum-r2-gate-verification.md": "Test tender addendum — gate verification doc.\n",
+    };
+    const pack = buildPack(files, sources);
+    expect(pack.bids).toHaveLength(1);
+    expect(pack.bidders).toBe(1);
+    expect(planFromPack(files, pack).pack.bidders).toBe(1);
+  });
+
+  test("one firm named twice across OCDS releases counts once, whatever the casing", () => {
+    const release = (amount: number, name: string) =>
+      JSON.stringify({
+        ocid: "ocds-x-1",
+        bids: { details: [{ tenderers: [{ name }], value: { amount, currency: "KES" } }] },
+      });
+    const files = ["ocds-release-a.json", "ocds-release-b.json"];
+    const sources: Record<string, string> = {
+      "ocds-release-a.json": release(1_000_000, "Acme Metering Ltd"),
+      "ocds-release-b.json": release(1_200_000, "ACME  METERING LTD"),
+    };
+    const pack = buildPack(files, sources);
+    expect(pack.bids).toHaveLength(2);
+    expect(pack.bidders).toBe(1);
+  });
+
+  test("two different firms are two bidders, and the plan carries the figure into the report", () => {
+    const files = ["01-tender-notice.md", "02-bid-alpha.md", "03-bid-beta.md"];
+    const sources: Record<string, string> = {
+      "01-tender-notice.md": "# NOTICE\n**Budget ceiling:** KES 10,000,000\n",
+      "02-bid-alpha.md": "**Bid value:** KES 9,000,000\n",
+      "03-bid-beta.md": "**Bid value:** KES 8,000,000\n",
+    };
+    const pack = buildPack(files, sources);
+    expect(pack.bidders).toBe(2);
+    const plan = planFromPack(files, pack);
+    expect(plan.pack.bidders).toBe(2);
+    expect(plan.pack.bids).toBe(2);
+  });
+});
+
 describe("bounded reason-and-retry", () => {
   const sources = {
     "03-bid-coastline.md": "**Bidder:** Coastline Screening Solutions\n**Bid value:** KES 3,940,000,000\nAlternative offered for the radiation segment.\n",

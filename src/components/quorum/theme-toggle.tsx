@@ -39,7 +39,7 @@ export function ThemeModeRow({ className, collapsed = false }: { className?: str
       aria-label={collapsed ? (isDark ? "Switch to light mode" : "Switch to dark mode") : undefined}
       title={collapsed ? (isDark ? "Switch to light mode" : "Switch to dark mode") : undefined}
       className={cn(
-        "flex w-full items-center rounded-xl border px-3 py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50",
+        "focus-brand flex min-h-11 w-full items-center rounded-xl border px-3 py-2.5 transition-colors",
         collapsed
           ? "h-11 justify-center border-ink-200 bg-white text-ink-600 hover:bg-ink-50 dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-white/5"
           : "justify-between gap-3 border-ink-200 bg-white/70 hover:bg-ink-50 dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-white/5",
@@ -53,7 +53,7 @@ export function ThemeModeRow({ className, collapsed = false }: { className?: str
           <Sun className="h-4 w-4 text-ink-500" aria-hidden="true" />
         )}
         {!collapsed ? (
-          <span className="font-code text-[9px] font-semibold tracking-[0.22em] text-ink-600">
+          <span className="font-code text-[11px] font-semibold tracking-[0.08em] text-ink-700 dark:text-ink-300">
             DARK / LIGHT MODE
           </span>
         ) : null}
@@ -108,7 +108,7 @@ export function ThemeToggle({
       aria-label={label}
       title={label}
       className={cn(
-        "grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors",
+        "focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-lg transition-colors",
         variant === "outline"
           ? "border border-ink-200 bg-white text-ink-600 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700"
           : "text-ink-400 hover:bg-white/10 hover:text-white",

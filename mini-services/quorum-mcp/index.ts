@@ -36,7 +36,7 @@
  *                                   (the gavel); unreadable roster → 503; unattested mutation → 401.
  */
 
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import {
   appendLog,
@@ -83,6 +83,7 @@ import { residencyFromEnv } from "./model-gateway";
 import { parseClosingDate } from "./cycle";
 import {
   marketplaceEntries,
+  requiredDocumentsFromNotice,
   supplierFromOrgProfile,
   validateApplicationAdmission,
   validateApplicationRequest,
@@ -232,7 +233,7 @@ import {
   TOOLS,
   verifySessionActor,
 } from "./engine";
-import { coreVerifySupplier, cycleToolCall, executeCycleGateAction, executeCycleGateRejection, handleCycleRoutes, nextPipelineRef, preApprovalCheck } from "./cycle-routes";
+import { coreVerifySupplier, cycleToolCall, executeCycleGateAction, executeCycleGateRejection, handleCycleRoutes, nextPipelineRef, preApprovalCheck, publicSystemReferenceForTender } from "./cycle-routes";
 import { conflictScreening } from "./evaluation";
 import { sittingQuorumRefusal } from "./sittings";
 import { FEATURE_FLAGS, SIMULATED_PORTAL } from "./store";
@@ -1041,6 +1042,7 @@ Bun.serve({
       return json({
         gateId: gate.id,
         tenderId: gate.tenderId,
+        systemReference: publicSystemReferenceForTender(gate.tenderId),
         status: gate.status,
         approver: gate.approver ?? null,
         decidedAt: gate.decidedAt ?? null,
@@ -1143,6 +1145,25 @@ Bun.serve({
       const body = await readBody(req);
       const tenderId = String(body.tenderId ?? "").trim();
       if (!tenderId) return json({ error: "tenderId required" }, 422);
+      const refPattern = /^QRM-\d{4}-\d{3,6}$/i;
+      const existingReference =
+        state.pipeline.find((entry) => entry.linkedTenderId === tenderId && refPattern.test(entry.systemReference ?? entry.ref))?.systemReference ??
+        state.pipeline.find((entry) => entry.linkedTenderId === tenderId && refPattern.test(entry.ref))?.ref ??
+        state.cycle.find((cycle) => cycle.tenderId === tenderId && refPattern.test(cycle.systemReference ?? ""))?.systemReference ??
+        state.runs.find((existing) => existing.tenderId === tenderId && existing.reference && refPattern.test(existing.reference))?.reference ??
+        (refPattern.test(tenderId) ? tenderId : undefined);
+      const requestedReference = String(body.reference ?? "").trim().toUpperCase();
+      const isTakenByAnotherRecord = (candidate: string) =>
+        state.pipeline.some((entry) => [entry.ref, entry.systemReference ?? ""].some((value) => value.toUpperCase() === candidate) && entry.linkedTenderId !== tenderId) ||
+        state.cycle.some((cycle) => cycle.tenderId.toUpperCase() === candidate && cycle.tenderId !== tenderId) ||
+        state.cycle.some((cycle) => (cycle.systemReference ?? "").toUpperCase() === candidate && cycle.tenderId !== tenderId) ||
+        state.cycle.some((cycle) => cycle.notices.some((notice) => notice.reference?.toUpperCase() === candidate)) ||
+        state.runs.some((existing) =>
+          (existing.reference ?? (refPattern.test(existing.tenderId) ? existing.tenderId : "")).toUpperCase() === candidate &&
+          existing.tenderId !== tenderId,
+        );
+      const requestedIsAvailable = refPattern.test(requestedReference) && !isTakenByAnotherRecord(requestedReference);
+      const reference = existingReference ?? (requestedIsAvailable ? requestedReference : nextPipelineRef({}));
       /* A tender with no staged pack has nothing to review — refuse the
          launch here instead of running a graph that could only end in a
          placeholder gate for a tender nothing was read about. */
@@ -1190,6 +1211,7 @@ Bun.serve({
       const run: Run = {
         id: `run_${randomUUID().slice(0, 8)}`,
         workspaceId: currentWorkspaceId(),
+        reference,
         tenderId,
         status: "RUNNING",
         startedBy: attestedActor || undefined,
@@ -1298,6 +1320,77 @@ Bun.serve({
         durationMs: 0,
       });
       return json({ files: written }, 201);
+    }
+
+    /* Record a supplier's required bid document in the procurement audit
+       spine. The edge has already confirmed that the bytes landed in R2;
+       the organization and Firebase UID come from the verified gateway
+       session, and the file remains pending human review. */
+    if (path === "/api/supplier-bid-uploads" && req.method === "POST") {
+      const body = await readBody(req);
+      const tenderRef = String(body.tenderRef ?? "").trim();
+      const orgId = String(body.organizationId ?? "").trim();
+      const firebaseUid = String(body.firebaseUid ?? "").trim();
+      const requirement = String(body.requirement ?? "").trim().slice(0, 180);
+      const key = String(body.key ?? "").trim();
+      const filename = String(body.filename ?? "").trim().slice(0, 120);
+      const contentType = String(body.contentType ?? "").trim().slice(0, 120);
+      const bytes = Number(body.bytes);
+      const sha256 = String(body.sha256 ?? "").trim().toLowerCase();
+      const uploadedAt = String(body.uploadedAt ?? "").trim();
+      const safeRef = /^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$/.test(tenderRef);
+      const safeOrgId = /^org_[A-Za-z0-9_-]{1,64}$/.test(orgId);
+      const safeUid = /^[A-Za-z0-9_-]{1,128}$/.test(firebaseUid);
+      const safeKey =
+        key.length > 0 && key.length <= 512 && !/[\\\u0000-\u001f]/.test(key) &&
+        key.startsWith(`tenders/${tenderRef}/supplier-bids/${orgId}/${firebaseUid}/`) &&
+        key.split("/").every((part) => part.length > 0 && part !== "." && part !== "..");
+      if (!attestedActor.startsWith("org:") || !safeRef || !safeOrgId || !safeUid || !requirement || !filename || !safeKey) {
+        return json({ error: "A valid attested supplier identity and bid document are required." }, 422);
+      }
+      if (!Number.isFinite(bytes) || bytes <= 0 || bytes > 10 * 1024 * 1024 || !/^[a-f0-9]{64}$/.test(sha256)) {
+        return json({ error: "The bid document size or SHA-256 digest is not valid." }, 422);
+      }
+      if (Number.isNaN(Date.parse(uploadedAt)) || !contentType) {
+        return json({ error: "The bid document metadata is incomplete." }, 422);
+      }
+      const entry = appendLog({
+        actor: attestedActor,
+        server: "quorum-mcp",
+        tool: "supplier_bid_document_upload",
+        kind: "WRITES",
+        inputs: { tenderRef, organizationId: orgId, firebaseUid, requirement, key, filename, contentType, bytes, sha256, uploadedAt },
+        outputs: { stored: true, storage: "Cloudflare R2", eligibilityDecision: false, humanReviewRequired: true },
+        status: "OK",
+        durationMs: 0,
+      });
+      return json({ recorded: true, audit: { seq: entry.seq, id: entry.id, self: entry.self } }, 201);
+    }
+
+    if (path === "/api/supplier-bid-document-deletions" && req.method === "POST") {
+      const body = await readBody(req);
+      const tenderRef = String(body.tenderRef ?? "").trim();
+      const orgId = String(body.organizationId ?? "").trim();
+      const firebaseUid = String(body.firebaseUid ?? "").trim();
+      const requirement = String(body.requirement ?? "").trim().slice(0, 180);
+      const key = String(body.key ?? "").trim();
+      const sha256 = String(body.sha256 ?? "").trim().toLowerCase();
+      const requirementHash = createHash("sha256").update(requirement.normalize("NFKC").trim().toLowerCase()).digest("hex").slice(0, 20);
+      const safeKey = key.startsWith(`tenders/${tenderRef}/supplier-bids/${orgId}/${firebaseUid}/${requirementHash}/`) && key.length <= 512 && !/[\\\u0000-\u001f]/.test(key) && key.split("/").every((part) => part.length > 0 && part !== "." && part !== "..");
+      if (!attestedActor.startsWith("org:") || !/^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$/.test(tenderRef) || !/^org_[A-Za-z0-9_-]{1,64}$/.test(orgId) || !/^[A-Za-z0-9_-]{1,128}$/.test(firebaseUid) || !requirement || !safeKey || !/^[a-f0-9]{64}$/.test(sha256)) {
+        return json({ error: "A valid attested supplier document is required." }, 422);
+      }
+      const entry = appendLog({
+        actor: attestedActor,
+        server: "quorum-mcp",
+        tool: "supplier_bid_document_delete",
+        kind: "WRITES",
+        inputs: { tenderRef, organizationId: orgId, firebaseUid, requirement, key, sha256 },
+        outputs: { deleted: true, storage: "Cloudflare R2", beforeFiling: true },
+        status: "OK",
+        durationMs: 0,
+      });
+      return json({ recorded: true, audit: { seq: entry.seq, id: entry.id, self: entry.self } }, 201);
     }
 
     /* Record an R2 tender upload in the hash-chained audit spine. The web
@@ -2216,10 +2309,22 @@ Bun.serve({
     if (path === "/api/marketplace" && req.method === "GET") {
       const samples = await listSampleTenders();
       const closingFromNotices: Record<string, string | undefined> = {};
+      const requiredFromNotices: Record<string, string[]> = {};
       for (const s of samples) {
+        const cycle = state.cycle.find((entry) => entry.tenderId === s.ref);
+        const latestIssuedNotice = [...(cycle?.notices ?? [])]
+          .filter((notice) => notice.issuedAt && notice.md)
+          .sort((a, b) => (b.issuedAt ?? "").localeCompare(a.issuedAt ?? ""))[0];
+        if (latestIssuedNotice) {
+          requiredFromNotices[s.ref] = requiredDocumentsFromNotice(latestIssuedNotice.md);
+        }
         for (const name of ["01-tender-notice.md", "01-manual-notice.md"]) {
           try {
             const text = await Bun.file(TENDERS_DIR + s.ref + "/" + name).text();
+            if (!latestIssuedNotice && !requiredFromNotices[s.ref]) {
+              const required = requiredDocumentsFromNotice(text);
+              if (required.length) requiredFromNotices[s.ref] = required;
+            }
             const closing = parseClosingDate(text, jurisdictionPack(state.jurisdictionId).utcOffsetHours);
             if (closing) {
               closingFromNotices[s.ref] = closing;
@@ -2233,7 +2338,12 @@ Bun.serve({
       const counts: Record<string, number> = {};
       for (const a of state.applications) counts[a.tenderId] = (counts[a.tenderId] ?? 0) + 1;
       return json({
-        tenders: marketplaceEntries(samples, state.cycle, closingFromNotices, counts, new Date()),
+        tenders: marketplaceEntries(samples, state.cycle, closingFromNotices, counts, new Date(), requiredFromNotices).map((tender) => ({
+          ...tender,
+          ...(publicSystemReferenceForTender(tender.ref, workspaceId)
+            ? { systemReference: publicSystemReferenceForTender(tender.ref, workspaceId) }
+            : {}),
+        })),
         generatedAt: new Date().toISOString(),
       });
     }
@@ -2249,7 +2359,11 @@ Bun.serve({
       /* A sealed filing never exposes its amount here. The price is revealed
          only in the certified opening register. Legacy plaintext filings keep
          the amount they were filed with. */
-      const applications = rows.map((a) => (a.sealed ? redactApplication(a) : a));
+      const applications = rows.map((a) => {
+        const redacted = a.sealed ? redactApplication(a) : a;
+        const systemReference = publicSystemReferenceForTender(a.tenderId, workspaceId);
+        return { ...redacted, ...(systemReference ? { systemReference } : {}) };
+      });
       return json({ applications, total: applications.length });
     }
 
@@ -2400,6 +2514,32 @@ Bun.serve({
           ? (body.org as Record<string, unknown>)
           : {};
       const registrationNo = String(orgBlock.registrationNo ?? "").trim().slice(0, 80);
+      const orgId = String(orgBlock.id ?? "").trim().slice(0, 64);
+      const firebaseUid = String(body.firebaseUid ?? "").trim().slice(0, 128);
+      const rawBidDocuments = Array.isArray(body.bidDocuments) ? body.bidDocuments : [];
+      if (rawBidDocuments.length > 100) return json({ error: "A bid may contain at most 100 required documents." }, 422);
+      const bidDocuments: NonNullable<SupplierApplication["bidDocuments"]> = [];
+      for (const raw of rawBidDocuments) {
+        if (!raw || typeof raw !== "object" || Array.isArray(raw)) return json({ error: "A bid document entry is invalid." }, 422);
+        const item = raw as Record<string, unknown>;
+        const requirement = typeof item.requirement === "string" ? item.requirement.trim().slice(0, 180) : "";
+        const key = typeof item.key === "string" ? item.key.trim() : "";
+        const filename = typeof item.filename === "string" ? item.filename.trim().slice(0, 120) : "";
+        const contentType = typeof item.contentType === "string" ? item.contentType.trim().slice(0, 120) : "";
+        const sha256 = typeof item.sha256 === "string" ? item.sha256.trim().toLowerCase() : "";
+        const documentUid = typeof item.firebaseUid === "string" ? item.firebaseUid.trim() : "";
+        const uploadedAt = typeof item.uploadedAt === "string" ? item.uploadedAt.trim() : "";
+        const bytes = Number(item.bytes);
+        const requirementHash = createHash("sha256").update(requirement.normalize("NFKC").trim().toLowerCase()).digest("hex").slice(0, 20);
+        const expectedPrefix = `tenders/${tenderRef}/supplier-bids/${orgId}/${firebaseUid}/${requirementHash}/`;
+        if (
+          !orgId || !/^[A-Za-z0-9_-]{1,128}$/.test(firebaseUid) || documentUid !== firebaseUid || !requirement ||
+          !key.startsWith(expectedPrefix) || key.length > 512 || /[\\\u0000-\u001f]/.test(key) ||
+          !filename || !contentType || !/^[a-f0-9]{64}$/.test(sha256) ||
+          !Number.isFinite(bytes) || bytes <= 0 || bytes > 10 * 1024 * 1024 || Number.isNaN(Date.parse(uploadedAt))
+        ) return json({ error: "A bid document does not match this organization's verified R2 upload." }, 422);
+        bidDocuments.push({ requirement, key, filename, bytes, contentType, sha256, firebaseUid, uploadedAt });
+      }
       const supplier = registrationNo
         ? state.suppliers.find((s) => s.registrationNo.toLowerCase() === registrationNo.toLowerCase())
         : undefined;
@@ -2449,7 +2589,6 @@ Bun.serve({
       /* The name on the record comes from the attested actor, never the body. */
       const actorName = attestedActor.slice(4).trim();
       const orgName = (actorName || String(orgBlock.name ?? "unknown")).slice(0, 160);
-      const orgId = String(orgBlock.id ?? "").trim().slice(0, 64);
       const envelope = sealBid({
         tenderId: tenderRef,
         orgId,
@@ -2470,6 +2609,7 @@ Bun.serve({
         amount: undefined,
         currency: undefined,
         coverNote: undefined,
+        bidDocuments,
         sealed: envelope,
         receiptId: envelope.receipt.id,
         version: 1,
@@ -2483,7 +2623,7 @@ Bun.serve({
         server: "quorum-mcp",
         tool: "supplier_application",
         kind: "WRITES",
-        inputs: { tenderId: application.tenderId, sealed: true },
+        inputs: { tenderId: application.tenderId, sealed: true, bidDocumentCount: bidDocuments.length, bidDocumentKeys: bidDocuments.map((document) => document.key) },
         outputs: {
           id: application.id,
           orgName: application.orgName,
@@ -2496,7 +2636,11 @@ Bun.serve({
         status: "OK",
         durationMs: 0,
       });
-      return json({ application: redactApplication(application), receipt: envelope.receipt }, 201);
+      const systemReference = publicSystemReferenceForTender(application.tenderId, workspaceId);
+      return json({
+        application: { ...redactApplication(application), ...(systemReference ? { systemReference } : {}) },
+        receipt: envelope.receipt,
+      }, 201);
     }
 
     if (path.startsWith("/api/gates/") && req.method === "POST") {
@@ -2531,7 +2675,11 @@ Bun.serve({
 
     if (path === "/api/gates") {
       return json({
-        gates:      workspaceRows(state.gates).map((g) => ({ ...g, signatureValid: g.signature ? verifyGateSignature(g).ok : false })),
+        gates: workspaceRows(state.gates).map((g) => ({
+          ...g,
+          systemReference: publicSystemReferenceForTender(g.tenderId, workspaceId),
+          signatureValid: g.signature ? verifyGateSignature(g).ok : false,
+        })),
       });
     }
 
@@ -2540,7 +2688,6 @@ Bun.serve({
       return json({
         ref: nextPipelineRef({
           expectedPublication: url.searchParams.get("publication") ?? undefined,
-          currency: url.searchParams.get("currency") ?? undefined,
         }),
       });
     }
@@ -2573,7 +2720,13 @@ Bun.serve({
     if (path === "/api/exceptions" && req.method === "GET") {
       const url = new URL(req.url);
       const tenderId = url.searchParams.get("tenderId") ?? undefined;
-      return json({ exceptions: listExceptions(tenderId ?? undefined) });
+      const exceptions = listExceptions(tenderId ?? undefined).map((exception) => {
+        const systemReference = exception.tenderId
+          ? publicSystemReferenceForTender(exception.tenderId, workspaceId)
+          : undefined;
+        return { ...exception, ...(systemReference ? { systemReference } : {}) };
+      });
+      return json({ exceptions });
     }
     if (path === "/api/exceptions" && req.method === "POST") {
       const body = await readBody(req);
@@ -2675,6 +2828,73 @@ if (!writer.ok) {
 }
 
 await loadState();
+/* Give live procurement records one neutral public reference while retaining
+   their original keys for pack and audit lookup. */
+{
+  const isPublicRef = (value: unknown): value is string =>
+    typeof value === "string" && /^QRM-\d{4}-\d{3,6}$/i.test(value);
+  const referenceByTender = new Map<string, string>();
+  let changed = false;
+
+  /* Keep a valid reference already issued to a record. Pipeline references
+     take priority, followed by cycle and run references. */
+  for (const entry of state.pipeline) {
+    const reference = isPublicRef(entry.systemReference) ? entry.systemReference : isPublicRef(entry.ref) ? entry.ref : null;
+    if (reference) {
+      if (entry.linkedTenderId) referenceByTender.set(entry.linkedTenderId, reference);
+      referenceByTender.set(entry.ref, reference);
+    }
+  }
+  for (const cycle of state.cycle) {
+    if (isPublicRef(cycle.systemReference) && !referenceByTender.has(cycle.tenderId)) {
+      referenceByTender.set(cycle.tenderId, cycle.systemReference);
+    }
+  }
+  for (const run of state.runs) {
+    if (isPublicRef(run.reference) && !referenceByTender.has(run.tenderId)) {
+      referenceByTender.set(run.tenderId, run.reference);
+    }
+  }
+
+  for (const entry of state.pipeline) {
+    if (isPublicRef(entry.systemReference)) continue;
+    const reference = isPublicRef(entry.ref)
+      ? entry.ref
+      : (entry.linkedTenderId ? referenceByTender.get(entry.linkedTenderId) : undefined) ??
+        referenceByTender.get(entry.ref) ??
+        nextPipelineRef({});
+    entry.systemReference = reference;
+    if (entry.linkedTenderId) referenceByTender.set(entry.linkedTenderId, reference);
+    referenceByTender.set(entry.ref, reference);
+    changed = true;
+  }
+  for (const cycle of state.cycle) {
+    if (isPublicRef(cycle.systemReference)) continue;
+    const linkedEntry = state.pipeline.find((entry) => entry.linkedTenderId === cycle.tenderId || entry.ref === cycle.tenderId);
+    cycle.systemReference =
+      linkedEntry?.systemReference ?? referenceByTender.get(cycle.tenderId) ??
+      (isPublicRef(cycle.tenderId) ? cycle.tenderId : nextPipelineRef({}));
+    referenceByTender.set(cycle.tenderId, cycle.systemReference);
+    changed = true;
+  }
+  for (const cycle of state.cycle) {
+    for (const notice of cycle.notices ?? []) {
+      if (isPublicRef(notice.reference)) continue;
+      notice.reference = cycle.systemReference;
+      changed = true;
+    }
+  }
+  for (const run of state.runs) {
+    if (isPublicRef(run.reference)) continue;
+    const linkedEntry = state.pipeline.find((entry) => entry.linkedTenderId === run.tenderId || entry.ref === run.tenderId);
+    const cycle = state.cycle.find((entry) => entry.tenderId === run.tenderId);
+    run.reference = linkedEntry?.systemReference ?? cycle?.systemReference ?? referenceByTender.get(run.tenderId) ??
+      (isPublicRef(run.tenderId) ? run.tenderId : nextPipelineRef({}));
+    referenceByTender.set(run.tenderId, run.reference);
+    changed = true;
+  }
+  if (changed) saveState();
+}
 void initFsMcp();
 startOcpAutoRefresh();
 console.log(

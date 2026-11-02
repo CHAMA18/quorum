@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Check, CircleAlert, CircleCheck, FileSignature, Loader2, RotateCw, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fmtDate, money, type OrgContract } from "./supplier-data";
+import { fmtDate, money, publicReferenceLabel, type OrgContract } from "./supplier-data";
 
 /**
  * Contracts the desk has signed with this organization.
@@ -15,12 +15,12 @@ import { fmtDate, money, type OrgContract } from "./supplier-data";
  */
 
 const inputCls =
-  "h-11 w-full rounded-xl border border-ink-200 bg-white px-3.5 text-[14px] text-ink-950 outline-none transition-all placeholder:text-ink-300 focus:border-ink-950 focus:ring-4 focus:ring-ink-950/10 dark:border-white/10 dark:bg-night-2 dark:text-white dark:placeholder:text-ink-500";
+  "h-11 w-full rounded-xl border border-ink-200 bg-white px-3.5 text-[14px] text-ink-950 outline-none transition-all placeholder:text-ink-400 focus:border-ink-950 focus:ring-4 focus:ring-ink-950/10 dark:border-white/10 dark:bg-night-2 dark:text-white dark:placeholder:text-ink-500";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block space-y-1.5">
-      <span className="font-code text-[9.5px] font-semibold uppercase tracking-[0.16em] text-ink-500">{label}</span>
+      <span className="font-code text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-500">{label}</span>
       {children}
     </label>
   );
@@ -36,7 +36,7 @@ function Chip({ tone, children }: { tone: "ok" | "warn" | "muted" | "brand"; chi
           ? "border-brand-500/25 bg-brand-500/10 text-brand-700 dark:text-brand-300"
           : "border-ink-200 bg-ink-50 text-ink-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-500";
   return (
-    <span className={cn("inline-flex items-center gap-1.5 rounded-md border px-2 py-1 font-code text-[9px] font-bold tracking-[0.13em]", cls)}>
+    <span className={cn("inline-flex items-center gap-1.5 rounded-md border px-2 py-1 font-code text-[10px] font-bold tracking-[0.13em]", cls)}>
       {children}
     </span>
   );
@@ -96,13 +96,13 @@ export function ContractAcceptance({
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="font-code text-[9px] font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-400">
+          <p className="font-code text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-400">
             The instrument
           </p>
           <h1 className="type-display mt-2 flex items-center gap-2.5 text-[22px] text-ink-950 dark:text-white">
             Contracts
             {contracts !== null ? (
-              <span className="rounded-full border border-ink-100 bg-sand/80 px-2 py-0.5 font-code text-[9.5px] font-semibold text-ink-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-600">
+              <span className="rounded-full border border-ink-100 bg-sand/80 px-2 py-0.5 font-code text-[10px] font-semibold text-ink-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-600">
                 {contracts.length} on record
               </span>
             ) : null}
@@ -116,14 +116,14 @@ export function ContractAcceptance({
         <button
           type="button"
           onClick={() => void onRefresh()}
-          className="inline-flex h-9 shrink-0 items-center gap-1.5 self-start rounded-lg border border-ink-100 bg-white px-3 text-[12px] font-semibold text-ink-600 transition-colors hover:border-ink-200 hover:text-ink-900 sm:self-auto dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-600 dark:hover:border-white/20 dark:hover:text-white"
+          className="focus-brand inline-flex min-h-11 shrink-0 items-center gap-1.5 self-start rounded-lg border border-ink-100 bg-white px-3 text-[12px] font-semibold text-ink-600 transition-colors hover:border-ink-200 hover:text-ink-900 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-600 dark:hover:border-white/20 dark:hover:text-white"
         >
           <RotateCw className="h-3.5 w-3.5" aria-hidden="true" /> Refresh
         </button>
       </div>
 
       {error ? (
-        <div className="flex items-start gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-[13px] text-brand-800 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-brand-200">
+        <div role="alert" className="flex items-start gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-[13px] text-brand-800 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-brand-200">
           <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /> {error}
         </div>
       ) : null}
@@ -161,8 +161,8 @@ export function ContractAcceptance({
               >
                 <div className="flex flex-col gap-3 border-b border-ink-100 px-5 py-4 sm:flex-row sm:items-start sm:justify-between dark:border-white/[0.06]">
                   <div className="min-w-0">
-                    <p className="font-code text-[9.5px] font-semibold tracking-[0.16em] text-brand-700 dark:text-brand-400">
-                      {row.tenderRef}
+                    <p className="font-code text-[10px] font-semibold tracking-[0.16em] text-brand-700 dark:text-brand-400">
+                      {publicReferenceLabel(row.systemReference)}
                     </p>
                     <h2 className="mt-1 truncate text-[16px] font-bold tracking-[-0.01em] text-ink-950 dark:text-white">
                       {c.supplier}
@@ -183,7 +183,7 @@ export function ContractAcceptance({
 
                 <div className="grid gap-5 px-5 py-4 lg:grid-cols-[1.15fr_1fr]">
                   <div className="space-y-3">
-                    <p className="font-code text-[9px] font-semibold uppercase tracking-[0.16em] text-ink-400">
+                    <p className="font-code text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-400">
                       The terms the desk signed
                     </p>
                     <dl className="grid gap-2 text-[12.5px] sm:grid-cols-2">
@@ -217,7 +217,7 @@ export function ContractAcceptance({
 
                     {c.conditions?.length ? (
                       <div>
-                        <p className="font-code text-[9px] font-semibold uppercase tracking-[0.16em] text-ink-400">
+                        <p className="font-code text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-400">
                           Conditions
                         </p>
                         <ul className="mt-1.5 list-disc space-y-1 pl-4 text-[12.5px] text-ink-600 dark:text-ink-500">
@@ -230,14 +230,14 @@ export function ContractAcceptance({
 
                     {c.milestones?.length ? (
                       <div>
-                        <p className="font-code text-[9px] font-semibold uppercase tracking-[0.16em] text-ink-400">
+                        <p className="font-code text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-400">
                           Milestones
                         </p>
                         <ul className="mt-1.5 space-y-1 text-[12.5px] text-ink-600 dark:text-ink-500">
                           {c.milestones.map((m) => (
                             <li key={m.id} className="flex items-center justify-between gap-3 rounded-lg bg-paper px-2.5 py-1.5 dark:bg-white/[0.03]">
                               <span>{m.title}{m.dueDate ? <span className="text-ink-400"> · due {fmtDate(m.dueDate)}</span> : null}</span>
-                              <span className="font-code text-[8.5px] tracking-[0.12em] text-ink-400">{m.status}</span>
+                              <span className="font-code text-[10px] tracking-[0.04em] text-ink-600">{m.status}</span>
                             </li>
                           ))}
                         </ul>
@@ -246,7 +246,7 @@ export function ContractAcceptance({
                   </div>
 
                   <div className="rounded-xl border border-ink-100 bg-paper/60 p-4 dark:border-white/[0.07] dark:bg-white/[0.02]">
-                    <p className="flex items-center gap-2 font-code text-[9px] font-semibold uppercase tracking-[0.16em] text-ink-500">
+                    <p className="flex items-center gap-2 font-code text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-500">
                       <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" /> Acceptance
                     </p>
                     {acceptedAt ? (
@@ -256,12 +256,12 @@ export function ContractAcceptance({
                         </p>
                         <p>Signatory: <span className="font-semibold text-ink-900 dark:text-ink-100">{signer ?? "—"}</span></p>
                         {acceptanceHash ? (
-                          <p className="break-all font-code text-[9.5px] leading-relaxed text-ink-500">
+                          <p className="break-all font-code text-[10px] leading-relaxed text-ink-500">
                             SEAL {acceptanceHash}
                           </p>
                         ) : null}
                         {freshHash ? (
-                          <p className="break-all font-code text-[9.5px] text-emerald-700 dark:text-emerald-300">
+                          <p className="break-all font-code text-[10px] text-emerald-700 dark:text-emerald-300">
                             NEW SEAL {freshHash}
                           </p>
                         ) : null}
@@ -292,15 +292,16 @@ export function ContractAcceptance({
                           />
                         </Field>
                         {err ? (
-                          <p className="flex items-start gap-1.5 text-[11.5px] text-brand-700 dark:text-brand-300">
+                          <p role="alert" className="flex items-start gap-1.5 text-[11.5px] text-brand-700 dark:text-brand-300">
                             <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" /> {err}
                           </p>
                         ) : null}
                         <button
                           type="button"
                           onClick={() => void accept(row)}
+                          aria-busy={busy === row.tenderRef}
                           disabled={busy === row.tenderRef || (signatory[row.tenderRef] ?? "").trim().length < 3}
-                          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 text-[13px] font-semibold text-white shadow-[0_8px_20px_rgba(217,38,22,0.22)] transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="focus-brand inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 text-[13px] font-semibold text-white shadow-[0_8px_20px_rgba(217,38,22,0.22)] transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {busy === row.tenderRef ? (
                             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />

@@ -142,7 +142,7 @@ The cycle record carries statutory clocks: submissions closing, abnormally-low-b
 
 The current product ships with staged packs and a document-upload interface. Real PDF, DOCX, XLSX and scanned-image extraction with page-level citations is a P0 roadmap item, not a finished claim: the upload screen does not yet replace the staged pack path. OCR/SAM 3.1 fallback for scans is also not wired. Do not tell an officer that a newly uploaded PDF is already being read if it is not.
 
-Tender references are server-generated and system-owned in the form PREFIX-YYYY-NNN (for example ZM-2027-021). The prefix follows the currency (ZMW->ZM, KES->KE, RWF->RW, USD->ZM), the year is the expected publication year and the sequence is allocated across the pipeline.`,
+New tender and notice references are server-generated and system-owned in the neutral form QRM-YYYY-NNN (for example QRM-2027-021). The year follows the expected publication date and the sequence is allocated across the pipeline, cycles, runs and notice drafts. Existing imported tender IDs remain stable so their source packs and audit history stay linked.`,
   },
   {
     id: "models",

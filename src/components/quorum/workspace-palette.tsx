@@ -13,7 +13,9 @@
 import type { ReactNode } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Command } from "cmdk";
+import { useReducedMotion } from "framer-motion";
 import { CornerDownLeft, Search, type LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export type PaletteEntry = {
   id: string;
@@ -37,7 +39,7 @@ export type PaletteGroup = {
 
 function Key({ children }: { children: ReactNode }) {
   return (
-    <kbd className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[4px] border border-ink-200/80 bg-[#fffdfb] px-1 font-code text-[8px] font-bold leading-none text-ink-500 shadow-[0_1px_0_rgba(11,12,15,0.04)] dark:border-white/[0.12] dark:bg-white/[0.05] dark:text-ink-300">
+    <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded-[4px] border border-ink-200/80 bg-[#fffdfb] px-1 font-code text-[10px] font-bold leading-none text-ink-600 shadow-[0_1px_0_rgba(11,12,15,0.04)] dark:border-white/[0.12] dark:bg-white/[0.05] dark:text-ink-300">
       {children}
     </kbd>
   );
@@ -45,7 +47,7 @@ function Key({ children }: { children: ReactNode }) {
 
 function Hint({ keys, label }: { keys: ReactNode; label: string }) {
   return (
-    <span className="flex items-center gap-1.5 font-code text-[7.5px] font-bold tracking-[0.14em] text-ink-500">
+    <span className="flex items-center gap-1.5 font-code text-[10px] font-bold tracking-[0.08em] text-ink-600 dark:text-ink-300">
       <Key>{keys}</Key>
       {label.toUpperCase()}
     </span>
@@ -61,15 +63,24 @@ export function WorkspacePalette({
   onOpenChange: (open: boolean) => void;
   groups: PaletteGroup[];
 }) {
+  const reduceMotion = useReducedMotion();
+
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay
-          className="fixed inset-0 z-[84] bg-night/65 backdrop-blur-[3px] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0"
+          className={cn(
+            "fixed inset-0 z-[84] bg-night/65 backdrop-blur-[3px]",
+            !reduceMotion && "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
+          )}
         />
         <DialogPrimitive.Content
           aria-describedby="workspace-palette-description"
-          className="panel panel-lift fixed inset-x-0 top-[10vh] z-[85] mx-auto w-[min(600px,calc(100vw-1.5rem))] overflow-hidden rounded-[12px] p-0 outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
+          style={{ maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2rem)" }}
+          className={cn(
+            "panel panel-lift fixed inset-x-0 top-[max(1rem,env(safe-area-inset-top,0px))] z-[85] mx-auto w-[min(600px,calc(100vw-1.5rem))] overflow-hidden rounded-[12px] p-0 outline-none sm:top-[10vh]",
+            !reduceMotion && "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+          )}
         >
           <span
             aria-hidden="true"
@@ -95,7 +106,7 @@ export function WorkspacePalette({
               <Key>ESC</Key>
             </div>
 
-            <Command.List className="max-h-[min(58vh,430px)] overflow-y-auto overscroll-contain p-2">
+            <Command.List className="max-h-[min(58dvh,430px)] overflow-y-auto overscroll-contain p-2">
               <Command.Empty className="flex flex-col items-center px-6 py-12 text-center">
                 <span className="grid h-10 w-10 place-items-center rounded-full border border-dashed border-ink-300 text-ink-400 dark:border-white/[0.15]">
                   <Search className="h-4 w-4" aria-hidden="true" />
@@ -110,7 +121,7 @@ export function WorkspacePalette({
                 <Command.Group
                   key={group.label}
                   heading={group.label}
-                  className="[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:font-code [&_[cmdk-group-heading]]:text-[8px] [&_[cmdk-group-heading]]:font-bold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.22em][&_[cmdk-group-heading]]:text-ink-500">
+                  className="[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:font-code [&_[cmdk-group-heading]]:text-[10.5px] [&_[cmdk-group-heading]]:font-bold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.12em] [&_[cmdk-group-heading]]:text-ink-600 dark:[&_[cmdk-group-heading]]:text-ink-300">
                   {group.entries.map((entry) => {
                     const Icon = entry.icon;
                     return (
@@ -132,16 +143,16 @@ export function WorkspacePalette({
                         </span>
                         <span className="min-w-0 flex-1 truncate">{entry.label}</span>
                         {entry.badge ? (
-                          <span className="inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-ink-100/80 px-1.5 font-code text-[8.5px] font-bold tabular text-ink-500 dark:bg-white/[0.09] dark:text-ink-700">
+                          <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-ink-100/80 px-1.5 font-code text-[10px] font-bold tabular text-ink-600 dark:bg-white/[0.09] dark:text-ink-300">
                             {entry.badge}
                           </span>
                         ) : null}
                         {entry.current ? (
-                          <span className="shrink-0 font-code text-[7px] font-bold tracking-[0.16em] text-brand-600 dark:text-brand-400">
+                          <span className="shrink-0 font-code text-[10px] font-bold tracking-[0.08em] text-brand-700 dark:text-brand-300">
                             CURRENT
                           </span>
                         ) : entry.hint ? (
-                          <span className="hidden shrink-0 font-code text-[7px] font-bold tracking-[0.14em] text-ink-500 sm:block">
+                          <span className="hidden shrink-0 font-code text-[10px] font-bold tracking-[0.08em] text-ink-600 sm:block dark:text-ink-300">
                             {entry.hint}
                           </span>
                         ) : null}
@@ -161,7 +172,7 @@ export function WorkspacePalette({
                 <Hint keys="↑↓" label="Move" />
                 <Hint keys="↵" label="Open" />
               </div>
-              <span className="font-code text-[7.5px] font-bold tracking-[0.2em] text-ink-500">
+              <span className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-600 dark:text-ink-300">
                 QUORUM · WORKSPACE
               </span>
             </div>

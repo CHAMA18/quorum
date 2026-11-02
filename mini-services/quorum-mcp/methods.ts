@@ -3,9 +3,9 @@
  *
  * The award methods the engine understands, grounded in the law of the
  * jurisdictions the platform serves. First up: Zambia's Public Procurement
- * Act No. 8 of 2023 (which repealed and replaced No. 12 of 2008) and the
- * Public-Private Partnership Act No. 14 of 2009, as summarised by the
- * Zambia Public Procurement Authority's published method guidance.
+ * Act No. 8 of 2020, as amended by Act No. 17 of 2023, and the Public
+ * Procurement Regulations of 2022, as summarised by the Zambia Public
+ * Procurement Authority's published method guidance.
  *
  * Every method states WHEN it is lawful to use it, WHAT the process demands,
  * and WHO authorises the award — because that last line is exactly what the
@@ -15,6 +15,7 @@
 export interface ProcurementMethod {
   id: string;
   name: string;
+  group: string;
   jurisdiction: "ZM";
   /* The statutory anchor the method rides on. */
   legalBasis: string;
@@ -34,20 +35,20 @@ export interface ProcurementMethod {
   floatPeriod?: string;
 }
 
-const ZG = "Zambia — Public Procurement Act No. 8 of 2023";
+const ZG = "Zambia — Public Procurement Act No. 8 of 2020 (as amended by Act No. 17 of 2023) and Public Procurement Regulations, 2022";
 
 export const ZAMBIA_METHODS: ProcurementMethod[] = [
   {
-    id: "open-bidding",
-    name: "Open bidding / selection",
+    id: "open-national-bidding",
+    name: "Open national bidding",
+    group: "Open competition",
     jurisdiction: "ZM",
     legalBasis: ZG,
-    when: "The default method — preferred for all procurement unless another method is justified. High-value procurements (above K1 million).",
-    valueBand: "Above K1 million",
+    when: "Open competition for goods, works and non-consulting services where national bidding is appropriate. Participation is limited to citizen and local bidders under the amended Act.",
     steps: [
       "Invitations to bid are gazetted and advertised in newspapers; the invitation is open to the public.",
       "The bidding document is obtainable upon payment of a non-refundable fee.",
-      "Minimum floatation period: four weeks for national tenders, six weeks for international tenders.",
+      "Minimum floatation period: four weeks.",
       "Sealed bids are deposited in a tender box.",
       "The public is invited to attend the tender closing and bid opening ceremony.",
       "Evaluation is based on the criteria given in the bidding document.",
@@ -57,15 +58,68 @@ export const ZAMBIA_METHODS: ProcurementMethod[] = [
     ],
     notes: [
       "This is the method everything else is measured against — deviations need a reason the record can defend.",
-      "The best-evaluated-bidder publication is a transparency checkpoint, not paperwork: it is the last moment the public can object before money moves.",
+      "The best-evaluated-bidder publication is a transparency checkpoint before contract award.",
     ],
     awardAuthorisation: "Procurement Committee or Central Tender Committee, depending on the level of authority of the procuring entity.",
     advertising: "Gazetted and advertised in newspapers; open to the public.",
-    floatPeriod: "4 weeks national · 6 weeks international",
+    floatPeriod: "4 weeks",
+  },
+  {
+    id: "open-international-bidding",
+    name: "Open international bidding",
+    group: "Open competition",
+    jurisdiction: "ZM",
+    legalBasis: ZG,
+    when: "Open competition for goods, works and non-consulting services where the circumstances in section 39 call for international bidding.",
+    steps: [
+      "Advertise the invitation internationally and make it open to eligible bidders.",
+      "Issue the bidding document with the disclosed requirements and evaluation criteria.",
+      "Allow the prescribed international floatation period.",
+      "Open and evaluate bids publicly against the issued criteria, then record the award approvals.",
+    ],
+    notes: ["Use international bidding when the Act's circumstances require it; record why national bidding is not appropriate."],
+    awardAuthorisation: "The relevant approvals authority under the procuring entity's delegated limits.",
+    advertising: "Advertised internationally and open to eligible bidders.",
+    floatPeriod: "6 weeks",
+  },
+  {
+    id: "open-national-selection",
+    name: "Open national selection",
+    group: "Open competition",
+    jurisdiction: "ZM",
+    legalBasis: ZG,
+    when: "Open competition for consulting services using the national route under sections 40 and 41.",
+    steps: [
+      "Publish an invitation requesting expressions of interest.",
+      "Evaluate expressions of interest against the published criteria and form a shortlist.",
+      "Invite shortlisted consultants to submit proposals and evaluate them against the disclosed criteria.",
+      "Record the evaluation and obtain the required approvals before award.",
+    ],
+    notes: ["The selection method applies to consulting services; national scope is recorded in the notice."],
+    awardAuthorisation: "The relevant approvals authority under the procuring entity's delegated limits.",
+    advertising: "Public invitation for expressions of interest in the national route.",
+  },
+  {
+    id: "open-international-selection",
+    name: "Open international selection",
+    group: "Open competition",
+    jurisdiction: "ZM",
+    legalBasis: ZG,
+    when: "Open competition for consulting services using the international route under sections 40 and 41.",
+    steps: [
+      "Publish an invitation requesting expressions of interest.",
+      "Evaluate expressions of interest against the published criteria and form a shortlist.",
+      "Invite shortlisted consultants to submit proposals and evaluate them against the disclosed criteria.",
+      "Record the evaluation and obtain the required approvals before award.",
+    ],
+    notes: ["The selection method applies to consulting services; international scope is recorded in the notice."],
+    awardAuthorisation: "The relevant approvals authority under the procuring entity's delegated limits.",
+    advertising: "International public invitation for expressions of interest.",
   },
   {
     id: "limited-bidding",
-    name: "Limited bidding / selection",
+    name: "Limited bidding",
+    group: "Limited competition",
     jurisdiction: "ZM",
     legalBasis: ZG,
     when: "Where circumstances do not justify open bidding, the goods/works/services are available from only a limited number of suppliers or firms, or there is an urgent need that makes open bidding impractical.",
@@ -87,8 +141,26 @@ export const ZAMBIA_METHODS: ProcurementMethod[] = [
     floatPeriod: "4 weeks national · 6 weeks international",
   },
   {
+    id: "limited-selection",
+    name: "Limited selection",
+    group: "Limited competition",
+    jurisdiction: "ZM",
+    legalBasis: ZG,
+    when: "Consulting services where circumstances do not justify or permit open selection, only a limited number of firms are available, or urgency makes open selection impractical.",
+    steps: [
+      "Record the statutory grounds for limiting competition and obtain prior approval from the relevant approvals authority.",
+      "Invite eligible shortlisted firms to submit proposals using the issued solicitation document.",
+      "Evaluate proposals against the published criteria and preserve the evaluation record.",
+      "Obtain the required award approval and notify the selected consultant.",
+    ],
+    notes: ["Limited selection is the consulting-services counterpart to limited bidding and requires prior approvals authority authorisation."],
+    awardAuthorisation: "The relevant approvals authority; prior authorisation for use of the method is required.",
+    advertising: "Restricted to the shortlisted firms; document the basis for the shortlist.",
+  },
+  {
     id: "direct-bidding",
     name: "Direct bidding",
+    group: "Direct methods",
     jurisdiction: "ZM",
     legalBasis: ZG,
     when: "Where goods/works/services are available only from a single source with no reasonable alternative; emergency; additional procurement from the same source for compatibility, standardisation or continuity; extension of an existing contract with no advantage from further competition; or value below the threshold prescribed in the Public Procurement Regulations.",
@@ -110,8 +182,26 @@ export const ZAMBIA_METHODS: ProcurementMethod[] = [
     floatPeriod: "4 weeks national · 6 weeks international",
   },
   {
+    id: "direct-selection",
+    name: "Direct selection",
+    group: "Direct methods",
+    jurisdiction: "ZM",
+    legalBasis: ZG,
+    when: "Consulting services procured from a single consultant where the Act's direct-selection grounds are satisfied, including applicable low-value grounds.",
+    steps: [
+      "Record the specific statutory ground and why a competitive selection is not appropriate.",
+      "Obtain prior approval from the relevant approvals authority unless direct selection is on low-value grounds.",
+      "Assess the selected consultant's qualifications and agree the scope and terms as permitted by the Act and Regulations.",
+      "Record the approval and award decision in the procurement file.",
+    ],
+    notes: ["Direct selection is the consulting-services counterpart to direct bidding. The reason and applicable approval must be documented."],
+    awardAuthorisation: "The relevant approvals authority; prior method authorisation is excepted where direct selection is on low-value grounds.",
+    advertising: "No open advertisement; record the single-source rationale.",
+  },
+  {
     id: "simplified-bidding",
-    name: "Simplified bidding / selection",
+    name: "Simplified bidding",
+    group: "Simplified methods",
     jurisdiction: "ZM",
     legalBasis: ZG,
     when: "Low-value, off-the-shelf purchases — up to K1 million.",
@@ -132,8 +222,43 @@ export const ZAMBIA_METHODS: ProcurementMethod[] = [
     advertising: "No advertisement or gazette required.",
   },
   {
+    id: "simplified-selection",
+    name: "Simplified selection",
+    group: "Simplified methods",
+    jurisdiction: "ZM",
+    legalBasis: ZG,
+    when: "A simplified, low-value selection procedure for consulting services where the prescribed conditions and value threshold are met.",
+    steps: [
+      "Prepare a written request for proposals with the scope, requirements and evaluation criteria.",
+      "Invite the required number of eligible consultants under the applicable Regulations.",
+      "Evaluate proposals against the disclosed criteria and document the recommendation.",
+      "Obtain the required approval and issue the award decision.",
+    ],
+    notes: ["Use only within the value threshold and conditions prescribed for simplified selection; verify the current threshold before proceeding."],
+    awardAuthorisation: "The relevant approvals authority under the applicable threshold and delegated authority.",
+    advertising: "No public advertisement where the simplified procedure permits restricted invitations.",
+  },
+  {
+    id: "electronic-reverse-auction",
+    name: "Electronic reverse auction",
+    group: "Other statutory methods",
+    jurisdiction: "ZM",
+    legalBasis: ZG,
+    when: "A well-defined procurement with quantifiable monetary award criteria and a competitive market of pre-qualified suppliers; an approved e-GP portal and secure auction software are required.",
+    steps: [
+      "Confirm the specification and award criteria can be expressed in measurable monetary terms.",
+      "Confirm sufficient independent qualified bidders and access to the approved secure e-GP auction functionality.",
+      "Publish auction rules, timing and criteria, then conduct the live online auction.",
+      "Award according to the published ranking and preserve the e-GP record.",
+    ],
+    notes: ["The Act requires a suitable procurement portal and Authority-approved secure e-procurement software; the auction must preserve effective competition."],
+    awardAuthorisation: "The relevant approvals authority under the procuring entity's delegated limits.",
+    advertising: "Advertise and conduct through the prescribed e-GP process.",
+  },
+  {
     id: "force-account",
     name: "Force account",
+    group: "Other statutory methods",
     jurisdiction: "ZM",
     legalBasis: ZG,
     when: "The procuring entity builds using its own personnel and equipment — where quantities cannot be defined in advance; works are small, scattered or remote and firms are unlikely to bid at reasonable prices; work must proceed without disrupting ongoing operations; risks of work interruption are better borne by the entity; or an emergency needs prompt attention.",
@@ -150,6 +275,7 @@ export const ZAMBIA_METHODS: ProcurementMethod[] = [
   {
     id: "community-participation",
     name: "Community participation",
+    group: "Other statutory methods",
     jurisdiction: "ZM",
     legalBasis: ZG,
     when: "Where, in the interest of project sustainability or specific project objectives, selected project components should involve local communities and NGOs, local know-how and materials, or labour-intensive and appropriate technologies.",
@@ -167,6 +293,7 @@ export const ZAMBIA_METHODS: ProcurementMethod[] = [
   {
     id: "inter-entity-purchase",
     name: "Purchases from other procuring entities",
+    group: "Other statutory methods",
     jurisdiction: "ZM",
     legalBasis: ZG,
     when: "The procuring entity may purchase directly from another Government agency where there would be no benefit in purchasing from a supplier and the agency can meet all requirements specified in the statement of requirement.",
@@ -182,24 +309,46 @@ export const ZAMBIA_METHODS: ProcurementMethod[] = [
     advertising: "Not applicable.",
   },
   {
-    id: "private-infrastructure",
-    name: "Procurement of infrastructure for private financing / concessions",
+    id: "government-to-government",
+    name: "Government-to-government procurement",
+    group: "Other statutory methods",
     jurisdiction: "ZM",
-    legalBasis: "Zambia — Public-Private Partnership Act No. 14 of 2009",
-    when: "Use of the private sector to carry out projects such as construction, rehabilitation or operation of public infrastructure and other public goods on the basis of private investment.",
+    legalBasis: "Public Procurement Act No. 8 of 2020, section 51A, inserted by Public Procurement (Amendment) Act No. 17 of 2023.",
+    when: "Acquire goods, works or services from a foreign State under an agreement between the Republic and that State, benefiting from its expertise or development experience.",
     steps: [
-      "The project is structured under the Public-Private Partnership Act No. 14 of 2009.",
-      "The legal framework for privately financed infrastructure governs implementation.",
+      "Confirm that the procurement is under an agreement between the Republic and a foreign State.",
+      "Record the agreement, scope, price basis and approvals in the procurement file.",
+      "Conduct and document the procurement in accordance with section 51A and applicable regulations.",
+    ],
+    notes: ["This route is distinct from purchases between domestic procuring entities; it concerns procurement under an agreement with a foreign State."],
+    awardAuthorisation: "The relevant approvals authority and Government authorities under the applicable agreement and law.",
+    advertising: "As provided by the State-to-State agreement and applicable law.",
+  },
+  {
+    id: "private-infrastructure",
+    name: "Private-financed infrastructure / concessions (PPP)",
+    group: "Other statutory methods",
+    jurisdiction: "ZM",
+    legalBasis: "Zambia — Public Procurement Act No. 8 of 2020, section 52; Public-Private Partnership Act No. 18 of 2023 (which repeals and replaces Act No. 14 of 2009).",
+    when: "Use this route when private-sector participation under a public-private partnership model will finance or deliver the construction, rehabilitation or operation of public infrastructure, public goods or services, or a concession.",
+    steps: [
+      "Confirm that the proposed project falls within the Public-Private Partnership Act No. 18 of 2023 and its scope.",
+      "Complete project screening, conceptualisation and a feasibility study under the guidance of the Public-Private Partnership Office.",
+      "Submit the feasibility study report and project proposal to the Public-Private Partnership Office for appraisal and the required Technical Committee and Council decisions.",
+      "After the project proposal and feasibility study are approved, prepare the request for expression of interest and obtain Public-Private Partnership Office authorisation before advertising or inviting bids.",
+      "Run pre-selection, proposal evaluation, approval and award using the applicable procedures in the Public-Private Partnership Act and its regulations.",
     ],
     notes: [
-      "Concessions shift risk to the private party — the evaluation question becomes who carries lifecycle cost, not just who quotes least.",
+      "The 2023 Act replaced the 2009 Act. Do not apply the repealed Act's workflow to a new project.",
+      "For concessions and other long-term partnerships, assess affordability, value for money and the allocation of lifecycle risks alongside price.",
     ],
-    awardAuthorisation: "Governed by the PPP Act's institutional framework.",
-    advertising: "Per the PPP Act's own process.",
+    awardAuthorisation: "Follow the Act's required project approvals and Public-Private Partnership Office, Technical Committee and Council review at each applicable stage.",
+    advertising: "After approval of the feasibility study report and project proposal, submit the request for expression of interest to the Public-Private Partnership Office for authorisation to advertise, invite, solicit or call for bids (section 18).",
   },
   {
     id: "alternative-method",
-    name: "Alternative procurement methods",
+    name: "Alternative method (ZPPA approval required)",
+    group: "Authority-approved alternative",
     jurisdiction: "ZM",
     legalBasis: ZG,
     when: "A procuring entity wishing to use a method other than the ones listed must apply to the Zambia Public Procurement Authority.",

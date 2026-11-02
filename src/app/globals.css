@@ -7,7 +7,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: "Satoshi", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Satoshi", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -55,8 +55,8 @@
   --color-ink-100: #e9eaec;
   --color-ink-200: #d3d5da;
   --color-ink-300: #b0b4bc;
-  --color-ink-400: #878d98;
-  --color-ink-500: #6a707c;
+  --color-ink-400: #676d78;
+  --color-ink-500: #626873;
   --color-ink-600: #545a65;
   --color-ink-700: #454a53;
   --color-ink-800: #2b2f36;
@@ -74,7 +74,7 @@
   /* Typography */
   --font-display: "Satoshi", ui-sans-serif, system-ui, sans-serif;
   --font-body: "Satoshi", ui-sans-serif, system-ui, sans-serif;
-  --font-code: "Satoshi", ui-sans-serif, system-ui, sans-serif;
+  --font-code: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 
   /* Marquee + route flow */
   --animate-marquee: marquee 42s linear infinite;
@@ -399,11 +399,43 @@
 }
 
 @layer utilities {
+  /* Keep all supplier portal copy, including mono-coded labels, in Satoshi. */
+  .supplier-console {
+    font-family: var(--font-body);
+    --font-code: var(--font-body);
+    --font-mono: var(--font-body);
+  }
+
+  /* Keep the supplier panels' rounded geometry and shadows, but remove their
+     perimeter stroke so the card surface reads cleanly against the canvas. */
+  .supplier-console .supplier-panel {
+    border-color: transparent;
+  }
+
+  .mobile-safe-header {
+    padding-top: calc(0.75rem + env(safe-area-inset-top, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+    padding-bottom: 0.75rem;
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
+  }
+  .mobile-safe-drawer {
+    width: calc(290px + env(safe-area-inset-left, 0px));
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+  }
   /* Subtle engineering grid for dark bands */
   .bg-grid-dark {
     background-image:
       linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
       linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+  /* Shared, low contrast rail texture used by the officer, admin and supplier sidebars. */
+  .bg-grid-sidebar {
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.0225) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.0225) 1px, transparent 1px);
     background-size: 56px 56px;
   }
   .bg-grid-light {
@@ -417,6 +449,9 @@
   }
   /* Keep decorative loops still for users who ask for less motion */
   @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
     .animate-shimmer,
     .animate-float,
     .animate-float-slow,
@@ -514,16 +549,16 @@
   }
   .type-label {
     font-family: var(--font-code);
-    font-size: 10.5px;
+    font-size: 11px;
     font-weight: 600;
-    letter-spacing: 0.22em;
+    letter-spacing: 0.15em;
     text-transform: uppercase;
   }
   .type-micro {
     font-family: var(--font-code);
-    font-size: 9.5px;
+    font-size: 11px;
     font-weight: 600;
-    letter-spacing: 0.26em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
   }
   .type-num {
@@ -612,6 +647,20 @@
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
+  :where(a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 3px solid #b41e10;
+    outline-offset: 3px;
+  }
+  :is(.bg-ink-700, .bg-ink-800, .bg-ink-900, .bg-ink-950, .bg-night, .bg-night-2, .bg-night-3)
+    :where(a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline-color: #f06b5c;
+  }
+  .dark :where(a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline-color: #f06b5c;
+  }
+  .dark .paper-sheet :where(a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline-color: #b41e10;
+  }
   /* Satoshi's italic face carries short editorial accents without introducing
      a second family into the application-wide type system. */
   .font-editorial {
@@ -619,15 +668,20 @@
     font-style: italic;
     font-weight: 400;
   }
-  /* Error styling only for real errors: inputs flagged with aria-invalid get
-     the red border + calm red ring, in both themes. Focus keeps its own
-     ink-based ring so the two states never read as the same signal. */
+  /* Invalid fields keep a red error border. Their keyboard focus uses a
+     contrasting neutral outline so the focus state remains distinct. */
   [aria-invalid="true"] {
     border-color: #e8382a;
   }
   [aria-invalid="true"]:focus-visible {
-    outline: 2px solid rgba(232, 56, 42, 0.55);
-    outline-offset: 1px;
+    outline: 2px solid #0b0c0f;
+    outline-offset: 2px;
+  }
+  .dark [aria-invalid="true"]:focus-visible {
+    outline-color: #f1f2f4;
+  }
+  .dark .paper-sheet [aria-invalid="true"]:focus-visible {
+    outline-color: #0b0c0f;
   }
   [aria-invalid="true"]::placeholder {
     color: inherit;
@@ -656,8 +710,8 @@
     --color-ink-100: #e9eaec;
     --color-ink-200: #d3d5da;
     --color-ink-300: #b0b4bc;
-    --color-ink-400: #878d98;
-    --color-ink-500: #6a707c;
+    --color-ink-400: #676d78;
+    --color-ink-500: #626873;
     --color-ink-600: #545a65;
     --color-ink-700: #454a53;
     --color-ink-800: #2b2f36;
@@ -751,7 +805,7 @@
      ramp. The sidebar and night panels opt out via the ink-scope rule above. */
   .desk-sheet {
     --color-ink-300: #9aa0ab;
-    --color-ink-400: #6a707c;
+    --color-ink-400: #676d78;
   }
   .dark .desk-sheet {
     --color-ink-300: #3b424e;
@@ -769,9 +823,9 @@
      one colour, everywhere in the desk. */
   .eyebrow {
     font-family: var(--font-code);
-    font-size: 9.5px;
+    font-size: 10.5px;
     font-weight: 700;
-    letter-spacing: 0.22em;
+    letter-spacing: 0.14em;
     line-height: 1;
     text-transform: uppercase;
     color: var(--color-ink-500);
@@ -931,4 +985,244 @@
   .hero-film__poster {
     display: block;
   }
+}
+
+/* Ink-100/200 remain dark-surface tones in the dark palette. When components
+   explicitly use them for text, lift them to readable light neutrals. */
+.dark .supplier-console :is([class~="text-ink-100"], [class~="dark:text-ink-100"]) {
+  color: #e9eaec;
+}
+.dark .supplier-console :is([class~="text-ink-200"], [class~="dark:text-ink-200"]) {
+  color: #d3d5da;
+}
+
+/* Ink-300 remains a low dark-surface tone for fills and borders. When a
+   component explicitly uses it for text, lift it to a contrast-safe neutral. */
+:root:not(.dark) .supplier-console :is(.panel, .panel-lift, .panel-inset)
+  :is([class~="text-ink-300"], [class~="dark:text-ink-300"]) {
+  color: #626873;
+}
+
+.dark .supplier-console :is([class~="text-ink-300"], [class~="dark:text-ink-300"]) {
+  color: #b3b8c1;
+}
+
+/* Muted copy still needs normal-text contrast on the dark desk and its cards. */
+.dark .supplier-console :is([class~="text-ink-400"], [class~="dark:text-ink-400"]) {
+  color: #858b96;
+}
+.dark .supplier-console :is([class~="text-ink-500"], [class~="dark:text-ink-500"]) {
+  color: #9aa0ab;
+}
+.dark .supplier-console :is([class~="text-ink-600"], [class~="dark:text-ink-600"]) { color: #b3b8c1; }
+.dark .supplier-console :is([class~="text-ink-700"], [class~="dark:text-ink-700"]) { color: #c9ccd3; }
+.dark .supplier-console :is([class~="text-ink-800"], [class~="dark:text-ink-800"]) { color: #dfe1e6; }
+.dark .supplier-console :is([class~="text-ink-900"], [class~="dark:text-ink-900"]) { color: #f1f2f4; }
+.dark .supplier-console :is([class~="text-ink-950"], [class~="dark:text-ink-950"]) { color: #fafafb; }
+
+/* Admin controls use the same dark-surface ink scale as the supplier and
+   Quorum workspaces, so text never inherits the fill end of the ramp. */
+.dark .admin-surface :is([class~="text-ink-100"], [class~="dark:text-ink-100"]) { color: #e9eaec; }
+.dark .admin-surface :is([class~="text-ink-200"], [class~="dark:text-ink-200"]) { color: #d3d5da; }
+.dark .admin-surface :is([class~="text-ink-300"], [class~="dark:text-ink-300"]) { color: #b0b4bc; }
+.dark .admin-surface :is([class~="text-ink-400"], [class~="dark:text-ink-400"]) { color: #878d98; }
+.dark .admin-surface :is([class~="text-ink-500"], [class~="dark:text-ink-500"]) { color: #9aa0ab; }
+.dark .admin-surface :is([class~="text-ink-600"], [class~="dark:text-ink-600"]) { color: #b3b8c1; }
+.dark .admin-surface :is([class~="text-ink-700"], [class~="dark:text-ink-700"]) { color: #c9ccd3; }
+.dark .admin-surface :is([class~="text-ink-800"], [class~="dark:text-ink-800"]) { color: #dfe1e6; }
+.dark .admin-surface :is([class~="text-ink-900"], [class~="dark:text-ink-900"]) { color: #f1f2f4; }
+.dark .admin-surface :is([class~="text-ink-950"], [class~="dark:text-ink-950"]) { color: #fafafb; }
+
+/* The sign-in view sits outside the desk sheet, so give its dark text the
+   same readable ramp explicitly. */
+.dark .auth-screen :is([class~="text-ink-100"], [class~="dark:text-ink-100"]) { color: #e9eaec; }
+.dark .auth-screen :is([class~="text-ink-200"], [class~="dark:text-ink-200"]) { color: #d3d5da; }
+.dark .auth-screen :is([class~="text-ink-300"], [class~="dark:text-ink-300"]) { color: #b0b4bc; }
+.dark .auth-screen :is([class~="text-ink-400"], [class~="dark:text-ink-400"]) { color: #878d98; }
+.dark .auth-screen :is([class~="text-ink-500"], [class~="dark:text-ink-500"]) { color: #9aa0ab; }
+.dark .auth-screen :is([class~="text-ink-600"], [class~="dark:text-ink-600"]) { color: #b3b8c1; }
+.dark .auth-screen :is([class~="text-ink-700"], [class~="dark:text-ink-700"]) { color: #c9ccd3; }
+.dark .auth-screen :is([class~="text-ink-800"], [class~="dark:text-ink-800"]) { color: #dfe1e6; }
+.dark .auth-screen :is([class~="text-ink-900"], [class~="dark:text-ink-900"]) { color: #f1f2f4; }
+.dark .auth-screen :is([class~="text-ink-950"], [class~="dark:text-ink-950"]) { color: #fafafb; }
+
+/* Dark surfaces locally restore the light ink ramp for fills. That is useful
+   for backgrounds but makes text utilities nearly black. Re-map text only in
+   the Quorum workspace so copy stays legible while fill/border colors retain
+   their intended hierarchy. */
+.dark .desk-sheet :is([class~="text-ink-50"], [class~="dark:text-ink-50"]) { color: #f5f5f6; }
+.dark .desk-sheet :is([class~="text-ink-100"], [class~="dark:text-ink-100"]) { color: #e9eaec; }
+.dark .desk-sheet :is([class~="text-ink-200"], [class~="dark:text-ink-200"]) { color: #d3d5da; }
+.dark .desk-sheet :is([class~="text-ink-300"], [class~="dark:text-ink-300"]) { color: #b0b4bc; }
+.dark .desk-sheet :is([class~="text-ink-400"], [class~="dark:text-ink-400"]) { color: #878d98; }
+.dark .desk-sheet :is([class~="text-ink-500"], [class~="dark:text-ink-500"]) { color: #9aa0ab; }
+.dark .desk-sheet :is([class~="text-ink-600"], [class~="dark:text-ink-600"]) { color: #b3b8c1; }
+.dark .desk-sheet :is([class~="text-ink-700"], [class~="dark:text-ink-700"]) { color: #c9ccd3; }
+.dark .desk-sheet :is([class~="text-ink-800"], [class~="dark:text-ink-800"]) { color: #dfe1e6; }
+.dark .desk-sheet :is([class~="text-ink-900"], [class~="dark:text-ink-900"]) { color: #f1f2f4; }
+.dark .desk-sheet :is([class~="text-ink-950"], [class~="dark:text-ink-950"]) { color: #fafafb; }
+.dark .desk-sheet :is(input, textarea)::placeholder {
+  color: #a8adb7;
+  opacity: 1;
+}
+.dark .desk-sheet .paper-sheet :is(input, textarea)::placeholder {
+  color: #626873;
+}
+
+/* Keep keyboard focus visible even when a component supplies a faint custom
+   ring or resets its outline. The dark paper exception stays on the light ink. */
+.desk-sheet :where(
+  a[href],
+  button:not(:disabled),
+  input:not(:disabled),
+  select:not(:disabled),
+  textarea:not(:disabled),
+  [tabindex]:not([tabindex="-1"])
+):focus-visible {
+  outline: 3px solid #b41e10;
+  outline-offset: 3px;
+}
+.dark .desk-sheet :where(
+  a[href],
+  button:not(:disabled),
+  input:not(:disabled),
+  select:not(:disabled),
+  textarea:not(:disabled),
+  [tabindex]:not([tabindex="-1"])
+):focus-visible {
+  outline-color: #f06b5c;
+}
+.dark .desk-sheet .paper-sheet :where(
+  a[href],
+  button:not(:disabled),
+  input:not(:disabled),
+  select:not(:disabled),
+  textarea:not(:disabled),
+  [tabindex]:not([tabindex="-1"])
+):focus-visible {
+  outline-color: #b41e10;
+}
+.desk-sheet [aria-invalid="true"]:focus-visible { outline-color: #0b0c0f; }
+.dark .desk-sheet [aria-invalid="true"]:focus-visible { outline-color: #f1f2f4; }
+.dark .desk-sheet .paper-sheet [aria-invalid="true"]:focus-visible { outline-color: #0b0c0f; }
+
+/* The floating assistant uses a near-black panel in dark mode. The default
+   ink ramp is tuned for paper, so restore a readable text ramp inside this
+   surface without changing its light theme or the wider workspace palette. */
+.dark .muse-assistant { color: #f1f2f4; }
+.dark .muse-assistant :is([class~="text-ink-50"], [class~="dark:text-ink-50"]) { color: #f5f5f6; }
+.dark .muse-assistant :is([class~="text-ink-100"], [class~="dark:text-ink-100"]) { color: #e9eaec; }
+.dark .muse-assistant :is([class~="text-ink-200"], [class~="dark:text-ink-200"]) { color: #d3d5da; }
+.dark .muse-assistant :is([class~="text-ink-300"], [class~="dark:text-ink-300"]) { color: #c9ccd3; }
+.dark .muse-assistant :is([class~="text-ink-400"], [class~="dark:text-ink-400"]) { color: #9aa0ab; }
+.dark .muse-assistant :is([class~="text-ink-500"], [class~="dark:text-ink-500"]) { color: #a8adb7; }
+.dark .muse-assistant :is([class~="text-ink-600"], [class~="dark:text-ink-600"]) { color: #b3b8c1; }
+.dark .muse-assistant :is([class~="text-ink-700"], [class~="dark:text-ink-700"]) { color: #c9ccd3; }
+.dark .muse-assistant :is([class~="text-ink-800"], [class~="dark:text-ink-800"]) { color: #dfe1e6; }
+.dark .muse-assistant :is([class~="text-ink-900"], [class~="dark:text-ink-900"]) { color: #f1f2f4; }
+.dark .muse-assistant :is([class~="text-ink-950"], [class~="dark:text-ink-950"]) { color: #fafafb; }
+.dark .muse-assistant input::placeholder,
+.dark .muse-assistant textarea::placeholder {
+  color: #a8adb7;
+  opacity: 1;
+}
+
+/* Signature sheets stay light inside the dark application shell. */
+.dark .supplier-console .paper-sheet :is(
+  [class~="text-ink-100"],
+  [class~="dark:text-ink-100"],
+  [class~="text-ink-200"],
+  [class~="dark:text-ink-200"],
+  [class~="text-ink-300"],
+  [class~="dark:text-ink-300"],
+  [class~="text-ink-500"],
+  [class~="dark:text-ink-500"]
+) {
+  color: #2b2f36;
+}
+.dark .supplier-console .paper-sheet :is([class~="text-ink-100"], [class~="dark:text-ink-100"]) {
+  color: #16181d;
+}
+.dark .supplier-console .paper-sheet :is([class~="text-ink-400"], [class~="dark:text-ink-400"]) {
+  color: #676d78;
+}
+
+/* Form hints stay readable across the paper, night, and signature-sheet
+   surfaces, even when a component supplies a more decorative placeholder token. */
+.supplier-console input::placeholder,
+.supplier-console textarea::placeholder {
+  color: #676d78;
+  opacity: 1;
+}
+
+.supplier-console :is(.bg-ink-700, .bg-ink-800, .bg-ink-900, .bg-ink-950, .bg-night, .bg-night-2, .bg-night-3)
+  :is(input, textarea)::placeholder {
+  color: #b0b4bc;
+}
+
+.dark .supplier-console input::placeholder,
+.dark .supplier-console textarea::placeholder {
+  color: #9aa0ab;
+}
+
+.dark .supplier-console .paper-sheet input::placeholder,
+.dark .supplier-console .paper-sheet textarea::placeholder {
+  color: #626873;
+}
+
+/* Portal work surfaces use a restrained aurora wash over a measured drafting
+   grid: enough depth to guide the eye, with panels still carrying hierarchy. */
+:is(.desk-canvas, .supplier-workspace-canvas, .admin-workspace-canvas) {
+  background-color: #f6f5f1;
+  background-image:
+    radial-gradient(920px 460px at 10% -8%, rgba(232, 56, 42, 0.075), transparent 66%),
+    radial-gradient(820px 560px at 102% 12%, rgba(61, 105, 132, 0.065), transparent 62%),
+    radial-gradient(900px 520px at 72% 108%, rgba(191, 150, 83, 0.045), transparent 64%),
+    linear-gradient(rgba(11, 12, 15, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(11, 12, 15, 0.025) 1px, transparent 1px),
+    linear-gradient(180deg, #f8f7f3 0%, #f3f1ec 58%, #f8f7f3 100%);
+  background-size: auto, auto, auto, 56px 56px, 56px 56px, auto;
+  background-attachment: fixed;
+}
+
+.dark :is(.desk-canvas, .supplier-workspace-canvas, .admin-workspace-canvas) {
+  background-color: #08090c;
+  background-image:
+    radial-gradient(1040px 500px at 12% -10%, rgba(232, 56, 42, 0.145), transparent 66%),
+    radial-gradient(900px 620px at 104% 10%, rgba(89, 111, 153, 0.105), transparent 62%),
+    radial-gradient(980px 560px at 74% 108%, rgba(153, 92, 57, 0.065), transparent 66%),
+    linear-gradient(rgba(255, 255, 255, 0.024) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.024) 1px, transparent 1px),
+    linear-gradient(180deg, #090a0e 0%, #0b0c10 56%, #090a0e 100%);
+  background-size: auto, auto, auto, 56px 56px, 56px 56px, auto;
+  background-attachment: fixed;
+}
+
+@media (max-width: 767px) {
+  :is(.desk-canvas, .supplier-workspace-canvas, .admin-workspace-canvas) {
+    background-attachment: scroll;
+  }
+}
+
+/* Supplier and admin navigation rails keep a dark surface regardless of the workspace theme.
+   Give their ink tokens a matching light-on-dark ramp so theme changes cannot
+   wash out labels or selected navigation items. */
+.sidebar-rail-surface {
+  color: #e9eaec;
+  background-color: #0b0c0f;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 56px 56px;
+  --color-ink-50: #f5f5f6;
+  --color-ink-100: #e9eaec;
+  --color-ink-200: #d3d5da;
+  --color-ink-300: #b0b4bc;
+  --color-ink-400: #878d98;
+  --color-ink-500: #9aa0ab;
+  --color-ink-600: #b3b8c1;
+  --color-ink-700: #c9ccd3;
+  --color-ink-800: #dfe1e6;
+  --color-ink-900: #f1f2f4;
+  --color-ink-950: #fafafb;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useReducer, useRef, useState, useSyncExternalStore } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { TopTicker } from "@/components/quorum/top-ticker";
 import { SiteHeader } from "@/components/quorum/site-header";
 import { Hero } from "@/components/quorum/hero";
@@ -46,6 +46,7 @@ const getServerHash = () => "";
 export default function Home() {
   const [, bump] = useReducer((n: number) => n + 1, 0);
   const hash = useSyncExternalStore(subscribeHash, getHash, getServerHash);
+  const reduceMotion = useReducedMotion();
 
   const view: "landing" | "auth" | "dashboard" =
     hash === "#/register" || hash === "#/login"
@@ -167,10 +168,10 @@ export default function Home() {
           <motion.div
             key="landing"
             className="dark"
-            initial={{ opacity: 0 }}
+            initial={reduceMotion ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: 0.22 } }}
-            transition={{ duration: 0.4 }}
+            exit={{ opacity: reduceMotion ? 1 : 0, transition: { duration: reduceMotion ? 0 : 0.22 } }}
+            transition={{ duration: reduceMotion ? 0 : 0.4 }}
           >
             <div className="flex min-h-screen flex-col bg-paper font-body text-ink-900 antialiased">
               <NoiseOverlay />
@@ -207,10 +208,10 @@ export default function Home() {
         ) : view === "auth" ? (
           <motion.div
             key="auth"
-            initial={{ opacity: 0, y: 14 }}
+            initial={reduceMotion ? false : { opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, transition: { duration: 0.18 } }}
-            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+            exit={{ opacity: reduceMotion ? 1 : 0, transition: { duration: reduceMotion ? 0 : 0.18 } }}
+            transition={reduceMotion ? { duration: 0 } : { duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
           >
             <AuthScreen
               mode={authMode}
@@ -223,10 +224,10 @@ export default function Home() {
         ) : (
           <motion.div
             key="dashboard"
-            initial={{ opacity: 0, y: 14 }}
+            initial={reduceMotion ? false : { opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, transition: { duration: 0.18 } }}
-            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+            exit={{ opacity: reduceMotion ? 1 : 0, transition: { duration: reduceMotion ? 0 : 0.18 } }}
+            transition={reduceMotion ? { duration: 0 } : { duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
           >
             <Dashboard
               user={user}
@@ -247,10 +248,10 @@ export default function Home() {
       <AnimatePresence>
         {toast && (
           <motion.div
-            initial={{ opacity: 0, y: 16, scale: 0.97 }}
+            initial={reduceMotion ? false : { opacity: 0, y: 16, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8 }}
-            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            transition={reduceMotion ? { duration: 0 } : { duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             role="status"
             className="fixed bottom-5 left-5 z-[100] flex items-center gap-3 rounded-xl bg-ink-950/85 px-4 py-3 shadow-[0_18px_50px_rgba(11,12,15,0.45)] ring-1 ring-white/15 backdrop-blur-md"
           >

@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from "react";
 import {
@@ -25,11 +26,15 @@ import {
   Search,
   Stamp,
   Users,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { QuorumLogo } from "@/components/quorum/logo";
 import { ThemeToggle } from "@/components/quorum/theme-toggle";
+import { HorizontalScrollRegion } from "@/components/quorum/horizontal-scroll-region";
 import { cn } from "@/lib/utils";
+import { preferredScrollBehavior, trapTabFocus } from "@/lib/a11y";
+import { systemReferenceLabel } from "@/lib/system-reference";
 import type { AdminOverview } from "@/lib/admin-types";
 import { Chip, Dot, Skeleton, TONE, type Tone } from "@/components/admin/kit";
 import { SECTIONS, isAdminSection, type AdminSection, type ToastTone } from "@/components/admin/types";
@@ -101,9 +106,31 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
   });
   const [now, setNow] = useState(() => Date.now());
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const paletteReturnFocusRef = useRef<HTMLElement | null>(null);
+  const mainContentRef = useRef<HTMLElement | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastId = useRef(0);
   const hasLoaded = useRef(false);
+
+  const openPalette = useCallback((trigger?: HTMLElement | null) => {
+    const activeElement =
+      document.activeElement instanceof HTMLElement && document.activeElement !== document.body
+        ? document.activeElement
+        : null;
+    const visibleSearchTrigger = Array.from(
+      document.querySelectorAll<HTMLButtonElement>("[data-admin-search-trigger]"),
+    ).find((button) => button.getClientRects().length > 0);
+    paletteReturnFocusRef.current = trigger ?? activeElement ?? visibleSearchTrigger ?? null;
+    setPaletteOpen(true);
+  }, []);
+
+  const closePalette = useCallback(() => {
+    setPaletteOpen(false);
+    requestAnimationFrame(() => {
+      const trigger = paletteReturnFocusRef.current;
+      if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+    });
+  }, []);
 
   const notify = useCallback((message: string, tone: ToastTone = "info") => {
     toastId.current += 1;
@@ -170,7 +197,8 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        setPaletteOpen((open) => !open);
+        if (paletteOpen) closePalette();
+        else openPalette();
       }
       if (event.key === "/" && !paletteOpen) {
         const target = event.target as HTMLElement | null;
@@ -182,20 +210,21 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
             target.isContentEditable);
         if (!typing) {
           event.preventDefault();
-          setPaletteOpen(true);
+          openPalette();
         }
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [paletteOpen]);
+  }, [closePalette, openPalette, paletteOpen]);
 
   const navigate = useCallback((next: AdminSection, query?: string) => {
     if (query !== undefined) setQueries((prev) => ({ ...prev, [next]: query }));
     if (window.location.hash !== `#${next}`) window.location.hash = next;
     setSection(next);
     setPaletteOpen(false);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: preferredScrollBehavior() });
+    requestAnimationFrame(() => mainContentRef.current?.focus({ preventScroll: true }));
   }, []);
 
   const signOut = useCallback(async () => {
@@ -265,28 +294,34 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
   })();
 
   return (
-    <div className="min-h-screen bg-paper font-body text-ink-900 antialiased">
+    <div className="admin-surface admin-workspace-canvas min-h-screen font-body text-ink-900 antialiased">
+      <a
+        href="#admin-main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[90] focus:rounded-lg focus:bg-ink-950 focus:px-4 focus:py-2 focus:text-[13px] focus:font-semibold focus:text-white"
+      >
+        Skip to control room
+      </a>
       <div className={cn("lg:grid", navCollapsed ? "lg:grid-cols-1" : "lg:grid-cols-[252px_minmax(0,1fr)]")}>
         {/* ── Rail ─────────────────────────────────────────────────────── */}
-        {!navCollapsed && <aside className="relative hidden bg-ink-950 lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col">
+        {!navCollapsed && <aside className="sidebar-rail-surface relative hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col">
           <button
             type="button"
             onClick={() => setNavCollapsedPersisted(true)}
             aria-label="Collapse sidebar"
             title="Collapse the sidebar"
-            className="focus-brand absolute right-3 top-5 z-10 grid h-8 w-8 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-white/10 hover:text-white"
+            className="focus-brand absolute right-3 top-5 z-10 grid h-11 w-11 place-items-center rounded-lg text-ink-300 transition-colors hover:bg-white/10 hover:text-white"
           >
             <PanelLeftClose className="h-4 w-4" aria-hidden="true" />
           </button>
           <div className="border-b border-white/10 px-5 py-5 pr-14">
             <QuorumLogo variant="light" tagline={false} />
-            <p className="mt-3 font-code text-[7.5px] font-bold uppercase tracking-[0.3em] text-brand-400">
+            <p className="mt-3 font-code text-[10px] font-bold uppercase tracking-[0.12em] text-brand-300">
               CONTROL ROOM
             </p>
           </div>
 
           <nav aria-label="Control room sections" className="flex-1 overflow-y-auto px-2.5 py-4">
-            <p className="px-2.5 pb-2 font-code text-[7px] font-bold uppercase tracking-[0.28em] text-ink-500">
+            <p className="px-2.5 pb-2 font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-300">
               SURFACES
             </p>
             <ul className="space-y-0.5">
@@ -301,7 +336,7 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
                       onClick={() => navigate(item.id)}
                       aria-current={active ? "page" : undefined}
                       className={cn(
-                        "focus-brand group relative flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors",
+                        "focus-brand group relative flex min-h-11 w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors",
                         active
                           ? "bg-white/[0.07] text-white ring-1 ring-inset ring-white/10"
                           : "text-ink-400 hover:bg-white/[0.04] hover:text-white",
@@ -310,15 +345,15 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
                       {active && (
                         <span className="absolute bottom-2 left-0 top-2 w-[2px] rounded-r bg-brand-500" aria-hidden="true" />
                       )}
-                      <Icon className={cn("h-3.5 w-3.5 shrink-0", active ? "text-brand-400" : "text-ink-500")} aria-hidden="true" />
+                      <Icon className={cn("h-4 w-4 shrink-0", active ? "text-brand-400" : "text-ink-300")} aria-hidden="true" />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[12px] font-semibold">{item.label}</span>
-                        <span className="block truncate text-[9.5px] text-ink-500">{item.blurb}</span>
+                        <span className="block truncate text-[10.5px] leading-snug text-ink-300">{item.blurb}</span>
                       </span>
                       {count !== undefined && (
                         <span
                           className={cn(
-                            "rounded-full px-1.5 py-0.5 font-code text-[8px] font-bold tabular",
+                            "rounded-full px-2 py-1 font-code text-[10px] font-bold tabular",
                             active
                               ? "bg-white/10 text-white"
                               : (item.id === "gates" || item.id === "support") && count > 0
@@ -336,8 +371,8 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
             </ul>
 
             <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3">
-              <p className="font-code text-[7px] font-bold uppercase tracking-[0.24em] text-ink-500">
-                THE STANDING RULE
+              <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-300">
+                The standing rule
               </p>
               <p className="mt-1.5 text-[10.5px] leading-relaxed text-ink-400">
                 The agent prepares the file. This console never signs a gate — the committee does, by name, in
@@ -348,12 +383,12 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
 
           <div className="border-t border-white/10 px-3 py-3">
             <div className="flex items-center gap-2.5 px-1.5 pb-2.5">
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-600 font-code text-[9px] font-bold text-white">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-600 font-code text-[10px] font-bold text-white">
                 {initials(user.name)}
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[11.5px] font-semibold text-white">{user.name}</p>
-                <p className="truncate font-code text-[7px] font-bold uppercase tracking-[0.18em] text-ink-400">
+                <p className="truncate text-[10px] font-semibold text-ink-300">
                   {user.role} · {user.email}
                 </p>
               </div>
@@ -363,7 +398,7 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
               <a
                 href="/#/dashboard"
                 title="Return to the workspace"
-                className="focus-brand grid h-8 w-8 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-white/10 hover:text-white"
+                className="focus-brand grid h-11 w-11 place-items-center rounded-lg text-ink-300 transition-colors hover:bg-white/10 hover:text-white"
               >
                 <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
                 <span className="sr-only">Return to the workspace</span>
@@ -372,7 +407,7 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
                 type="button"
                 onClick={() => void signOut()}
                 title="Sign out"
-                className="focus-brand ml-auto grid h-8 w-8 place-items-center rounded-lg text-ink-400 transition-colors hover:bg-white/10 hover:text-white"
+                className="focus-brand ml-auto grid h-11 w-11 place-items-center rounded-lg text-ink-300 transition-colors hover:bg-white/10 hover:text-white"
               >
                 <LogOut className="h-4 w-4" aria-hidden="true" />
                 <span className="sr-only">Sign out</span>
@@ -387,7 +422,7 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
             <div className="mx-auto flex w-full max-w-[1500px] items-center gap-2 px-4 py-2.5 sm:px-6 lg:px-8">
               <div className="flex min-w-0 flex-1 items-center gap-2.5">
                 <a href="/admin" className="lg:hidden" aria-label="Control room home">
-                  <span className="grid h-7 w-7 place-items-center rounded-lg bg-ink-950">
+                  <span className="grid h-11 w-11 place-items-center rounded-lg bg-ink-950">
                     <span className="h-2 w-2 rounded-full bg-brand-500" aria-hidden="true" />
                   </span>
                 </a>
@@ -397,18 +432,18 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
                     onClick={() => setNavCollapsedPersisted(false)}
                     aria-label="Expand sidebar"
                     title="Expand the sidebar"
-                    className="focus-brand hidden h-8 w-8 shrink-0 place-items-center rounded-lg border border-ink-200 bg-white text-ink-600 transition-colors hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 lg:grid dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-400"
+                    className="focus-brand hidden h-11 w-11 shrink-0 place-items-center rounded-lg border border-ink-200 bg-white text-ink-600 transition-colors hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 lg:grid dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-400"
                   >
                     <PanelLeftOpen className="h-4 w-4" aria-hidden="true" />
                   </button>
                 )}
                 <div className="min-w-0">
-                  <p className="font-code text-[7px] font-bold uppercase tracking-[0.24em] text-ink-400">
+                  <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">
                     QUORUM · CONTROL ROOM
                   </p>
                   <div className="flex items-center gap-1.5">
                     <span className="truncate text-[12.5px] font-semibold text-ink-950">{current.label}</span>
-                    <span className="hidden font-code text-[8px] tracking-[0.14em] text-ink-400 sm:inline">
+                    <span className="hidden text-[10px] text-ink-600 sm:inline">
                       / {String(data?.desk.audit.allTotal ?? 0)} RECORDED CALLS
                     </span>
                   </div>
@@ -431,7 +466,7 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
                 aria-checked={live}
                 title={live ? "Auto-refresh every 20 seconds — click to pause" : "Auto-refresh paused — click to resume"}
                 className={cn(
-                  "focus-brand inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 font-code text-[8px] font-bold uppercase tracking-[0.16em] transition-colors",
+                  "focus-brand inline-flex min-h-11 items-center gap-2 rounded-full border px-3 font-code text-[10px] font-bold uppercase tracking-[0.06em] transition-colors",
                   live
                     ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
                     : "border-ink-200 bg-white text-ink-500 dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-400",
@@ -446,7 +481,7 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
                 onClick={() => void refresh(true)}
                 disabled={refreshing}
                 title="Refresh the snapshot"
-                className="focus-brand grid h-8 w-8 place-items-center rounded-lg border border-ink-200 bg-white text-ink-600 transition-colors hover:border-ink-400 hover:text-ink-950 disabled:opacity-50 dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-400 dark:hover:border-white/25 dark:hover:text-white"
+                className="focus-brand grid h-11 w-11 place-items-center rounded-lg border border-ink-200 bg-white text-ink-600 transition-colors hover:border-ink-400 hover:text-ink-950 disabled:opacity-50 dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-400 dark:hover:border-white/25 dark:hover:text-white"
               >
                 <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} aria-hidden="true" />
                 <span className="sr-only">Refresh</span>
@@ -454,28 +489,35 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
 
               <button
                 type="button"
-                onClick={() => setPaletteOpen(true)}
-                className="focus-brand hidden h-8 items-center gap-2 rounded-lg border border-ink-200 bg-white pl-2.5 pr-1.5 text-ink-500 transition-colors hover:border-ink-400 hover:text-ink-950 sm:inline-flex dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-400 dark:hover:border-white/25 dark:hover:text-white"
+                onClick={(event) => openPalette(event.currentTarget)}
+                data-admin-search-trigger
+                className="focus-brand hidden min-h-11 items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 text-ink-500 transition-colors hover:border-ink-400 hover:text-ink-950 sm:inline-flex dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-400 dark:hover:border-white/25 dark:hover:text-white"
               >
                 <Search className="h-3.5 w-3.5" aria-hidden="true" />
-                <span className="font-code text-[8px] font-bold uppercase tracking-[0.14em]">SEARCH</span>
-                <kbd className="rounded border border-ink-200 bg-ink-50 px-1 py-0.5 font-code text-[8px] font-bold text-ink-500 dark:border-white/10 dark:bg-white/[0.06] dark:text-ink-400">
+                <span className="font-code text-[10px] font-bold uppercase tracking-[0.06em]">Search</span>
+                <kbd className="rounded border border-ink-200 bg-ink-50 px-1.5 py-1 font-code text-[10px] font-bold text-ink-600 dark:border-white/10 dark:bg-white/[0.06] dark:text-ink-300">
                   ⌘K
                 </kbd>
               </button>
               <button
                 type="button"
-                onClick={() => setPaletteOpen(true)}
+                onClick={(event) => openPalette(event.currentTarget)}
+                data-admin-search-trigger
                 aria-label="Search the control room"
-                className="focus-brand grid h-8 w-8 place-items-center rounded-lg border border-ink-200 bg-white text-ink-500 sm:hidden dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-400"
+                className="focus-brand grid h-11 w-11 place-items-center rounded-lg border border-ink-200 bg-white text-ink-500 sm:hidden dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-400"
               >
                 <Search className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
             </div>
 
             {/* Mobile section strip */}
-            <div className="border-t border-ink-100 px-2 py-1.5 lg:hidden dark:border-white/8">
-              <div className="flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <nav aria-label="Control room sections" className="border-t border-ink-100 px-2 py-1.5 lg:hidden dark:border-white/8">
+              <HorizontalScrollRegion
+                label="Scrollable control room section list"
+                hint="Swipe or scroll to see every section. Focus this row and use the arrow keys to scroll."
+                hintClassName="px-2 py-1 text-[10.5px]"
+                className="flex gap-1 py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
                 {SECTIONS.map((item) => {
                   const active = item.id === section;
                   return (
@@ -485,9 +527,9 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
                       onClick={() => navigate(item.id)}
                       aria-current={active ? "page" : undefined}
                       className={cn(
-                        "focus-brand inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1.5 font-code text-[8px] font-bold uppercase tracking-[0.14em] transition-colors",
+                        "focus-brand inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-3 py-2 font-code text-[10px] font-bold uppercase tracking-[0.06em] transition-colors",
                         active
-                          ? "bg-ink-950 text-white dark:bg-white dark:text-ink-950"
+                          ? "bg-ink-950 text-white dark:bg-white dark:text-[#0b0c0f]"
                           : "text-ink-500 hover:bg-ink-100 dark:hover:bg-white/[0.06]",
                       )}
                     >
@@ -500,17 +542,23 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
                     </button>
                   );
                 })}
-              </div>
-            </div>
+              </HorizontalScrollRegion>
+            </nav>
           </header>
 
-          <main className="mx-auto w-full max-w-[1500px] px-4 pb-24 pt-6 sm:px-6 lg:px-8">
+          <main
+            id="admin-main"
+            ref={mainContentRef}
+            tabIndex={-1}
+            aria-label={`${current.label} section`}
+            className="mx-auto w-full max-w-[1500px] px-4 pb-24 pt-6 outline-none sm:px-6 lg:px-8"
+          >
             {!data && loading ? (
               <ConsoleSkeleton />
             ) : !data ? (
               <div className="panel rounded-2xl px-6 py-10">
-                <p className="font-code text-[8px] font-bold uppercase tracking-[0.24em] text-brand-600">
-                  SNAPSHOT UNAVAILABLE
+                <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-brand-700">
+                  Snapshot unavailable
                 </p>
                 <h1 className="mt-2 font-display text-[24px] font-black tracking-[-0.02em] text-ink-950">
                   The control room could not read the desk.
@@ -522,7 +570,7 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
                 <button
                   type="button"
                   onClick={() => void refresh()}
-                  className="focus-brand mt-4 inline-flex h-9 items-center gap-2 rounded-lg bg-ink-950 px-4 font-code text-[9px] font-bold uppercase tracking-[0.16em] text-white"
+                  className="focus-brand mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg bg-ink-950 px-4 py-2 font-code text-[10px] font-bold uppercase tracking-[0.08em] text-white"
                 >
                   <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
                   TRY AGAIN
@@ -543,14 +591,14 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
             )}
           </main>
 
-          <footer className="mx-auto flex w-full max-w-[1500px] flex-wrap items-center justify-between gap-3 border-t border-ink-200/70 px-4 py-5 font-code text-[8px] font-semibold uppercase tracking-[0.16em] text-ink-400 sm:px-6 lg:px-8 dark:border-white/10">
+          <footer className="mx-auto flex w-full max-w-[1500px] flex-wrap items-center justify-between gap-3 border-t border-ink-200/70 px-4 py-5 text-[10px] font-semibold text-ink-600 sm:px-6 lg:px-8 dark:border-white/10">
             <span>QUORUM · CONTROL ROOM · {data?.actor.role ?? user.role} ACCESS</span>
             <span className="flex items-center gap-3">
-              <a href="/" className="hover:text-ink-950 dark:hover:text-white">LANDING</a>
-              <a href="/#/dashboard" className="hover:text-ink-950 dark:hover:text-white">WORKSPACE</a>
+              <a href="/" className="focus-brand inline-flex min-h-11 items-center px-2 hover:text-ink-950 dark:hover:text-white">Landing</a>
+              <a href="/#/dashboard" className="focus-brand inline-flex min-h-11 items-center px-2 hover:text-ink-950 dark:hover:text-white">Workspace</a>
               <a
                 href="/api/log/export?XTransformPort=3031"
-                className="hover:text-ink-950 dark:hover:text-white"
+                className="focus-brand inline-flex min-h-11 items-center px-2 hover:text-ink-950 dark:hover:text-white"
               >
                 AUDIT EXPORT
               </a>
@@ -562,7 +610,7 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
       {paletteOpen && data && (
         <CommandPalette
           data={data}
-          onClose={() => setPaletteOpen(false)}
+          onClose={closePalette}
           onNavigate={navigate}
           onRefresh={() => void refresh(true)}
         />
@@ -611,8 +659,8 @@ function SnapshotLine({
   const age = lastLoaded ? Math.max(0, Math.round((now - lastLoaded) / 1000)) : null;
   return (
     <div className="text-right">
-      <p className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">SNAPSHOT</p>
-      <p className="font-code text-[9px] font-semibold tracking-[0.06em] text-ink-700">
+      <p className="font-code text-[10px] font-bold uppercase tracking-[0.08em] text-ink-600">Snapshot</p>
+      <p className="text-[10.5px] font-semibold text-ink-700">
         {offline ? (
           <span className="text-brand-700">RUNTIME OFFLINE</span>
         ) : lastLoaded ? (
@@ -679,6 +727,10 @@ function CommandPalette({
   const [value, setValue] = useState("");
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  const trapPaletteTab = (event: ReactKeyboardEvent<HTMLDivElement>) =>
+    trapTabFocus(event, dialogRef.current);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -764,10 +816,10 @@ function CommandPalette({
         push({
           id: `run-${run.id}`,
           group: "EVALUATIONS",
-          label: run.tenderId,
+          label: systemReferenceLabel(run.systemReference),
           sub: `${run.status} · ${run.id}`,
           section: "work",
-          query: run.tenderId,
+          query: run.systemReference ?? run.id,
           icon: <ClipboardCheck className="h-3.5 w-3.5" aria-hidden="true" />,
         });
       }
@@ -775,7 +827,7 @@ function CommandPalette({
         push({
           id: `gate-${gate.id}`,
           group: "GATES",
-          label: `${gate.tenderId} · ${gate.status}`,
+          label: `${systemReferenceLabel(gate.systemReference)} · ${gate.status}`,
           sub: gate.id,
           section: "gates",
           query: gate.id,
@@ -839,11 +891,20 @@ function CommandPalette({
     <div className="fixed inset-0 z-[160] flex items-start justify-center px-4 pt-[10vh]">
       <button
         type="button"
-        aria-label="Close search"
+        tabIndex={-1}
+        aria-hidden="true"
         onClick={onClose}
         className="absolute inset-0 cursor-default bg-ink-950/60 backdrop-blur-[3px]"
       />
-      <div className="panel panel-lift relative w-full max-w-xl overflow-hidden rounded-2xl">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="control-room-search-title"
+        onKeyDown={trapPaletteTab}
+        className="panel panel-lift relative w-full max-w-xl overflow-hidden rounded-2xl"
+      >
+        <h2 id="control-room-search-title" className="sr-only">Search the control room</h2>
         <div className="flex items-center gap-2.5 border-b border-ink-100 px-4 py-3 dark:border-white/8">
           <Search className="h-4 w-4 shrink-0 text-ink-400" aria-hidden="true" />
           <input
@@ -860,13 +921,21 @@ function CommandPalette({
             aria-autocomplete="list"
             aria-activedescendant={results[activeIndex] ? `palette-${results[activeIndex].id}` : undefined}
             placeholder="Search people, tenders, gates, the audit trail…"
-            className="h-7 min-w-0 flex-1 bg-transparent text-[13px] text-ink-950 outline-none placeholder:text-ink-400 dark:text-ink-900"
+            className="min-h-11 min-w-0 flex-1 bg-transparent text-[14px] text-ink-950 outline-none placeholder:text-ink-400 dark:text-ink-900"
           />
-          <kbd className="rounded border border-ink-200 bg-ink-50 px-1.5 py-0.5 font-code text-[8px] font-bold text-ink-500 dark:border-white/10 dark:bg-white/[0.06] dark:text-ink-400">
+          <kbd className="rounded border border-ink-200 bg-ink-50 px-1.5 py-1 font-code text-[10px] font-bold text-ink-600 dark:border-white/10 dark:bg-white/[0.06] dark:text-ink-300">
             ESC
           </kbd>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close search"
+            className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-lg text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-950 dark:text-ink-400 dark:hover:bg-white/[0.08] dark:hover:text-white"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
         </div>
-        <div id="palette-results" role="listbox" className="max-h-[54vh] overflow-y-auto py-1.5">
+        <div id="palette-results" role="listbox" aria-label="Search results" className="max-h-[54vh] overflow-y-auto py-1.5">
           {results.length === 0 ? (
             <p className="px-4 py-8 text-center text-[11.5px] text-ink-500">
               Nothing in this snapshot matches “{value}”.
@@ -878,7 +947,7 @@ function CommandPalette({
               return (
                 <div key={result.id}>
                   {showGroup && (
-                    <p className="px-4 pb-1 pt-2 font-code text-[7px] font-bold uppercase tracking-[0.24em] text-ink-400">
+                    <p className="px-4 pb-1 pt-2 font-code text-[10px] font-bold uppercase tracking-[0.08em] text-ink-600">
                       {result.group}
                     </p>
                   )}
@@ -886,11 +955,13 @@ function CommandPalette({
                     type="button"
                     id={`palette-${result.id}`}
                     role="option"
+                    tabIndex={-1}
                     aria-selected={index === activeIndex}
                     onMouseEnter={() => setActive(index)}
+                    onMouseDown={(event) => event.preventDefault()}
                     onClick={() => select(result)}
                     className={cn(
-                      "flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors",
+                      "flex min-h-11 w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors",
                       index === activeIndex
                         ? "bg-brand-50 text-ink-950 dark:bg-brand-500/10 dark:text-white"
                         : "text-ink-700 hover:bg-ink-50 dark:text-ink-300 dark:hover:bg-white/[0.04]",
@@ -901,12 +972,12 @@ function CommandPalette({
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[12px] font-semibold">{result.label}</span>
-                      <span className="block truncate font-code text-[8px] tracking-[0.08em] text-ink-400">
+                      <span className="block truncate text-[10.5px] text-ink-600">
                         {result.sub}
                       </span>
                     </span>
                     {result.section && (
-                      <span className={cn("shrink-0 rounded-full border px-1.5 py-0.5 font-code text-[7px] font-bold uppercase tracking-[0.14em]", TONE.neutral as string)}>
+                      <span className={cn("shrink-0 rounded-full border px-2 py-1 font-code text-[10px] font-bold uppercase tracking-[0.03em]", TONE.neutral as string)}>
                         {result.section}
                       </span>
                     )}
@@ -916,7 +987,7 @@ function CommandPalette({
             })
           )}
         </div>
-        <div className="flex items-center justify-between border-t border-ink-100 px-4 py-2 font-code text-[7.5px] font-bold uppercase tracking-[0.16em] text-ink-400 dark:border-white/8">
+        <div className="flex items-center justify-between border-t border-ink-100 px-4 py-2.5 text-[10px] font-semibold text-ink-600 dark:border-white/8">
           <span className="flex items-center gap-2">
             <span>↑↓ navigate</span>
             <span>↵ open</span>

@@ -21,7 +21,7 @@
  * forgives a missed statutory date would be worse than no calendar at all.
  */
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowUpRight,
@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { SpecBar } from "@/components/quorum/reveal";
 import { MeetingNotes } from "@/components/quorum/meeting-notes";
+import { systemReferenceLabel } from "@/lib/system-reference";
 import { cn } from "@/lib/utils";
 
 const SVC = "?XTransformPort=3031";
@@ -46,7 +47,7 @@ const WEEKDAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
 /* ── what the sidecar already knows about time ──────────────────────────── */
 
-type DeadlineDto = { tenderId: string; kind: string; dueAt: string; ref?: string; overdue?: boolean };
+type DeadlineDto = { tenderId: string; systemReference?: string; kind: string; dueAt: string; ref?: string; overdue?: boolean };
 
 type SittingDto = {
   id: string;
@@ -78,6 +79,7 @@ type MeetingDto = {
 type GateDto = {
   id: string;
   tenderId: string;
+  systemReference?: string;
   status: "PENDING" | "APPROVED" | "REJECTED" | "EXECUTED";
   tool?: string;
   createdAt: string;
@@ -97,6 +99,7 @@ type CalEvent = {
   tone: EventTone;
   kind: string;
   tender: string;
+  sourceId?: string;
   detail: string;
   overdue?: boolean;
   live?: boolean;
@@ -252,7 +255,7 @@ function downloadIcs(filename: string, events: CalEvent[], now: Date): void {
 function Stat({ label, value, alert }: { label: string; value: ReactNode; alert?: boolean }) {
   return (
     <div className="rounded-[12px] panel p-4 shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
-      <p className="font-code text-[8px] font-semibold tracking-[0.22em] text-ink-400">{label}</p>
+      <p className="font-code text-[10px] font-semibold tracking-[0.08em] text-ink-500">{label}</p>
       <p
         className={cn(
           "mt-2 font-display text-[28px] font-black leading-none tracking-[-0.02em] tabular",
@@ -319,11 +322,16 @@ export function CalendarView({
     let alive = true;
     const pull = async () => {
       try {
+        const fetchJson = async (url: string) => {
+          const response = await fetch(url, { cache: "no-store" });
+          if (!response.ok) throw new Error(`Calendar source returned ${response.status}.`);
+          return response.json();
+        };
         const [dl, cm, gt, sm] = await Promise.all([
-          fetch(`/api/cycle/deadlines${SVC}`).then((x) => x.json()),
-          fetch("/api/committee").then((x) => x.json()),
-          fetch(`/api/gates${SVC}`).then((x) => x.json()),
-          fetch(`/api/sample-tenders${SVC}`).then((x) => x.json()),
+          fetchJson(`/api/cycle/deadlines${SVC}`),
+          fetchJson("/api/committee"),
+          fetchJson(`/api/gates${SVC}`),
+          fetchJson(`/api/sample-tenders${SVC}`),
         ]);
         if (!alive) return;
         setDeadlines((dl.deadlines ?? []) as DeadlineDto[]);
@@ -332,7 +340,7 @@ export function CalendarView({
         setGates((gt.gates ?? []) as GateDto[]);
         const map: Record<string, string> = {};
         for (const s of (sm.samples ?? []) as { ref: string; title?: string }[]) {
-          if (s?.ref) map[s.ref] = s.title || s.ref;
+          if (s?.ref) map[s.ref] = s.title || "Tender record";
         }
         setTitles(map);
         setUnreachable(false);
@@ -362,7 +370,8 @@ export function CalendarView({
         time: clockTime(d.dueAt),
         tone: "clock",
         kind: label,
-        tender: d.tenderId,
+        tender: systemReferenceLabel(d.systemReference),
+        sourceId: d.tenderId,
         detail: (DEADLINE_DETAIL[key] ?? (() => "Falls due on the tender's own record"))(d.ref),
         overdue: d.overdue ?? new Date(d.dueAt).getTime() < now.getTime(),
       });
@@ -419,7 +428,8 @@ export function CalendarView({
           time: clockTime(g.createdAt),
           tone: "gate",
           kind: "AT THE GATE",
-          tender: g.tenderId,
+          tender: systemReferenceLabel(g.systemReference),
+          sourceId: g.tenderId,
           detail: `${humanTool(g.tool)} — submitted, awaiting a named signature`,
         });
       } else if (validIso(g.decidedAt)) {
@@ -430,7 +440,8 @@ export function CalendarView({
           time: clockTime(g.decidedAt),
           tone: returned ? "returned" : "signed",
           kind: returned ? "RETURNED FOR REVIEW" : "AWARD SIGNED",
-          tender: g.tenderId,
+          tender: systemReferenceLabel(g.systemReference),
+          sourceId: g.tenderId,
           detail: returned
             ? `${g.approver ?? "The committee"} sent the file back for clarification`
             : `${g.approver ?? "A named signer"} released the sealed filing`,
@@ -479,12 +490,44 @@ export function CalendarView({
   const dayEvents = selected ? (byDay.get(selected) ?? []) : [];
   const selectedDate = selected ? new Date(`${selected}T00:00:00`) : null;
 
-  const turnMonth = (delta: number) =>
-    setCursor((c) => {
-      if (!c) return c;
-      const d = new Date(c.y, c.m + delta, 1);
-      return { y: d.getFullYear(), m: d.getMonth() };
-    });
+  const turnMonth = (delta: number) => {
+    if (!cursor) return;
+    const d = new Date(cursor.y, cursor.m + delta, 1);
+    const selectedDay = selected ? new Date(`${selected}T12:00:00`).getDate() : 1;
+    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    const nextDate = new Date(d.getFullYear(), d.getMonth(), Math.min(selectedDay, lastDay));
+    setCursor({ y: d.getFullYear(), m: d.getMonth() });
+    setSelected(dayKey(nextDate));
+  };
+
+  const moveGridDate = (event: ReactKeyboardEvent<HTMLButtonElement>, date: Date) => {
+    const weekday = (date.getDay() + 6) % 7;
+    let dayDelta = 0;
+    if (event.key === "ArrowLeft") dayDelta = -1;
+    else if (event.key === "ArrowRight") dayDelta = 1;
+    else if (event.key === "ArrowUp") dayDelta = -7;
+    else if (event.key === "ArrowDown") dayDelta = 7;
+    else if (event.key === "Home") dayDelta = -weekday;
+    else if (event.key === "End") dayDelta = 6 - weekday;
+    else if (event.key === "PageUp" || event.key === "PageDown") {
+      const monthDelta = event.key === "PageUp" ? -1 : 1;
+      const nextMonth = new Date(date.getFullYear(), date.getMonth() + monthDelta, 1);
+      const lastDay = new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0).getDate();
+      const nextDate = new Date(nextMonth.getFullYear(), nextMonth.getMonth(), Math.min(date.getDate(), lastDay));
+      event.preventDefault();
+      setCursor({ y: nextDate.getFullYear(), m: nextDate.getMonth() });
+      setSelected(dayKey(nextDate));
+      requestAnimationFrame(() => document.getElementById(`calendar-day-${dayKey(nextDate)}`)?.focus());
+      return;
+    } else return;
+
+    event.preventDefault();
+    const nextDate = new Date(date.getFullYear(), date.getMonth(), date.getDate() + dayDelta);
+    const key = dayKey(nextDate);
+    setCursor({ y: nextDate.getFullYear(), m: nextDate.getMonth() });
+    setSelected(key);
+    requestAnimationFrame(() => document.getElementById(`calendar-day-${key}`)?.focus());
+  };
 
   const goToday = () => {
     if (!now) return;
@@ -527,7 +570,7 @@ export function CalendarView({
           <button
             type="button"
             onClick={goToday}
-            className="focus-brand inline-flex h-10 items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 font-code text-[9px] font-bold tracking-[0.18em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950"
+            className="focus-brand inline-flex h-11 min-h-11 items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 font-code text-[10px] font-bold tracking-[0.08em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950"
           >
             <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
             TODAY
@@ -537,7 +580,7 @@ export function CalendarView({
             onClick={exportMonth}
             disabled={monthEvents.length === 0}
             title="Download this month's items as an .ics calendar file"
-            className="focus-brand inline-flex h-10 items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 font-code text-[9px] font-bold tracking-[0.18em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-50"
+            className="focus-brand inline-flex h-11 min-h-11 items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 font-code text-[10px] font-bold tracking-[0.08em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Download className="h-3.5 w-3.5" aria-hidden="true" />
             EXPORT .ICS
@@ -548,9 +591,9 @@ export function CalendarView({
       {unreachable && (
         <p
           role="status"
-          className="mt-5 rounded-[10px] border border-brand-200 bg-brand-50 px-4 py-3 font-code text-[8.5px] tracking-[0.16em] text-brand-800 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-brand-300"
+          className="mt-5 rounded-[10px] border border-brand-200 bg-brand-50 px-4 py-3 text-[12px] leading-relaxed text-brand-900 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-brand-200"
         >
-          A CALENDAR SOURCE IS UNREACHABLE — THE LAST READ RECORDS STAY ON THE GRID; NOTHING IS INVENTED IN THE GAP
+          A calendar source is unreachable. The last records stay on the grid until fresh data can be loaded.
         </p>
       )}
 
@@ -596,7 +639,7 @@ export function CalendarView({
                   type="button"
                   onClick={() => turnMonth(-1)}
                   aria-label="Previous month"
-                  className="focus-brand grid h-9 w-9 place-items-center rounded-xl border border-ink-200 bg-white text-ink-500 transition-colors hover:border-ink-950 hover:text-ink-950 dark:border-white/10 dark:hover:border-white/30"
+                  className="focus-brand grid h-11 w-11 place-items-center rounded-xl border border-ink-200 bg-white text-ink-500 transition-colors hover:border-ink-950 hover:text-ink-950 dark:border-white/10 dark:hover:border-white/30"
                 >
                   <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                 </button>
@@ -604,7 +647,7 @@ export function CalendarView({
                   type="button"
                   onClick={() => turnMonth(1)}
                   aria-label="Next month"
-                  className="focus-brand grid h-9 w-9 place-items-center rounded-xl border border-ink-200 bg-white text-ink-500 transition-colors hover:border-ink-950 hover:text-ink-950 dark:border-white/10 dark:hover:border-white/30"
+                  className="focus-brand grid h-11 w-11 place-items-center rounded-xl border border-ink-200 bg-white text-ink-500 transition-colors hover:border-ink-950 hover:text-ink-950 dark:border-white/10 dark:hover:border-white/30"
                 >
                   <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 </button>
@@ -617,7 +660,7 @@ export function CalendarView({
                   <span
                     key={w}
                     className={cn(
-                      "text-center font-code text-[8px] font-bold tracking-[0.18em] text-ink-400",
+                      "text-center font-code text-[10px] font-bold tracking-[0.06em] text-ink-500",
                       i > 4 && "text-ink-400 dark:text-ink-500"
                     )}
                   >
@@ -629,6 +672,8 @@ export function CalendarView({
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div
                   key={gridKey}
+                  role="group"
+                  aria-label="Dates in the displayed month. Use arrow keys to move by day or week."
                   initial={reduce ? false : { opacity: 0, x: 18 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={reduce ? undefined : { opacity: 0, x: -18 }}
@@ -644,9 +689,12 @@ export function CalendarView({
                     return (
                       <button
                         key={key}
+                        id={`calendar-day-${key}`}
                         type="button"
-                        tabIndex={inMonth ? 0 : -1}
+                        tabIndex={key === selected ? 0 : -1}
+                        aria-current={isToday ? "date" : undefined}
                         onClick={() => setSelected(key)}
+                        onKeyDown={(event) => moveGridDate(event, d)}
                         aria-pressed={isSelected}
                         aria-label={`${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()} — ${evs.length} item${evs.length === 1 ? "" : "s"} on the record`}
                         className={cn(
@@ -660,7 +708,7 @@ export function CalendarView({
                         <span className="flex items-center justify-between gap-1">
                           <span
                             className={cn(
-                              "grid h-5 min-w-5 place-items-center rounded-full px-1 font-code text-[9px] font-bold tabular",
+                              "grid h-5 min-w-5 place-items-center rounded-full px-1 font-code text-[10px] font-bold tabular",
                               isToday
                                 ? "bg-brand-600 text-white"
                                 : "text-ink-500 dark:text-ink-400"
@@ -679,7 +727,7 @@ export function CalendarView({
                             <span
                               key={e.id}
                               className={cn(
-                                "truncate rounded-md px-1 py-[2px] font-code text-[7px] font-bold leading-none tracking-[0.1em]",
+                                "truncate rounded-md px-1 py-[2px] font-code text-[10px] font-bold leading-tight tracking-[0.03em]",
                                 chipCls(e)
                               )}
                             >
@@ -687,7 +735,7 @@ export function CalendarView({
                             </span>
                           ))}
                           {evs.length > 2 && (
-                            <span className="font-code text-[7px] tracking-[0.12em] text-ink-400">
+                            <span className="font-code text-[10px] tracking-[0.03em] text-ink-500">
                               +{evs.length - 2} MORE
                             </span>
                           )}
@@ -708,7 +756,7 @@ export function CalendarView({
                       )}
                       aria-hidden="true"
                     />
-                    <span className="font-code text-[7.5px] font-semibold tracking-[0.16em] text-ink-400">
+                    <span className="font-code text-[10px] font-semibold tracking-[0.04em] text-ink-500">
                       {l.label}
                     </span>
                   </span>
@@ -729,19 +777,20 @@ export function CalendarView({
           >
             <header className="flex items-center justify-between gap-3 border-b border-ink-200/70 px-5 py-4 dark:border-white/10">
               <div>
-                <p className="font-code text-[8px] font-semibold tracking-[0.24em] text-ink-400">
+                <p aria-live="polite" aria-atomic="true" className="font-code text-[10px] font-semibold tracking-[0.06em] text-ink-500">
                   {selectedDate && !Number.isNaN(selectedDate.getTime())
                     ? selectedDate
                         .toLocaleDateString("en-GB", { weekday: "long", day: "2-digit", month: "long" })
                         .toUpperCase()
                     : "—"}
                   {selected === todayKey && now ? ` · ${`${pad2(now.getHours())}:${pad2(now.getMinutes())}`}` : ""}
+                  {` · ${dayEvents.length} ${dayEvents.length === 1 ? "item" : "items"}`}
                 </p>
                 <h2 className="type-title mt-1 text-ink-950">The day&apos;s agenda</h2>
               </div>
               <span
                 className={cn(
-                  "inline-flex h-7 shrink-0 items-center rounded-full px-2.5 font-code text-[8.5px] font-bold tracking-[0.16em]",
+                  "inline-flex min-h-6 shrink-0 items-center rounded-full px-2.5 font-code text-[10px] font-bold tracking-[0.04em]",
                   dayEvents.length > 0
                     ? "bg-ink-950 text-white dark:bg-white dark:text-ink-950"
                     : "border border-ink-200 text-ink-400 dark:border-white/15"
@@ -755,7 +804,7 @@ export function CalendarView({
               <AnimatePresence initial={false}>
                 {dayEvents.map((e) => {
                   const rel = e.tone === "clock" ? relClock(e.iso, now ?? new Date()) : null;
-                  const title = titles[e.tender];
+                  const title = titles[e.sourceId ?? e.tender];
                   return (
                     <motion.li
                       key={e.id}
@@ -768,18 +817,18 @@ export function CalendarView({
                     >
                       <span className={cn("mt-0.5 w-[3px] shrink-0 self-stretch rounded-full", barCls(e))} aria-hidden="true" />
                       <div className="min-w-0 flex-1">
-                        <p className="font-code text-[8px] tracking-[0.18em] text-ink-400">
+                        <p className="font-code text-[10px] tracking-[0.04em] text-ink-500">
                           {e.time ?? "ALL DAY"} · {e.kind}
                         </p>
                         <p className="mt-1 text-[13px] font-semibold leading-snug text-ink-900">{e.detail}</p>
-                        <p className="mt-0.5 truncate font-code text-[8.5px] tracking-[0.12em] text-ink-500">
+                        <p className="mt-0.5 truncate font-code text-[10px] tracking-[0.03em] text-ink-600">
                           {e.tender}
                           {title && title !== e.tender ? ` · ${title}` : ""}
                         </p>
                         {(rel || e.live) && (
                           <span className="mt-1.5 flex flex-wrap gap-1.5">
                             {e.live && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 font-code text-[7.5px] font-bold tracking-[0.14em] text-emerald-700 dark:bg-emerald-500/12 dark:text-emerald-300">
+                              <span className="inline-flex min-h-6 items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 font-code text-[10px] font-bold tracking-[0.04em] text-emerald-700 dark:bg-emerald-500/12 dark:text-emerald-300">
                                 <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
                                   <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-emerald-500" />
                                   <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-600" />
@@ -790,7 +839,7 @@ export function CalendarView({
                             {rel && (
                               <span
                                 className={cn(
-                                  "inline-flex items-center rounded-full px-2 py-0.5 font-code text-[7.5px] font-bold tracking-[0.14em]",
+                                  "inline-flex min-h-6 items-center rounded-full px-2 font-code text-[10px] font-bold tracking-[0.04em]",
                                   rel.overdue
                                     ? "bg-brand-600 text-white"
                                     : rel.soon
@@ -810,7 +859,7 @@ export function CalendarView({
               </AnimatePresence>
               {dayEvents.length === 0 && (
                 <li className="px-4 py-8 text-center">
-                  <p className="font-code text-[9px] font-bold tracking-[0.2em] text-ink-400">
+                  <p className="font-code text-[10px] font-bold tracking-[0.2em] text-ink-400">
                     NOTHING ON THE RECORD FOR THIS DATE
                   </p>
                   <p className="mx-auto mt-2 max-w-[240px] text-[12.5px] leading-relaxed text-ink-500">
@@ -820,7 +869,7 @@ export function CalendarView({
                   <button
                     type="button"
                     onClick={onGoCommittee}
-                    className="focus-brand mt-4 inline-flex h-9 items-center gap-1.5 rounded-xl border border-ink-200 bg-white px-4 font-code text-[9px] font-bold tracking-[0.18em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950"
+                    className="focus-brand mt-4 inline-flex h-11 min-h-11 items-center gap-1.5 rounded-xl border border-ink-200 bg-white px-4 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950"
                   >
                     <Stamp className="h-3.5 w-3.5" aria-hidden="true" />
                     OPEN THE COMMITTEE
@@ -849,18 +898,18 @@ export function CalendarView({
                     <button
                       type="button"
                       onClick={() => followEvent(e)}
-                      className="focus-brand flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-paper dark:hover:bg-white/[0.03]"
+                      className="focus-brand flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-paper dark:hover:bg-white/[0.03]"
                     >
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[12.5px] font-semibold text-ink-900">{e.kind}</span>
-                        <span className="mt-0.5 block truncate font-code text-[8px] tracking-[0.12em] text-ink-400">
+                        <span className="mt-0.5 block truncate font-code text-[10px] tracking-[0.03em] text-ink-500">
                           {e.tender}
-                          {titles[e.tender] && titles[e.tender] !== e.tender ? ` · ${titles[e.tender]}` : ""}
+                          {titles[e.sourceId ?? e.tender] && titles[e.sourceId ?? e.tender] !== e.tender ? ` · ${titles[e.sourceId ?? e.tender]}` : ""}
                         </span>
                       </span>
                       <span
                         className={cn(
-                          "inline-flex shrink-0 items-center rounded-full px-2 py-1 font-code text-[8px] font-bold tracking-[0.14em]",
+                          "inline-flex min-h-6 shrink-0 items-center rounded-full px-2 font-code text-[10px] font-bold tracking-[0.04em]",
                           rel.overdue
                             ? "bg-brand-600 text-white"
                             : rel.soon
@@ -876,7 +925,7 @@ export function CalendarView({
               })}
               {now && upcoming.length === 0 && (
                 <li className="px-4 py-8 text-center">
-                  <p className="font-code text-[9px] font-bold tracking-[0.2em] text-ink-400">NO OPEN CLOCKS</p>
+                  <p className="font-code text-[10px] font-bold tracking-[0.2em] text-ink-400">NO OPEN CLOCKS</p>
                   <p className="mx-auto mt-2 max-w-[240px] text-[12.5px] leading-relaxed text-ink-500">
                     Every statutory date on the record has passed or been cleared. New clocks appear the moment a
                     tender cycle writes one.
@@ -898,7 +947,7 @@ export function CalendarView({
             />
             <div className="relative">
               <h3 className="type-title">The calendar keeps no opinions</h3>
-              <p className="mt-3 font-code text-[9px] leading-[2] tracking-[0.16em] text-ink-300">
+              <p className="mt-3 font-code text-[10px] leading-[2] tracking-[0.16em] text-ink-300">
                 EVERY DATE HERE WAS WRITTEN
                 <br />
                 BY A RECORD — A CLOSING, A SUMMONS,
@@ -909,7 +958,7 @@ export function CalendarView({
               <button
                 type="button"
                 onClick={onGoCommittee}
-                className="focus-brand mt-4 inline-flex items-center gap-1.5 font-code text-[8.5px] font-bold tracking-[0.2em] text-ink-300 transition-colors hover:text-white"
+                className="focus-brand mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 font-code text-[10px] font-bold tracking-[0.06em] text-ink-300 transition-colors hover:text-white"
               >
                 OPEN THE COMMITTEE REGISTER
                 <ArrowUpRight className="h-3 w-3" aria-hidden="true" />

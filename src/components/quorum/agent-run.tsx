@@ -66,7 +66,7 @@ function KindChip({ kind }: { kind: RowKind }) {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 font-code text-[8.5px] font-bold uppercase tracking-[0.14em]",
+        "inline-flex min-h-6 shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 font-code text-[10px] font-bold uppercase tracking-[0.08em]",
         kind === "read" && "border-white/10 bg-white/[0.05] text-ink-300",
         kind === "write" && "border-brand-500/25 bg-brand-500/10 text-brand-400",
         kind === "gate" && "border-brand-500/40 bg-brand-600/20 text-brand-300"
@@ -296,18 +296,18 @@ export function AgentRun() {
             <span className="h-2 w-2 shrink-0 rounded-full bg-brand-500" aria-hidden="true" />
             quorum-agent
           </span>
-          <span className="hidden rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5 font-code text-[9px] tracking-[0.14em] text-ink-400 sm:inline-block">
+          <span className="hidden rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5 font-code text-[10px] tracking-[0.08em] text-ink-400 sm:inline-block">
             {runTag}
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <span
-            className="hidden max-w-[210px] truncate font-code text-[9px] tracking-[0.18em] text-ink-400 sm:block"
+            className="hidden max-w-[210px] truncate font-code text-[10px] tracking-[0.1em] text-ink-400 sm:block"
             title={modelDetail}
           >
             MODEL · {modelLabel.toUpperCase()}
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-500/50 bg-brand-600/15 px-2 py-0.5 font-code text-[9px] font-bold tracking-[0.18em] text-brand-300">
+          <span className="inline-flex min-h-6 items-center gap-1.5 rounded-full border border-brand-500/50 bg-brand-600/15 px-2 py-0.5 font-code text-[10px] font-bold tracking-[0.1em] text-brand-300">
             <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-brand-400" aria-hidden="true" />
             LIVE
           </span>
@@ -441,7 +441,7 @@ export function AgentRun() {
 
       {/* Status bar — the counts the terminal is held to */}
       <div className="relative flex items-center justify-between gap-3 border-t border-white/[0.09] bg-white/[0.03] px-5 py-3 sm:px-6">
-        <p className="font-code text-[9.5px] tracking-[0.16em] text-ink-500">
+        <p className="font-code text-[10px] tracking-[0.16em] text-ink-500">
           <span className="tabular text-ink-200">{shownTotal}</span> CALLS LOGGED
           <span className="mx-1.5 text-ink-700">/</span>
           <span className="tabular text-brand-400">{shownGate}</span> AT THE GATE
@@ -449,7 +449,7 @@ export function AgentRun() {
         <button
           type="button"
           onClick={begin}
-          className="focus-brand inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/15 px-3 py-1.5 font-code text-[10px] font-semibold tracking-[0.14em] text-ink-200 transition-colors hover:border-brand-500 hover:bg-brand-500/10 hover:text-white"
+          className="focus-brand inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-white/15 px-3 py-1.5 font-code text-[10px] font-semibold tracking-[0.14em] text-ink-200 transition-colors hover:border-brand-500 hover:bg-brand-500/10 hover:text-white"
         >
           <RotateCcw className="h-3 w-3" aria-hidden="true" />
           REFRESH

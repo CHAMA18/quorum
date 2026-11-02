@@ -11,6 +11,8 @@ type SidecarRow = Record<string, unknown>;
 
 const RUNS: SidecarRow[] = [
   {
+    id: "run-alpha",
+    reference: "QRM-2026-014",
     tenderId: "T-ALPHA",
     status: "COMPLETED",
     findings: [{ bidder: "Northwind", price: 185000 }, { bidder: "Acme", price: 210000 }],
@@ -126,7 +128,7 @@ describe("GET /api/public/summary", () => {
   test("the sample run carries counts, never the bidder or the price", async () => {
     const body = (await (await GET()).json()) as { sample: Record<string, unknown> | null };
     expect(body.sample).toEqual({
-      tenderId: "T-ALPHA",
+      reference: "QRM-2026-014",
       status: "COMPLETED",
       findings: 2,
       drafts: 1,

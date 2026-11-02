@@ -248,9 +248,29 @@ describe("quorum-edge R2 gate ranges", () => {
     expect(nextJson.objects?.[0]?.key).not.toBe(firstJson.objects?.[0]?.key);
   });
 
-  test("refuses a listing prefix outside tenders/ or with traversal", async () => {
+  test("lists an organization's standing documents under orgs/", async () => {
     const bucket = await seeded();
-    for (const prefix of ["", "../", "tenders/KE-MOH-2026-117", "other/x/"]) {
+    const profileKey = "orgs/org-7/uid-9/profile-documents/abc123/tax.pdf";
+    const put = await call(bucket, `/__edge/upload?key=${encodeURIComponent(profileKey)}`, {
+      method: "PUT",
+      headers: { "content-type": "application/pdf" },
+      body: "%PDF-1.7",
+    });
+    expect(put.status).toBe(201);
+
+    const res = await call(
+      bucket,
+      `/__edge/list?prefix=${encodeURIComponent("orgs/org-7/uid-9/profile-documents/")}`,
+    );
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { prefix?: string; objects?: Array<{ key?: string }> };
+    expect(json.prefix).toBe("orgs/org-7/uid-9/profile-documents/");
+    expect(json.objects?.map((object) => object.key)).toEqual([profileKey]);
+  });
+
+  test("refuses a listing prefix outside tenders/ and orgs/ or with traversal", async () => {
+    const bucket = await seeded();
+    for (const prefix of ["", "../", "tenders/KE-MOH-2026-117", "other/x/", "orgs/../"]) {
       const res = await call(bucket, `/__edge/list?prefix=${encodeURIComponent(prefix)}`);
       expect(res.status).toBe(422);
     }

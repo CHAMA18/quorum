@@ -23,9 +23,11 @@ import { ifRangeAllows, parseByteRange } from "./http-range";
 interface R2ObjectMeta {
   body: ReadableStream;
   httpMetadata?: { contentType?: string };
+  customMetadata?: Record<string, string>;
   size?: number;
   etag?: string;
   httpEtag?: string;
+  uploaded?: Date;
 }
 
 interface Env {
@@ -42,7 +44,7 @@ interface Env {
     put(
       key: string,
       value: ReadableStream | ArrayBuffer | string | null,
-      options?: { httpMetadata?: { contentType?: string } }
+      options?: { httpMetadata?: { contentType?: string }; customMetadata?: Record<string, string> }
     ): Promise<unknown>;
     head(key: string): Promise<Omit<R2ObjectMeta, "body"> | null>;
     get(
@@ -110,16 +112,39 @@ function safeKey(raw: string | null): string | null {
   return key;
 }
 
-/** A directory prefix for listing: under tenders/, no traversal, trailing slash. */
+/**
+ * A directory prefix for listing: under a known root (tender packs, or the
+ * organization's own standing documents), no traversal, trailing slash.
+ */
+const LIST_ROOTS = ["tenders/", "orgs/"] as const;
+
 function safePrefix(raw: string | null): string | null {
   if (!raw) return null;
   const prefix = raw.replace(/^\/+/, "").trim();
   if (!prefix || prefix.length > 512 || !prefix.endsWith("/")) return null;
-  if (!prefix.startsWith("tenders/")) return null;
+  if (!LIST_ROOTS.some((root) => prefix.startsWith(root))) return null;
   if (/[\u0000-\u001f\\]/.test(prefix)) return null;
   const parts = prefix.slice(0, -1).split("/");
   if (parts.length < 2 || parts.some((part) => !part || part === "." || part === "..")) return null;
   return prefix;
+}
+
+function safeObjectMetadata(raw: string | null): Record<string, string> | undefined | null {
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    const entries = Object.entries(parsed as Record<string, unknown>);
+    if (entries.length > 12) return null;
+    const metadata: Record<string, string> = {};
+    for (const [key, value] of entries) {
+      if (!/^[a-z][a-z0-9_-]{0,63}$/.test(key) || typeof value !== "string" || value.length > 1024) return null;
+      metadata[key] = value;
+    }
+    return metadata;
+  } catch {
+    return null;
+  }
 }
 
 async function upload(request: Request, env: Env, url: URL): Promise<Response> {
@@ -130,10 +155,33 @@ async function upload(request: Request, env: Env, url: URL): Promise<Response> {
   if (request.method !== "PUT" && request.method !== "POST") {
     return json({ error: "use PUT or POST" }, 405, { allow: "PUT, POST" });
   }
+  const customMetadata = safeObjectMetadata(request.headers.get("x-quorum-object-meta"));
+  if (customMetadata === null) return json({ error: "object metadata is not valid" }, 422);
   await env.TENDERS.put(key, request.body, {
     httpMetadata: { contentType: request.headers.get("content-type") || "application/octet-stream" },
+    ...(customMetadata ? { customMetadata } : {}),
   });
   return json({ ok: true, key }, 201);
+}
+
+async function head(request: Request, env: Env, url: URL): Promise<Response> {
+  if (!isAuthorised(request, env)) return json({ error: "unauthorised" }, 401);
+  if (!env.TENDERS) return json({ error: "R2 is not enabled for this account or TENDERS is not bound" }, 503);
+  if (request.method !== "GET") return json({ error: "use GET" }, 405, { allow: "GET" });
+  const key = safeKey(url.searchParams.get("key"));
+  if (!key) return json({ error: "a safe ?key= is required" }, 422);
+  const object = await env.TENDERS.head(key);
+  if (!object) return json({ error: "not found" }, 404);
+  return json({
+    object: {
+      key,
+      size: object.size ?? 0,
+      etag: object.httpEtag ?? object.etag,
+      uploaded: object.uploaded?.toISOString(),
+      contentType: object.httpMetadata?.contentType ?? "application/octet-stream",
+      customMetadata: object.customMetadata ?? {},
+    },
+  });
 }
 
 async function list(request: Request, env: Env, url: URL): Promise<Response> {
@@ -141,7 +189,7 @@ async function list(request: Request, env: Env, url: URL): Promise<Response> {
   if (!env.TENDERS) return json({ error: "R2 is not enabled for this account or TENDERS is not bound" }, 503);
   if (request.method !== "GET") return json({ error: "use GET" }, 405, { allow: "GET" });
   const prefix = safePrefix(url.searchParams.get("prefix"));
-  if (!prefix) return json({ error: "a safe ?prefix= under tenders/ is required" }, 422);
+  if (!prefix) return json({ error: "a safe ?prefix= under tenders/ or orgs/ is required" }, 422);
   const limitRaw = Number(url.searchParams.get("limit") ?? 500);
   const limit = Number.isSafeInteger(limitRaw) ? Math.min(1000, Math.max(1, limitRaw)) : 500;
   const cursor = url.searchParams.get("cursor") ?? undefined;
@@ -634,6 +682,7 @@ const worker = {
       });
     }
     if (url.pathname === "/__edge/upload") return upload(request, env, url);
+    if (url.pathname === "/__edge/head") return head(request, env, url);
     if (url.pathname === "/__edge/object") return download(request, env, url);
     if (url.pathname === "/__edge/list") return list(request, env, url);
     if (url.pathname === "/__edge/delete") return remove(request, env, url);

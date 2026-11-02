@@ -99,10 +99,9 @@ notarization credentials are configured in Codemagic.
     `/api/health` names the configured endpoint, residency, fallback and newest
     attributed answer; `/api/runs` carries per-run attribution (plan model, drafts,
     tokens, redactions); the downloadable report prints a **Model attribution** table.
-  - **Muse Image** has a regeneration kit in
-    [`SUBMISSION/muse-film-kit/`](SUBMISSION/muse-film-kit/README.md). The committed
-    landing-page clips are the earlier CogVideoX-3 film; the kit is a bonus asset, not
-    part of the product walkthrough.
+  - **Muse Image** generates the five chapters of the landing-page film. The
+    documented, reproducible image-generation and render pipeline lives in
+    [`SUBMISSION/muse-film-kit/`](SUBMISSION/muse-film-kit/README.md).
   - **Barry, the desk assistant,** uses Muse Spark for the read-only tool loop and Muse
     Voice Transcribe for the mic. Spoken replies use a real neural voice —
     Deepgram Aura-2 through Cloudflare Workers AI, with MeloTTS then the
@@ -143,11 +142,11 @@ that foundation from the work and evidence produced during the build window
 
 ## Landing-page film
 
-The five short clips below are the landing page's cinematic product film, generated with
-CogVideoX-3 and sequenced by Quorum's cinema player. They are a brand narrative, not a
-screen recording of the product workflow. The repository also includes a
-[Muse Image regeneration kit](SUBMISSION/muse-film-kit/README.md); the committed clips
-should not be treated as Muse Image output. The product walkthrough script is
+The five chapters below are the landing page's cinematic product film, generated with
+Meta Muse Image and rendered as silent, widescreen chapter clips for Quorum's cinema
+player. They are a brand narrative, not a screen recording of the product workflow.
+The image prompts and render steps live in the
+[Muse Image film kit](SUBMISSION/muse-film-kit/README.md). The product walkthrough script is
 [`SUBMISSION/DEMO.md`](SUBMISSION/DEMO.md).
 
 **Chapter 01 · The Stack — 14,000 pages.** Every page is someone's money. Nobody can read them all.
@@ -342,6 +341,16 @@ the compliance findings. Every run records the source, returned model name, toke
 latency. The run report is the record of which path actually answered.
 
 **Memory.** No vector store — durable, structured state: `state.json` (runs, gates, receipts; restored on boot), per-run accumulators (requirements, findings, drafts, progress trail), and the append-only `tool-log.jsonl` audit file (which the UI streams live).
+
+**Meta Muse retrieval and fine-tuning data.** A separate workflow in
+[`mini-services/quorum-mcp/training`](mini-services/quorum-mcp/training/README.md)
+builds a citation-bearing SQLite FTS index and a mechanically labelled OCDS
+field-extraction dataset from ZPPA's CC BY 4.0 public feed, and can query Meta
+Muse through the shared inference API. The Meta API key does not fine-tune
+hosted model weights; a separate Meta open-weight training provider and
+credential are required for that. Its output is not part of production runtime
+by default; jurisdiction filters and the existing deterministic findings and
+human gate remain authoritative.
 
 **Orchestration.** **LangGraph.js**. Review = 8 nodes (`load_documents → plan_review → extract_requirements → flag_findings → verify_findings ⇄ revise_findings → draft_redlines → propose_gate`), terminal at the gate; filing = a *separate, disconnected* 2-node graph (`filing_graph`) reachable only from the gate-decision endpoint. The halt is in the topology, not a prompt.
 

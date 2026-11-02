@@ -155,9 +155,9 @@ export function OrganizationsPanel({ data, refresh, notify, query, setQuery, now
           { label: "Open appeals", value: fmtNum(openAppeals.length), note: "awaiting a named decision" },
         ].map((stat) => (
           <div key={stat.label} className="px-4 py-3.5">
-            <p className="font-code text-[7px] font-bold uppercase tracking-[0.2em] text-ink-400">{stat.label}</p>
+            <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">{stat.label}</p>
             <p className="mt-1.5 type-num text-[24px] text-ink-950">{stat.value}</p>
-            <p className="mt-0.5 text-[9.5px] text-ink-400">{stat.note}</p>
+            <p className="mt-0.5 text-[10.5px] leading-relaxed text-ink-600">{stat.note}</p>
           </div>
         ))}
       </div>
@@ -210,7 +210,7 @@ export function OrganizationsPanel({ data, refresh, notify, query, setQuery, now
                     <div className="flex min-w-0 items-center gap-3">
                       <span
                         className={cn(
-                          "grid h-9 w-9 shrink-0 place-items-center rounded-lg border font-code text-[9px] font-bold",
+                          "grid h-9 w-9 shrink-0 place-items-center rounded-lg border font-code text-[10px] font-bold",
                           org.status === "SUSPENDED"
                             ? "border-red-200 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
                             : "border-ink-200 bg-paper-2 text-ink-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-300",
@@ -224,21 +224,21 @@ export function OrganizationsPanel({ data, refresh, notify, query, setQuery, now
                           <p className="truncate text-[12.5px] font-semibold text-ink-950">{org.name}</p>
                           <Chip tone={org.status === "ACTIVE" ? "emerald" : "red"} dot>{org.status}</Chip>
                         </div>
-                        <p className="mt-0.5 truncate font-code text-[8px] tracking-[0.1em] text-ink-400">
+                        <p className="mt-0.5 truncate text-[10.5px] text-ink-600">
                           {org.registrationNo} · {org.country}
                           {org.legalForm ? ` · ${org.legalForm}` : ""}
                         </p>
-                        <p className="truncate text-[10px] text-ink-400">
+                        <p className="truncate text-[11px] text-ink-600">
                           {org.email}
                           {org.categories.length > 0 ? ` · ${org.categories.slice(0, 3).join(" / ")}` : ""}
                         </p>
                       </div>
                     </div>
                     <div className="hidden flex-col gap-0.5 lg:flex">
-                      <span className="font-code text-[8px] font-bold uppercase tracking-[0.1em] text-ink-500">
+                      <span className="font-code text-[10px] font-bold uppercase tracking-[0.06em] text-ink-600">
                         {org.sessions} portal session{org.sessions === 1 ? "" : "s"}
                       </span>
-                      <span className="font-code text-[8px] tracking-[0.08em] text-ink-400">
+                      <span className="text-[10.5px] text-ink-600">
                         joined {fmtDay(org.createdAt)}
                       </span>
                     </div>
@@ -261,7 +261,7 @@ export function OrganizationsPanel({ data, refresh, notify, query, setQuery, now
                           </Button>
                         )
                       ) : (
-                        <span className="font-code text-[7.5px] uppercase tracking-[0.12em] text-ink-400">READ ONLY</span>
+                        <span className="font-code text-[10px] uppercase tracking-[0.06em] text-ink-600">Read only</span>
                       )}
                     </div>
                   </li>
@@ -298,7 +298,7 @@ export function OrganizationsPanel({ data, refresh, notify, query, setQuery, now
                           {appeal.status}
                         </Chip>
                       </div>
-                      <p className="mt-0.5 truncate font-code text-[7.5px] tracking-[0.1em] text-ink-400">
+                      <p className="mt-0.5 truncate text-[10.5px] text-ink-600">
                         {appeal.reference} · {appeal.organization?.registrationNo ?? "—"} · filed {fmtAgo(appeal.createdAt, now)}
                       </p>
                       <p className="mt-1.5 text-[11px] leading-relaxed text-ink-600">{appeal.reason}</p>
@@ -317,7 +317,7 @@ export function OrganizationsPanel({ data, refresh, notify, query, setQuery, now
                             maxLength={600}
                             placeholder="Reason for the decision (required)"
                             aria-label={`Decision reason for ${appeal.reference}`}
-                            className={cn(inputCls, "w-full text-[11px]")}
+                            className={cn(inputCls, "w-full text-[13px]")}
                           />
                           <div className="flex gap-1.5">
                             <Button
@@ -349,7 +349,7 @@ export function OrganizationsPanel({ data, refresh, notify, query, setQuery, now
           <div className="rounded-2xl border border-ink-200/80 bg-paper-2/60 px-4 py-3.5 dark:border-white/10 dark:bg-white/[0.02]">
             <div className="flex items-center gap-2">
               <Scale className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
-              <p className="font-code text-[7.5px] font-bold uppercase tracking-[0.2em] text-ink-500">WHY THIS IS SEPARATE</p>
+              <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Why this is separate</p>
             </div>
             <p className="mt-2 text-[10.5px] leading-relaxed text-ink-500">
               A supplier organization is not a workspace member: different table, different cookie, different door. The
@@ -361,7 +361,7 @@ export function OrganizationsPanel({ data, refresh, notify, query, setQuery, now
           <div className="rounded-2xl border border-ink-200/80 bg-paper-2/60 px-4 py-3.5 dark:border-white/10 dark:bg-white/[0.02]">
             <div className="flex items-center gap-2">
               <Globe2 className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
-              <p className="font-code text-[7.5px] font-bold uppercase tracking-[0.2em] text-ink-500">REGISTER HYGIENE</p>
+              <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Register hygiene</p>
             </div>
             <ul className="mt-2 space-y-1.5 text-[10.5px] leading-relaxed text-ink-500">
               <li>Registration numbers are unique across the register.</li>
