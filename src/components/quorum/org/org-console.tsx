@@ -218,22 +218,6 @@ function ConsoleSidebar({
 
         <ThemeModeRow collapsed={collapsed} />
 
-        <Link
-          href="/"
-          aria-label={collapsed ? "Officer desk" : undefined}
-          title={collapsed ? "Officer desk" : undefined}
-          className={cn(
-            "focus-brand flex w-full items-center rounded-xl py-2.5 transition-colors hover:bg-ink-100/70 hover:text-ink-950 dark:text-ink-400 dark:hover:bg-white/[0.04] dark:hover:text-white",
-            collapsed ? "justify-center px-2" : "justify-between gap-2 px-3",
-          )}
-        >
-          {!collapsed ? (
-            <span className="type-micro text-ink-500">Officer desk</span>
-          ) : (
-            <span className="sr-only">Officer desk</span>
-          )}
-          <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
-        </Link>
         <button
           type="button"
           onClick={onSignOut}
