@@ -21,6 +21,10 @@ cleanup() {
   if [ -d "$STASH_DIR/api" ]; then
     rsync -a "$STASH_DIR/api/" src/app/api/
   fi
+  if [ -d "$STASH_DIR/admin" ]; then
+    mkdir -p src/app
+    rsync -a "$STASH_DIR/admin/" src/app/admin/
+  fi
   if [ -d "$STASH_DIR/org-dashboard" ]; then
     mkdir -p src/app/org
     rsync -a "$STASH_DIR/org-dashboard/" src/app/org/dashboard/
@@ -30,6 +34,7 @@ cleanup() {
 trap cleanup EXIT
 
 mv src/app/api "$STASH_DIR/api"
+mv src/app/admin "$STASH_DIR/admin"
 mv src/app/org/dashboard "$STASH_DIR/org-dashboard"
 
 STATIC_EXPORT=1 bunx next build
