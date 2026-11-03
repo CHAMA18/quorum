@@ -1626,30 +1626,47 @@ function StageBrief({
   span?: boolean;
   className?: string;
 }) {
+  const [open, setOpen] = useState(true);
+  const contentId = useId();
+
   return (
     <section className={cn("panel overflow-hidden rounded-[12px] px-4 py-3.5 sm:px-5", span && "col-span-full", className)} aria-label={`${label} brief`}>
       <div className="flex items-start gap-3">
         <span className="mt-[3px] grid h-6 w-6 shrink-0 place-items-center rounded-full border border-brand-500/30 bg-brand-500/[0.08] text-brand-600 dark:text-brand-300">
           <Gavel className="h-3 w-3" aria-hidden="true" />
         </span>
-        <div className="min-w-0">
-          <p className="font-code text-[10.5px] font-bold tracking-[0.12em] text-brand-600 dark:text-brand-300">{label}</p>
-          <p className="mt-1.5 max-w-[86ch] text-[12.5px] leading-relaxed text-ink-600 dark:text-ink-600">{lede}</p>
+        <div className="min-w-0 flex-1">
+          <button
+            type="button"
+            className="focus-brand flex min-h-6 w-full min-w-0 items-center justify-between gap-3 rounded text-left"
+            aria-expanded={open}
+            aria-controls={contentId}
+            onClick={() => setOpen((current) => !current)}
+          >
+            <span className="font-code text-[10.5px] font-bold tracking-[0.12em] text-brand-600 dark:text-brand-300">{label}</span>
+            <span className="inline-flex shrink-0 items-center gap-1.5 font-code text-[9px] font-bold tracking-[0.08em] text-ink-500">
+              {open ? "HIDE GUIDANCE" : "SHOW GUIDANCE"}
+              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} aria-hidden="true" />
+            </span>
+          </button>
+          <div id={contentId} hidden={!open}>
+            <p className="mt-1.5 max-w-[86ch] text-[12.5px] leading-relaxed text-ink-600 dark:text-ink-600">{lede}</p>
+            <ul className="mt-3 grid gap-x-5 gap-y-1.5 sm:grid-cols-2">
+              {items.map((item) => (
+                <li key={item} className="flex items-start gap-2 text-[12.5px] leading-snug text-ink-600 dark:text-ink-600">
+                  <span className="mt-[6px] h-1 w-1 shrink-0 rounded-full bg-brand-500/60" aria-hidden="true" />
+                  <span className="min-w-0">{item}</span>
+                </li>
+              ))}
+            </ul>
+            {gate ? (
+              <p className="mt-3 border-t border-ink-100 pt-2.5 text-[11px] leading-relaxed text-ink-600 dark:border-white/[0.06] dark:text-ink-600">
+                {gate}
+              </p>
+            ) : null}
+          </div>
         </div>
       </div>
-      <ul className="mt-3 grid gap-x-5 gap-y-1.5 sm:grid-cols-2">
-        {items.map((item) => (
-          <li key={item} className="flex items-start gap-2 text-[12.5px] leading-snug text-ink-600 dark:text-ink-600">
-            <span className="mt-[6px] h-1 w-1 shrink-0 rounded-full bg-brand-500/60" aria-hidden="true" />
-            <span className="min-w-0">{item}</span>
-          </li>
-        ))}
-      </ul>
-      {gate ? (
-        <p className="mt-3 border-t border-ink-100 pt-2.5 text-[11px] leading-relaxed text-ink-600 dark:border-white/[0.06] dark:text-ink-600">
-          {gate}
-        </p>
-      ) : null}
     </section>
   );
 }
