@@ -1,0 +1,27 @@
+{
+ "url": "http://localhost:3000/org",
+ "hash": "",
+ "inputs": [
+  "INPUT[email]:bids@organization.example",
+  "INPUT[password]:Your password"
+ ],
+ "buttons": [
+  "Supplier",
+  "Quorum",
+  "Register organization",
+  "Sign in",
+  "Forgot password?",
+  "Sign in to the supplier portal"
+ ],
+ "tabs": [
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  ""
+ ],
+ "text": "QUORUM\nAGENTIC PROCUREMENT\nYour procurement workspace\n.\nCreate your organization profile, find open tenders, and submit bids through one secure supplier portal.\n01 · YOUR PROFILE\nOne profile, kept current\nAdd your organization, tax and sector-registration details once, then use them for each tender application.\n01/04\nSUPPLIER\nQUORUM\nQUORUM\nAGENTIC PROCUREMENT\nRegister organization\nSign in\nORGANIZATION EMAIL\nPASSWORD\nFORGOT PASSWORD?\nSign in to the supplier portal"
+}

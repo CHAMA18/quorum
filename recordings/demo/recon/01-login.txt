@@ -1,0 +1,48 @@
+{
+ "url": "http://localhost:3000/#/login",
+ "inputs": [
+  {
+   "tag": "INPUT",
+   "type": "email",
+   "name": null,
+   "id": "auth-email",
+   "placeholder": "you@agency.gov",
+   "aria": null
+  },
+  {
+   "tag": "INPUT",
+   "type": "password",
+   "name": null,
+   "id": "auth-password",
+   "placeholder": "Your password",
+   "aria": null
+  },
+  {
+   "tag": "INPUT",
+   "type": "checkbox",
+   "name": null,
+   "id": "",
+   "placeholder": null,
+   "aria": null
+  }
+ ],
+ "buttons": [
+  "QUORUMAGENTIC PROCUREMENT",
+  "QUORUMAGENTIC PROCUREMENTQUORUMAGENTIC PROCUREMENT",
+  "MAIN SITE →",
+  "Supplier",
+  "Quorum",
+  "QUORUMAGENTIC PROCUREMENTQUORUMAGENTIC PROCUREMENT",
+  "Create account",
+  "Sign in",
+  "Continue with Google",
+  "Forgot access?",
+  "Sign in",
+  "Create an account"
+ ],
+ "headings": [
+  "A clearer review record.Your committee makes the decision.",
+  "Review with evidence. Decide together."
+ ],
+ "text": "QUORUM\nAGENTIC PROCUREMENT\nA clearer review record.\nYour committee makes the decision.\nKeep tender documents, verified findings and approvals together. Each action is associated with an authorised person and retained in the procurement record.\n01 · TENDER REVIEWS\nOne record from review to decision\nBring tender documents, findings, approvals and committee decisions together in a shared procurement record.\n01/04\nSUPPLIER\nQUORUM\nQUORUM\nAGENTIC PROCUREMENT\nCreate account\nSign in\nOFFICER ACCESS\nFIG. 02 — SIGN IN\nSign in to manage tender reviews, supporting evidence and committee approvals.\nContinue with Google\nOR CONTINUE WITH EMAIL\nWORK EMAIL\nPASSWORD\nKeep me signed in\nForgot access?\nSign in\nNew to Quorum? Create an account"
+}

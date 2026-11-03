@@ -1,0 +1,31 @@
+{
+ "url": "http://localhost:3000/org/dashboard",
+ "hash": "",
+ "inputs": [],
+ "buttons": [
+  "Overview",
+  "Organization profile5",
+  "Open tenders10",
+  "Applications",
+  "Documents",
+  "Contracts",
+  "Dark / Light Mode",
+  "Sign out",
+  "Search tenders, applications…⌘K",
+  "Sign out",
+  "Complete profile",
+  "tax PIN",
+  "tax clearance",
+  "clearance expiry",
+  "sector regulator",
+  "description",
+  "Open Documents",
+  "Browse tenders",
+  "Track applications",
+  "New submission",
+  "View all",
+  "Browse opportunities"
+ ],
+ "tabs": [],
+ "text": "Skip to workspace\nCONSOLE\nOverview\nOrganization profile\n5\nOpen tenders\n10\nApplications\nDocuments\nContracts\nDark / Light Mode\nSIGN OUT\nQUORUM\nSUPPLIER PORTAL\nSavanna Pharma Distribution Ltd\nSearch tenders, applications…\n⌘K\nSUPPLIER PORTAL\nOverview\nTrack profile readiness, live tender opportunities and filed applications.\nPROFILE READINESS\nComplete your supplier profile\nAdd these 5 details so the procurement team can verify your organization and match relevant opportunities.\nSAVED\n8 of 13 details\n62%\n8 saved\n5 to complete\nProfile details to complete\nChoose an organization detail. Your bid documents are stored under Documents.\nComplete profile\nTax PIN\nTax Clearance\nClearance Expiry\nSector Regulator\nDescription\nBid documents are held in one place on the overall record.\nOpen Documents\nRegistered Nov 3, 2026 · submissions are recorded under Savanna Pharma Distribution Ltd.\nOpen opportunities\n01\nOPEN OPPORTUNITIES\n10 OPEN · 0 CLOSED\n10\nLIVE TENDERS\nOpen to bid across 5 sectors — HEALTH, SECURITY, DIGITAL HEALTH.\nQRM-2026-008 · 40d\nQRM-2026-900002 · 43d\n+8 more\nBrowse tenders\nApplications\n02\nAPPLICATIONS\n0 FILED\n0\n0 RECEIVED\nYour filed bids and their receipt times will appear here.\nLatest filing\n—\nTrack applications\n03\nLATEST APPLICATIONS\n0 SUBMISSIONS\nEvery bid you submit, with its tender reference and submission time.\nNew submission\nView all\nNo applications yet\nYour first application will appear here with its tender reference and submission time.\nBrowse opportunities"
+}
