@@ -1,0 +1,19 @@
+{
+  "submission": {
+    "gateId": "gate_787c7c56eb7f9f6af06177c50d86fb06",
+    "tenderId": "KE-KEMSA-2024-ONT08",
+    "hash": "0f593916675bbc7ad4b20ae9b765f52b",
+    "approvedBy": "E2E Evaluator Two",
+    "approvedAt": "2026-11-03T12:42:12.934Z",
+    "idempotencyKey": "quorum:filing:gate_787c7c56eb7f9f6af06177c50d86fb06"
+  },
+  "receipt": {
+    "submissionId": "SIM-91FE14652134375C",
+    "hash": "0f593916675bbc7ad4b20ae9b765f52b",
+    "portal": "e-GP sandbox (simulation only)",
+    "status": "SIMULATED",
+    "simulated": true,
+    "idempotencyKey": "quorum:filing:gate_787c7c56eb7f9f6af06177c50d86fb06",
+    "recordedAt": "2026-11-03T12:42:12.944Z"
+  }
+}
