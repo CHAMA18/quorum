@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { canMutateSidecar } from "@/lib/permissions";
-import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
+import { getUserFromToken, rateLimit, SESSION_COOKIE } from "@/lib/auth";
 import { attestSignature } from "@/lib/sidecar-attest";
 import { redisRateLimit } from "@/lib/redis-rate-limit";
 
@@ -33,14 +33,23 @@ export async function POST(
     return NextResponse.json({ error: "Your workspace role cannot validate requisitions." }, { status: 403 });
   }
 
-  let quota;
+  let quota: Awaited<ReturnType<typeof redisRateLimit>>;
   try {
     quota = await redisRateLimit(rateKey(user.id, user.workspaceId), REQUISITION_LIMIT, REQUISITION_WINDOW_MS);
   } catch {
     return NextResponse.json({ error: "Redis rate limiting is unavailable. Try again shortly." }, { status: 503 });
   }
   if (!quota.configured) {
-    return NextResponse.json({ error: "Redis rate limiting is not configured for this deployment." }, { status: 503 });
+    /* Redis is optional hardening. Local and self-hosted deployments use the
+       same file-backed limiter as the rest of the app, so a missing Redis
+       configuration must not make requisition validation impossible. */
+    const allowed = rateLimit(rateKey(user.id, user.workspaceId), REQUISITION_LIMIT, REQUISITION_WINDOW_MS);
+    quota = {
+      configured: true,
+      allowed,
+      remaining: allowed ? REQUISITION_LIMIT - 1 : 0,
+      retryAfterSeconds: Math.ceil(REQUISITION_WINDOW_MS / 1000),
+    };
   }
   if (!quota.allowed) {
     return NextResponse.json(

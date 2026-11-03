@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { clientKey, getOrgFromToken, ORG_SESSION_COOKIE, rateLimit } from "@/lib/org-auth";
+import { clientKey, getOrgFromToken, ORG_SESSION_COOKIE, orgActor, rateLimit } from "@/lib/org-auth";
 import { sidecarFetch } from "@/lib/org-sidecar";
 
 /**
@@ -38,7 +38,9 @@ export async function GET(req: NextRequest) {
   ));
   const reads = await Promise.all(
     refs.map(async (tenderRef): Promise<ContractRow | null> => {
-      const out = await sidecarFetch(`/api/tenders/${encodeURIComponent(tenderRef)}/contract`);
+      const out = await sidecarFetch(`/api/tenders/${encodeURIComponent(tenderRef)}/contract`, {
+        actor: orgActor(org),
+      });
       if (out.status !== 200) return null;
       const contract = out.data.contract as { supplier?: unknown; openedAt?: unknown } | undefined;
       const named = typeof contract?.supplier === "string" ? contract.supplier.trim().toLowerCase() : "";

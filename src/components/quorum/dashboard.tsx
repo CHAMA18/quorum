@@ -2001,7 +2001,15 @@ function SidebarContent({
   return (
     <div className="flex h-full flex-col">
       <div className="relative flex items-center overflow-hidden px-5 pb-5 pt-6">
-        <QuorumLogo variant="light" />
+        <button
+          type="button"
+          onClick={onExit}
+          aria-label="Quorum home"
+          title="Return to the landing page"
+          className="focus-brand relative z-10 inline-flex rounded-xl border-0 bg-transparent p-0 text-left"
+        >
+          <QuorumLogo variant="light" />
+        </button>
         <span
           aria-hidden="true"
           className="pointer-events-none absolute -left-10 top-0 h-24 w-40 rounded-full bg-brand-600/[0.13] blur-3xl"
@@ -10664,7 +10672,15 @@ export function Dashboard({
         aria-hidden={navOpen || undefined}
         inert={navOpen}
       >
-        <QuorumLogo variant="light" />
+        <button
+          type="button"
+          onClick={onExit}
+          aria-label="Quorum home"
+          title="Return to the landing page"
+          className="focus-brand inline-flex shrink-0 rounded-xl border-0 bg-transparent p-0 text-left"
+        >
+          <QuorumLogo variant="light" />
+        </button>
         <div className="flex items-center gap-2.5">
           {/* Reports the sidecar's real state — never a hardcoded "online" */}
           <AgentStatusBadge mode={agentMode} className="hidden sm:inline-flex" darkSurface />

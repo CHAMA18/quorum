@@ -49,7 +49,10 @@ export async function POST(req: NextRequest) {
 
   let gate: GateShape | undefined;
   try {
-    const res = await fetch(`${SIDECAR}/api/gates`, { cache: "no-store" });
+    const res = await fetch(`${SIDECAR}/api/gates`, {
+      cache: "no-store",
+      headers: { "x-quorum-workspace": user.workspaceId },
+    });
     if (!res.ok) throw new Error(String(res.status));
     const data = (await res.json()) as { gates?: GateShape[] };
     gate = (data.gates ?? []).find((g) => g.id === gateId);
@@ -57,7 +60,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "The gate service is unreachable — try again." }, { status: 502 });
   }
   if (!gate) return NextResponse.json({ error: "Gate not found." }, { status: 404 });
-  if (gate.status !== "PENDING") return NextResponse.json({ error: `This gate is already ${gate.status}.` }, { status: 409 });
+  /* A gate above the dual-approval threshold parks at AWAITING_SECOND: the
+     first officer's signature executed nothing, and the second officer must
+     still sign it with their own fresh step-up. Refusing that status here
+     made the second signature impossible from the desk. */
+  if (gate.status !== "PENDING" && gate.status !== "AWAITING_SECOND") {
+    return NextResponse.json({ error: `This gate is already ${gate.status}.` }, { status: 409 });
+  }
 
   /* Phase 7 (access security): when the MFA-for-privilege policy is on, the
      people who run the desk authenticate with a second factor on every

@@ -1365,7 +1365,9 @@ export function OrgAuthScreen() {
         <div className="pointer-events-none absolute -left-44 top-1/3 h-[420px] w-[420px] rounded-full bg-brand-600/10 blur-[130px]" aria-hidden="true" />
         <div className="pointer-events-none absolute inset-0 bg-grid-dark opacity-60" aria-hidden="true" />
         <div className="relative max-w-xl space-y-6">
-          <QuorumLogo variant="light" />
+          <Link href="/" aria-label="Quorum home" className="focus-brand inline-flex rounded-xl">
+            <QuorumLogo variant="light" />
+          </Link>
           <h1 className="type-display text-[42px] text-white">
             Your procurement workspace
             <br />
@@ -1438,7 +1440,9 @@ export function OrgAuthScreen() {
                   <MasterSwitcher active="supplier" className="w-full [&>button]:flex-1" />
                 </div>
                 <div className="mb-6">
-                  <ThemedQuorumLogo />
+                  <Link href="/" aria-label="Quorum home" className="focus-brand inline-flex rounded-xl">
+                    <ThemedQuorumLogo />
+                  </Link>
                 </div>
                 <div className="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-ink-50 p-1 ring-1 ring-inset ring-ink-200 dark:bg-white/[0.04] dark:ring-white/10">
                   {(["register", "signin"] as const).map((m) => (

@@ -54,7 +54,9 @@ export async function PUT(req: NextRequest) {
   if (!verifyTotp(user.totpSecret, code)) {
     return NextResponse.json({ error: "That code is not valid. Check the authenticator clock and try the current code." }, { status: 401 });
   }
-  setUserTotp(user.id, null, true);
+  /* Keep the just-verified secret: clearing it here would leave the account
+     marked enabled with no key to verify future codes against. */
+  setUserTotp(user.id, user.totpSecret, true);
   return NextResponse.json({ enabled: true });
 }
 

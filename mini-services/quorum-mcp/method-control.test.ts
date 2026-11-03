@@ -169,9 +169,11 @@ describe("recording and approving a method", () => {
       by: "Procurement Officer",
     })) as { gate?: string; method: { methodId: string; ok: boolean } };
     expect(result.gate).toBeUndefined();
-    expect(result.method.methodId).toBe("open-bidding");
+    /* "open-bidding" is a legacy alias; the record stores the register's
+       canonical id, which is what every downstream rule reads. */
+    expect(result.method.methodId).toBe("open-national-bidding");
     expect(result.method.ok).toBe(true);
-    expect(state.cycle[0].methodId).toBe("open-bidding");
+    expect(state.cycle[0].methodId).toBe("open-national-bidding");
   });
 
   test("a direct award without a justification fails before any gate is raised", async () => {

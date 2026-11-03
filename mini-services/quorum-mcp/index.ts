@@ -3051,7 +3051,7 @@ Bun.serve({
     }
 
     /* ── The tender cycle — solicitation to closure (waves 1-3) ───────── */
-    if (path.startsWith("/api/cycle") || path.startsWith("/api/budget-lines") || path.startsWith("/api/procurement-file") || path.startsWith("/api/pipeline") || /^\/api\/tenders\/[A-Za-z0-9._-]+\/(closing|opening|coi|matrix|alb|award-report|award-notice|standstill|debrief|contract|findings|complaints|clarifications|addenda|notices|specs|dissents)/.test(path) || /^\/api\/tenders\/[A-Za-z0-9._-]+$/.test(path)) {
+    if (path.startsWith("/api/cycle") || path.startsWith("/api/budget-lines") || path.startsWith("/api/procurement-file") || path.startsWith("/api/pipeline") || /^\/api\/tenders\/[A-Za-z0-9._-]+\/(closing|opening|coi|matrix|method|alb|award-report|award-notice|standstill|debrief|contract|findings|complaints|clarifications|addenda|notices|specs|dissents)/.test(path) || /^\/api\/tenders\/[A-Za-z0-9._-]+$/.test(path)) {
       const cycleBody = req.method === "POST" ? await readBody(req) : {};
       const committee = await fetchQuorum();
       const roster = committee?.members ?? null;

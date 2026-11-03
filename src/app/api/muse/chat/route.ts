@@ -8,6 +8,8 @@ import { museChat, museConfigFromEnv, museResponsesInput, museUsesResponses, typ
 import { canReadDeskTool, DESK_TOOLS, runDeskTool, type DeskToolContext } from "@/lib/muse-desk-tools";
 import { ACTION_TOOLS, buildProposal, explicitReviewAssignment, isActionTool, proposalStagedNote, type Proposal } from "@/lib/muse-actions";
 import { localAgent } from "@/lib/muse-local-brain";
+import { orgAssistantReply } from "@/lib/org-muse";
+import { getOrgFromToken, ORG_SESSION_COOKIE } from "@/lib/org-auth";
 import { SYSTEM_MAP } from "@/lib/quorum-knowledge";
 
 /**
@@ -34,8 +36,22 @@ const MAX_HISTORY = 12;
 
 export async function GET(request: NextRequest) {
   const user = await getUserFromToken(request.cookies.get(SESSION_COOKIE)?.value);
-  if (!user) return NextResponse.json({ error: "Sign in to use the assistant." }, { status: 401 });
   const config = museConfigFromEnv();
+  if (!user) {
+    /* The bubble is mounted over the organization console too. A supplier is
+       told it is their own assistant, not that the desk is closed to them. */
+    const org = getOrgFromToken(request.cookies.get(ORG_SESSION_COOKIE)?.value);
+    if (!org) return NextResponse.json({ error: "Sign in to use the assistant." }, { status: 401 });
+    return NextResponse.json(
+      {
+        metaAvailable: Boolean(config),
+        metaModel: config?.model ?? null,
+        automaticLabel: config ? "Meta Muse" : "Quorum AI",
+        supplier: true,
+      },
+      { headers: { "cache-control": "no-store" } },
+    );
+  }
   return NextResponse.json(
     {
       metaAvailable: Boolean(config),
@@ -96,7 +112,8 @@ interface ChatOk {
 
 export async function POST(request: NextRequest) {
   const user = await getUserFromToken(request.cookies.get(SESSION_COOKIE)?.value);
-  if (!user) {
+  const org = user ? null : getOrgFromToken(request.cookies.get(ORG_SESSION_COOKIE)?.value);
+  if (!user && !org) {
     return NextResponse.json({ error: "Sign in to use the assistant." }, { status: 401 });
   }
 
@@ -112,6 +129,11 @@ export async function POST(request: NextRequest) {
   }
 
   const { message, history } = parsed.data;
+  /* The supplier door answers from the organization's own record — never the
+     officer desk tools, proposals or another bidder's data. */
+  if (!user && org) {
+    return NextResponse.json(await orgAssistantReply(org, message));
+  }
   const cfg = museConfigFromEnv();
   if (cfg) {
     return NextResponse.json(await modelLoop(cfg, message, history, user));

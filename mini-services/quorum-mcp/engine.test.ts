@@ -569,21 +569,21 @@ describe("flagPack under the plan: over-budget and markdown value outliers", () 
 
   test("a bid over the published ceiling is flagged, cited to its own value line, and survives the self-check", () => {
     const f = kept.find((x) => x.rule === "R-OVER-BUDGET");
-    expect(f?.item).toBe("COASTLINE SCREENING");
+    expect(f?.item).toBe("Coastline Screening Solutions");
     expect(f?.citation).toBe("03-bid-coastline-screening.md, bid value line");
     expect(f && verifyFinding(f, sources)).toBe(true);
   });
 
   test("a markdown bid value outlier is flagged against its peer median and survives the self-check", () => {
     const f = kept.find((x) => x.rule === "R-VALUE-OUTLIER");
-    expect(f?.item).toBe("COASTLINE SCREENING");
+    expect(f?.item).toBe("Coastline Screening Solutions");
     expect(f?.evidence).toContain("3,940,000,000");
     expect(f && verifyFinding(f, sources)).toBe(true);
   });
 
   test("an under-ceiling, mid-pack bid is not flagged", () => {
     expect(kept.filter((x) => x.rule === "R-OVER-BUDGET")).toHaveLength(1);
-    expect(kept.some((x) => x.item === "PORTSCAN SYSTEMS" && (x.rule === "R-OVER-BUDGET" || x.rule === "R-VALUE-OUTLIER"))).toBe(false);
+    expect(kept.some((x) => x.item === "Portscan Systems" && (x.rule === "R-OVER-BUDGET" || x.rule === "R-VALUE-OUTLIER"))).toBe(false);
   });
 });
 

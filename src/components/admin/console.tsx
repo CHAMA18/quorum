@@ -29,6 +29,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { QuorumLogo } from "@/components/quorum/logo";
 import { ThemeToggle } from "@/components/quorum/theme-toggle";
 import { HorizontalScrollRegion } from "@/components/quorum/horizontal-scroll-region";
@@ -328,7 +329,9 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
             <PanelLeftClose className="h-4 w-4" aria-hidden="true" />
           </button>
           <div className="border-b border-white/10 px-5 py-5 pr-14">
-            <QuorumLogo variant="light" tagline={false} />
+            <Link href="/" aria-label="Quorum home" className="focus-brand inline-flex rounded-xl">
+              <QuorumLogo variant="light" tagline={false} />
+            </Link>
             <p className="mt-3 font-code text-[10px] font-bold uppercase tracking-[0.12em] text-brand-300">
               ADMINISTRATION
             </p>

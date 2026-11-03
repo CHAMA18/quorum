@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getOrgFromToken, ORG_SESSION_COOKIE } from "@/lib/org-auth";
+import { getOrgFromToken, ORG_SESSION_COOKIE, orgActor } from "@/lib/org-auth";
 import { sidecarFetch } from "@/lib/org-sidecar";
 
 /**
@@ -23,7 +23,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ ref:
     return NextResponse.json({ error: "invalid tender reference" }, { status: 422 });
   }
 
-  const { status, data } = await sidecarFetch(`/api/tenders/${encodeURIComponent(ref)}/contract`);
+  const { status, data } = await sidecarFetch(`/api/tenders/${encodeURIComponent(ref)}/contract`, {
+    actor: orgActor(org),
+  });
   const contract = data.contract as { supplier?: unknown } | undefined;
   const named = typeof contract?.supplier === "string" ? contract.supplier.trim().toLowerCase() : "";
   if (status !== 200 || !named || named !== org.name.trim().toLowerCase()) {

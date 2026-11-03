@@ -869,23 +869,16 @@ const DESK_TOOL_BRIEFS: Record<"deadlines" | "complaints" | "analytics" | "repor
   },
 };
 
+const EVALUATION_OVERVIEW_RECORDS = [
+  "Conflict declarations from every present committee member",
+  "Published criteria, currency conversion basis and score adjustments",
+  "Signed evaluator sheets with criterion-level scores and evidence notes",
+  "Score differences, committee consensus notes and low-bid explanation requests",
+] as const;
+
 const CYCLE_PAGE_EMPTY_GUIDES: Partial<
   Record<CyclePageTab, { title: string; body: string; records: string[] }>
 > = {
-  opening: {
-    title: "Opening record",
-    body: "This page brings the closing-date record, bid receipt register, supplier-portal applications, reconciliation and certification evidence together.",
-    records: ["Closing date and recorded basis", "Bidder, receipt time and price read", "Portal reconciliation, minutes and certification"],
-  },
-  evaluation: {
-    title: "Evaluation file",
-    body: "Publish the scoring criteria and weights with the notice. Confirm the currency conversion and any agreed score adjustments before evaluation begins.",
-    records: [
-      "Conflict declarations from every present committee member",
-      "Published criteria, currency conversion basis and score adjustments",
-      "Signed evaluator sheets, score differences, committee notes and low-bid explanation requests",
-    ],
-  },
   award: {
     title: "Award decision file",
     body: "This page gathers the evidence an accountable officer needs to review the recommendation and record the award decision.",
@@ -1500,7 +1493,7 @@ function Card({
               type="button"
               onClick={() => setOpen(true)}
               disabled={busy}
-              className="focus-brand inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-ink-950 px-3.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50 @lg:w-auto dark:bg-white dark:text-ink-950 dark:hover:bg-brand-400"
+              className="focus-brand inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-ink-950 px-3.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50 @lg:w-auto dark:bg-white dark:text-[#0b0c0f] dark:hover:bg-brand-400"
             >
               {actionLabel}
               <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1626,7 +1619,7 @@ function StageBrief({
   span?: boolean;
   className?: string;
 }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const contentId = useId();
 
   return (
@@ -3239,6 +3232,24 @@ export function CycleView({
   }, [ref]);
 
   const cycle = useMemo(() => cycles.find((c) => c.tenderId === ref) ?? null, [cycles, ref]);
+  const currentPortalApplications = useMemo(
+    () => portalApps.filter((application) => application.tenderId === ref),
+    [portalApps, ref],
+  );
+  const clarificationBidders = useMemo(() => {
+    const names = [
+      ...currentPortalApplications.map((application) => application.orgName),
+      ...(cycle?.opening?.rows ?? []).map((row) => row.bidder),
+      ...(cycle?.matrix?.bids ?? []).map((bid) => bid.bidder),
+    ];
+    const uniqueNames = new Map<string, string>();
+    for (const name of names) {
+      const trimmedName = name.trim();
+      const key = trimmedName.toLocaleLowerCase();
+      if (trimmedName && !uniqueNames.has(key)) uniqueNames.set(key, trimmedName);
+    }
+    return Array.from(uniqueNames.values()).sort((left, right) => left.localeCompare(right));
+  }, [cycle, currentPortalApplications]);
   const pipelineForCurrent = pipeline.find((entry) => entry.linkedTenderId === ref || entry.ref === ref);
   const currentSystemReference = isSystemReference(cycle?.systemReference)
     ? cycle.systemReference
@@ -3636,7 +3647,10 @@ export function CycleView({
   const logClarification = (draft: { id: number; question: string; askedBy: string }) =>
     act(
       `/api/tenders/${ref}/clarifications`,
-      { question: draft.question, askedBy: draft.askedBy || undefined },
+      {
+        question: draft.question,
+        askedBy: clarificationBidders.includes(draft.askedBy) ? draft.askedBy : undefined,
+      },
       "QUESTION LOGGED — THE ANSWER GOES TO EVERY BIDDER",
     ).then((ok) => {
       if (ok) {
@@ -4482,12 +4496,20 @@ export function CycleView({
                 />
               </Field>
               <Field label="ASKED BY">
-                <input
+                <select
                   className={inputCls}
-                  placeholder="Bidder name"
-                  value={draft.askedBy}
+                  aria-label="Bidder who asked the question"
+                  value={clarificationBidders.includes(draft.askedBy) ? draft.askedBy : ""}
                   onChange={(event) => updateClarificationDraft(draft.id, "askedBy", event.target.value)}
-                />
+                  disabled={clarificationBidders.length === 0}
+                >
+                  <option value="">
+                    {clarificationBidders.length ? "Select a bidder" : "No bidders associated with this tender"}
+                  </option>
+                  {clarificationBidders.map((bidder) => (
+                    <option key={bidder} value={bidder}>{bidder}</option>
+                  ))}
+                </select>
               </Field>
               <div className="flex flex-wrap gap-2 md:justify-end">
                 <Btn variant="ghost" onClick={() => void logClarification(draft)} disabled={busy || !ref || !draft.question.trim()}>
@@ -4687,9 +4709,86 @@ export function CycleView({
       "Bid opening recorded and submitted for certification.",
     ).then((ok) => ok && refreshCycle());
 
+  const openingRecord = cycle?.opening;
+  const openingEvidence = [
+    {
+      label: "Closing date",
+      value: cycle?.closingDate ? fmtDate(cycle.closingDate) : "Not recorded",
+      detail: cycle?.closingDate ? "Officer-confirmed" : d.closing ? `Draft · ${fmtDate(d.closing)}` : "Confirm before opening",
+      tone: cycle?.closingDate ? "ok" : d.closing ? "warn" : "muted",
+    },
+    {
+      label: "Bid register",
+      value: openingRecord ? count(openingRecord.rows.length, "bid") : "Not recorded",
+      detail: openingRecord ? `${count(openingRecord.rows.filter((row) => row.late).length, "late bid")} kept unopened` : "Receipt time + price read",
+      tone: openingRecord ? "ok" : "muted",
+    },
+    {
+      label: "Portal submissions",
+      value: count(currentPortalApplications.length, "receipt"),
+      detail: "Received from supplier portal",
+      tone: currentPortalApplications.length ? "ok" : "muted",
+    },
+    {
+      label: "Portal reconciliation",
+      value: openingRecord?.reconciliation
+        ? openingRecord.reconciliation.matches ? "Reconciled" : "Review needed"
+        : openingRecord ? "Pending" : "Awaiting register",
+      detail: openingRecord?.reconciliation?.matches
+        ? "Portal receipts match the register"
+        : openingRecord?.reconciliation
+          ? "Review missing and extra entries"
+          : openingRecord ? "Compare receipts with the register" : "Record bids to reconcile receipts",
+      tone: openingRecord?.reconciliation
+        ? openingRecord.reconciliation.matches ? "ok" : "warn"
+        : openingRecord ? "warn" : "muted",
+    },
+    {
+      label: "Opening minutes",
+      value: openingRecord?.minutesMd ? "Recorded" : openingRecord ? "Not recorded" : "Awaiting opening",
+      detail: "Public opening notes",
+      tone: openingRecord?.minutesMd ? "ok" : openingRecord ? "warn" : "muted",
+    },
+    {
+      label: "Certification",
+      value: openingRecord?.certifiedAt ? "Certified" : openingRecord ? "Awaiting approval" : "Awaiting register",
+      detail: openingRecord?.certifiedAt
+        ? `Approved ${fmtDate(openingRecord.certifiedAt)}`
+        : "Procurement officer approval",
+      tone: openingRecord?.certifiedAt ? "ok" : openingRecord ? "warn" : "muted",
+    },
+  ] as const;
+
   const OpeningTab = (
     <div className="grid gap-4 lg:grid-cols-2">
-      {cycle ? <StageBrief span {...STAGE_BRIEFS.opening} /> : null}
+      <section
+        className="lg:col-span-2 rounded-[12px] border border-ink-100 bg-paper/80 p-3.5 dark:border-white/[0.08] dark:bg-white/[0.025] sm:p-4"
+        aria-labelledby="opening-evidence-title"
+      >
+        <div className="mb-2.5 flex flex-wrap items-baseline justify-between gap-2">
+          <h4 id="opening-evidence-title" className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-700 dark:text-ink-200">
+            OPENING RECORD · LIVE STATUS
+          </h4>
+          <p className="text-[10.5px] text-ink-500 dark:text-ink-400">Evidence needed to reconcile and certify the public opening</p>
+        </div>
+        <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+          {openingEvidence.map((item) => (
+            <div key={item.label} className="min-w-0 rounded-lg border border-ink-100 bg-[#fffefa] px-2.5 py-2 dark:border-white/[0.07] dark:bg-[#12141a]">
+              <dt className="font-code text-[9px] font-bold tracking-[0.06em] text-ink-500 dark:text-ink-400">{item.label}</dt>
+              <dd className={cn(
+                "mt-1 break-words text-[12px] font-semibold leading-snug",
+                item.tone === "ok" ? "text-emerald-800 dark:text-emerald-300"
+                  : item.tone === "warn" ? "text-amber-900 dark:text-amber-300"
+                    : "text-ink-800 dark:text-ink-200",
+              )}>
+                {item.value}
+              </dd>
+              <p className="mt-1 break-words text-[10px] leading-snug text-ink-500 dark:text-ink-400">{item.detail}</p>
+            </div>
+          ))}
+        </dl>
+      </section>
+      <StageBrief span {...STAGE_BRIEFS.opening} />
       <Card
         title="Closing date on record"
         sub="THE OFFICER'S ENTRY WINS; THE NOTICE'S DATE IS THE FALLBACK"
@@ -4860,7 +4959,7 @@ export function CycleView({
         className="lg:col-span-2"
       >
         {(() => {
-          const apps = portalApps.filter((a) => a.tenderId === ref);
+          const apps = currentPortalApplications;
           if (apps.length === 0) {
             return (
               <p className="text-[11.5px] leading-relaxed text-ink-600">
@@ -5001,7 +5100,7 @@ export function CycleView({
       onToast("NO EVALUATOR HOLDS THE EVALUATION-COMMITTEE OFFICE — SET THE OFFICE ON THE COMMITTEE REGISTER FIRST");
       return;
     }
-    const cells: { bidder: string; criterionId: string; score: number }[] = [];
+    const cells: { bidder: string; criterionId: string; score: number; note?: string }[] = [];
     for (const bid of cycle.matrix.bids) {
       for (const criterion of cycle.matrix.criteria) {
         const raw = d[`sh-${sheetEvaluator}-${bid.bidder}-${criterion.id}`];
@@ -5009,7 +5108,8 @@ export function CycleView({
           onToast(`ENTER A SCORE FOR ${bid.bidder.toUpperCase()} / ${criterion.id} — A BLANK IS NOT A ZERO`);
           return;
         }
-        cells.push({ bidder: bid.bidder, criterionId: criterion.id, score: Number(raw) });
+        const note = d[`sh-note-${sheetEvaluator}-${bid.bidder}-${criterion.id}`]?.trim();
+        cells.push({ bidder: bid.bidder, criterionId: criterion.id, score: Number(raw), ...(note ? { note } : {}) });
       }
     }
     void act(
@@ -5153,6 +5253,23 @@ export function CycleView({
     : [];
   const openAlbDossiers = cycle?.alb.filter((dossier) => !dossier.resolution) ?? [];
   const sheets = cycle?.matrix?.sheets ?? [];
+  const selectedEvaluatorSheet = sheets.find((sheet) => sheet.evaluator.trim().toLowerCase() === sheetEvaluator.trim().toLowerCase());
+  const recordedScoreNotes = sheets.flatMap((sheet) =>
+    sheet.scores.flatMap((score) => {
+      const note = score.note?.trim();
+      if (!note) return [];
+      const criterion = cycle?.matrix?.criteria.find((item) => item.id === score.criterionId);
+      return [{
+        evaluator: sheet.evaluator,
+        bidder: score.bidder,
+        criterionId: score.criterionId,
+        criterionTitle: criterion?.title ?? score.criterionId,
+        score: score.score,
+        note,
+        submittedAt: sheet.submittedAt,
+      }];
+    }),
+  );
   const divergences = cycle?.matrix ? sheetDivergences(cycle.matrix.sheets ?? []) : [];
 
   /* A minority position is evidence, not an approval: it needs no gate, but
@@ -5251,6 +5368,72 @@ export function CycleView({
   const EvaluationTab = cycle ? (
     <div className="grid gap-4">
       <StageBrief {...STAGE_BRIEFS.evaluation} />
+
+      {cycle.matrix ? (
+        <Card title="Score notes" sub="CRITERION-LEVEL REASONS FROM EACH EVALUATOR AND THE COMMITTEE MINUTE">
+          {recordedScoreNotes.length ? (
+            <ul className="grid gap-2 lg:grid-cols-2">
+              {recordedScoreNotes.map((entry) => (
+                <li key={`${entry.evaluator}-${entry.bidder}-${entry.criterionId}-${entry.submittedAt}`} className="rounded-lg border border-ink-100 bg-paper px-3 py-2.5 dark:border-white/[0.07]">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="text-[12px] font-semibold text-ink-900">{entry.bidder}</span>
+                    <Chip tone="muted">{entry.criterionTitle}</Chip>
+                    <span className="font-code text-[10px] font-bold text-ink-600">{entry.score}/100</span>
+                  </div>
+                  <p className="mt-1.5 whitespace-pre-wrap text-[11.5px] leading-relaxed text-ink-700 dark:text-ink-300">{entry.note}</p>
+                  <p className="mt-1 font-code text-[9.5px] tracking-[0.03em] text-ink-500 dark:text-ink-400">
+                    {entry.evaluator} · {fmtDateTime(entry.submittedAt)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[11.5px] leading-relaxed text-ink-500 dark:text-ink-400">
+              No evaluator score notes have been submitted yet. Evaluators can add an evidence note for each score on their sheet.
+            </p>
+          )}
+          <div className="mt-3 border-t border-ink-100 pt-3 dark:border-white/[0.07]">
+            <p className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-600 dark:text-ink-300">SCORE DIFFERENCES</p>
+            {divergences.length ? (
+              <ul className="mt-2 grid gap-2 lg:grid-cols-2">
+                {divergences.map((entry) => (
+                  <li key={`${entry.bidder}-${entry.criterionId}`} className="rounded-lg border border-ink-100 bg-paper px-3 py-2 dark:border-white/[0.07]">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-[11.5px] font-semibold text-ink-800 dark:text-ink-200">
+                        {entry.bidder} · {cycle.matrix?.criteria.find((criterion) => criterion.id === entry.criterionId)?.title ?? entry.criterionId}
+                      </p>
+                      <Chip tone={entry.spread > 25 ? "warn" : "muted"}>SPREAD {entry.spread}</Chip>
+                    </div>
+                    <p className="mt-1 text-[10.5px] leading-relaxed text-ink-600 dark:text-ink-400">
+                      {entry.values.map((value) => `${value.evaluator}: ${value.score}`).join(" · ")}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-1 text-[11px] text-ink-500 dark:text-ink-400">No score differences across submitted evaluator sheets.</p>
+            )}
+          </div>
+          {cycle.matrix.med?.notes ? (
+            <div className="mt-3 rounded-lg border border-ink-100 bg-paper px-3 py-2.5 dark:border-white/[0.07]">
+              <p className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-600 dark:text-ink-300">COMMITTEE SCORE-ADJUSTMENT BASIS</p>
+              <p className="mt-1 whitespace-pre-wrap text-[11.5px] leading-relaxed text-ink-700 dark:text-ink-300">{cycle.matrix.med.notes}</p>
+              <p className="mt-1 font-code text-[9.5px] tracking-[0.03em] text-ink-500 dark:text-ink-400">
+                {cycle.matrix.med.attendees.join(", ")} · {fmtDateTime(cycle.matrix.med.recordedAt)}
+              </p>
+            </div>
+          ) : null}
+          {cycle.matrix.consensus?.notes ? (
+            <div className="mt-3 rounded-lg border border-brand-200/60 bg-brand-50/50 px-3 py-2.5 dark:border-brand-400/15 dark:bg-brand-400/[0.04]">
+              <p className="font-code text-[10px] font-bold tracking-[0.06em] text-brand-800 dark:text-brand-300">COMMITTEE CONSENSUS NOTE</p>
+              <p className="mt-1 whitespace-pre-wrap text-[11.5px] leading-relaxed text-ink-700 dark:text-ink-300">{cycle.matrix.consensus.notes}</p>
+              <p className="mt-1 font-code text-[9.5px] tracking-[0.03em] text-ink-500 dark:text-ink-400">
+                {cycle.matrix.consensus.recordedBy} · {fmtDateTime(cycle.matrix.consensus.recordedAt)} · {cycle.matrix.consensus.attendees.join(", ")}
+              </p>
+            </div>
+          ) : null}
+        </Card>
+      ) : null}
 
       <Card title="Conflict-of-interest declarations" sub="EVERY PRESENT MEMBER MUST DECLARE BEFORE THE COMMITTEE APPROVES THE EVALUATION" workflow busy={busy} actionLabel="Manage declarations" teaser={`${count(cycle.coi.length, "declaration")} for ${count(presentMembers.length, "present member")} · ${count(cycle.coi.filter((c) => c.recused).length, "recusal")} · ${cycle.coi.length >= presentMembers.length && presentMembers.length > 0 ? "all present members have declared" : "some present members still need to declare"}`}>
         {presentMembers.length === 0 ? (
@@ -5649,7 +5832,7 @@ export function CycleView({
                   </Field>
                   {sheetEvaluator ? (
                     <HorizontalScrollRegion label="Evaluator scoring sheet">
-                      <table className="w-full min-w-[420px] text-[11px]">
+                      <table className="w-full min-w-[620px] text-[11px]">
                         <thead>
                           <tr className="border-b border-ink-100 text-left font-code text-[10px] font-bold tracking-[0.04em] text-ink-600">
                             <th scope="col" className="py-1.5 pr-1.5">BIDDER</th>
@@ -5664,20 +5847,37 @@ export function CycleView({
                           {cycle.matrix.bids.map((bid) => (
                             <tr key={bid.bidder} className="border-b border-ink-100 last:border-0">
                               <td className="py-1.5 pr-1.5 font-semibold text-ink-800">{bid.bidder}</td>
-                              {cycle.matrix!.criteria.map((criterion) => (
-                                <td key={criterion.id} className="py-1.5 pr-1.5">
-                                  <input
-                                    className="h-11 w-16 rounded-md border border-ink-200 px-1.5 text-base"
-                                    type="number"
-                                    min={0}
-                                    max={100}
-                                    aria-label={`${bid.bidder} score for ${criterion.title}, ${criterion.weight} percent, from 0 to 100`}
-                                    disabled={!scoreBasisReady}
-                                    value={d[`sh-${sheetEvaluator}-${bid.bidder}-${criterion.id}`] ?? ""}
-                                    onChange={(e) => set(`sh-${sheetEvaluator}-${bid.bidder}-${criterion.id}`, e.target.value)}
-                                  />
-                                </td>
-                              ))}
+                              {cycle.matrix!.criteria.map((criterion) => {
+                                const savedScore = selectedEvaluatorSheet?.scores.find(
+                                  (score) => score.bidder === bid.bidder && score.criterionId === criterion.id,
+                                );
+                                const scoreKey = `sh-${sheetEvaluator}-${bid.bidder}-${criterion.id}`;
+                                const noteKey = `sh-note-${sheetEvaluator}-${bid.bidder}-${criterion.id}`;
+                                return (
+                                  <td key={criterion.id} className="py-1.5 pr-1.5 align-top">
+                                    <input
+                                      className="h-11 w-16 rounded-md border border-ink-200 px-1.5 text-base"
+                                      type="number"
+                                      min={0}
+                                      max={100}
+                                      aria-label={`${bid.bidder} score for ${criterion.title}, ${criterion.weight} percent, from 0 to 100`}
+                                      disabled={!scoreBasisReady}
+                                      value={d[scoreKey] ?? (savedScore ? String(savedScore.score) : "")}
+                                      onChange={(e) => set(scoreKey, e.target.value)}
+                                    />
+                                    <textarea
+                                      className={cn(inputCls, "mt-1 h-16 w-40 resize-y px-2 py-1.5 text-[10.5px] leading-snug")}
+                                      rows={2}
+                                      maxLength={200}
+                                      aria-label={`${bid.bidder} score note for ${criterion.title}`}
+                                      placeholder="Evidence note (optional)"
+                                      disabled={!scoreBasisReady}
+                                      value={d[noteKey] ?? savedScore?.note ?? ""}
+                                      onChange={(e) => set(noteKey, e.target.value)}
+                                    />
+                                  </td>
+                                );
+                              })}
                             </tr>
                           ))}
                         </tbody>
@@ -7577,7 +7777,7 @@ export function CycleView({
                         : activeStageRecord.state === "current"
                           ? "CURRENT STAGE"
                           : "UPCOMING"}
-                  </Chip> : <Chip tone="muted">NO CYCLE RECORD</Chip>}
+                  </Chip> : <Chip tone="muted">NOT STARTED</Chip>}
                 </header>
               ) : (
                 <header className="mb-5 border-b border-ink-200/70 pb-4 dark:border-white/[0.08]">
@@ -7587,6 +7787,29 @@ export function CycleView({
                   </h3>
                 </header>
               )}
+              {tab === "evaluation" ? (
+                <section
+                  className="mb-4 rounded-[12px] border border-ink-100 bg-paper/80 p-3.5 dark:border-white/[0.08] dark:bg-white/[0.025] sm:p-4"
+                  aria-labelledby="evaluation-records-title"
+                >
+                  <h4 id="evaluation-records-title" className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-600 dark:text-ink-300">
+                    This page brings together
+                  </h4>
+                  <ul className="mt-2.5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                    {EVALUATION_OVERVIEW_RECORDS.map((record, index) => (
+                      <li key={record} className="flex min-w-0 items-start gap-2.5 rounded-lg border border-ink-100 bg-[#fffefa] px-2.5 py-2 text-[12px] leading-relaxed text-ink-700 dark:border-white/[0.07] dark:bg-[#12141a] dark:text-ink-300">
+                        <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border border-ink-200 font-code text-[10px] text-ink-600 dark:border-white/[0.12] dark:text-ink-300">
+                          {String(index + 1).padStart(2, "0")}
+                        </span>
+                        <span className="min-w-0">{record}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
+              {tab === "evaluation" && !cycle ? (
+                <StageBrief className="mb-4" {...STAGE_BRIEFS.evaluation} />
+              ) : null}
               {tab === "solicitation" ? PipelineTab : null}
               {tab === "deadlines" ? DeadlinesTab : null}
               {tab === "opening" ? OpeningTab : null}
@@ -7598,7 +7821,7 @@ export function CycleView({
               {tab === "complaints" ? ComplaintsTab : null}
               {tab === "analytics" ? AnalyticsTab : null}
               {tab === "reporting" ? QuarterlyReportsTab : null}
-              {tab !== "solicitation" && tab !== "deadlines" && !cycle && emptyGuide ? (
+              {tab !== "solicitation" && tab !== "deadlines" && tab !== "evaluation" && !cycle && emptyGuide ? (
                 <>
                 {activeStage ? (
                   <StageBrief className="mt-4" {...STAGE_BRIEFS[activeStage.id]} />

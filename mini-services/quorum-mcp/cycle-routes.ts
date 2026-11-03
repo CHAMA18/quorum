@@ -210,7 +210,7 @@ function raiseCycleGate(input: {
   const gate: Gate = {
     id: `gate_${Math.random().toString(36).slice(2, 8)}`,
     runId: "cycle",
-    workspaceId: input.workspaceId ?? "demo",
+    workspaceId: input.workspaceId ?? currentWorkspaceId(),
     tenderId: input.tenderId,
     tool: input.tool,
     inputs: input.inputs,
@@ -480,13 +480,37 @@ function methodControlReason(cycle: TenderCycle | undefined): string | null {
   });
 }
 
+/**
+ * Read the minimum float from a method rule. Rules are written in two shapes:
+ * a single period ("4 weeks" — the method has one scope), or a scoped pair
+ * ("4 weeks national · 6 weeks international"). A single period applies to
+ * whichever scope the notice declares; a scoped pair selects the matching
+ * one. Returning null is a refusal, never a silent zero-day rule.
+ */
+function floatMinimumDays(floatPeriod: string, international: boolean): number | null {
+  const entries = [...floatPeriod.matchAll(/(\d+)\s*(days?|weeks?)(?:\s*(national|international))?/gi)].map(
+    (match) => ({
+      days: Number(match[1]) * (/week/i.test(match[2]) ? 7 : 1),
+      scope: (match[3] ?? "").toLowerCase(),
+    }),
+  );
+  if (!entries.length) return null;
+  const wanted = international ? "international" : "national";
+  const scoped = entries.find((entry) => entry.scope === wanted);
+  if (scoped) return scoped.days;
+  const unscoped = entries.find((entry) => !entry.scope);
+  if (unscoped) return unscoped.days;
+  /* A rule that states only the other scope still has a real minimum; use it
+     rather than pretending the method has no float at all. */
+  return entries[0]?.days ?? null;
+}
+
 function floatPeriodBlockReason(cycle: TenderCycle | undefined, noticeMd: string, issuedAt: string): string | null {
   const method = cycle?.methodId ? findMethod(state.jurisdictionId, cycle.methodId) : undefined;
   if (!method?.floatPeriod) return null;
-  const minimums = method.floatPeriod.match(/(\d+)\s+weeks?\s+national.*?(\d+)\s+weeks?\s+international/i);
-  if (!minimums) return `The method register's float period for ${method.name} cannot be checked — update the method rule before publication.`;
   const international = /^\*\*Procurement scope:\*\*\s*International$/m.test(noticeMd);
-  const requiredDays = Number(international ? minimums[2] : minimums[1]) * 7;
+  const requiredDays = floatMinimumDays(method.floatPeriod, international);
+  if (requiredDays === null) return `The method register's float period for ${method.name} cannot be checked — update the method rule before publication.`;
   const clock = jurisdictionPack(state.jurisdictionId);
   const closing = cycle?.closingDate ?? parseClosingDate(noticeMd, clock.utcOffsetHours);
   if (!closing) return "The solicitation closing date is missing — the statutory float period cannot be checked.";
@@ -3995,7 +4019,14 @@ export async function handleCycleRoutes(
      read deliberately returns no matrix, bids or other suppliers' data. */
   if (/^\/api\/tenders\/[A-Za-z0-9._-]+\/contract$/.test(path) && method === "GET") {
     const ref = tenderRef(/^\/api\/tenders\/([A-Za-z0-9._-]+)\/contract$/);
-    const cycle = cycles().find((c) => c.tenderId === ref);
+    /* The supplier portal has no buyer workspace of its own: its read is
+       scoped to the organization by the web route, which returns the contract
+       only when it names the signed-in supplier. Resolve it across
+       workspaces here — exactly as the acceptance write already does —
+       instead of asking which buyer's desk it is. */
+    const supplierRead = currentWorkspaceId() === "supplier-public";
+    const found = supplierRead ? state.cycle.find((c) => c.tenderId === ref) : undefined;
+    const cycle = found ? normalizeCycle(found) : cycles().find((c) => c.tenderId === ref);
     if (!cycle?.contract) return json({ error: `no contract is on record for "${ref}"` }, 404);
     return json({
       tenderId: ref,
@@ -4541,7 +4572,11 @@ export async function handleCycleRoutes(
   }
   if (/^\/api\/tenders\/[A-Za-z0-9._-]+\/contract\/milestones\/[A-Za-z0-9._-]+\/done$/.test(path) && mustPost()) {
     const ref = tenderRef(/^\/api\/tenders\/([A-Za-z0-9._-]+)\/contract\/milestones\/([A-Za-z0-9._-]+)\/done$/);
-    const milestoneId = decodeURIComponent(path.split("/")[5] ?? "");
+    /* contract/milestones/<id>/done carries one segment more than the other
+       id routes on this surface (…/debrief/<id>/issue): the id is the seventh
+       segment, not the sixth. Reading [5] returned the literal "milestones",
+       so no milestone could ever be marked delivered. */
+    const milestoneId = decodeURIComponent(path.split("/")[6] ?? "");
     const cycle = state.cycle.find((c) => c.tenderId === ref);
     const milestone = cycle?.contract?.milestones.find((m) => m.id === milestoneId);
     if (!milestone) return json({ error: "milestone not found" }, 404);

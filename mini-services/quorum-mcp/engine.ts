@@ -6,7 +6,7 @@
 import { join } from "node:path";
 import { readdir } from "node:fs/promises";
 import { Annotation, END, START, StateGraph } from "@langchain/langgraph";
-import { appendLog, shaOf, state, type Draft, type EvidenceObservation, type Finding, type Gate, type Office, type Requirement, type ReviewPlan, type Run } from "./store";
+import { appendLog, attestSignature, shaOf, state, type Draft, type EvidenceObservation, type Finding, type Gate, type Office, type Requirement, type ReviewPlan, type Run } from "./store";
 import { resolveDataDir } from "./paths";
 import { bidSecurityFindings, debarmentFindings, parseBidSecurity, parseClosingDate } from "./cycle";
 import { DEBARMENT_LIST } from "./debarment";
@@ -1654,7 +1654,13 @@ export function buildPack(files: string[], sources: Record<string, string>) {
         bids.push(...rec.bids);
       }
     } else if (BID_FILE.test(f)) {
-      const bidder = f.replace(/^\d+-bid-/i, "").replace(/\.md$/i, "").replace(/-/g, " ").toUpperCase();
+      /* The document states the legal bidder ("**Bidder:** Savanna Pharma
+         Distribution Ltd"); the filename is only a fallback because it
+         routinely shortens the entity. Using the filename as the identity
+         made the opening register, supplier register and evaluation matrix
+         unable to agree on who bid. */
+      const stated = text.match(/^\s*(?:\*\*)?Bidder:(?:\*\*)?\s*(.+?)\s*$/im)?.[1]?.trim();
+      const bidder = stated || f.replace(/^\d+-bid-/i, "").replace(/\.md$/i, "").replace(/-/g, " ").toUpperCase();
       bids.push({ bidder, text, source: f });
     }
   }
@@ -2394,10 +2400,23 @@ function isRosterMember(value: unknown): value is RosterMember {
   );
 }
 
+/* The committee register is private to the desk. The sidecar reads it with the
+   same HMAC seal the gateway puts on mutations, so the read is service-to-
+   service and needs no shared session cookie. */
+function rosterReadHeaders(): Record<string, string> {
+  const ts = Date.now();
+  return {
+    "x-quorum-actor": "quorum-mcp",
+    "x-quorum-workspace": "demo",
+    "x-quorum-ts": String(ts),
+    "x-quorum-attest": attestSignature("GET", "/api/committee", "quorum-mcp", ts),
+  };
+}
+
 /* The stored committee roster from the Next.js app. Null when it cannot be read, so approval fails closed. */
 export async function fetchRoster(fetchImpl: FetchLike = fetch, base = WEB_URL): Promise<RosterMember[] | null> {
   try {
-    const res = await fetchImpl(`${base}/api/committee`, { signal: AbortSignal.timeout(5_000) });
+    const res = await fetchImpl(`${base}/api/committee`, { signal: AbortSignal.timeout(5_000), headers: rosterReadHeaders() });
     if (!res.ok) return null;
     const data = (await res.json()) as { members?: RosterMember[] };
     return Array.isArray(data.members) ? data.members : null;
@@ -2410,7 +2429,7 @@ export async function fetchRoster(fetchImpl: FetchLike = fetch, base = WEB_URL):
    unreadable roll must never be treated as a present committee. */
 export async function fetchQuorum(fetchImpl: FetchLike = fetch, base = WEB_URL): Promise<CommitteeQuorum | null> {
   try {
-    const res = await fetchImpl(`${base}/api/committee`, { signal: AbortSignal.timeout(5_000) });
+    const res = await fetchImpl(`${base}/api/committee`, { signal: AbortSignal.timeout(5_000), headers: rosterReadHeaders() });
     if (!res.ok) return null;
     const data = (await res.json()) as {
       seats?: unknown;

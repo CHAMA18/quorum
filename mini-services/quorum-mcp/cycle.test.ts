@@ -354,6 +354,15 @@ describe("notice authoring (G20)", () => {
       ceiling: "KES 50,000,000",
       requiredDocs: ["Tax clearance certificate"],
       contact: "procurement@health.go.ke",
+      evaluationCriteria: [
+        {
+          title: "Technical compliance",
+          weight: 100,
+          evidence: "Compliance with every stated technical requirement",
+          scoringMethod: "Pass/fail against the published requirements, converted to a 0-100 score",
+        },
+      ],
+      evaluationProcedure: "Every bid is checked for the mandatory documents, then scored against the published criterion before the committee reviews the result.",
     });
     const check = noticeFieldCheck(md);
     expect(check.every((f) => f.present)).toBe(true);
@@ -366,6 +375,15 @@ describe("notice authoring (G20)", () => {
       method: "Open competitive bidding",
       subject: "X",
       contact: "procurement@health.go.ke",
+      evaluationCriteria: [
+        {
+          title: "Technical compliance",
+          weight: 100,
+          evidence: "Compliance with every stated technical requirement",
+          scoringMethod: "Pass/fail against the published requirements, converted to a 0-100 score",
+        },
+      ],
+      evaluationProcedure: "Every bid is checked for the mandatory documents, then scored against the published criterion before the committee reviews the result.",
     });
     const missing = noticeFieldCheck(md).filter((f) => !f.present).map((f) => f.field);
     expect(missing).toEqual(["Closing date", "Budget ceiling"]);
@@ -382,7 +400,8 @@ describe("evaluation criteria authoring", () => {
   ];
 
   test("the rendered table round-trips through the publication parser", () => {
-    const md = renderEvaluationCriteria(criteria);
+    const md = withEvaluationCriteria("", criteria);
+    expect(md).toContain(renderEvaluationCriteria(criteria));
     expect(parseEvaluationCriteria(md)).toEqual(criteria);
   });
 

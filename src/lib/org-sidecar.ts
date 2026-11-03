@@ -19,13 +19,19 @@ export async function sidecarFetch(
   const method = init?.method ?? "GET";
   const headers: Record<string, string> = {};
   if (init?.body !== undefined) headers["content-type"] = "application/json";
-  if (init?.actor && method !== "GET" && method !== "HEAD") {
-    const ts = Date.now();
+  if (init?.actor) {
+    /* Reads carry the workspace too. Without it the sidecar answered from the
+       "demo" workspace, so an awarded supplier could accept a contract it
+       could never then read. Reads are not attested (they change nothing),
+       but they are still attributed to the organization. */
     const workspaceId = init.actor.startsWith("org:") ? "supplier-public" : "demo";
     headers["x-quorum-workspace"] = workspaceId;
     headers["x-quorum-actor"] = init.actor;
-    headers["x-quorum-ts"] = String(ts);
-    headers["x-quorum-attest"] = attestSignature(method, path, init.actor, ts, workspaceId);
+    if (method !== "GET" && method !== "HEAD") {
+      const ts = Date.now();
+      headers["x-quorum-ts"] = String(ts);
+      headers["x-quorum-attest"] = attestSignature(method, path, init.actor, ts, workspaceId);
+    }
   }
   try {
     const res = await fetch(`${SIDECAR}${path}`, {

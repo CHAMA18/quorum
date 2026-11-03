@@ -137,7 +137,7 @@ function ThemedLogo() {
 
 /* ── Story panel (left, dark) — the organization door's composition ─────── */
 
-function StoryPanel() {
+function StoryPanel({ onReturnToSite }: { onReturnToSite: () => void }) {
   return (
     <aside className="relative hidden overflow-hidden bg-night lg:flex lg:flex-col lg:justify-between lg:p-12">
       <AuthFilm />
@@ -153,7 +153,14 @@ function StoryPanel() {
       <div className="pointer-events-none absolute inset-0 bg-grid-dark opacity-60" aria-hidden="true" />
 
       <div className="relative flex items-center justify-between">
-        <QuorumLogo variant="light" />
+        <button
+          type="button"
+          onClick={onReturnToSite}
+          aria-label="Quorum home"
+          className="focus-brand rounded-xl"
+        >
+          <QuorumLogo variant="light" />
+        </button>
       </div>
 
       <div className="relative my-auto max-w-xl space-y-6">
@@ -753,7 +760,7 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
 
   return (
     <div className="auth-screen grid min-h-screen bg-paper font-body text-ink-900 antialiased lg:grid-cols-[1.05fr_1fr] dark:bg-night dark:text-white">
-      <StoryPanel />
+      <StoryPanel onReturnToSite={onClose} />
 
       {/* Auth panel */}
       <div className="flex flex-col bg-paper dark:bg-night">
@@ -810,7 +817,14 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
                     transition={{ duration: 0.22, ease: EASE }}
                   >
                     <div className="mb-6">
-                      <ThemedLogo />
+                      <button
+                        type="button"
+                        onClick={onClose}
+                        aria-label="Quorum home"
+                        className="focus-brand inline-flex rounded-xl"
+                      >
+                        <ThemedLogo />
+                      </button>
                     </div>
 
                     {/* Door toggle — the organization door's segmented control */}

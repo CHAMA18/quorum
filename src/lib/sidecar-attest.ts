@@ -1,4 +1,4 @@
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 import { secretFor } from "@/lib/secrets";
 
 /**
@@ -25,4 +25,30 @@ function attestSecret(): string {
 
 export function attestSignature(method: string, path: string, actor: string, ts: number, workspaceId = "demo"): string {
   return createHmac("sha256", attestSecret()).update(`${method}|${path}|${actor}|${workspaceId}|${ts}`).digest("hex");
+}
+
+/**
+ * Verify a server-to-server read seal (the sidecar reading the committee roll).
+ * Same formula and window as `store.ts` attestVerify, so there is one shared
+ * secret and no second credential to rotate. This never authorises a mutation.
+ */
+export function verifyAttest(
+  method: string,
+  path: string,
+  headers: Headers,
+): { ok: true; actor: string } | { ok: false; reason: string } {
+  const actor = headers.get("x-quorum-actor") ?? "";
+  const ts = Number(headers.get("x-quorum-ts") ?? NaN);
+  const sig = headers.get("x-quorum-attest") ?? "";
+  const workspaceId = headers.get("x-quorum-workspace")?.trim() || "demo";
+  if (!actor || !sig) return { ok: false, reason: "missing service seal" };
+  if (!Number.isFinite(ts) || Math.abs(Date.now() - ts) > 5 * 60_000) {
+    return { ok: false, reason: "service seal timestamp outside the window" };
+  }
+  const expected = Buffer.from(attestSignature(method, path, actor, ts, workspaceId));
+  const given = Buffer.from(sig);
+  if (expected.length !== given.length || !timingSafeEqual(expected, given)) {
+    return { ok: false, reason: "service seal mismatch" };
+  }
+  return { ok: true, actor };
 }
