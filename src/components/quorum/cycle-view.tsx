@@ -4512,7 +4512,14 @@ export function CycleView({
         </ul>
         <div className="mt-3 grid min-w-0 grid-cols-1 items-end gap-3 border-t border-ink-100 pt-3 dark:border-white/[0.06] md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto]">
           <Field label="ADDENDUM SUMMARY">
-            <input className={inputCls} placeholder="What changes for every bidder" value={d.addSummary ?? ""} onChange={(e) => set("addSummary", e.target.value)} />
+            <textarea
+              className={cn(inputCls, "h-20 resize-y break-words py-2 leading-relaxed")}
+              rows={2}
+              wrap="soft"
+              placeholder="What changes for every bidder"
+              value={d.addSummary ?? ""}
+              onChange={(event) => set("addSummary", event.target.value)}
+            />
           </Field>
           <Field label="EXTEND CLOSING TO" hint="inside 7 days it is required">
             <input className={inputCls} type="date" value={d.addExt ?? ""} onChange={(e) => set("addExt", e.target.value)} />
