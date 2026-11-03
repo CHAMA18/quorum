@@ -145,7 +145,7 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
           {/* ── The claim ─────────────────────────────────────────────────── */}
           <div className="lg:col-span-6">
             {/* Headline — per-word masked reveal; the accent phrase set in the
-                editorial italic serif, underlined by a stroke that draws in. */}
+                editorial italic serif without decoration crossing its text. */}
             <h1
               className="type-display type-display-xl text-ink-950"
               aria-label="One complete tender review. Every finding traceable."
@@ -153,7 +153,7 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
               <span aria-hidden="true">
                 <MaskedWord delay={0.06}>One</MaskedWord>{" "}
                 <MaskedWord delay={0.12}>complete</MaskedWord>{" "}
-                <span className="relative inline-block sm:whitespace-nowrap">
+                <span className="inline-block sm:whitespace-nowrap">
                   <MaskedWord
                     delay={0.18}
                     className="font-editorial text-[1.04em] font-normal tracking-normal text-brand-500 dark:text-brand-400"
@@ -166,23 +166,6 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
                   >
                     review.
                   </MaskedWord>{" "}
-                  <svg
-                    viewBox="0 0 300 10"
-                    className="absolute -bottom-[0.14em] left-0 h-[0.1em] w-full overflow-visible"
-                    aria-hidden="true"
-                    preserveAspectRatio="none"
-                  >
-                    <motion.path
-                      d="M2 7.2 C 78 3.4, 214 3.2, 298 6.2"
-                      stroke="#e8382a"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      fill="none"
-                      initial={reduce ? false : { pathLength: 0 }}
-                      animate={{ pathLength: 1 }}
-                      transition={reduce ? { duration: 0 } : { duration: 1.1, delay: 1.05, ease: EASE }}
-                    />
-                  </svg>
                 </span>{" "}
                 <MaskedWord delay={0.38}>Every</MaskedWord>{" "}
                 <MaskedWord delay={0.44}>finding</MaskedWord>{" "}
