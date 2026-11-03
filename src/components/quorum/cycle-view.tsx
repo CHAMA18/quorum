@@ -3188,6 +3188,10 @@ export function CycleView({
   const [busy, setBusy] = useState(false);
   /* Draft inputs, one record shared across the tab forms. */
   const [d, setD] = useState<Record<string, string>>({});
+  const [clarificationDrafts, setClarificationDrafts] = useState<{ id: number; question: string; askedBy: string }[]>([
+    { id: 0, question: "", askedBy: "" },
+  ]);
+  const nextClarificationDraftId = useRef(1);
   const [criteriaDraft, setCriteriaDraft] = useState<EvaluationCriterion[] | null>(null);
   const [criteriaProcedureDraft, setCriteriaProcedureDraft] = useState<string | null>(null);
   const [criteriaAnnouncement, setCriteriaAnnouncement] = useState("");
@@ -3599,13 +3603,30 @@ export function CycleView({
       "Specification drafted from your brief. Review the requirements before using it in the tender notice.",
     ).then((ok) => ok && refreshCycle());
 
-  const logClarification = () =>
+  const updateClarificationDraft = (id: number, field: "question" | "askedBy", value: string) => {
+    setClarificationDrafts((current) => current.map((draft) => draft.id === id ? { ...draft, [field]: value } : draft));
+  };
+
+  const addClarificationDraft = () => {
+    const id = nextClarificationDraftId.current++;
+    setClarificationDrafts((current) => [...current, { id, question: "", askedBy: "" }]);
+  };
+
+  const removeClarificationDraft = (id: number) => {
+    setClarificationDrafts((current) => current.length > 1 ? current.filter((draft) => draft.id !== id) : current);
+  };
+
+  const logClarification = (draft: { id: number; question: string; askedBy: string }) =>
     act(
       `/api/tenders/${ref}/clarifications`,
-      { question: d.clarQuestion, askedBy: d.clarBy || undefined },
+      { question: draft.question, askedBy: draft.askedBy || undefined },
       "QUESTION LOGGED — THE ANSWER GOES TO EVERY BIDDER",
     ).then((ok) => {
-      if (ok) set("clarQuestion", "");
+      if (ok) {
+        setClarificationDrafts((current) => current.length > 1
+          ? current.filter((item) => item.id !== draft.id)
+          : current.map((item) => item.id === draft.id ? { ...item, question: "", askedBy: "" } : item));
+      }
       return ok;
     });
 
@@ -4430,15 +4451,41 @@ export function CycleView({
         sub="EVERY ANSWER GOES TO EVERY BIDDER — AN ADDENDUM INSIDE 7 DAYS MUST MOVE THE CLOSING"
         right={cycle?.addenda.some((a) => a.closingExtensionRequired) ? <Chip tone="warn">CLOSING EXTENSION OWED</Chip> : undefined}
       >
-        <div className="grid min-w-0 grid-cols-1 items-end gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto]">
-          <Field label="BIDDER'S QUESTION">
-            <textarea className={cn(inputCls, "h-20 resize-y break-words py-2 leading-relaxed")} rows={2} wrap="soft" placeholder="What a bidder asked, in their words" value={d.clarQuestion ?? ""} onChange={(e) => set("clarQuestion", e.target.value)} />
-          </Field>
-          <Field label="ASKED BY">
-            <input className={inputCls} placeholder="Bidder name" value={d.clarBy ?? ""} onChange={(e) => set("clarBy", e.target.value)} />
-          </Field>
-          <Btn className="w-full md:w-auto" variant="ghost" onClick={() => void logClarification()} disabled={busy || !ref || !(d.clarQuestion ?? "").trim()}>
-            <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Log
+        <div className="space-y-3">
+          {clarificationDrafts.map((draft, index) => (
+            <div key={draft.id} className="grid min-w-0 grid-cols-1 items-end gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto]">
+              <Field label={`BIDDER'S QUESTION${clarificationDrafts.length > 1 ? ` ${index + 1}` : ""}`}>
+                <textarea
+                  className={cn(inputCls, "h-20 resize-y break-words py-2 leading-relaxed")}
+                  rows={2}
+                  wrap="soft"
+                  placeholder="What a bidder asked, in their words"
+                  value={draft.question}
+                  onChange={(event) => updateClarificationDraft(draft.id, "question", event.target.value)}
+                />
+              </Field>
+              <Field label="ASKED BY">
+                <input
+                  className={inputCls}
+                  placeholder="Bidder name"
+                  value={draft.askedBy}
+                  onChange={(event) => updateClarificationDraft(draft.id, "askedBy", event.target.value)}
+                />
+              </Field>
+              <div className="flex flex-wrap gap-2 md:justify-end">
+                <Btn variant="ghost" onClick={() => void logClarification(draft)} disabled={busy || !ref || !draft.question.trim()}>
+                  <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Log question
+                </Btn>
+                {clarificationDrafts.length > 1 ? (
+                  <Btn variant="ghost" onClick={() => removeClarificationDraft(draft.id)} disabled={busy}>
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" /> Remove
+                  </Btn>
+                ) : null}
+              </div>
+            </div>
+          ))}
+          <Btn variant="ghost" onClick={addClarificationDraft} disabled={busy || !ref}>
+            <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Add another question
           </Btn>
         </div>
         <ul className="mt-3 space-y-1.5">
