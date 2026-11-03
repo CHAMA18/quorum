@@ -7,8 +7,8 @@ import { Reveal } from "@/components/quorum/reveal";
 const PRODUCT_LINKS = [
   { label: "Overview", href: "#overview" },
   { label: "Use cases", href: "#use-cases" },
-  { label: "Inside the run", href: "#inside" },
-  { label: "The report", href: "#report" },
+  { label: "Review outputs", href: "#inside" },
+  { label: "Sample report", href: "#report" },
   { label: "Pricing", href: "#pricing" },
   { label: "Get started", href: "#get-started" },
 ];
@@ -22,13 +22,13 @@ const DATA_LINKS = [
   { label: "Umucyo", country: "Rwanda", href: "https://ocds.umucyo.gov.rw/OpenData" },
 ];
 
-const STANDARDS = ["MCP", "OCDS", "Open weights", "Human-in-the-loop"];
+const STANDARDS = ["Open Contracting", "Source citations", "Institutional controls", "Committee approval"];
 
 const PROCESS_STEPS = [
   { number: "01", title: "Notice", detail: "The published source", mark: "PUBLIC" },
   { number: "02", title: "Evidence", detail: "Every claim cited", mark: "SOURCED" },
-  { number: "03", title: "Evaluation", detail: "Rules applied in view", mark: "BOUNDED" },
-  { number: "04", title: "Decision", detail: "A named committee", mark: "HUMAN" },
+  { number: "03", title: "Review", detail: "Criteria applied in view", mark: "SOURCED" },
+  { number: "04", title: "Decision", detail: "Recorded by the committee", mark: "APPROVED" },
 ];
 
 export function SiteFooter() {
@@ -82,7 +82,7 @@ export function SiteFooter() {
               </span>
             </h2>
             <p className="mt-7 max-w-[620px] text-[14px] leading-[1.75] text-ink-300 sm:text-[16px]">
-              Quorum turns the tender record into cited evidence, then leaves the decision where it belongs: with the people entrusted to make it.
+              Quorum helps public institutions review tenders with consistent criteria, source-linked findings and a traceable decision history. The committee retains authority over the award.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -174,10 +174,10 @@ export function SiteFooter() {
               <QuorumLogo variant="light" />
             </Link>
             <p className="mt-5 max-w-[370px] text-[12.5px] leading-[1.8] text-ink-400">
-              Agentic procurement software for public institutions. Open standards, in-country control, and a record that holds up after the meeting ends.
+              Procurement review software for public institutions. Evidence stays connected to each finding, and decisions remain with authorised committees.
             </p>
             <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/[0.1] bg-white/[0.025] px-3.5 py-2 font-code text-[10px] font-semibold tracking-[0.05em] text-ink-200">
-              OPEN WEIGHTS <span className="text-brand-400">·</span> ON-PREM READY <span className="text-brand-400">·</span> AUDIT-GRADE LOGS
+              SOURCE-LINKED FINDINGS <span className="text-brand-400">·</span> INSTITUTIONAL CONTROLS <span className="text-brand-400">·</span> AUDIT HISTORY
             </p>
           </Reveal>
 
@@ -243,7 +243,7 @@ export function SiteFooter() {
                 </li>
               </ul>
               <p className="mt-7 max-w-[270px] text-[11px] leading-[1.7] text-ink-400">
-                Open standards end to end. Your data stays in-country.
+                Ask us about hosting, data-residency and integration requirements for your institution.
               </p>
             </nav>
           </Reveal>
@@ -253,12 +253,12 @@ export function SiteFooter() {
         <Reveal delay={0.12} y={12}>
           <div className="flex flex-col gap-4 border-t border-white/[0.09] pt-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <p className="text-[11px] text-ink-400">© 2026 Quorum · Agentic procurement for Africa</p>
+              <p className="text-[11px] text-ink-400">© 2026 Quorum · Public procurement review</p>
               <span className="hidden h-3 w-px bg-white/10 sm:block" aria-hidden="true" />
-              <span className="font-code text-[10px] font-semibold tracking-[0.04em] text-ink-300">NAIROBI · EAT</span>
+              <span className="text-[11px] text-ink-400">A StackOne Solutions Limited product</span>
             </div>
             <p className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-300">
-              AGENTS PREPARE <span className="mx-1 text-brand-500">·</span> COMMITTEES DECIDE
+              REVIEW SUPPORT <span className="mx-1 text-brand-500">·</span> COMMITTEE AUTHORITY
             </p>
           </div>
         </Reveal>

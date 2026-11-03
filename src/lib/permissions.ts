@@ -151,6 +151,7 @@ export function canReadSidecar(role: WorkspaceRole | null | undefined, path: str
     "/api/runs", "/api/gates", "/api/receipts", "/api/tenders", "/api/documents",
     "/api/cycle", "/api/budget-lines", "/api/procurement-file", "/api/pipeline",
   ].some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) return can(role, "read_documents");
+  if (["/api/observability", "/api/traces"].some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) return can(role, "read_audit");
   if (path === "/api/rule-catalogue") return can(role, "view_oversight");
   return false;
 }

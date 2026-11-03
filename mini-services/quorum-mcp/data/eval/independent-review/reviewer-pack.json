@@ -1,0 +1,274 @@
+{
+  "schemaVersion": 1,
+  "reviewerId": "",
+  "instructions": {
+    "reviewerId": "Enter your name or reviewer code in the top-level reviewerId field.",
+    "independentReview": "Review every source document before recording findings. Do not consult Quorum findings, previous labels, model output, or adjudicated results until this file is complete.",
+    "completion": "Set completed=true for every case, including cases with no findings. Preserve each caseId, sourceBundleSha256, and sourceFiles value unchanged. Use exact source filenames and verbatim source quotes. Use R-OTHER for a relevant issue outside the listed rule types.",
+    "ruleCodes": [
+      "R-DOC-MISSING",
+      "R-PRICE-OUTLIER",
+      "R-VALUE-OUTLIER",
+      "R-OVER-BUDGET",
+      "R-AWARD-OVER-BUDGET",
+      "R-SPEC-DEVIATION",
+      "R-SUPPLIER-ID",
+      "R-BUYER-MISSING",
+      "R-BID-SECURITY",
+      "R-DEBARMENT-HIT",
+      "R-REGISTRY",
+      "R-REGISTRY-STATUS",
+      "R-INJECTION",
+      "R-PROMPT-INJECTION",
+      "R-ID",
+      "R-OTHER"
+    ],
+    "findingFields": [
+      "rule",
+      "citation",
+      "bidder",
+      "issue",
+      "severity",
+      "quote",
+      "rationale"
+    ],
+    "agreementScope": "The score compares rule code and cited source file only; it does not claim that severity, legal interpretation, or award recommendation is equivalent."
+  },
+  "cases": [
+    {
+      "caseId": "CASE-001",
+      "sourceBundleSha256": "d914f5eb7af157b9fe466789cfb5d98b7bef3ebde7bb583b71a838c9bf4547c7",
+      "sourceFiles": [
+        {
+          "name": "01-tender-notice.md",
+          "sha256": "b89e65de716a39d8d5b67f44b54734175c32f2019cf5b920dc5916ace79add20",
+          "text": "# TENDER NOTICE — KE-KCS-2026-042\n\n**Buyer:** Kenya Customs Service · National Treasury\n**Reference:** KE-KCS-2026-042\n**Subject:** Supply, installation and support of container inspection scanners (drive-through X-ray) — 3 ports\n**Budget ceiling:** KES 1,860,000,000 (VAT inclusive)\n**Closing:** 14 February 2027, 10:00 EAT · Open international tender, two-envelope\n\n## 1. Specifications — the Supplier SHALL:\n\n- The supplier SHALL deliver drive-through X-ray scanners with imaging throughput of at least 25 containers/hour per site.\n- The supplier SHALL complete installation and radiation-safety certification at each port within one hundred and twenty (120) days of contract signature.\n- The supplier SHALL integrate scanner imagery with the existing customs risk-management system via documented API.\n- The supplier SHALL train at least forty (40) customs officers as operators and fifteen (15) as image analysts.\n- The supplier SHALL provide on-site spare parts for two (2) years and comprehensive maintenance for five (5) years.\n- The supplier SHALL obtain type approval from the Radiation Protection Board before energising any unit.\n- Bidders must supply reference installations of the same scanner model operating in at least two (2) customs administrations.\n- Bidders must disclose total ionising dose per inspected container and the radiation-safety dossier.\n\n## 2. Eligibility checklist\n\n- [REQUIRED] Manufacturer authorization letter\n- [REQUIRED] Reference installation letters (2 customs administrations)\n- [REQUIRED] Radiation Protection Board type-approval dossier\n- [REQUIRED] Original equipment manufacturers statement\n- [REQUIRED] Tax compliance certificate\n\n## 3. Evaluation\n\nScored 40% technical, 30% commercial, 30% five-year support cost of ownership. Units without RPB type approval are ineligible. Throughput guarantees below 25 containers/hour are non-responsive.\n"
+        },
+        {
+          "name": "02-bid-portscan-systems.md",
+          "sha256": "c34f3bf060265224c652ddbf96f183efa8d311912b033a10fcfbec35736c226b",
+          "text": "# BID — PortScan Systems GmbH\n\n**Reference:** KE-KCS-2026-042\n**Bidder:** PortScan Systems GmbH\n**Bid value:** KES 1,772,000,000\n\n## Price schedule\n\n| Line item | Qty | Unit price (KES) |\n| --- | --- | --- |\n| Drive-through X-ray scanner, 25 containers/hour | 3 | KES 466,000,000 |\n| Imagery-risk API integration, per port | 3 | KES 18,900,000 |\n| Operator & analyst training programme | 3 | KES 22,400,000 |\n| On-site spares consignment, 2 years | 3 | KES 36,800,000 |\n| Comprehensive maintenance, 5 years | 3 | KES 48,200,000 |\n\n## Documents enclosed\n\n- Manufacturer authorization letter — OEM ref PSZ-2026-77\n- Reference installation letters — Uganda Revenue Authority; Tanzania Revenue Authority\n- Radiation Protection Board type-approval dossier — submitted, approval in review\n- Tax compliance certificate — valid to 05/2027\n\n## Declarations\n\nThe bidder shall maintain quoted prices for 120 days.\nImagery integrates to the customs risk system via REST API; interface specification attached.\nAll equipment complies with the technical specification.\nNo deviations are offered.\n"
+        },
+        {
+          "name": "03-bid-coastline-screening.md",
+          "sha256": "7d21c276443da9019531189141a09e361cec0f223f775783d7c68cd5e1ce2198",
+          "text": "# BID — Coastline Screening Solutions\n\n**Reference:** KE-KCS-2026-042\n**Bidder:** Coastline Screening Solutions\n**Bid value:** KES 3,940,000,000\n\n## Price schedule\n\n| Line item | Qty | Unit price (KES) |\n| --- | --- | --- |\n| Drive-through X-ray scanner, 25 containers/hour | 3 | KES 1,140,000,000 |\n| Imagery-risk API integration, per port | 3 | KES 41,200,000 |\n| Operator & analyst training programme | 3 | KES 29,800,000 |\n| On-site spares consignment, 2 years | 3 | KES 84,500,000 |\n| Comprehensive maintenance, 5 years | 3 | KES 96,300,000 |\n\n## Documents enclosed\n\n- Manufacturer authorization letter — OEM ref CS-AM-2026-02\n- Reference installation letters — a port authority authority letter supplied, second administration pending\n- Original equipment manufacturers statement — attached\n- Tax compliance certificate — valid to 09/2027\n\n## Declarations\n\nThe bidder shall maintain quoted prices for 60 days.\nScanner model is the current screening platform; throughput certified at 25 containers/hour.\nNote: alternative offered for the radiation certification segment — in-house certification pathway requested (see annex D).\nRadiation Protection Board dossier: field equivalency argument submitted; formal type approval pending at bid close.\n"
+        }
+      ],
+      "completed": false,
+      "findings": []
+    },
+    {
+      "caseId": "CASE-002",
+      "sourceBundleSha256": "3d661817c5f53699c25a136526b4427ec2b34f5ab5f5819ddeccbe93fb2477ea",
+      "sourceFiles": [
+        {
+          "name": "01-tender-notice.md",
+          "sha256": "5b458ae8ce7e3ab4415d02bda458040abf6570f0c5dd97493fecc0d69e9f3bf3",
+          "text": "# TENDER NOTICE — KE-KEMSA-2024-ONT08\n\n**Buyer:** Kenya Medical Supplies Authority\n**Reference:** 20241003160602-206188-KEMSA/ONT08/2024-2026\n**Subject:** SUPPLY OF HEALTH TECHNOLOGIES (COTTON GAUZE, COTTON WOOL &  TUBES)\n**Source:** OCDS release `ocds-5whusi-KEMSA/ONT08/2024-2026`, Kenya PPRA dataset (publication 147), retrieved 2026-10-31\n**Source URL:** https://data.open-contracting.org/en/publication/147\n\n## 1. What this record is\n\nThis is a **real published award register**, not a synthetic tender pack. It is used as a\nregression pack for oversight review: the desk re-reads the published record and surfaces\nwhat a reviewer should ask about. The release carries **no tender documents, no line items\nand no quantities**, so the desk cannot test unit-price reasonableness from this record.\nThat absence is itself a transparency gap, and the review says so.\n\n## 2. Published awards (verbatim values)\n\n| Supplier | Award value | Contract period |\n| --- | --- | --- |\n| FAMI INVESTMENT LTD | KES 2,387,988 | 2025-03-19 → 2027-03-18 |\n| TENDAJI TRADING LIMITED | KES 972,400 | 2025-03-26 → 2027-03-25 |\n| TOPTOUCH MARKETING LIMITED | KES 965,000 | 2025-03-13 → 2027-03-12 |\n| FROTOM LOGISTICS LIMITED | KES 194,436,000 | 2025-05-20 → 2027-05-19 |\n| NIFLA ENTERPRISE LIMITED | KES 52,486,248 | 2025-03-20 → 2027-03-19 |\n| POWERLITE BREW AFRICA LIMITED | KES 1,453,700 | 2025-03-18 → 2027-03-17 |\n| TINGLINKS ENTERPRISES LIMITED | KES 5,170,000 | 2025-03-11 → 2027-03-10 |\n| ZAN GLOBAL LIMITED | KES 540,960 | 2025-03-17 → 2027-03-16 |\n| VOMORONO LTD | KES 10,093,200 | 2025-03-11 → 2027-03-10 |\n| MILLENIUM SOLUTIONS EAST AFRICA LIMITED | KES 69,892,200 | 2025-03-20 → 2027-03-19 |\n| REMMY SUPPLIERS & SERVICES LTD | KES 4,337,800 | 2025-03-10 → 2027-03-09 |\n\n## 3. Review questions the record supports\n\n- The published award values span a wide range. Confirm the lot composition, quantities and\n  unit prices before treating the spread as a price anomaly.\n- The release does not publish the tender documents or the line items behind each award.\n  A committee cannot reconstruct the evaluation from this record alone.\n- Every award names a supplier; the release does not publish beneficial ownership or the\n  evaluation score behind the award.\n\n## 4. What the desk must not claim\n\nThe desk may flag the value spread and the missing record, with citations to the release.\nIt must not conclude that any supplier overcharged, that any award is improper, or that the\nrelease proves fraud. Those are questions for the committee, backed by the documents the\nrelease does not contain.\n"
+        },
+        {
+          "name": "ocds-release.json",
+          "sha256": "05796a5fcf7affe3bc87b21671fd20155c9e8b03373331397384ea89b5b73ca5",
+          "text": "{\n  \"ocid\": \"ocds-5whusi-KEMSA/ONT08/2024-2026\",\n  \"id\": \"KE-KEMSA-2024-ONT08\",\n  \"date\": \"2024-10-03T16:06:02+03:00\",\n  \"buyer\": {\n    \"id\": \"5098\",\n    \"name\": \"Kenya Medical Supplies Authority\"\n  },\n  \"tender\": {\n    \"id\": \"20241003160602-206188-KEMSA/ONT08/2024-2026\",\n    \"title\": \"SUPPLY OF HEALTH TECHNOLOGIES (COTTON GAUZE, COTTON WOOL &  TUBES)\",\n    \"description\": \"Published framework award register for cotton gauze, cotton wool and tubes. The release carries no tender documents, line items or quantities.\",\n    \"documents\": []\n  },\n  \"bids\": {\n    \"details\": [\n      {\n        \"tenderers\": [\n          {\n            \"name\": \"FAMI INVESTMENT LTD\"\n          }\n        ],\n        \"value\": {\n          \"amount\": 2387988,\n          \"currency\": \"KES\"\n        },\n        \"documents\": []\n      },\n      {\n        \"tenderers\": [\n          {\n            \"name\": \"TENDAJI TRADING LIMITED\"\n          }\n        ],\n        \"value\": {\n          \"amount\": 972400,\n          \"currency\": \"KES\"\n        },\n        \"documents\": []\n      },\n      {\n        \"tenderers\": [\n          {\n            \"name\": \"TOPTOUCH MARKETING LIMITED\"\n          }\n        ],\n        \"value\": {\n          \"amount\": 965000,\n          \"currency\": \"KES\"\n        },\n        \"documents\": []\n      },\n      {\n        \"tenderers\": [\n          {\n            \"name\": \"FROTOM LOGISTICS LIMITED\"\n          }\n        ],\n        \"value\": {\n          \"amount\": 194436000,\n          \"currency\": \"KES\"\n        },\n        \"documents\": []\n      },\n      {\n        \"tenderers\": [\n          {\n            \"name\": \"NIFLA ENTERPRISE LIMITED\"\n          }\n        ],\n        \"value\": {\n          \"amount\": 52486248,\n          \"currency\": \"KES\"\n        },\n        \"documents\": []\n      },\n      {\n        \"tenderers\": [\n          {\n            \"name\": \"POWERLITE BREW AFRICA LIMITED\"\n          }\n        ],\n        \"value\": {\n          \"amount\": 1453700,\n          \"currency\": \"KES\"\n        },\n        \"documents\": []\n      },\n      {\n        \"tenderers\": [\n          {\n            \"name\": \"TINGLINKS ENTERPRISES LIMITED\"\n          }\n        ],\n        \"value\": {\n          \"amount\": 5170000,\n          \"currency\": \"KES\"\n        },\n        \"documents\": []\n      },\n      {\n        \"tenderers\": [\n          {\n            \"name\": \"ZAN GLOBAL LIMITED\"\n          }\n        ],\n        \"value\": {\n          \"amount\": 540960,\n          \"currency\": \"KES\"\n        },\n        \"documents\": []\n      },\n      {\n        \"tenderers\": [\n          {\n            \"name\": \"VOMORONO LTD\"\n          }\n        ],\n        \"value\": {\n          \"amount\": 10093200,\n          \"currency\": \"KES\"\n        },\n        \"documents\": []\n      },\n      {\n        \"tenderers\": [\n          {\n            \"name\": \"MILLENIUM SOLUTIONS EAST AFRICA LIMITED\"\n          }\n        ],\n        \"value\": {\n          \"amount\": 69892200,\n          \"currency\": \"KES\"\n        },\n        \"documents\": []\n      },\n      {\n        \"tenderers\": [\n          {\n            \"name\": \"REMMY SUPPLIERS & SERVICES LTD\"\n          }\n        ],\n        \"value\": {\n          \"amount\": 4337800,\n          \"currency\": \"KES\"\n        },\n        \"documents\": []\n      }\n    ]\n  },\n  \"awards\": [\n    {\n      \"id\": \"20250612154130-127708\",\n      \"suppliers\": [\n        {\n          \"id\": \"471127\",\n          \"name\": \"FAMI INVESTMENT LTD\"\n        }\n      ],\n      \"value\": {\n        \"amount\": 2387988,\n        \"currency\": \"KES\"\n      },\n      \"contractPeriod\": {\n        \"endDate\": \"2027-03-18T00:00:00+03:00\",\n        \"startDate\": \"2025-03-19T00:00:00+03:00\"\n      }\n    },\n    {\n      \"id\": \"20250620121623-128897\",\n      \"suppliers\": [\n        {\n          \"id\": \"471139\",\n          \"name\": \"TENDAJI TRADING LIMITED\"\n        }\n      ],\n      \"value\": {\n        \"amount\": 972400,\n        \"currency\": \"KES\"\n      },\n      \"contractPeriod\": {\n        \"endDate\": \"2027-03-25T00:00:00+03:00\",\n        \"startDate\": \"2025-03-26T00:00:00+03:00\"\n      }\n    },\n    {\n      \"id\": \"20250620122912-128904\",\n      \"suppliers\": [\n        {\n          \"id\": \"471145\",\n          \"name\": \"TOPTOUCH MARKETING LIMITED\"\n        }\n      ],\n      \"value\": {\n        \"amount\": 965000,\n        \"currency\": \"KES\"\n      },\n      \"contractPeriod\": {\n        \"endDate\": \"2027-03-12T00:00:00+03:00\",\n        \"startDate\": \"2025-03-13T00:00:00+03:00\"\n      }\n    },\n    {\n      \"id\": \"20250620125723-128917\",\n      \"suppliers\": [\n        {\n          \"id\": \"471153\",\n          \"name\": \"FROTOM LOGISTICS LIMITED\"\n        }\n      ],\n      \"value\": {\n        \"amount\": 194436000,\n        \"currency\": \"KES\"\n      },\n      \"contractPeriod\": {\n        \"endDate\": \"2027-05-19T00:00:00+03:00\",\n        \"startDate\": \"2025-05-20T00:00:00+03:00\"\n      }\n    },\n    {\n      \"id\": \"20250620131632-128919\",\n      \"suppliers\": [\n        {\n          \"id\": \"471154\",\n          \"name\": \"NIFLA ENTERPRISE LIMITED\"\n        }\n      ],\n      \"value\": {\n        \"amount\": 52486248,\n        \"currency\": \"KES\"\n      },\n      \"contractPeriod\": {\n        \"endDate\": \"2027-03-19T00:00:00+03:00\",\n        \"startDate\": \"2025-03-20T00:00:00+03:00\"\n      }\n    },\n    {\n      \"id\": \"20250620133417-128924\",\n      \"suppliers\": [\n        {\n          \"id\": \"471165\",\n          \"name\": \"POWERLITE BREW AFRICA LIMITED\"\n        }\n      ],\n      \"value\": {\n        \"amount\": 1453700,\n        \"currency\": \"KES\"\n      },\n      \"contractPeriod\": {\n        \"endDate\": \"2027-03-17T00:00:00+03:00\",\n        \"startDate\": \"2025-03-18T00:00:00+03:00\"\n      }\n    },\n    {\n      \"id\": \"20250620134635-128926\",\n      \"suppliers\": [\n        {\n          \"id\": \"471171\",\n          \"name\": \"TINGLINKS ENTERPRISES LIMITED\"\n        }\n      ],\n      \"value\": {\n        \"amount\": 5170000,\n        \"currency\": \"KES\"\n      },\n      \"contractPeriod\": {\n        \"endDate\": \"2027-03-10T00:00:00+03:00\",\n        \"startDate\": \"2025-03-11T00:00:00+03:00\"\n      }\n    },\n    {\n      \"id\": \"20250620144402-128937\",\n      \"suppliers\": [\n        {\n          \"id\": \"471188\",\n          \"name\": \"ZAN GLOBAL LIMITED\"\n        }\n      ],\n      \"value\": {\n        \"amount\": 540960,\n        \"currency\": \"KES\"\n      },\n      \"contractPeriod\": {\n        \"endDate\": \"2027-03-16T00:00:00+03:00\",\n        \"startDate\": \"2025-03-17T00:00:00+03:00\"\n      }\n    },\n    {\n      \"id\": \"20250620145554-128942\",\n      \"suppliers\": [\n        {\n          \"id\": \"471189\",\n          \"name\": \"VOMORONO LTD\"\n        }\n      ],\n      \"value\": {\n        \"amount\": 10093200,\n        \"currency\": \"KES\"\n      },\n      \"contractPeriod\": {\n        \"endDate\": \"2027-03-10T00:00:00+03:00\",\n        \"startDate\": \"2025-03-11T00:00:00+03:00\"\n      }\n    },\n    {\n      \"id\": \"20250620150458-128945\",\n      \"suppliers\": [\n        {\n          \"id\": \"471209\",\n          \"name\": \"MILLENIUM SOLUTIONS EAST AFRICA LIMITED\"\n        }\n      ],\n      \"value\": {\n        \"amount\": 69892200,\n        \"currency\": \"KES\"\n      },\n      \"contractPeriod\": {\n        \"endDate\": \"2027-03-19T00:00:00+03:00\",\n        \"startDate\": \"2025-03-20T00:00:00+03:00\"\n      }\n    },\n    {\n      \"id\": \"20250620151425-128949\",\n      \"suppliers\": [\n        {\n          \"id\": \"471213\",\n          \"name\": \"REMMY SUPPLIERS & SERVICES LTD\"\n        }\n      ],\n      \"value\": {\n        \"amount\": 4337800,\n        \"currency\": \"KES\"\n      },\n      \"contractPeriod\": {\n        \"endDate\": \"2027-03-09T00:00:00+03:00\",\n        \"startDate\": \"2025-03-10T00:00:00+03:00\"\n      }\n    }\n  ],\n  \"source\": {\n    \"registry\": \"OCP Data Registry — Open Contracting Partnership\",\n    \"dataset\": \"Kenya PPRA (publication 147)\",\n    \"url\": \"https://data.open-contracting.org/en/publication/147\",\n    \"ocid\": \"ocds-5whusi-KEMSA/ONT08/2024-2026\",\n    \"retrieved\": \"2026-10-31\",\n    \"note\": \"Award values are published figures. The release has no line items; value comparisons are a review question, not a finding of impropriety.\"\n  }\n}\n"
+        }
+      ],
+      "completed": false,
+      "findings": []
+    },
+    {
+      "caseId": "CASE-003",
+      "sourceBundleSha256": "bd9afeff943f82dedc500f129a739b9d0d08565f9cf7ef44f7aa8f97dfbb9787",
+      "sourceFiles": [
+        {
+          "name": "01-tender-notice.md",
+          "sha256": "29d20cc7df7f600d8772c95fd688ff0965e7e0b055c2609da76c6100cff7ab2e",
+          "text": "# TENDER NOTICE — KE-MOE-2026-205\n\n**Buyer:** Ministry of Education · State Department for Basic Education\n**Reference:** KE-MOE-2026-205\n**Subject:** Supply and installation of student desks and physics laboratory kits — 40 secondary schools\n**Budget ceiling:** KES 90,000,000 (VAT inclusive)\n**Closing:** 3 March 2027, 10:00 EAT · Open national tender, single envelope\n\n## 1. Specifications — the Supplier SHALL:\n\n- The supplier SHALL deliver double-seat student desks conforming to the KS 1 series standard, 500 per school.\n- The supplier SHALL deliver physics laboratory kits with stainless steel apparatus, one class set per school.\n- The supplier SHALL install all units at each school within ninety (90) days of contract signature.\n- The supplier SHALL provide a twenty-four (24) month warranty on all equipment.\n\n## 2. Eligibility checklist\n\n- [REQUIRED] Tax compliance certificate\n- [REQUIRED] Manufacturer authorization letter\n- [REQUIRED] ISO 9001 certificate\n\n## 3. Evaluation\n\nScored 100% on price among responsive bids. Bids above the budget ceiling are non-responsive.\n"
+        },
+        {
+          "name": "02-bid-lakeshore-educational.md",
+          "sha256": "03d6eac822b2c9816467d50df13ea433cb2d92cc7d5f4ef227440bd0b0edf39b",
+          "text": "# BID — Lakeshore Educational Supplies\n\n**Reference:** KE-MOE-2026-205\n**Bidder:** Lakeshore Educational Supplies\n**Bid value:** KES 77,920,000\n\n## Price schedule\n\n| Line item | Qty | Unit price (KES) |\n| --- | --- | --- |\n| Student desk, double seat | 20,000 | KES 3,600 |\n| Physics lab kit, class set | 40 | KES 88,000 |\n| Delivery and installation | 40 | KES 60,000 |\n\n## Documents enclosed\n\n- Tax compliance certificate — valid to 2027\n- Manufacturer authorization letter — attached\n- ISO 9001 certificate — attached\n\n## Declarations\n\nNo deviations declared.\nThe earlier quote expired and has been replaced by this bid.\nPrices are held for 90 days from the closing date.\n"
+        },
+        {
+          "name": "03-bid-rift-valley-lab.md",
+          "sha256": "0060ee6d4fb4bde3f7f1652fcf280faf13fc1fdeebd4257824d42efa18f271eb",
+          "text": "# BID — Rift Valley Lab Systems\n\n**Reference:** KE-MOE-2026-205\n**Bidder:** Rift Valley Lab Systems\n**Bid value:** KES 91,800,000\n\n## Price schedule\n\n| Line item | Qty | Unit price (KES) |\n| --- | --- | --- |\n| Student desk, double seat | 20,000 | KES 4,000 |\n| Physics lab kit, class set | 40 | KES 230,000 |\n| Delivery and installation | 40 | KES 65,000 |\n\n## Documents enclosed\n\n- Tax compliance certificate — valid to 2027\n- Manufacturer authorization letter — application submitted, approval pending\n- ISO 9001 certificate — attached\n\n## Declarations\n\nAlternative offered for the physics kit: plastic apparatus in place of stainless steel (see annex B).\nPrices are held for 90 days from the closing date.\n"
+        },
+        {
+          "name": "04-bid-summit-learning.md",
+          "sha256": "2f16775a368dd7a75227d996990ff924388e8c1154fb02792d3069282c881f19",
+          "text": "# BID — Summit Learning Partners\n\n**Reference:** KE-MOE-2026-205\n**Bidder:** Summit Learning Partners\n**Bid value:** KES 74,000,000\n\n## Price schedule\n\n| Line item | Qty | Unit price (KES) |\n| --- | --- | --- |\n| Student desk, double seat | 20,000 | KES 3,400 |\n| Physics lab kit, class set | 40 | KES 92,000 |\n| Delivery and installation | 40 | KES 58,000 |\n\n## Documents enclosed\n\n- Tax compliance certificate — valid to 2027\n- Manufacturer authorization letter — attached\n- ISO 9001 certificate — attached\n- Business permit (county) — expired 31 August 2026; renewal filed\n\n## Declarations\n\nWarranty: 12 months on all equipment (the notice requires 24 months).\nPrices are held for 90 days from the closing date.\n"
+        }
+      ],
+      "completed": false,
+      "findings": []
+    },
+    {
+      "caseId": "CASE-004",
+      "sourceBundleSha256": "04d09bf14f06d5a6f86df58f3a406a9f4e5d22dc604b4bc4eee0c78ac068b926",
+      "sourceFiles": [
+        {
+          "name": "01-tender-notice.md",
+          "sha256": "71b5682facbca33c4f403b20a5e430a2fef31fdd7a33d185e79e99e4aae4159f",
+          "text": "# TENDER NOTICE — KE-MOH-2026-117\n\n**Buyer:** Ministry of Health · Kenya\n**Reference:** KE-MOH-2026-117\n**Subject:** Supply & delivery of essential medicines tracer list (48 items) to Level 4–6 facilities — 12 counties\n**Budget ceiling:** KES 624,800,000 (VAT inclusive)\n**Closing:** 30 January 2027, 10:00 EAT · Open tender, national, two-envelope\n\n## 1. Specifications — the Supplier SHALL:\n\n- The supplier SHALL supply only medicines prequalified by the WHO or registered by the PPB.\n- The supplier SHALL deliver each tracer item to the county medical stores within forty-five (45) days of contract signature.\n- The supplier SHALL assign a shelf life of not less than twenty-four (24) months at delivery for every batch.\n- The supplier SHALL transport cold-chain items at 2–8 °C with validated data loggers on every shipment.\n- The supplier SHALL report any recall or quality defect to the buyer within twenty-four (24) hours.\n- Suppliers must hold a valid PPB wholesaler licence for the contract period.\n- Bidders must submit a certificate of analysis for every batch offered.\n- Bidders must declare any anti-dumping or subsidy arrangements affecting quoted prices.\n\n## 2. Eligibility checklist\n\n- [REQUIRED] PPB wholesaler licence\n- [REQUIRED] WHO prequalification or PPB registration certificates\n- [REQUIRED] Certificate of analysis samples\n- [REQUIRED] Cold-chain capability report\n- [REQUIRED] Tax compliance certificate\n\n## 3. Evaluation\n\nMedicines scored on compliance, lead time and five-year landed cost. Batches shorter than 24 months shelf life are non-responsive. Cooling failures on delivery terminate the lot.\n"
+        },
+        {
+          "name": "02-bid-savanna-pharma.md",
+          "sha256": "61c73d89b6121a63b436b5f27d6583833d8bfffd958aa85671df88b1febf688a",
+          "text": "# BID — Savanna Pharma Distribution Ltd\n\n**Reference:** KE-MOH-2026-117\n**Bidder:** Savanna Pharma Distribution Ltd\n**Bid value:** KES 588,400,000\n\n## Price schedule\n\n| Line item | Qty | Unit price (KES) |\n| --- | --- | --- |\n| Paracetamol 500mg tablets, pack of 1000 | 4800 | KES 3,850 |\n| Amoxicillin 500mg capsules, pack of 100 | 9600 | KES 2,940 |\n| Oxytocin 10 IU/ml injection, box of 10 | 2400 | KES 1,180 |\n| Insulin glargine 100IU/ml, pack of 5 pens | 1200 | KES 6,420 |\n| ORS sachets, box of 100 | 7200 | KES 940 |\n| Cold-chain shipment, validated 2–8 °C | 12 | KES 480,000 |\n\n## Documents enclosed\n\n- PPB wholesaler licence — licence WDL-2026-0341, valid through 2027\n- WHO prequalification certificates — 44 of 48 tracer items listed\n- Certificate of analysis — samples for all quoted batches\n- Tax compliance certificate — valid to 06/2027\n\n## Declarations\n\nWe declare no anti-dumping or subsidy arrangements affecting these prices.\nThe bidder shall maintain quoted prices for 90 days from bid opening.\nCold-chain shipments use validated loggers; QMS reports within 24 hours.\nNo deviations from the technical specification are offered.\n"
+        },
+        {
+          "name": "03-bid-equatorial-medicines.md",
+          "sha256": "8d1093b02907919e5f86d2df8174684a40ddba757564a52890ca947a152b0528",
+          "text": "# BID — Equatorial Medicines Importers\n\n**Reference:** KE-MOH-2026-117\n**Bidder:** Equatorial Medicines Importers\n**Bid value:** KES 1,362,900,000\n\n## Price schedule\n\n| Line item | Qty | Unit price (KES) |\n| --- | --- | --- |\n| Paracetamol 500mg tablets, pack of 1000 | 4800 | KES 3,850 |\n| Amoxicillin 500mg capsules, pack of 100 | 9600 | KES 2,940 |\n| Oxytocin 10 IU/ml injection, box of 10 | 2400 | KES 1,180 |\n| Insulin glargine 100IU/ml, pack of 5 pens | 1200 | KES 41,300 |\n| ORS sachets, box of 100 | 7200 | KES 940 |\n| Cold-chain shipment, validated 2–8 °C | 12 | KES 8,050,000 |\n\n## Documents enclosed\n\n- PPB wholesaler licence — application pending; licence issued January 2025–expired\n- Certificate of analysis — for 38 of 48 quoted items\n- Tax compliance certificate — valid to 02/2027\n\n## Declarations\n\nThe bidder shall maintain quoted prices for 90 days.\nNote: alternative offered for the cold-chain segment — imported passive shippers requested in place of validated reefer trucks (see annex B).\nInsulin is quoted as the European reference price; freight equalisation applied retrospectively.\n"
+        },
+        {
+          "name": "91-addendum-r2-gate-verification.md",
+          "sha256": "bf8ca07c9a761fb981dac2ad8dce8e1ed467a8c9a2d2404c55b2d3f6c930e4d9",
+          "text": "Test tender addendum — R2 gate verification doc."
+        }
+      ],
+      "completed": false,
+      "findings": []
+    },
+    {
+      "caseId": "CASE-005",
+      "sourceBundleSha256": "785baa5c2c85930c56b4659b2f1f89e2a78fe85bcb49670d3434e6b979464104",
+      "sourceFiles": [
+        {
+          "name": "01-tender-notice.md",
+          "sha256": "e9efae66295277dfd1e9f4bb0dfb2bb0d8a89cda5722881339a1c14e74783a2c",
+          "text": "# TENDER NOTICE\n\n**Reference:** KE-MSA-2026-090\n**Subject:** Supply & delivery of water-quality laboratory kits and reagents — coast region\n**Budget ceiling:** KES 240,000,000 (VAT inclusive)\n**Closing:** 09 February 2027, 10:00 EAT · Open tender, OCDS release 1.1\n\n## 1. Specifications — the Supplier SHALL:\n\n- The supplier SHALL deliver portable water-testing kits conforming to WHO field-testing guidance in Annex B.\n- The supplier SHALL supply reagent refill packs with a minimum shelf life of eighteen (18) months on delivery.\n- The supplier SHALL commission each laboratory kit within thirty (30) days of delivery and train at least four (4) county laboratory technicians per depot.\n- The supplier SHALL calibrate every incubator against a traceable reference standard before handover.\n- The supplier SHALL state the country of manufacture for every line item.\n- Bidders must hold a valid tax compliance certificate at submission.\n- Bidders must hold current ISO/IEC 17025 accreditation for the assays quoted.\n\n## 2. Eligibility checklist\n\n- [REQUIRED] Manufacturer authorization letter\n- [REQUIRED] Bid security or bid-securing declaration\n- [REQUIRED] Tax compliance certificate\n- [REQUIRED] ISO/IEC 17025 accreditation certificate\n\n## 3. Evaluation\n\nPrices evaluated on total cost of ownership over three years. Arithmetic errors corrected per clause 34. Bids deviating materially from Annex B are non-responsive. The contract will be signed with the successful bidder's registered entity; the procuring entity's details appear on the signed contract form.\n"
+        },
+        {
+          "name": "02-bid-bahari-medical.md",
+          "sha256": "528169c776eb900d7721c437360442b207eb6802fce5a082a84e28a440baead9",
+          "text": "# BID — Bahari Medical Supplies Ltd\n\n**Reference:** KE-MSA-2026-090\n**Bidder:** Bahari Medical Supplies Ltd\n**KRA PIN:** C004829173K\n**Bid value:** KES 109,800,000\n\n## Price schedule\n\n| Line item | Qty | Unit price (KES) |\n| --- | --- | --- |\n| Portable water-testing kit, field | 10 | KES 6,200,000 |\n| Reagent refill pack, 100 tests | 40 | KES 850,000 |\n| Portable incubator, 25W | 6 | KES 2,300,000 |\n\n## Documents enclosed\n\n- Manufacturer authorization letter — ProLab Systems (Germany)\n- Bid security: surety bond no. SB-90233\n- Tax compliance certificate — valid to 03/2027\n- ISO/IEC 17025 laboratory accreditation certificate, current\n\n## Declarations\n\nWe declare no single-source arrangement exceeding 30% of bid value.\nThe bidder shall maintain the quoted prices for 120 days.\nAll equipment conforms to Annex B and WHO field-testing guidance.\n"
+        },
+        {
+          "name": "03-bid-mombasa-marine.md",
+          "sha256": "02097e54379db5dee42f965ca476de61c3b2975ab4f866f903af732c05e1e9ff",
+          "text": "# BID — Mombasa Marine & Hardware Ltd\n\n**Reference:** KE-MSA-2026-090\n**Bidder:** Mombasa Marine & Hardware Ltd\n**KRA PIN:** P0518472\n**Bid value:** KES 113,200,000\n\n## Price schedule\n\n| Line item | Qty | Unit price (KES) |\n| --- | --- | --- |\n| Portable water-testing kit, field | 10 | KES 6,450,000 |\n| Reagent refill pack, 100 tests | 40 | KES 880,000 |\n| Portable incubator, 25W | 6 | KES 2,250,000 |\n\n## Documents enclosed\n\n- Manufacturer authorization letter — AquaTech Instruments (Kenya)\n- Bid-securing declaration, executed\n- Tax compliance certificate — valid to 01/2027\n- ISO/IEC 17025 laboratory accreditation certificate, current\n\n## Declarations\n\nWe declare no single-source arrangement exceeding 30% of bid value.\nThe bidder shall maintain the quoted prices for 120 days.\nAll equipment conforms to Annex B and WHO field-testing guidance.\n"
+        }
+      ],
+      "completed": false,
+      "findings": []
+    },
+    {
+      "caseId": "CASE-006",
+      "sourceBundleSha256": "afba93b074bb4a3acb0d21474ffaaa34c319e7cb7b8b86c786191286d0355cd8",
+      "sourceFiles": [
+        {
+          "name": "01-tender-notice.md",
+          "sha256": "cf75bd7dd85182bec04ae6273d7499b7f8b0803616bec648b583d73a1677ab96",
+          "text": "# TENDER NOTICE — KE-NCB-104293\n\n**Buyer:** Ministry of Health · Kenya\n**Reference:** KE-NCB-104293\n**Subject:** Supply & delivery of MRI scanners (1.5T) with installation — 6 counties\n**Budget ceiling:** KES 412,600,000 (VAT inclusive)\n**Closing:** 17 October 2026, 10:00 EAT · Open tender, OCDS release 1.1\n\n## 1. Specifications — the Supplier SHALL:\n\n- The supplier SHALL deliver MRI 1.5T scanners with full coil suite conforming to the technical specifications in Annex A.\n- The supplier SHALL install and commission each unit within ninety (90) days of contract signature.\n- The supplier SHALL provide five (5) years comprehensive maintenance, including helium refills.\n- The supplier SHALL train at least twelve (12) radiographers per county.\n- The supplier SHALL cite the country of manufacture for every line item.\n- Bidders must hold a valid tax compliance certificate at submission.\n- Bidders must submit audited accounts for the last three (3) financial years.\n- Bidders must declare any single-source supply arrangements exceeding 30% of the bid value.\n\n## 2. Eligibility checklist\n\n- [REQUIRED] Manufacturer authorization letter\n- [REQUIRED] Bid security or bid-securing declaration\n- [REQUIRED] Tax compliance certificate\n- [REQUIRED] Audited accounts (3 years)\n- [REQUIRED] Site survey reports for all six counties\n\n## 3. Evaluation\n\nPrices evaluated on total cost of ownership over five years. Arithmetic errors corrected per clause 34. Bids deviating materially from Annex A are non-responsive.\n"
+        },
+        {
+          "name": "02-bid-mediqueast.md",
+          "sha256": "704518679fa0d379750112b14dcec150291f85285cd78e8ac676f04eb23d2377",
+          "text": "# BID — MedEquip East Africa Ltd\n\n**Reference:** KE-NCB-104293\n**Bidder:** MedEquip East Africa Ltd\n**Bid value:** KES 412,600,000\n\n## Price schedule\n\n| Line item | Qty | Unit price (KES) |\n| --- | --- | --- |\n| MRI 1.5T scanner with full coil suite | 2 | KES 118,400,000 |\n| Coil, phased array knee | 4 | KES 4,850,000 |\n| Chiller unit 30kW | 2 | KES 2,400,000 |\n| Helium refill plan, 5 years | 2 | KES 3,100,000 |\n| Installation & commissioning | 2 | KES 8,900,000 |\n\n## Documents enclosed\n\n- Tax compliance certificate — valid to 03/2027\n- Bid security: surety bond no. SB-88123\n- Audited accounts, FY2023–FY2025\n- Site survey reports — six counties\n\n## Declarations\n\nWe declare no single-source arrangement exceeding 30% of bid value.\nThe bidder shall maintain the quoted prices for 120 days.\nAll equipment complies with Annex A.\nNote: alternative offered for the cooling system — chiller specification deviation requested (see annex C).\n"
+        },
+        {
+          "name": "03-bid-radiant-health.md",
+          "sha256": "11466b930aed8ad9fe032df0cb62b5342b58fca99d83e74e884be2d1ca77bcf7",
+          "text": "# BID — Radiant Health Systems\n\n**Reference:** KE-NCB-104293\n**Bidder:** Radiant Health Systems\n**Bid value:** KES 388,150,000\n\n## Price schedule\n\n| Line item | Qty | Unit price (KES) |\n| --- | --- | --- |\n| MRI 1.5T scanner with full coil suite | 2 | KES 52,900,000 |\n| Coil, phased array knee | 4 | KES 1,950,000 |\n| Chiller unit 30kW | 2 | KES 2,150,000 |\n| Helium refill plan, 5 years | 2 | KES 2,890,000 |\n| Installation & commissioning | 2 | KES 7,400,000 |\n\n## Documents enclosed\n\n- Manufacturer authorization letter — from the OEM, ref ML-2026-114\n- Tax compliance certificate — valid to 11/2026\n- Bid security: bank guarantee no. BG-4471\n- Audited accounts, FY2023–FY2025\n- Site survey reports — six counties\n\n## Declarations\n\nWe declare no single-source arrangement exceeding 30% of bid value.\nAll equipment complies with Annex A in full. No deviations are offered.\nThe bidder shall maintain the quoted prices for 120 days.\n"
+        }
+      ],
+      "completed": false,
+      "findings": []
+    },
+    {
+      "caseId": "CASE-007",
+      "sourceBundleSha256": "54200a3bb60bc110566b62203a1a59852a7487eca209adeb924c133f5ee8b9e5",
+      "sourceFiles": [
+        {
+          "name": "01-tender-notice.md",
+          "sha256": "769749bb466aa7180e017678b25605000c266579b8dc507abd855ae205515e5f",
+          "text": "# TENDER NOTICE — KE-PHC-2026-311\n\n**Buyer:** Ministry of Health · Primary Health Care Directorate\n**Reference:** KE-PHC-2026-311\n**Subject:** Supply, installation and five-year service of solar vaccine refrigerators for 12 health facilities\n**Budget ceiling:** KES 15,000,000 (VAT inclusive)\n**Closing:** 3 March 2027, 11:00 EAT · Open national tender, single envelope\n\n## 1. Specifications — the Supplier SHALL:\n\n- The supplier SHALL deliver solar-powered vaccine refrigerators of at least 100 litres, WHO-prequalified or equivalent.\n- The supplier SHALL supply solar panels of at least 200 W with a charge controller per unit.\n- The supplier SHALL install and commission each unit at its facility within sixty (60) days of contract signature.\n- The supplier SHALL provide a five-year service contract with response within 72 hours.\n- Bidders must declare any deviation from these specifications in the specifications matrix.\n\n## 2. Eligibility checklist\n\n- [REQUIRED] Manufacturer authorization letter\n- [REQUIRED] Solar product performance certificate\n- [REQUIRED] Local content declaration\n- [REQUIRED] Tax compliance certificate\n\n## 3. Evaluation\n\nScored 50% technical, 50% price. Bids above the budget ceiling are non-responsive.\n"
+        },
+        {
+          "name": "02-bid-nyota-energy.md",
+          "sha256": "4dcdf5b0d1cda5f05d9dbeaca7996ffd9c743739975dc4052702c2443f7afb56",
+          "text": "# BID — Nyota Energy Systems\n\n**Reference:** KE-PHC-2026-311\n**Bidder:** Nyota Energy Systems\n**Bid value:** KES 12,460,000\n\n## Price schedule\n\n| Line item | Qty | Unit price (KES) |\n| --- | --- | --- |\n| Solar vaccine refrigerator 100L | 12 | KES 412,000 |\n| Solar panel 200W with controller | 12 | KES 58,000 |\n| Installation and commissioning per site | 12 | KES 35,000 |\n| Five-year service contract | 1 | KES 6,400,000 |\n\n## Documents enclosed\n\n- Manufacturer authorization letter — attached (ref NE-AM-2027-01)\n- Solar product performance certificate — attached\n- Tax compliance certificate — valid to 06/2027\n- Installer licence (EPRA) — expired 30 June 2026, renewal in progress\n\n## Declarations\n\nThe bidder shall maintain quoted prices for 90 days.\nUnits are WHO-prequalified and carry a five-year manufacturer warranty.\n"
+        },
+        {
+          "name": "03-bid-mwangaza-cold-chain.md",
+          "sha256": "246d254ad81b9f600668a24ed51c5b4bc0103ec1bcacac90ed57170ad64865c0",
+          "text": "# BID — Mwangaza Cold Chain\n\n**Reference:** KE-PHC-2026-311\n**Bidder:** Mwangaza Cold Chain\n**Bid value:** KES 8,094,000\n\n## Price schedule\n\n| Line item | Qty | Unit price (KES) |\n| --- | --- | --- |\n| Solar vaccine refrigerator 100L | 12 | KES 405,000 |\n| Solar panel 200W with controller | 12 | KES 61,000 |\n| Installation and commissioning per site | 12 | KES 33,500 |\n| Five-year service contract | 1 | KES 2,100,000 |\n\n## Documents enclosed\n\n- Manufacturer authorization letter — attached\n- Solar product performance certificate — pending, test report due 15 February 2027\n- Local content declaration — attached\n- Tax compliance certificate — attached\n\n## Declarations\n\nNo deviations declared. Prices held for 90 days.\n"
+        },
+        {
+          "name": "04-bid-highland-refrigeration.md",
+          "sha256": "6f6c559443723abd8915b5e7b0881f208c46185eeba4431fa02ceec416182dc1",
+          "text": "# BID — Highland Refrigeration\n\n**Reference:** KE-PHC-2026-311\n**Bidder:** Highland Refrigeration\n**Bid value:** KES 18,738,000\n\n## Price schedule\n\n| Line item | Qty | Unit price (KES) |\n| --- | --- | --- |\n| Solar vaccine refrigerator 100L | 12 | KES 1,190,000 |\n| Solar panel 200W with controller | 12 | KES 150,000 |\n| Installation and commissioning per site | 12 | KES 34,000 |\n| Five-year service contract | 1 | KES 2,250,000 |\n\n## Documents enclosed\n\n- Manufacturer authorization letter — attached\n- Solar product performance certificate — attached\n- Local content declaration — attached\n- Tax compliance certificate — attached\n\n## Declarations\n\nAlternative offered for the panel: lithium-ion battery storage in place of the specified sealed lead-acid; see annex B.\nPrices held for 90 days.\n"
+        }
+      ],
+      "completed": false,
+      "findings": []
+    },
+    {
+      "caseId": "CASE-008",
+      "sourceBundleSha256": "540eaccefeac89569d0848ee699d6ebb153a5d077ca438e26eebaf88cffe966b",
+      "sourceFiles": [
+        {
+          "name": "01-tender-notice.md",
+          "sha256": "f71ee4fed2f99c5816e2f931c51109a8ecd7ba7362d61ecf025dab214496a951",
+          "text": "# TENDER NOTICE — KE-WRA-2026-058\n\n**Buyer:** Water Resources Authority\n**Reference:** KE-WRA-2026-058\n**Subject:** Supply and commissioning of solar submersible borehole pumps, lots 1–3\n**Budget ceiling:** KES 8,000,000 (VAT inclusive)\n**Closing:** 20 March 2027, 10:00 EAT · Open national tender, two-envelope\n\n## 1. Specifications — the Supplier SHALL:\n\n- The supplier SHALL deliver solar submersible pumps of at least 2 HP with a minimum flow of 3 m³/hour at 60 m head.\n- The supplier SHALL supply a controller and inverter per pump.\n- The supplier SHALL survey each borehole and carry out a flow test before installation.\n- The supplier SHALL provide a five-year manufacturer warranty on the pump.\n- Bidders must declare any deviation from these specifications in the specifications matrix.\n\n## 2. Eligibility checklist\n\n- [REQUIRED] Pump test certificate\n- [REQUIRED] Manufacturer warranty letter\n- [REQUIRED] Tax compliance certificate\n- [REQUIRED] Water Resources Authority registration\n\n## 3. Evaluation\n\nScored 60% technical, 40% price. Bids above the budget ceiling are non-responsive.\n"
+        },
+        {
+          "name": "02-bid-aqua-dynamics.md",
+          "sha256": "325f3160c86ea5ad95084b82ffd758a1c5163c1dda4f8f37ff493829297692f2",
+          "text": "# BID — Aqua Dynamics\n\n**Reference:** KE-WRA-2026-058\n**Bidder:** Aqua Dynamics\n**Bid value:** KES 5,555,000\n\n## Price schedule\n\n| Line item | Qty | Unit price (KES) |\n| --- | --- | --- |\n| Solar submersible pump 2HP | 20 | KES 185,000 |\n| Controller and inverter, 2HP | 20 | KES 72,000 |\n| Borehole survey per site | 5 | KES 45,000 |\n| Flow test and handover | 5 | KES 38,000 |\n\n## Documents enclosed\n\n- Pump test certificate — attached\n- Manufacturer warranty letter — attached\n- Tax compliance certificate — attached\n- Water Resources Authority registration — attached\n\n## Declarations\n\nNo deviations declared.\n"
+        },
+        {
+          "name": "03-bid-rift-pumps.md",
+          "sha256": "a41754a721595de3b7c5eeb8200391eb2475ce63d6233f5404ea9274ebb94aef",
+          "text": "# BID — Rift Pumps\n\n**Reference:** KE-WRA-2026-058\n**Bidder:** Rift Pumps\n**Bid value:** KES 5,645,000\n\n## Price schedule\n\n| Line item | Qty | Unit price (KES) |\n| --- | --- | --- |\n| Solar submersible pump 2HP | 20 | KES 192,000 |\n| Controller and inverter, 2HP | 20 | KES 69,500 |\n| Borehole survey per site | 5 | KES 47,000 |\n| Flow test and handover | 5 | KES 36,000 |\n\n## Documents enclosed\n\n- Pump test certificate — attached\n- Manufacturer warranty letter — attached\n- Tax compliance certificate — attached\n- Water Resources Authority registration — application lodged, certificate to follow\n\n## Declarations\n\nAlternative offered: stainless-steel impeller in place of the specified bronze impeller.\n"
+        },
+        {
+          "name": "04-bid-sahel-water-works.md",
+          "sha256": "60f50fb77e34587ed99d3d4f06b4dbe4ba72f37a758672d6a4654d544b0f8766",
+          "text": "# BID — Sahel Water Works\n\n**Reference:** KE-WRA-2026-058\n**Bidder:** Sahel Water Works\n**Bid value:** KES 12,635,000\n\n## Price schedule\n\n| Line item | Qty | Unit price (KES) |\n| --- | --- | --- |\n| Solar submersible pump 2HP | 20 | KES 540,000 |\n| Controller and inverter, 2HP | 20 | KES 71,000 |\n| Borehole survey per site | 5 | KES 44,000 |\n| Flow test and handover | 5 | KES 39,000 |\n\n## Documents enclosed\n\n- Pump test certificate — attached\n- Manufacturer warranty letter — attached\n- Tax compliance certificate — attached\n\n## Declarations\n\nPrices held for 120 days. Installation is scheduled within 90 days of award.\n"
+        }
+      ],
+      "completed": false,
+      "findings": []
+    },
+    {
+      "caseId": "CASE-009",
+      "sourceBundleSha256": "fb7b25fc2f9f8fd12fcd3a46d165bf74fa7bf3093f732be4174bb5229e63aa21",
+      "sourceFiles": [
+        {
+          "name": "ocds-release.json",
+          "sha256": "0842e45dad94e1e2c4dd74de0d2cf26cba86b1f7afd8476f43edcc5a5336fbc8",
+          "text": "{\n  \"ocid\": \"ocds-rw-rura-2027-021\",\n  \"id\": \"RW-RURA-2027-021\",\n  \"tender\": {\n    \"title\": \"Supply of 400 smart water meters, Kigali district network\",\n    \"description\": \"Supply, installation and calibration of 400 smart water meters with remote reading.\",\n    \"value\": { \"amount\": 2400000000, \"currency\": \"RWF\" },\n    \"documents\": [\n      { \"title\": \"Tax clearance certificate\", \"documentType\": \"eligibilityCriteria\" },\n      { \"title\": \"RURA type approval letter\", \"documentType\": \"eligibilityCriteria\" }\n    ]\n  },\n  \"bids\": {\n    \"details\": [\n      {\n        \"tenderers\": [{ \"name\": \"Kigali Meter Works\" }],\n        \"value\": { \"amount\": 2150000000, \"currency\": \"RWF\" },\n        \"documents\": [\n          { \"title\": \"Tax clearance certificate\" },\n          { \"title\": \"RURA type approval letter\" }\n        ]\n      },\n      {\n        \"tenderers\": [{ \"name\": \"Volta Metering\" }],\n        \"value\": { \"amount\": 6100000000, \"currency\": \"RWF\" },\n        \"documents\": [\n          { \"title\": \"Tax clearance certificate\" }\n        ]\n      },\n      {\n        \"tenderers\": [{ \"name\": \"Nile Smart Systems\" }],\n        \"value\": { \"amount\": 2300000000, \"currency\": \"RWF\" },\n        \"documents\": [\n          { \"title\": \"Tax clearance certificate\" },\n          { \"title\": \"RURA type approval letter\" }\n        ]\n      }\n    ]\n  },\n  \"awards\": [\n    {\n      \"suppliers\": [{ \"name\": \"Volta Metering\" }],\n      \"value\": { \"amount\": 2600000000, \"currency\": \"RWF\" }\n    }\n  ]\n}\n"
+        }
+      ],
+      "completed": false,
+      "findings": []
+    },
+    {
+      "caseId": "CASE-010",
+      "sourceBundleSha256": "f049a8156525141d7edd611e5748f241492482a651627d2e1a2ef7d1f2c1c138",
+      "sourceFiles": [
+        {
+          "name": "01-tender-notice.md",
+          "sha256": "08adc0476c78845ffd857d3f587c37eab43766963ac31916a0c8d38a9b98bea6",
+          "text": "# TENDER NOTICE — RW-UMUCYO-2027-006\n\n**Buyer:** Rwanda Biomedical Centre · Umucyo e-procurement\n**Reference:** RW-UMUCYO-2027-006\n**Subject:** Community health worker digital kits — solar tablets, diagnostics and connectivity (7,500 kits)\n**Budget ceiling:** RWF 9,800,000,000 (VAT inclusive)\n**Closing:** 03 March 2027, 09:00 CAT · Framework agreement, open to prequalified suppliers\n\n## 1. Specifications — the Supplier SHALL:\n\n- The supplier SHALL deliver solar tablets rated for a minimum of 8 hours continuous field use per charge.\n- The supplier SHALL preload the national community-health application and verify boot integrity on every unit.\n- The supplier SHALL supply rapid diagnostic test (RDT) cassettes WHO-prequalified for malaria and pneumonia.\n- The supplier SHALL enable remote device management with firmware updates signed by the buyer.\n- The supplier SHALL replace defective units within ten (10) working days under the framework.\n- Suppliers must maintain a repair depot in-country with certified technicians.\n- Bidders must guarantee connectivity bundles (SMS + data) for three (3) years.\n- Bidders must declare the country of final assembly for all hardware.\n\n## 2. Eligibility checklist\n\n- [REQUIRED] In-country repair depot certificate\n- [REQUIRED] WHO prequalification certificates for RDTs\n- [REQUIRED] Connectivity bundle guarantee (3 years)\n- [REQUIRED] Tax clearance (RRA) certificate\n\n## 3. Evaluation\n\nFramework awarded per lot: tablets, RDTs, connectivity. Evaluated on unit price, support load and five-year connectivity cost. Devices without signed firmware are non-responsive.\n"
+        },
+        {
+          "name": "02-bid-weza-technologies.md",
+          "sha256": "74262d02c6a4e4de80c2bff21d788cb7ace5b327bce2c47281bff7a561d37d67",
+          "text": "# BID — Weza Technologies Ltd\n\n**Reference:** RW-UMUCYO-2027-006\n**Bidder:** Weza Technologies Ltd\n**Bid value:** RWF 8,930,000,000\n\n## Price schedule\n\n| Line item | Qty | Unit price (RWF) |\n| --- | --- | --- |\n| Solar tablet, 8-hour field rating | 7500 | KES 24,600 |\n| Preloaded national CHW application image | 7500 | KES 1,450 |\n| RDT malaria+pneumonia cassette, box of 25 | 15000 | KES 3,240 |\n| Connectivity bundle, 3 years | 7500 | KES 58,900 |\n\n## Documents enclosed\n\n- In-country repair depot certificate — Kigali depot, certified 2026\n- WHO prequalification certificates — malaria RDT listed\n- Connectivity bundle guarantee — 3 years attached\n- Tax clearance (RRA) certificate — valid to 04/2027\n\n## Declarations\n\nThe bidder shall maintain quoted prices for 90 days.\nFirmware updates signed by the buyer's certificate authority; MDM console provided.\nAll complies with the technical specification.\nNo deviations are offered.\n"
+        },
+        {
+          "name": "03-bid-ubumwe-mobile.md",
+          "sha256": "2614aa4ccdcb65caf772855731e5ea7a51371c8cec3162bf68e9936c923d56a7",
+          "text": "# BID — Ubumwe Mobile Solutions\n\n**Reference:** RW-UMUCYO-2027-006\n**Bidder:** Ubumwe Mobile Solutions\n**Bid value:** RWF 20,150,000,000\n\n## Price schedule\n\n| Line item | Qty | Unit price (RWF) |\n| --- | --- | --- |\n| Solar tablet, 8-hour field rating | 7500 | KES 92,400 |\n| Preloaded national CHW application image | 7500 | KES 1,450 |\n| RDT malaria+pneumonia cassette, box of 25 | 15000 | KES 3,240 |\n| Connectivity bundle, 3 years | 7500 | KES 182,000 |\n\n## Documents enclosed\n\n- In-country repair depot certificate — shared facility, Huye\n- WHO prequalification certificates — malaria RDT listed\n- Connectivity bundle guarantee — 3 years attached\n- Tax clearance (RRA) certificate — valid to 08/2027\n\n## Declarations\n\nThe bidder shall maintain quoted prices for 60 days.\nTablets sourced through a regional assembler; final assembly declared as country of the assembler.\nNote: alternative offered for firmware management — third-party MDM console proposed in place of buyer-signed firmware (see annex A).\n"
+        }
+      ],
+      "completed": false,
+      "findings": []
+    }
+  ]
+}

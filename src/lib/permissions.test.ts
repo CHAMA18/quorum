@@ -37,6 +37,9 @@ describe("workspace RBAC", () => {
     expect(canReadSidecar("AUDITOR", "/api/log/export")).toBe(true);
     expect(canReadSidecar("AUDITOR", "/api/guards")).toBe(false);
     expect(canReadSidecar("OFFICER", "/api/runs")).toBe(true);
+    expect(canReadSidecar("OFFICER", "/api/observability")).toBe(true);
+    expect(canReadSidecar("AUDITOR", "/api/traces/12345678-1234-1234-1234-123456789012")).toBe(true);
+    expect(canReadSidecar("COMMITTEE", "/api/observability")).toBe(true);
     expect(canReadSidecar("OFFICER", "/api/governance")).toBe(false);
     expect(canReadSidecar("COMMITTEE", "/api/applications")).toBe(false);
     expect(canReadSidecar("COMMITTEE", "/api/tenders/TC-01/compliance")).toBe(true);

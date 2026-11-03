@@ -25,6 +25,7 @@ import {
   type SegmentRecord,
 } from "./audit-chain";
 import { secretFor } from "./secrets";
+import { currentTraceId } from "./telemetry-context";
 
 export type ToolKind = "READ" | "WRITES" | "IRREVERSIBLE" | "GATE_DECISION";
 
@@ -38,6 +39,9 @@ export interface LogEntry {
   tool: string;
   kind: ToolKind;
   runId?: string;
+  traceId?: string;
+  /** Retry key for a single logical event; repeated writes return its first line. */
+  idempotencyKey?: string;
   inputs: unknown;
   outputs: unknown;
   status: "OK" | "ERROR" | "PENDING_GATE" | "GATED";
@@ -205,6 +209,7 @@ export interface EvidenceObservation {
 
 export interface Run {
   id: string;
+  traceId?: string;
   tenantId?: string;
   workspaceId?: string;
   /** Quorum-issued public reference. `tenderId` remains the source-pack lookup key. */
@@ -264,6 +269,7 @@ function cap(value: unknown, max = 420): unknown {
 
 let seq = 0;
 export const toolLog: LogEntry[] = [];
+const loggedIdempotencyKeys = new Map<string, LogEntry>();
 
 /* The audit spine must never fail silently — a product whose thesis is
    "nothing happens silently" surfaces its own durability, loud and in the
@@ -304,6 +310,10 @@ function markLegacyDecisions() {
 }
 
 export function appendLog(e: Omit<LogEntry, "seq" | "id" | "ts" | "prev" | "self">): LogEntry {
+  if (e.idempotencyKey) {
+    const existing = loggedIdempotencyKeys.get(e.idempotencyKey);
+    if (existing) return existing;
+  }
   seq += 1;
   const prev = toolLog.length ? toolLog[toolLog.length - 1].self ?? toolLog[toolLog.length - 1].id : "genesis";
   const entry: LogEntry = {
@@ -311,6 +321,7 @@ export function appendLog(e: Omit<LogEntry, "seq" | "id" | "ts" | "prev" | "self
     workspaceId: currentWorkspaceId(),
     id: `tl_${seq.toString().padStart(5, "0")}_${randomUUID().slice(0, 8)}`,
     ts: new Date().toISOString(),
+    ...(currentTraceId() ? { traceId: currentTraceId() } : {}),
     ...e,
     inputs: cap(e.inputs),
     outputs: cap(e.outputs),
@@ -319,6 +330,7 @@ export function appendLog(e: Omit<LogEntry, "seq" | "id" | "ts" | "prev" | "self
   const self = hashOfEntry(entry);
   const logged: LogEntry = { ...entry, self };
   toolLog.push(logged);
+  if (logged.idempotencyKey) loggedIdempotencyKeys.set(logged.idempotencyKey, logged);
   if (toolLog.length > 600) toolLog.splice(0, toolLog.length - 600);
   try {
     /* appendFileSync creates the file on first write — never lose the spine. */
@@ -2053,6 +2065,8 @@ export async function loadState() {
     for (const line of lines) {
       try {
         toolLog.push(JSON.parse(line) as LogEntry);
+        const restored = toolLog[toolLog.length - 1];
+        if (restored.idempotencyKey) loggedIdempotencyKeys.set(restored.idempotencyKey, restored);
       } catch {
         /* skip a torn line — the chain check reports the truth either way */
       }
@@ -2076,6 +2090,7 @@ export async function loadState() {
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingSnapshot: ReturnType<typeof setTimeout> | null = null;
+let persistChain: Promise<boolean> = Promise.resolve(true);
 const DECIDED_STATUSES = new Set<Gate["status"]>(["APPROVED", "EXECUTED", "REJECTED"]);
 
 /* A deliberate removal (the probe purge, an archive-and-remove) is the one case
@@ -2138,7 +2153,7 @@ async function overwriteRefusal(): Promise<string | null> {
   return null;
 }
 
-async function persist(snapshot: unknown) {
+async function persist(snapshot: unknown): Promise<boolean> {
   const refusal = await overwriteRefusal();
   if (refusal) {
     auditHealth.stateSaveFailing = true;
@@ -2160,17 +2175,25 @@ async function persist(snapshot: unknown) {
     } catch {
       /* appendLog carries its own failure flag */
     }
-    return;
+    return false;
   }
   try {
     await writeSnapshot(snapshot);
     auditHealth.stateSaveFailing = false;
     auditHealth.snapshotOverwriteRefused = false;
     intentionalRemoval = null;
+    return true;
   } catch (err) {
     auditHealth.stateSaveFailing = true;
     console.error("[audit-spine] state snapshot write FAILED — gates/runs/cycle are memory-only until this resolves:", err);
+    return false;
   }
+}
+
+function persistInOrder(snapshot: unknown): Promise<boolean> {
+  const pending = persistChain.then(() => persist(snapshot), () => persist(snapshot));
+  persistChain = pending.catch(() => false);
+  return pending;
 }
 
 /* Read the guards and the supplier register WITHOUT booting or writing the
@@ -2203,13 +2226,23 @@ export function saveState() {
   saveTimer = setTimeout(() => {
     const snapshot = { ...state, seq };
     if (persistenceStatus() === "postgres") {
-      void persist(snapshot);
+      void persistInOrder(snapshot);
     } else {
       pendingSnapshot = setTimeout(() => {
-        void persist(snapshot);
+        void persistInOrder(snapshot);
       }, 0);
     }
   }, 120);
+}
+
+/** Persist a state transition before acknowledging an irreversible action. */
+export async function flushState(): Promise<void> {
+  if (saveTimer) clearTimeout(saveTimer);
+  if (pendingSnapshot) clearTimeout(pendingSnapshot);
+  saveTimer = null;
+  pendingSnapshot = null;
+  const ok = await persistInOrder({ ...state, seq });
+  if (!ok) throw new Error("The state snapshot could not be durably written; the action was not acknowledged.");
 }
 
 export function shaOf(value: unknown): string {

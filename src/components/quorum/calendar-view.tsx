@@ -107,22 +107,37 @@ type CalEvent = {
 
 const DEADLINE_LABEL: Record<string, string> = {
   CLOSING: "SUBMISSIONS CLOSE",
-  ALB_DUE: "ALB RESPONSE DUE",
-  STANDSTILL_END: "STANDSTILL ENDS",
+  ALB_DUE: "LOW BID EXPLANATION DUE",
+  STANDSTILL_END: "AWARD REVIEW PERIOD ENDS",
   MILESTONE_DUE: "MILESTONE DUE",
   COMPLAINT_DUE: "COMPLAINT RESPONSE DUE",
 };
 
 const DEADLINE_DETAIL: Record<string, (ref?: string) => string> = {
   CLOSING: () => "The tender closes — a late bid stops counting here",
-  ALB_DUE: (ref) => `${ref ?? "The bidder"} must justify the abnormally low bid`,
-  STANDSTILL_END: () => "Standstill lifts — the award may be implemented",
+  ALB_DUE: (ref) => `${ref ?? "The supplier"} must explain how the offered price can be delivered`,
+  STANDSTILL_END: () => "The award review period ends — the contract may proceed",
   MILESTONE_DUE: (ref) => `${ref ?? "The milestone"} falls due on the contract`,
   COMPLAINT_DUE: (ref) => `${ref ?? "The complainant"} must receive a response`,
 };
 
 function humanTool(tool?: string): string {
-  return (tool ?? "file_gate_submission").replace(/_/g, " ");
+  const labels: Record<string, string> = {
+    file_gate_submission: "File approval package",
+    record_bid_opening: "Record bid opening",
+    certify_evaluation: "Approve evaluation results",
+    resolve_alb: "Resolve low-bid review",
+    sign_award_report: "Approve award recommendation",
+    publish_award_notice: "Publish award notice",
+    issue_debrief: "Issue debrief letter",
+    sign_contract_pack: "Approve contract documents",
+    approve_variation: "Approve contract change",
+    certify_payment: "Approve payment",
+    record_contract_completion: "Close contract record",
+    respond_complaint: "Respond to complaint",
+    publish_notice: "Publish tender notice",
+  };
+  return labels[tool ?? ""] ?? (tool ?? "Approval request").replace(/_/g, " ");
 }
 
 /* ── date helpers (local time throughout — the desk's own clock) ────────── */
@@ -269,11 +284,11 @@ function Stat({ label, value, alert }: { label: string; value: ReactNode; alert?
 }
 
 const LEGEND: { tone: EventTone | "overdue"; label: string }[] = [
-  { tone: "clock", label: "STATUTORY CLOCK" },
+  { tone: "clock", label: "TENDER DEADLINE" },
   { tone: "overdue", label: "OVERDUE" },
-  { tone: "sitting", label: "COMMITTEE SITTING" },
+  { tone: "sitting", label: "COMMITTEE MEETING" },
   { tone: "meeting", label: "SCHEDULED MEETING" },
-  { tone: "gate", label: "AT THE GATE" },
+  { tone: "gate", label: "AWAITING APPROVAL" },
   { tone: "signed", label: "SIGNED" },
   { tone: "returned", label: "RETURNED" },
 ];
@@ -385,8 +400,8 @@ export function CalendarView({
         iso: s.summonedAt,
         time: clockTime(s.summonedAt),
         tone: "sitting",
-        kind: live ? "SITTING LIVE" : "COMMITTEE SITTING",
-        tender: (s.room || "SITTING").toUpperCase(),
+        kind: live ? "MEETING IN PROGRESS" : "COMMITTEE MEETING",
+        tender: s.title || "Committee meeting",
         detail: s.title,
         live,
       });
@@ -397,9 +412,9 @@ export function CalendarView({
           iso: s.summonedAt,
           time: clockTime(s.summonedAt),
           tone: "signed",
-          kind: "DOOR RECORD",
-          tender: (s.room || "SITTING").toUpperCase(),
-          detail: `${admitted} member${admitted === 1 ? "" : "s"} admitted to the sitting${s.agenda ? ` — ${s.agenda}` : ""}`,
+          kind: "ATTENDANCE RECORD",
+          tender: s.title || "Committee meeting",
+          detail: `${admitted} member${admitted === 1 ? "" : "s"} attending${s.agenda ? ` — ${s.agenda}` : ""}`,
         });
       }
     }
@@ -414,7 +429,7 @@ export function CalendarView({
         tone: "meeting",
         kind: "SCHEDULED MEETING",
         tender: m.title,
-        detail: `${series}${m.durationMinutes} min with ${invited} player${invited === 1 ? "" : "s"} — called by ${
+        detail: `${series}${m.durationMinutes} min with ${invited} attendee${invited === 1 ? "" : "s"} — scheduled by ${
           m.scheduledBy
         }${m.agenda ? ` · ${m.agenda}` : ""}`,
       });
@@ -427,10 +442,10 @@ export function CalendarView({
           iso: g.createdAt,
           time: clockTime(g.createdAt),
           tone: "gate",
-          kind: "AT THE GATE",
+          kind: "AWAITING APPROVAL",
           tender: systemReferenceLabel(g.systemReference),
           sourceId: g.tenderId,
-          detail: `${humanTool(g.tool)} — submitted, awaiting a named signature`,
+          detail: `${humanTool(g.tool)} — submitted and awaiting approval`,
         });
       } else if (validIso(g.decidedAt)) {
         const returned = g.status === "REJECTED";
@@ -444,7 +459,7 @@ export function CalendarView({
           sourceId: g.tenderId,
           detail: returned
             ? `${g.approver ?? "The committee"} sent the file back for clarification`
-            : `${g.approver ?? "A named signer"} released the sealed filing`,
+            : `${g.approver ?? "The authorized officer"} approved the request`,
         });
       }
     }
@@ -562,8 +577,8 @@ export function CalendarView({
             Calendar<span className="text-brand-600">.</span>
           </h1>
           <p className="type-lede mt-3 max-w-[56ch] text-ink-600">
-            Every date the desk answers to — statutory clocks from the tender cycles, sittings from the committee
-            register, signatures from the gate. The record writes the dates; this page only reads them.
+            Keep tender deadlines, committee meetings and approval decisions in one place. Dates come from tender and
+            committee records, so updates made there appear here automatically.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -600,9 +615,9 @@ export function CalendarView({
       {/* ── Stat strip ── */}
       <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
         {[
-          { label: "CLOCKS THIS MONTH", value: clocksThisMonth },
+          { label: "DEADLINES THIS MONTH", value: clocksThisMonth },
           { label: "OVERDUE", value: overdueTotal, alert: true },
-          { label: "SITTINGS THIS MONTH", value: sittingsThisMonth },
+          { label: "COMMITTEE MEETINGS", value: sittingsThisMonth },
           { label: "AWARDS SIGNED THIS MONTH", value: signedThisMonth },
         ].map((s) => (
           <Stat key={s.label} label={s.label} value={s.value} alert={s.alert} />
@@ -629,7 +644,7 @@ export function CalendarView({
                   </h2>
                   <p className="mt-1 type-micro text-ink-400">
                     {monthEvents.length} item{monthEvents.length === 1 ? "" : "s"} on the record ·{" "}
-                    {sittingsThisMonth} sitting{sittingsThisMonth === 1 ? "" : "s"} · {meetingsThisMonth} meeting
+                    {sittingsThisMonth} committee meeting{sittingsThisMonth === 1 ? "" : "s"} · {meetingsThisMonth} scheduled meeting
                     {meetingsThisMonth === 1 ? "" : "s"}
                   </p>
                 </div>
@@ -860,11 +875,11 @@ export function CalendarView({
               {dayEvents.length === 0 && (
                 <li className="px-4 py-8 text-center">
                   <p className="font-code text-[10px] font-bold tracking-[0.2em] text-ink-400">
-                    NOTHING ON THE RECORD FOR THIS DATE
+                    NO DEADLINES OR MEETINGS ON THIS DATE
                   </p>
                   <p className="mx-auto mt-2 max-w-[240px] text-[12.5px] leading-relaxed text-ink-500">
-                    No clock falls due, no sitting was summoned and no gate was signed on this day. Pick another date,
-                    or summon the committee.
+                    There are no deadlines, committee meetings or approval decisions on this date. Choose another date,
+                    or open the committee page to schedule a meeting.
                   </p>
                   <button
                     type="button"
@@ -887,8 +902,8 @@ export function CalendarView({
             className="overflow-hidden rounded-[12px] panel shadow-[0_1px_2px_rgba(11,12,15,0.04)]"
           >
             <header className="border-b border-ink-200/70 px-5 py-4 dark:border-white/10">
-              <h2 className="type-title text-ink-950">Next on the clock</h2>
-              <p className="mt-1 type-micro text-ink-400">Open statutory dates, soonest first · select one to jump</p>
+              <h2 className="type-title text-ink-950">Upcoming deadlines</h2>
+              <p className="mt-1 type-micro text-ink-400">Upcoming procurement deadlines, soonest first · select one to jump</p>
             </header>
             <ul className="divide-y divide-ink-100 px-2 py-1.5 dark:divide-white/5">
               {upcoming.map((e) => {
@@ -925,10 +940,9 @@ export function CalendarView({
               })}
               {now && upcoming.length === 0 && (
                 <li className="px-4 py-8 text-center">
-                  <p className="font-code text-[10px] font-bold tracking-[0.2em] text-ink-400">NO OPEN CLOCKS</p>
+                  <p className="font-code text-[10px] font-bold tracking-[0.2em] text-ink-400">NO UPCOMING DEADLINES</p>
                   <p className="mx-auto mt-2 max-w-[240px] text-[12.5px] leading-relaxed text-ink-500">
-                    Every statutory date on the record has passed or been cleared. New clocks appear the moment a
-                    tender cycle writes one.
+                    No future tender deadlines are recorded. New dates appear when they are added to a tender record.
                   </p>
                 </li>
               )}
@@ -948,12 +962,9 @@ export function CalendarView({
             <div className="relative">
               <h3 className="type-title">The calendar keeps no opinions</h3>
               <p className="mt-3 font-code text-[10px] leading-[2] tracking-[0.16em] text-ink-300">
-                EVERY DATE HERE WAS WRITTEN
+                DATES COME FROM TENDER AND MEETING RECORDS.
                 <br />
-                BY A RECORD — A CLOSING, A SUMMONS,
-                <br />A SIGNATURE.
-                <br />
-                <span className="text-brand-400">THE AGENT CANNOT MOVE A CLOCK. IT CAN ONLY MEET ONE.</span>
+                <span className="text-brand-400">UPDATE THE ORIGINAL RECORD TO CHANGE A DEADLINE.</span>
               </p>
               <button
                 type="button"

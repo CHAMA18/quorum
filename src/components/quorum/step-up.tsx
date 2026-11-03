@@ -156,7 +156,7 @@ export function StepUpHost() {
         return;
       }
       if (!res.ok || !data.token) {
-        setError(data.error ?? "The step-up was refused. Try again.");
+        setError(data.error ?? "Identity check failed. Please try again.");
         setBusy(false);
         inputRef.current?.focus();
         inputRef.current?.select();
@@ -255,12 +255,11 @@ export function StepUpHost() {
                 </span>
                 <div>
                   <h2 id="stepup-title" className="text-[15px] font-semibold tracking-[-0.01em] text-ink-950">
-                    Sign this gate
+                    Confirm this approval
                   </h2>
                   <p className="mt-1 max-w-[32ch] text-[11.5px] leading-relaxed text-ink-500">
-                    {stage === "enrol" ? "Set up an authenticator, then sign" : "Re-authenticate to sign"}{" "}
-                    <span className="font-code text-[10.5px] text-ink-800">{pending.gateId}</span>. The signature is
-                    single-use and expires in two minutes.
+                    {stage === "enrol" ? "Set up two-step sign-in, then approve" : "Confirm your identity to approve"}{" "}
+                    <span className="font-code text-[10.5px] text-ink-800">{pending.gateId}</span>. This check can be used once and expires in two minutes.
                   </p>
                 </div>
               </div>
@@ -268,7 +267,7 @@ export function StepUpHost() {
                 type="button"
                 onClick={() => !busy && settle(null)}
                 disabled={busy}
-                aria-label="Cancel step-up"
+                aria-label="Cancel identity check"
                 className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink-600 transition-colors hover:bg-ink-950/[0.05] hover:text-ink-900 disabled:opacity-50"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
@@ -290,7 +289,7 @@ export function StepUpHost() {
                       mode === "password" ? "bg-white text-ink-950 shadow-sm" : "text-ink-500 hover:text-ink-800"
                     }`}
                   >
-                    <KeyRound className="h-3 w-3" aria-hidden="true" /> PASSPHRASE
+                    <KeyRound className="h-3 w-3" aria-hidden="true" /> PASSWORD
                   </button>
                   <button
                     type="button"
@@ -304,7 +303,7 @@ export function StepUpHost() {
                       mode === "totp" ? "bg-white text-ink-950 shadow-sm" : "text-ink-500 hover:text-ink-800"
                     }`}
                   >
-                    <ShieldCheck className="h-3 w-3" aria-hidden="true" /> AUTHENTICATOR
+                    <ShieldCheck className="h-3 w-3" aria-hidden="true" /> AUTHENTICATOR APP
                   </button>
                 </div>
               )}
@@ -312,8 +311,7 @@ export function StepUpHost() {
               {stage === "enrol" && (
                 <div className="mb-4 rounded-lg border border-ink-200/80 bg-paper px-3.5 py-3">
                   <p className="text-[11.5px] leading-relaxed text-ink-600">
-                    A passphrase alone cannot sign a gate. Add Quorum to any authenticator app, then enter the
-                    current six-digit code it shows.
+                    To protect approval decisions, add Quorum to an authenticator app and enter the current six-digit code.
                   </p>
                   {enrolment ? (
                     <>
@@ -355,7 +353,7 @@ export function StepUpHost() {
               )}
 
               <label htmlFor="stepup-value" className="font-code text-[10.5px] font-bold tracking-[0.08em] text-ink-600">
-                {stage === "enrol" ? "SIX-DIGIT CODE" : mode === "totp" ? "SIX-DIGIT CODE" : "PASSPHRASE"}
+                {stage === "enrol" ? "SIX-DIGIT CODE" : mode === "totp" ? "SIX-DIGIT CODE" : "PASSWORD"}
               </label>
               <input
                 ref={inputRef}
@@ -382,10 +380,10 @@ export function StepUpHost() {
               ) : (
                 <p className="mt-2.5 text-[10.5px] leading-relaxed text-ink-400">
                   {stage === "enrol"
-                    ? "Confirming this code turns on your second factor and signs the gate in one step."
+                    ? "Confirming this code enables two-step sign-in and records the approval."
                     : mode === "totp"
                       ? "Open your authenticator app and enter the current code for Quorum."
-                      : "Your passphrase is checked by the web app; the sidecar verifies the signed token."}
+                      : "Your sign-in details are checked securely before the approval is recorded."}
                 </p>
               )}
 
@@ -405,13 +403,13 @@ export function StepUpHost() {
                 className="focus-brand inline-flex min-h-11 flex-[1.35] items-center justify-center gap-2 rounded-lg bg-ink-950 px-3 text-[12px] font-semibold text-white transition-colors hover:bg-ink-800 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Fingerprint className="h-3.5 w-3.5" aria-hidden="true" />}
-                  {busy ? "Signing…" : stage === "enrol" ? "Confirm and sign" : "Sign gate"}
+                  {busy ? "Checking…" : stage === "enrol" ? "Enable and approve" : "Confirm approval"}
                 </button>
               </div>
 
               <p className="mt-3 flex items-center gap-1.5 text-[10.5px] leading-relaxed text-ink-600">
                 <ShieldCheck className="h-3 w-3" aria-hidden="true" />
-                A named signer · single use · bound to the signed bundle
+                Recorded under your name · can be used once · expires after two minutes
               </p>
             </div>
           </motion.div>

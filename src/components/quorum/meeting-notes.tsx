@@ -1,18 +1,15 @@
 "use client";
 
 /**
- * MeetingNotes — the Meta agent's clerk for the committee diary.
+ * MeetingNotes — transcript-based meeting minutes.
  *
- * Every meeting the owner puts on the calendar appears here. The officer (or
- * the agent, through the same API) can capture the discussion — live in the
- * browser where SpeechRecognition exists, or by pasting a transcript — and
- * the Meta model drafts structured minutes against the meeting record. Both
- * the transcript and the minutes are filed and listed, so the notes are a
- * record, not a scratchpad.
+ * Scheduled meetings appear here. Officers can capture a transcript in the
+ * browser or paste one in; configured AI can draft minutes from that text.
+ * Both the transcript and minutes are saved with the meeting record.
  *
- * The capture never uploads audio: browser recognition transcribes locally.
- * When no Meta key is configured the server files a deterministic draft and
- * says so — the meeting still gets its minutes.
+ * Speech recognition is provided by the browser. When Meta AI is configured,
+ * the transcript is sent to Meta to draft minutes; otherwise a local draft is
+ * created and identified as such.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -170,7 +167,7 @@ function MinutesBody({ minutes }: { minutes: MeetingMinutes }) {
 
       {minutes.quotes.length ? (
         <div>
-          <p className="font-code text-[10px] font-bold tracking-[0.14em] text-ink-400">VERBATIM</p>
+          <p className="font-code text-[10px] font-bold tracking-[0.14em] text-ink-400">DIRECT QUOTES</p>
           <div className="mt-1.5 space-y-1.5">
             {minutes.quotes.map((quote, i) => (
               <blockquote
@@ -431,17 +428,17 @@ export function MeetingNotes({
         fallbackReason?: string;
         error?: string;
       };
-      if (!res.ok || !data.note) throw new Error(data.error ?? `The agent could not file the minutes (HTTP ${res.status}).`);
+      if (!res.ok || !data.note) throw new Error(data.error ?? "Quorum could not save these minutes. Please try again.");
       setNotes((prev) => [data.note as MeetingNotePayload, ...prev]);
       setCapture(null);
       setViewing(data.note);
       onToast(
         data.note.provider === "meta"
-          ? `MINUTES FILED — ${String(data.note.model).toUpperCase()}`
-          : "MINUTES FILED — LOCAL DRAFT (META AI NOT CONFIGURED)",
+          ? "MEETING MINUTES SAVED — DRAFTED WITH META AI"
+          : "MEETING MINUTES SAVED — BASIC LOCAL DRAFT",
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "The agent could not draft the minutes.");
+      setError(err instanceof Error ? err.message : "Quorum could not draft the minutes. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -475,23 +472,24 @@ export function MeetingNotes({
           <div className="min-w-0">
             <p className="flex items-center gap-2 eyebrow">
               <Sparkles className="h-3 w-3 text-brand-600 dark:text-brand-400" aria-hidden="true" />
-              Meta agent / Meeting notes
+              AI-ASSISTED MEETING NOTES
             </p>
             <h2
               id="meeting-notes-h"
               className="mt-1.5 font-display text-[20px] font-black tracking-[-0.02em] text-ink-950 dark:text-white"
             >
-              Minutes, taken live<span className="text-brand-600 dark:text-brand-400">.</span>
+              Meeting minutes, ready to review<span className="text-brand-600 dark:text-brand-400">.</span>
             </h2>
             <p className="mt-1 max-w-[78ch] text-[12.5px] leading-relaxed text-ink-500 dark:text-ink-400">
-              The agent sits in on a meeting, transcribes the discussion and files the minutes against the meeting
-              record. The transcript stays with the note; nothing is invented beyond what was said.
+              Capture or paste a transcript to create meeting minutes with a summary, decisions and action items. When
+              Meta AI is enabled, Quorum sends the transcript to Meta to draft the minutes; otherwise it creates a basic
+              local draft. Check saved notes against the transcript before relying on them.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-ink-200/80 px-3 font-code text-[10px] font-bold tracking-[0.14em] text-ink-500 dark:border-white/10 dark:text-ink-300">
               <FileText className="h-3 w-3" aria-hidden="true" />
-              {notes.length} {notes.length === 1 ? "NOTE" : "NOTES"} FILED
+              {notes.length} {notes.length === 1 ? "MEETING NOTE" : "MEETING NOTES"} SAVED
             </span>
             <button
               type="button"
@@ -505,10 +503,10 @@ export function MeetingNotes({
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-2">
-          {/* Meetings the agent can attend */}
+          {/* Scheduled meetings */}
           <div className="border-b border-ink-100/80 lg:border-b-0 lg:border-r dark:border-white/[0.06]">
             <div className="flex items-center justify-between gap-3 px-5 pb-1 pt-3.5">
-              <p className="font-code text-[10px] font-bold tracking-[0.14em] text-ink-400">MEETINGS ON THE DIARY</p>
+              <p className="font-code text-[10px] font-bold tracking-[0.14em] text-ink-400">SCHEDULED MEETINGS</p>
               <span className="font-code text-[10px] font-bold tracking-[0.12em] text-ink-400 tabular">{diary.length}</span>
             </div>
             <ul className="max-h-[340px] divide-y divide-ink-100/70 overflow-y-auto px-2 py-1.5 dark:divide-white/[0.05]">
@@ -527,8 +525,8 @@ export function MeetingNotes({
                           {meeting.title}
                         </p>
                         <p className="mt-0.5 font-code text-[10px] tracking-[0.1em] text-ink-400">
-                          {invited} INVITED · CALLED BY {meeting.scheduledBy.toUpperCase()}
-                          {filed > 0 ? ` · ${filed} ${filed === 1 ? "NOTE" : "NOTES"} FILED` : ""}
+                          {invited} INVITED · ORGANIZED BY {meeting.scheduledBy.toUpperCase()}
+                          {filed > 0 ? ` · ${filed} ${filed === 1 ? "NOTE" : "NOTES"} SAVED` : ""}
                         </p>
                       </div>
                       <button
@@ -536,7 +534,7 @@ export function MeetingNotes({
                         onClick={() => openCapture(meeting)}
                         className="focus-brand inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg border border-ink-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.08em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950 dark:border-white/[0.12] dark:bg-white/[0.04] dark:text-ink-200 dark:hover:border-white/30 dark:hover:text-white"
                       >
-                        TAKE NOTES
+                        CAPTURE NOTES
                         <ArrowRight className="h-3 w-3" aria-hidden="true" />
                       </button>
                     </div>
@@ -545,9 +543,9 @@ export function MeetingNotes({
               })}
               {diary.length === 0 && (
                 <li className="px-4 py-8 text-center">
-                  <p className="font-code text-[10px] font-bold tracking-[0.14em] text-ink-400">NO MEETING ON THE DIARY</p>
+                  <p className="font-code text-[10px] font-bold tracking-[0.14em] text-ink-400">NO MEETINGS SCHEDULED</p>
                   <p className="mx-auto mt-2 max-w-[260px] text-[12px] leading-relaxed text-ink-500">
-                    Schedule a meeting from the committee register and the agent will be ready to take its notes.
+                    Schedule a committee meeting to capture and file its notes here.
                   </p>
                 </li>
               )}
@@ -577,11 +575,11 @@ export function MeetingNotes({
                         className={cn(
                           "shrink-0 rounded-full px-2 py-0.5 font-code text-[10px] font-bold tracking-[0.12em]",
                           note.provider === "meta"
-                            ? "bg-brand-50 text-brand-700 dark:bg-brand-500/12 dark:text-brand-300"
+                          ? "bg-brand-50 text-brand-700 dark:bg-brand-500/12 dark:text-brand-300"
                             : "bg-ink-100 text-ink-500 dark:bg-white/[0.06] dark:text-ink-300",
                         )}
                       >
-                        {note.provider === "meta" ? "META AGENT" : "LOCAL DRAFT"}
+                        {note.provider === "meta" ? "META AI" : "LOCAL DRAFT"}
                       </span>
                     </span>
                     <span className="mt-1 block font-code text-[10px] tracking-[0.1em] text-ink-400">
@@ -597,7 +595,7 @@ export function MeetingNotes({
                   <p className="mx-auto mt-2 max-w-[260px] text-[12px] leading-relaxed text-ink-500">
                     {notesFailed
                       ? "The notes service could not be read. Refresh to try again — nothing is lost."
-                      : "Take notes at a meeting and the filed minutes — decisions, actions and transcript — appear here."}
+                      : "Capture notes at a scheduled meeting. Saved minutes, decisions, action items and the transcript will appear here."}
                   </p>
                 </li>
               )}
@@ -692,7 +690,7 @@ export function MeetingNotes({
                     </span>
                   )}
                   <span className="font-code text-[10px] tracking-[0.1em] text-ink-400">
-                    {canListen ? "BROWSER TRANSCRIPTION · AUDIO NEVER UPLOADED" : "PASTE THE TRANSCRIPT BELOW"}
+                    {canListen ? "LIVE TRANSCRIPTION USES YOUR BROWSER" : "PASTE A TRANSCRIPT BELOW"}
                   </span>
                 </div>
 
@@ -715,7 +713,7 @@ export function MeetingNotes({
                 </label>
                 <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 font-code text-[10px] tracking-[0.12em] text-ink-400">
                   <span>{transcript.trim() ? `${transcript.trim().split(/\s+/).length} WORDS CAPTURED` : "NOTHING CAPTURED YET"}</span>
-                  <span>THE TRANSCRIPT IS KEPT WITH THE NOTE</span>
+                  <span>THE TRANSCRIPT IS SAVED WITH THE MINUTES</span>
                 </div>
 
                 {voiceNote ? (
@@ -733,8 +731,8 @@ export function MeetingNotes({
               <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-ink-100 px-5 py-3.5 dark:border-white/[0.06] sm:px-7">
                 <p className="max-w-[52ch] text-[10.5px] leading-relaxed text-ink-400">
                   {transcript.trim().length < 20
-                    ? "At least a sentence is needed before the agent can draft the minutes."
-                    : "The agent reads only this transcript — it does not add facts."}
+                    ? "Enter at least one sentence to create the minutes."
+                    : "The draft is based on this transcript. Check names, decisions and actions before relying on it."}
                 </p>
                 <div className="flex items-center gap-2">
                   <button
@@ -756,7 +754,7 @@ export function MeetingNotes({
                     ) : (
                       <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
                     )}
-                    {busy ? "THE AGENT IS READING…" : "DRAFT MINUTES"}
+                    {busy ? "PREPARING MINUTES…" : "SAVE MEETING MINUTES"}
                   </button>
                 </div>
               </footer>
@@ -805,7 +803,7 @@ export function MeetingNotes({
                   <p className="mt-1 flex flex-wrap items-center gap-2 text-[11.5px] text-ink-500 dark:text-ink-400">
                     {whenOf(viewing.meetingStartsAt)} · recorded by {viewing.createdBy}
                     <span className="rounded-full bg-ink-100 px-2 py-0.5 font-code text-[10px] font-bold tracking-[0.12em] text-ink-500 dark:bg-white/[0.06] dark:text-ink-300">
-                      {viewing.provider === "meta" ? `META · ${viewing.model.toUpperCase()}` : "DETERMINISTIC DRAFT"}
+                      {viewing.provider === "meta" ? "DRAFTED WITH META AI" : "BASIC LOCAL DRAFT"}
                     </span>
                   </p>
                 </div>
@@ -823,7 +821,7 @@ export function MeetingNotes({
                 <MinutesBody minutes={viewing.minutes} />
                 <details className="mt-4 rounded-[10px] border border-ink-100/80 dark:border-white/[0.07]">
                   <summary className="cursor-pointer px-3 py-2 font-code text-[10px] font-bold tracking-[0.16em] text-ink-500 dark:text-ink-400">
-                    FULL TRANSCRIPT · {viewing.transcript.length.toLocaleString("en-US")} CHARS
+                    VIEW FULL TRANSCRIPT · {viewing.transcript.length.toLocaleString("en-US")} CHARACTERS
                   </summary>
                   <pre className="max-h-[280px] overflow-y-auto whitespace-pre-wrap border-t border-ink-100/80 px-3 py-2.5 font-code text-[10px] leading-relaxed text-ink-600 dark:border-white/[0.06] dark:text-ink-400">
                     {viewing.transcript}

@@ -51,7 +51,7 @@ import { ContractAcceptance } from "./contract-acceptance";
 import { SupplierClarifications } from "./supplier-clarifications";
 import { SupplierDocumentsSection } from "./supplier-documents";
 import { SupplierOverview } from "./supplier-overview";
-import { completeness, fmtDate, money, publicReferenceLabel, type Application, type OrgContract, type SupplierBidDocument, type Tender } from "./supplier-data";
+import { completeness, fmtDate, money, publicReferenceLabel, statusMeta, type Application, type OrgContract, type SupplierBidDocument, type Tender } from "./supplier-data";
 
 /**
  * The organization console — the supplier's desk. Five surfaces: Overview
@@ -205,11 +205,11 @@ function ConsoleSidebar({
 /* ── Search palette ──────────────────────────────────────────────────────── */
 
 const QUICK_LINKS: { id: Tab; label: string; hint: string; icon: typeof LayoutGrid }[] = [
-  { id: "opportunities", label: "Opportunities", hint: "The open tender board", icon: ScrollText },
+  { id: "opportunities", label: "Open tenders", hint: "Find tenders accepting applications", icon: ScrollText },
   { id: "applications", label: "Applications", hint: "Everything you have filed", icon: FileText },
   { id: "documents", label: "Documents", hint: "Your standing bid documents", icon: Files },
   { id: "contracts", label: "Contracts", hint: "Signed packs and acceptance", icon: FileSignature },
-  { id: "profile", label: "Profile", hint: "The identity the desk verifies", icon: Building2 },
+  { id: "profile", label: "Organization profile", hint: "Details used to verify your organization", icon: Building2 },
 ];
 
 function SearchPalette({
@@ -369,9 +369,9 @@ function SearchPalette({
                     >
                       <span className="font-code text-[10px] font-semibold text-ink-600 dark:text-ink-600">{publicReferenceLabel(a.systemReference)}</span>
                       <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink-800 dark:text-ink-800">
-                        {a.sealed ? "Sealed — price withheld until opening" : money(a.amount ?? 0, a.currency)}
+                        {a.sealed ? "Price hidden until bids open" : money(a.amount ?? 0, a.currency)}
                       </span>
-                      <span className="shrink-0 font-code text-[10px] uppercase tracking-[0.05em] text-ink-600 dark:text-ink-300">{a.status}</span>
+                      <span className="shrink-0 font-code text-[10px] uppercase tracking-[0.05em] text-ink-600 dark:text-ink-300">{statusMeta(a.status).label}</span>
                     </button>
                   ))}
                 </div>
@@ -688,10 +688,9 @@ function ApplyDialog({
               <CircleCheck className="h-7 w-7" aria-hidden="true" />
             </span>
             <div>
-              <h3 className="text-[18px] font-bold text-ink-950 dark:text-white">Application on the record</h3>
+              <h3 className="text-[18px] font-bold text-ink-950 dark:text-white">Application submitted</h3>
               <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-500 dark:text-ink-500">
-                Filed as <span className="font-code text-[12px] font-semibold text-brand-700 dark:text-brand-300">app · {filed.id}</span> and appended
-                to the procurement audit log for {publicReferenceLabel(tender.systemReference)}. {filed.bidDocuments?.length ? `${filed.bidDocuments.length} required bid document${filed.bidDocuments.length === 1 ? "" : "s"} attached to the filing. ` : ""}The price is sealed in an encrypted envelope; the desk sees it only when it certifies the opening.
+                Your bid for {publicReferenceLabel(tender.systemReference)} has been submitted. {filed.bidDocuments?.length ? `${filed.bidDocuments.length} required document${filed.bidDocuments.length === 1 ? "" : "s"} attached. ` : ""}Your price is encrypted and hidden until bids are opened by an authorized officer.
               </p>
               {filed.receiptId ? (
                 <p className="mt-1 font-code text-[10px] tracking-[0.05em] text-ink-600 dark:text-ink-300">Receipt {filed.receiptId}</p>
@@ -780,7 +779,7 @@ function ApplyDialog({
                                       </div>
                                       {document.metaAssist ? (
                                         <p className="mt-1.5 pl-5 text-[10.5px] leading-relaxed text-ink-700 dark:text-ink-200">
-                                          Muse Spark suggests {document.metaAssist.documentType || "the document"}{document.metaAssist.requirementMatch ? " may match this requirement" : " may need a closer match"}{document.metaAssist.expiryDate ? ` · expiry date ${document.metaAssist.expiryDate}` : ""}{document.metaAssist.documentNumber ? ` · no. ${document.metaAssist.documentNumber}` : ""}. Confirm against the original; this is not an eligibility decision.
+                                          The AI document check suggests {document.metaAssist.documentType || "the document"}{document.metaAssist.requirementMatch ? " may match this requirement" : " may need a closer match"}{document.metaAssist.expiryDate ? ` · expiry date ${document.metaAssist.expiryDate}` : ""}{document.metaAssist.documentNumber ? ` · no. ${document.metaAssist.documentNumber}` : ""}. Confirm against the original; this is not an eligibility decision.
                                         </p>
                                       ) : null}
                                       {document.metaAssistError || document.auditWarning ? (
@@ -834,7 +833,7 @@ function ApplyDialog({
                     <label className={cn("flex min-h-11 items-start gap-2.5 rounded-md py-2", metaAssistAvailable && !requirementsLoading && !requirementsError ? "cursor-pointer" : "cursor-not-allowed opacity-70")}>
                       <input type="checkbox" className="mt-0.5 size-5 shrink-0 accent-brand-600" checked={useMuseAssist} disabled={!metaAssistAvailable || requirementsLoading || !!requirementsError || busy || !!uploadingRequirement || !!removingKey} onChange={(event) => setUseMuseAssist(event.target.checked)} />
                       <span className="min-w-0">
-                        <span className="flex items-center gap-1.5 text-[11.5px] font-semibold text-ink-800 dark:text-ink-100"><Sparkles className="h-3.5 w-3.5 text-brand-600 dark:text-brand-300" aria-hidden="true" /> Optional Muse Spark document assist {metaAssistAvailable ? "" : "(not enabled)"}</span>
+                        <span className="flex items-center gap-1.5 text-[11.5px] font-semibold text-ink-800 dark:text-ink-100"><Sparkles className="h-3.5 w-3.5 text-brand-600 dark:text-brand-300" aria-hidden="true" /> Optional AI document check {metaAssistAvailable ? "" : "(not enabled)"}</span>
                         <span className="mt-0.5 block text-[10.5px] leading-relaxed text-ink-600 dark:text-ink-300">When enabled, a copy of each selected file is sent inline to Meta’s hosted model for document type, relevance and expiry hints. AI does not determine eligibility or authenticity.</span>
                       </span>
                     </label>
@@ -849,7 +848,7 @@ function ApplyDialog({
                   <input className={inputCls} placeholder={tender.currency || "ZMW"} value={currency} onChange={(e) => setCurrency(e.target.value)} maxLength={8} />
                 </Field>
               </div>
-              <Field label="Cover note (optional)" hint="What the desk should know about this bid — 1200 characters at most.">
+              <Field label="Cover note (optional)" hint="Share any details requested in the tender notice — up to 1,200 characters.">
                 <textarea
                   className={cn(inputCls, "h-24 resize-none py-2.5")}
                   placeholder="Delivery period, references, anything the notice asks to be told."
@@ -865,8 +864,7 @@ function ApplyDialog({
                 </div>
               ) : null}
               <p className="rounded-xl border border-ink-100 bg-sand px-3.5 py-2.5 text-[12px] leading-relaxed text-ink-700 dark:border-white/10 dark:bg-night dark:text-ink-200">
-                Filing is a real act: the application is refused after the closing date, refused if this organization
-                already has one on record for {publicReferenceLabel(tender.systemReference)}, and your identity is attested by the portal — never typed in.
+                You cannot submit after the closing date or submit a second application for {publicReferenceLabel(tender.systemReference)}. Your organization is identified from your signed-in account.
               </p>
               </div>
             </div>
@@ -1057,7 +1055,7 @@ function ProfileEditor({ org, onSaved, focusField }: { org: PublicOrg; onSaved: 
           </div>
         </div>
         <p className="mt-3 text-[11.5px] leading-relaxed text-ink-500">
-          These details anchor your organization&apos;s identity across the procurement record. Contact the desk if either must change.
+          These details identify your organization in procurement records. Contact the procurement team if either must change.
         </p>
       </section>
 
@@ -1068,7 +1066,7 @@ function ProfileEditor({ org, onSaved, focusField }: { org: PublicOrg; onSaved: 
           </span>
           <div>
             <h2 className="font-display text-[14px] font-extrabold tracking-[-0.01em] text-ink-950 dark:text-white">Statutory record</h2>
-            <p className="mt-0.5 text-[12px] leading-relaxed text-ink-500">The credentials the procurement desk uses to verify your organization.</p>
+            <p className="mt-0.5 text-[12px] leading-relaxed text-ink-500">Details used to verify your organization.</p>
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -1120,7 +1118,7 @@ function ProfileEditor({ org, onSaved, focusField }: { org: PublicOrg; onSaved: 
           </span>
           <div>
             <h2 className="font-display text-[14px] font-extrabold tracking-[-0.01em] text-ink-950 dark:text-white">Contact &amp; presence</h2>
-            <p className="mt-0.5 text-[12px] leading-relaxed text-ink-500">How the desk can reach your team and understand what you supply.</p>
+            <p className="mt-0.5 text-[12px] leading-relaxed text-ink-500">How the procurement team can contact you and understand what you supply.</p>
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -1157,7 +1155,7 @@ function ProfileEditor({ org, onSaved, focusField }: { org: PublicOrg; onSaved: 
           </span>
           <div>
             <h2 className="font-display text-[14px] font-extrabold tracking-[-0.01em] text-ink-950 dark:text-white">Supply categories</h2>
-            <p className="mt-0.5 text-[12px] leading-relaxed text-ink-500">Help the desk match your capabilities to relevant opportunities.</p>
+            <p className="mt-0.5 text-[12px] leading-relaxed text-ink-500">Help the procurement team match your capabilities to relevant tenders.</p>
           </div>
         </div>
         <div className="space-y-2">
@@ -1412,8 +1410,8 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
 
   const TABS: { id: Tab; label: string; icon: typeof LayoutGrid; badge?: number }[] = [
     { id: "overview", label: "Overview", icon: LayoutGrid },
-    { id: "profile", label: "Profile", icon: Building2, badge: profile.missing.length > 0 ? profile.missing.length : undefined },
-    { id: "opportunities", label: "Opportunities", icon: ScrollText, badge: openTenders.length || undefined },
+    { id: "profile", label: "Organization profile", icon: Building2, badge: profile.missing.length > 0 ? profile.missing.length : undefined },
+    { id: "opportunities", label: "Open tenders", icon: ScrollText, badge: openTenders.length || undefined },
     { id: "applications", label: "Applications", icon: FileText, badge: applications?.length || undefined },
     { id: "documents", label: "Documents", icon: Files },
     { id: "contracts", label: "Contracts", icon: FileSignature, badge: awaitingAcceptance || undefined },
@@ -1421,7 +1419,7 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
 
   const onFiled = (a: Application) => {
     setApplications((p) => [a, ...(p ?? [])]);
-    setFlash(`Application ${a.id} is on the record for ${publicReferenceLabel(a.systemReference)}.`);
+    setFlash(`Application ${a.id} submitted for ${publicReferenceLabel(a.systemReference)}.`);
     setTimeout(() => setFlash(null), 5000);
     void loadTenders();
   };
@@ -1533,7 +1531,7 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
                   href="/"
                   className="focus-brand hidden min-h-11 items-center gap-1 rounded-lg border border-ink-100 bg-white px-3 text-[12px] font-semibold text-ink-700 transition-colors hover:border-brand-300 hover:text-brand-700 sm:inline-flex md:hidden dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-700 dark:hover:border-brand-500/40 dark:hover:text-brand-300"
                 >
-                  Officer desk
+                  Officer workspace
                   <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
                 </Link>
 
@@ -1608,7 +1606,7 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
                         Organization profile
                       </h1>
                       <p className="mt-2 max-w-[64ch] text-[13px] leading-relaxed text-ink-500 sm:text-[13.5px]">
-                        Keep your organization&apos;s record accurate. The procurement desk uses these details to verify your identity and match you with relevant opportunities.
+                        Keep your organization&apos;s details current so the procurement team can verify your organization and match relevant tenders.
                       </p>
                     </div>
                     <div className="w-full shrink-0 rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-4 shadow-[0_1px_2px_rgba(11,12,15,0.04)] sm:w-[230px] dark:border-white/[0.07] dark:bg-night-2/80">
@@ -1648,7 +1646,7 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                       <p className="font-code text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-700 dark:text-brand-400">
-                        The board
+                        Open tenders
                       </p>
                       <h1 className="type-display mt-2 flex items-center gap-2.5 text-[22px] text-ink-950 dark:text-white">
                         Opportunities
@@ -1659,8 +1657,7 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
                         ) : null}
                       </h1>
                       <p className="mt-1.5 max-w-[66ch] text-[13px] leading-relaxed text-ink-500">
-                        Every tender pack staged on the procurement desk. Closing dates are read from the cycle record first
-                        and the notice second — a bid is refused the moment the date passes.
+                        Browse published tenders that are open for applications. Submissions close at the deadline shown on each tender.
                       </p>
                     </div>
                     <button
@@ -1690,11 +1687,10 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
                   ) : tenders.length === 0 ? (
                     <div className="rounded-[10px] border border-dashed border-ink-200 px-6 py-16 text-center dark:border-white/15">
                       <p className="text-[14px] font-semibold text-ink-700 dark:text-ink-700">
-                        No tender packs are staged on the desk yet
+                        No tenders are available right now
                       </p>
                       <p className="mx-auto mt-1.5 max-w-md text-[13px] leading-relaxed text-ink-400">
-                        Opportunities appear here the moment the procurement desk stages a tender pack. Nothing is invented
-                        to fill this board — the empty state is the honest state.
+                        Open tenders will appear here when the procurement team publishes them.
                       </p>
                     </div>
                   ) : (
@@ -1813,7 +1809,7 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
                             <div className="mt-auto pt-4">
                               {applied ? (
                                 <div className="flex h-10 items-center justify-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 text-[12.5px] font-semibold text-emerald-700 dark:text-emerald-300">
-                                  <CircleCheck className="h-4 w-4" aria-hidden="true" /> Application on record
+                                  <CircleCheck className="h-4 w-4" aria-hidden="true" /> Application submitted
                                 </div>
                               ) : closed ? (
                                 <div className="flex h-10 items-center justify-center rounded-xl border border-ink-100 text-[12px] font-semibold text-ink-400 dark:border-white/10">
@@ -1846,7 +1842,7 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                       <p className="font-code text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-700 dark:text-brand-400">
-                        The record
+                        Application history
                       </p>
                       <h1 className="type-display mt-2 flex items-center gap-2.5 text-[22px] text-ink-950 dark:text-white">
                         Applications
@@ -1857,9 +1853,7 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
                         ) : null}
                       </h1>
                       <p className="mt-1.5 max-w-[66ch] text-[13px] leading-relaxed text-ink-500">
-                        Every bid this organization has filed, attested as{" "}
-                        <span className="font-code text-[11.5px] text-brand-700 dark:text-brand-400">org:{org.name}</span>{" "}
-                        with the desk&apos;s receipt time. A receipt can be exported per row.
+                        Every bid this organization has submitted, with its tender reference and submission time. You can download a receipt for each application.
                       </p>
                     </div>
                     <button
@@ -1956,30 +1950,6 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
           </AnimatePresence>
           </main>
 
-          <footer
-            aria-hidden={navOpen || undefined}
-            inert={navOpen}
-            className="border-t border-ink-100/80 bg-paper/60 py-6 dark:border-white/[0.06] dark:bg-night/60"
-          >
-            <div className="mx-auto flex w-full max-w-[1560px] flex-col items-start justify-between gap-3 px-4 font-code text-[10px] text-ink-500 sm:flex-row sm:items-center sm:px-6 lg:px-8">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-semibold tracking-[0.16em] text-ink-600 dark:text-ink-600">QUORUM TENDER ENGINE</span>
-                <span className="text-ink-300 dark:text-ink-400">|</span>
-                <span>
-                  Applications attested as <span className="text-ink-700 dark:text-ink-700">org:{org.name}</span> · filing
-                  times in UTC
-                </span>
-              </div>
-              <div className="flex items-center gap-4">
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" /> Portal online
-                </span>
-                <Link href="/" className="transition-colors hover:text-ink-900 dark:hover:text-white">
-                  Officer desk ↗
-                </Link>
-              </div>
-            </div>
-          </footer>
         </div>
       </div>
 

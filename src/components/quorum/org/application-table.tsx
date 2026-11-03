@@ -52,7 +52,7 @@ function exportRecord(a: Application, tender: Tender | undefined) {
   saveJson(`${a.id}-record.json`, {
     application: { ...a, tenderId: displayReference },
     tender: tender ? { ...tender, ref: displayReference } : null,
-    attestedAs: `org:${a.orgName}`,
+    organization: a.orgName,
     exportedAt: new Date().toISOString(),
   });
 }
@@ -239,12 +239,12 @@ export function ApplicationTable({
           <Inbox className="h-5 w-5" aria-hidden="true" />
         </span>
         <p className="mt-3 text-[14px] font-semibold text-ink-900 dark:text-ink-800">
-          {filter === "ALL" ? "Nothing filed yet" : "No applications in this state"}
+          {filter === "ALL" ? "No applications yet" : "No applications in this status"}
         </p>
         <p className="mx-auto mt-1 max-w-sm text-[12.5px] leading-relaxed text-ink-500">
           {filter === "ALL"
-            ? "The first application lands on this record the moment you file it — with your attested identity and the filing time."
-            : "Switch the filter to see the rest of the record."}
+            ? "Your first application will appear here with its tender reference and submission time."
+            : "Choose another status to see more applications."}
         </p>
         {filter === "ALL" ? (
           <button
@@ -313,13 +313,13 @@ export function ApplicationTable({
                 Bid
               </th>
               <th scope="col" className={cn(TH, "px-3")}>
-                Attested as
+                Organization
               </th>
               <th scope="col" className={cn(TH, "px-3")}>
                 Submitted
               </th>
               <th scope="col" className={cn(TH, "px-3")}>
-                Desk status
+                Application status
               </th>
               <th scope="col" className={cn(TH, "py-2.5 pl-3 pr-5 text-right")}>
                 Actions
@@ -348,10 +348,10 @@ export function ApplicationTable({
                   </td>
                   <td className="px-3 py-3.5">
                     <p className="max-w-[280px] truncate text-[13px] font-medium text-ink-900 dark:text-ink-800">
-                      {t?.title ?? "Tender pack no longer staged"}
+                {t?.title ?? "Tender no longer available"}
                     </p>
                     <p className="mt-0.5 max-w-[280px] truncate text-[11.5px] text-ink-500">
-                      {t ? `${t.buyer} · ${t.format}` : "Tender pack no longer staged"}
+                      {t ? `${t.buyer} · ${t.format}` : "Tender no longer available"}
                     </p>
                     {a.bidDocuments?.length ? (
                       <p className="mt-1 inline-flex items-center gap-1 text-[10.5px] font-medium text-emerald-700 dark:text-emerald-300">
@@ -362,7 +362,7 @@ export function ApplicationTable({
                   <td className="whitespace-nowrap px-3 py-3.5 text-right">
                     <span className="font-code text-[12px] font-semibold tabular text-ink-900 dark:text-ink-800">
                       {a.sealed ? (
-                        <span className="font-code text-[10px] tracking-[0.12em] text-brand-700 dark:text-brand-300">SEALED</span>
+                        <span className="font-code text-[10px] tracking-[0.12em] text-brand-700 dark:text-brand-300">HIDDEN UNTIL BIDS OPEN</span>
                       ) : (
                         money(a.amount ?? 0, a.currency ?? t?.currency)
                       )}
@@ -370,7 +370,7 @@ export function ApplicationTable({
                   </td>
                   <td className="px-3 py-3.5">
                     <span className="inline-flex max-w-[200px] items-center gap-1.5 rounded-md bg-sand/80 px-2 py-1 font-code text-[10px] text-ink-600 dark:bg-white/[0.06] dark:text-ink-600">
-                      <span className="truncate">org:{a.orgName || orgName}</span>
+                      <span className="truncate">{a.orgName || orgName}</span>
                     </span>
                   </td>
                   <td className="whitespace-nowrap px-3 py-3.5">
@@ -429,7 +429,7 @@ export function ApplicationTable({
                         type="button"
                         onClick={() => void downloadReceipt(a, t)}
                         disabled={busyId === `receipt:${a.id}`}
-                        title="Download the signed sealed-bid receipt"
+                        title="Download submission receipt"
                         aria-label={`Download the receipt for application ${a.id}`}
                         className="focus-brand grid h-11 w-11 place-items-center rounded-md text-ink-400 transition-colors hover:bg-ink-50 hover:text-brand-700 disabled:cursor-wait dark:hover:bg-white/[0.06] dark:hover:text-brand-300"
                       >
@@ -512,7 +512,7 @@ export function ApplicationTable({
                 />
               </label>
               <p className="text-[12px] leading-relaxed text-ink-500">
-                The new amount is sealed in a fresh envelope. The prior version is marked amended and cannot be reopened or withdrawn.
+                Your revised bid amount will remain hidden until bids are opened. The previous version stays in the application history and cannot be changed or withdrawn.
               </p>
               {actionError ? (
                 <p role="alert" className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-[12px] text-brand-800 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-brand-200">
@@ -535,7 +535,7 @@ export function ApplicationTable({
                   {busyId === `amend:${amendTarget.application.id}` ? (
                     <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                   ) : null}
-                  Seal amendment
+                  Submit revised bid
                 </button>
               </div>
             </form>

@@ -51,9 +51,9 @@ type BarrySupportRequest = {
 };
 
 const SUGGESTIONS = [
-  "What is waiting at the gate?",
-  "Is quorum present?",
-  "Explain the evidence on a pending gate",
+  "What needs approval?",
+  "Does the committee meet its attendance requirement?",
+  "Explain the findings on a pending approval",
   "What can you investigate for me?",
 ];
 
@@ -234,7 +234,7 @@ export function MuseAssistant({ name }: { name?: string }) {
         ]);
       } catch {
         const note =
-          "The assistant service is not answering right now. Nothing on the desk changed — try again in a moment.";
+          "The assistant is unavailable right now. No changes were made. Try again shortly.";
         setTurns((prev) => [...prev, { id: nextId(), role: "assistant", text: note }]);
       } finally {
         setBusy(false);
@@ -293,7 +293,7 @@ export function MuseAssistant({ name }: { name?: string }) {
           ]);
         } else {
           patchTurn(turnId, { proposalState: "failed" });
-          say(`${data.error ?? "The desk refused the action."} Nothing changed.`);
+      say(`${data.error ?? "The action could not be completed."} No changes were made.`);
         }
       } catch {
         patchTurn(turnId, { proposalState: "failed" });
@@ -308,7 +308,7 @@ export function MuseAssistant({ name }: { name?: string }) {
   const declineProposal = useCallback(
     (turnId: string) => {
       patchTurn(turnId, { proposalState: "declined" });
-      say("Declined. The proposal is void — nothing on the desk moved, and the audit trail stays exactly as it was.");
+      say("Request cancelled. No changes were made, and the activity history is unchanged.");
     },
     [patchTurn, say]
   );
@@ -329,7 +329,7 @@ export function MuseAssistant({ name }: { name?: string }) {
             setOpen(true);
           }
         }}
-        aria-label={open ? "Close the desk assistant" : "Open the desk assistant"}
+        aria-label={open ? "Close the Quorum assistant" : "Open the Quorum assistant"}
         aria-expanded={open}
         title={open ? "Close Barry" : "Ask Barry"}
         className="focus-brand group fixed bottom-5 right-5 z-[75] grid h-14 w-14 place-items-center rounded-full bg-brand-600 p-0 text-white shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_18px_40px_-16px_rgba(217,38,22,0.85)] transition-colors hover:bg-brand-700 sm:bottom-7 sm:right-7"

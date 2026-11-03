@@ -54,7 +54,7 @@ export function ThemeModeRow({ className, collapsed = false }: { className?: str
         )}
         {!collapsed ? (
           <span className="font-code text-[11px] font-semibold tracking-[0.08em] text-ink-700 dark:text-ink-300">
-            DARK / LIGHT MODE
+            Dark / Light Mode
           </span>
         ) : null}
       </span>

@@ -336,7 +336,7 @@ function OfficerSelect({
     if (o.kind === "gavel")
       return (
         <span className="shrink-0 rounded-full border border-brand-200 bg-brand-50 px-1.5 py-0.5 font-code text-[10px] font-bold tracking-[0.04em] text-brand-700">
-          THE GAVEL
+          APPROVING OFFICER
         </span>
       );
     if (o.chair)
@@ -400,7 +400,7 @@ function OfficerSelect({
         </span>
         {selected && (
           <span className="hidden shrink-0 font-code text-[10px] tracking-[0.08em] text-ink-500 sm:block">
-            {selected.kind === "gavel" ? "THE GAVEL" : [selected.chair ? "CHAIR" : "PRESENT", selected.office ? OFFICE_SHORT[selected.office] : ""].filter(Boolean).join(" · ")}
+            {selected.kind === "gavel" ? "YOU · SIGNED IN" : [selected.chair ? "CHAIR" : "PRESENT", selected.office ? OFFICE_SHORT[selected.office] : ""].filter(Boolean).join(" · ")}
           </span>
         )}
         <ChevronDown
@@ -429,8 +429,7 @@ function OfficerSelect({
                 </p>
               ) : options.length === 0 ? (
                 <p className="px-2.5 py-3 text-[12px] leading-relaxed text-ink-500">
-                  The register is empty — register members in the Committee view. The gate signs with a named human,
-                  never with a blank.
+                  No committee members are listed yet. Add the authorized approver and committee members in Committee before recording a decision.
                 </p>
               ) : (
                 <div className="max-h-60 space-y-0.5 overflow-y-auto [scrollbar-width:thin]">
@@ -489,8 +488,7 @@ function OfficerSelect({
               {!unavailable && options.length > 0 && (
                 <p className="flex items-start gap-1.5 border-t border-ink-100 px-2.5 pb-0.5 pt-2 text-[10.5px] leading-relaxed text-ink-500">
                   <ShieldCheck className="mt-0.5 h-3 w-3 shrink-0 text-ink-400" aria-hidden="true" />
-                  Only PRESENT members — or the officer holding the gavel — can sign. Excused seats stay on the roll
-                  but cannot approve.
+                  Only committee members marked present and the approving officer can sign. Excused members cannot approve.
                 </p>
               )}
             </div>
@@ -591,7 +589,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
       if (!res.ok) throw new Error("run failed");
       onToast(`REVIEW GRAPH INVOKED${runs[0]?.reference ? ` — ${runs[0].reference}` : ""}`);
     } catch {
-      onToast("STACK UNREACHABLE — quorum-mcp NOT RESPONDING");
+      onToast("The review service is unavailable. Try again shortly.");
     } finally {
       setBusy(false);
     }
@@ -606,7 +604,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
     const seen = new Set<string>();
     const gavel = committee.you?.name?.trim() ?? "";
     if (gavel) {
-      out.push({ name: gavel, role: "PROCUREMENT OFFICER · HOLDS THE GAVEL", kind: "gavel", chair: false });
+      out.push({ name: gavel, role: "PROCUREMENT OFFICER · APPROVING OFFICER", kind: "gavel", chair: false });
       seen.add(gavel.toLowerCase());
     }
     const present = committee.members.filter((m) => m.status === "PRESENT");
@@ -633,12 +631,12 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
     const gavel = officerOptions.find((o) => o.kind === "gavel")?.name ?? "";
     const who = (draft.name || gavel).trim();
     if (who.length < 3) {
-      onToast("A NAMED HUMAN IS REQUIRED — SELECT THE APPROVING OFFICER FROM THE REGISTER");
+      onToast("Select the authorized officer who will approve this request.");
       return;
     }
     const stepUp = await requestStepUp(gate.id);
     if (!stepUp) {
-      onToast("GATE NOT SIGNED — STEP-UP CANCELLED");
+      onToast("Approval was cancelled before signing.");
       return;
     }
     setBusy(true);
@@ -650,11 +648,11 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
       });
       const data = (await res.json()) as { error?: string; gate?: Gate };
       if (!res.ok || data.error) {
-        onToast(data.error?.toUpperCase() ?? "GATE DECISION FAILED");
+        onToast(data.error ?? "Could not save the approval decision.");
       } else if (decision === "APPROVE") {
-        onToast(`GATE SIGNED BY ${who.toUpperCase()} — BUNDLE FILED · ${data.gate?.receipt?.submissionId ?? ""}`);
+        onToast(`Approval signed by ${who}. The review record was filed · ${data.gate?.receipt?.submissionId ?? ""}`);
       } else {
-        onToast("SUBMISSION RETURNED — DECISION LOGGED AGAINST THE GATE");
+        onToast("Submission returned. The decision was saved to the review record.");
       }
       setApproverDraft((p) => ({ ...p, [gate.id]: { name: "", note: "" } }));
       void pull();
@@ -673,10 +671,10 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
   const fallback = model?.fallback;
   const answeredModel = lastModelCall?.source === "llm" ? lastModelCall.model : null;
   const modelLabel = !model
-    ? "MODEL · …"
+    ? "AI DRAFTING · …"
     : model.configured
       ? `${answeredModel ?? model.model ?? "configured model"} · ${model.providerLabel ?? "configured endpoint"}${fallback?.model ? ` → ${fallback.model}` : ""}`
-      : "TEMPLATE FALLBACK";
+      : "STANDARD TEMPLATE";
   const fallbackDetail = fallback?.model
     ? ` · fallback ${fallback.model} (${fallback.providerLabel ?? "in-region"})`
     : " · no fallback configured";
@@ -688,13 +686,13 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
       ? ` · latest answer: ${lastModelCall.model} via ${lastModelCall.tool}${redactionDetail}`
       : " · no model-attributed call in the log yet";
   const modelTitle = !model
-    ? "Reading the configured drafting endpoint from quorum-mcp…"
+    ? "Checking the configured AI drafting service…"
     : model.configured
       ? `${model.providerLabel ?? "Model"} at ${model.endpoint ?? "configured endpoint"} · residency ${model.residency ?? "IN_REGION"}${fallbackDetail}${lastCallDetail}`
-      : "No drafting endpoint on this host — redlines are deterministic template output";
+      : "AI drafting is not configured for this workspace. Suggested wording will use a standard template.";
   const fsStatus = health?.fsMcp?.status;
   const fsMobileStatus = fsStatus === "connected" ? "UP" : fsStatus === "fallback" ? "LOCAL" : fsStatus === "connecting" ? "WAIT" : "…";
-  const modelMobileLabel = !model ? "MODEL · …" : model.configured ? "MODEL · SET" : "MODEL · TEMPLATE";
+  const modelMobileLabel = !model ? "AI DRAFTING · …" : model.configured ? "AI DRAFTING · SET" : "STANDARD TEMPLATE";
   const quorumMcpState = !health ? "loading" : health.ok ? "online" : "offline";
   const toolCallCount = health?.counts?.toolCalls ?? log.length;
   const visibleLog = terminalLog.slice(0, 32).reverse();
@@ -729,20 +727,20 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
     <div className="space-y-8">
       {/* header */}
       <section aria-labelledby="mc-stack-h">
-        <SpecBar index="Developer" label="Live runtime" meta="Meta API · quorum-mcp · LangGraph" />
+        <SpecBar index="System" label="Service status" meta="AI provider · document access · review service" />
         <h1 id="mc-stack-h" className="type-display mt-6 text-[32px] text-ink-950 sm:text-[40px]">
-          See every model call. Follow every run.
+          Review service health and activity.
         </h1>
         <p className="type-lede mt-4 text-ink-600">
-          A live view of Meta model requests, MCP tool calls, and the review graph. Each line comes from the
-          hash-chained service log; prompts and document contents stay out of this stream.
+          See whether document access, AI-assisted drafting and tender reviews are available, then inspect the recorded activity.
+          Document contents and AI prompts are not shown here.
         </p>
-        <nav aria-label="Live runtime sections" className="mt-5 grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:items-center">
+        <nav aria-label="Review service sections" className="mt-5 grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:items-center">
           <a
             href="#stack-mcp-tools"
-            aria-label={`Quorum MCP ${quorumMcpState}; open MCP tools`}
+            aria-label={`Review service ${quorumMcpState}; open service details`}
             aria-controls="stack-mcp-tools"
-            title={`Quorum MCP status: ${quorumMcpState}`}
+            title={`Review service status: ${quorumMcpState}`}
             className={cn(
               "focus-brand col-span-2 inline-flex min-h-11 w-full min-w-0 items-center justify-center gap-2 rounded-full border px-3 font-code text-[10px] font-bold tracking-[0.06em] transition-colors sm:col-span-1 sm:w-[10rem] sm:flex-none",
               quorumMcpState === "online"
@@ -762,21 +760,21 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                 aria-hidden="true"
               />
             </span>
-            {quorumMcpState === "online" ? "QUORUM-MCP ONLINE" : quorumMcpState === "loading" ? "QUORUM-MCP CHECKING" : "QUORUM-MCP OFFLINE"}
+            {quorumMcpState === "online" ? "REVIEW SERVICE AVAILABLE" : quorumMcpState === "loading" ? "CHECKING REVIEW SERVICE" : "REVIEW SERVICE UNAVAILABLE"}
           </a>
           <a
             href="#stack-architecture"
-            aria-label={`Open server-filesystem MCP architecture; status ${fsStatus ?? "loading"}`}
+            aria-label={`Open document access details; status ${fsStatus ?? "loading"}`}
             aria-controls="stack-architecture"
             className={cn(
               "focus-brand inline-flex min-h-11 w-full min-w-0 items-center justify-center gap-2 rounded-full border px-3 font-code text-[10px] font-bold tracking-[0.06em] transition-colors hover:bg-ink-50 sm:w-[17rem] sm:flex-none",
               health?.fsMcp?.status === "connected" ? "border-ink-200 bg-white text-ink-700" : "border-ink-200 bg-white text-ink-400"
             )}
-            title={`Server-filesystem MCP status: ${health?.fsMcp?.status ?? "loading"}`}
+            title={`Document access status: ${health?.fsMcp?.status ?? "loading"}`}
           >
             <Server className="h-3 w-3" aria-hidden="true" />
-            <span className="min-w-0 truncate sm:hidden">FS MCP · {fsMobileStatus}</span>
-            <span className="hidden min-w-0 truncate sm:inline">SERVER-FILESYSTEM MCP · {fsStatus?.toUpperCase() ?? "…"}</span>
+            <span className="min-w-0 truncate sm:hidden">DOCUMENTS · {fsMobileStatus}</span>
+            <span className="hidden min-w-0 truncate sm:inline">DOCUMENT ACCESS · {fsStatus?.toUpperCase() ?? "…"}</span>
           </a>
           <a
             href="#stack-live-api"
@@ -792,48 +790,48 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
             <span className="truncate sm:hidden">{modelMobileLabel}</span>
             <span className="hidden truncate sm:inline">{modelLabel.toUpperCase()}</span>
           </a>
-          <a href="#stack-graphs" aria-label="Open LangGraph review section" aria-controls="stack-graphs" className="focus-brand inline-flex min-h-11 w-full min-w-0 items-center justify-center gap-2 rounded-full border border-ink-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:bg-ink-50 sm:w-[13rem] sm:flex-none">
+          <a href="#stack-graphs" aria-label="Open review activity section" aria-controls="stack-graphs" className="focus-brand inline-flex min-h-11 w-full min-w-0 items-center justify-center gap-2 rounded-full border border-ink-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:bg-ink-50 sm:w-[13rem] sm:flex-none">
             <GitBranch className="h-3 w-3" aria-hidden="true" />
-            <span className="sm:hidden">2 GRAPHS</span>
-            <span className="hidden sm:inline">LANGGRAPH.JS · 2 GRAPHS</span>
+            <span className="sm:hidden">2 WORKFLOWS</span>
+            <span className="hidden sm:inline">REVIEW WORKFLOWS · 2</span>
           </a>
-          <a href="#stack-log" aria-label={`Open tool-call audit log; ${toolCallCount} calls logged`} aria-controls="stack-log" title={`${toolCallCount} tool calls logged`} className="focus-brand inline-flex min-h-11 w-full min-w-0 items-center justify-center gap-2 rounded-full border border-ink-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:bg-ink-50 sm:w-[13rem] sm:flex-none">
+          <a href="#stack-log" aria-label={`Open activity history; ${toolCallCount} actions recorded`} aria-controls="stack-log" title={`${toolCallCount} actions recorded`} className="focus-brand inline-flex min-h-11 w-full min-w-0 items-center justify-center gap-2 rounded-full border border-ink-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:bg-ink-50 sm:w-[13rem] sm:flex-none">
             <Fingerprint className="h-3 w-3" aria-hidden="true" />
-            <span className="min-w-0 truncate sm:hidden">{toolCallCount} TOOL CALLS</span>
-            <span className="hidden min-w-0 truncate sm:inline">{toolCallCount} TOOL CALLS LOGGED</span>
+            <span className="min-w-0 truncate sm:hidden">{toolCallCount} ACTIONS</span>
+            <span className="hidden min-w-0 truncate sm:inline">{toolCallCount} ACTIONS RECORDED</span>
           </a>
         </nav>
       </section>
 
       {/* Full-width live runtime: the stream and its run outline share one terminal surface. */}
-      <section id="stack-live-api" tabIndex={-1} aria-label="Live model API and MCP activity" className="scroll-mt-24 overflow-hidden rounded-[16px] border border-ink-800 bg-[#090d11] text-white shadow-[0_28px_90px_rgba(9,13,17,0.22)]">
+      <section id="stack-live-api" tabIndex={-1} aria-label="Recorded review activity" className="scroll-mt-24 overflow-hidden rounded-[16px] border border-ink-800 bg-[#090d11] text-white shadow-[0_28px_90px_rgba(9,13,17,0.22)]">
         <div className="flex flex-wrap items-center gap-3 border-b border-white/[0.09] px-4 py-3.5 sm:px-6">
           <div className="flex items-center gap-2.5">
             <span className="relative flex h-2 w-2">
               {health?.ok && <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-emerald-400/70" aria-hidden="true" />}
               <span className={cn("relative inline-flex h-2 w-2 rounded-full", health?.ok ? "bg-emerald-400" : "bg-rose-400")} aria-hidden="true" />
             </span>
-            <span className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-100">Agent activity</span>
+            <span className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-100">Review activity</span>
             <span className={cn("rounded-full border px-2 py-1 font-code text-[10px] font-bold tracking-[0.04em]", health?.ok ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-300" : "border-rose-400/20 bg-rose-400/10 text-rose-300")}>
               {health?.ok ? "LIVE" : "OFFLINE"}
             </span>
           </div>
           <span className="hidden h-4 w-px bg-white/10 sm:block" aria-hidden="true" />
-          <span className="font-code text-[10px] tracking-[0.06em] text-ink-300">META API · MCP · LANGGRAPH</span>
+          <span className="font-code text-[10px] tracking-[0.06em] text-ink-300">AI PROVIDER · DOCUMENT ACCESS · REVIEW SERVICE</span>
           <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-1 font-code text-[10px] tracking-[0.04em] text-ink-300">
-            <span>{metaCalls.length} MODEL CALLS</span>
+            <span>{metaCalls.length} AI REQUESTS</span>
             <span>{successfulMetaCalls} OK</span>
-            <span>{health?.counts?.toolCalls ?? log.length} TOTAL EVENTS</span>
-            <span>SYNC {lastPolledAt ? lastPolledAt.toLocaleTimeString([], { hour12: false }) : "WAITING"}</span>
+            <span>{health?.counts?.toolCalls ?? log.length} ACTIONS RECORDED</span>
+            <span>UPDATED {lastPolledAt ? lastPolledAt.toLocaleTimeString([], { hour12: false }) : "WAITING"}</span>
           </div>
         </div>
 
         <div className="grid min-w-0 lg:grid-cols-[minmax(0,1.7fr)_minmax(18rem,0.7fr)]">
           <div className="min-w-0 border-b border-white/[0.08] lg:border-b-0 lg:border-r">
             <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] px-4 py-2.5 sm:px-6">
-              <MonoLabel className="text-ink-400">LIVE API RUN LOG · NEWEST EVENTS TAILING</MonoLabel>
+              <MonoLabel className="text-ink-400">REVIEW ACTIVITY · NEWEST FIRST</MonoLabel>
               <div className="ml-auto flex items-center gap-2">
-                <span className="font-code text-[10px] tracking-[0.05em] text-ink-300">POLL 3.5S</span>
+                <span className="font-code text-[10px] tracking-[0.05em] text-ink-300">UPDATES EVERY 3.5S</span>
                 {terminalPaused ? (
                   <button
                     type="button"
@@ -849,7 +847,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
               ref={terminalBody}
               onScroll={handleTerminalScroll}
               role="log"
-              aria-label="Live API run log"
+              aria-label="Review activity log"
               className="h-[390px] overflow-auto px-4 py-4 font-code text-[10px] leading-[1.9] [scrollbar-color:#303941_transparent] sm:px-6"
               aria-live="polite"
               aria-relevant="additions text"
@@ -897,7 +895,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
 
           <aside className="min-w-0 px-4 py-4 sm:px-6 lg:px-5" aria-label="Latest run outline">
             <div className="flex items-center justify-between gap-3">
-              <MonoLabel className="text-ink-300">RUN OUTLINE</MonoLabel>
+              <MonoLabel className="text-ink-300">REVIEW PROGRESS</MonoLabel>
               <span className="rounded-full border border-white/10 px-2 py-1 font-code text-[10px] tracking-[0.05em] text-ink-300">{lastRun ? (lastRun.status ?? "RUN").replaceAll("_", " ") : "ARCHITECTURE"}</span>
             </div>
             {lastRun ? (
@@ -938,17 +936,17 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                     </span>
                   </li>
                 ))}
-                {!stack.length && <li className="text-[10px] text-ink-500">Runtime outline is loading from quorum-mcp.</li>}
+                {!stack.length && <li className="text-[10px] text-ink-500">Review progress is loading.</li>}
               </ol>
             )}
-            <p className="mt-5 border-t border-white/[0.08] pt-3 font-code text-[10px] tracking-[0.05em] text-ink-300">QUORUM-MCP · TAIL / EVERY TOOL CALL LOGGED</p>
+            <p className="mt-5 border-t border-white/[0.08] pt-3 font-code text-[10px] tracking-[0.05em] text-ink-300">REVIEW SERVICE · RECORDED ACTIVITY</p>
           </aside>
         </div>
       </section>
 
       {/* architecture cards */}
       <section id="stack-architecture" tabIndex={-1} aria-label="Stack architecture" className="scroll-mt-24">
-        <MonoLabel>ARCHITECTURE — SIX LAYERS, NO HAND-WAVING</MonoLabel>
+        <MonoLabel>REVIEW SERVICE COMPONENTS</MonoLabel>
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {stack.map((c, i) => (
             <motion.div
@@ -970,10 +968,10 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
       </section>
 
       {/* tools + launcher */}
-      <section id="stack-mcp-tools" tabIndex={-1} aria-label="MCP tools" className="scroll-mt-24 grid grid-cols-1 gap-4 lg:grid-cols-5">
+      <section id="stack-mcp-tools" tabIndex={-1} aria-label="Available review actions" className="scroll-mt-24 grid grid-cols-1 gap-4 lg:grid-cols-5">
         <div data-tour="stack-tools" className="rounded-[12px] panel p-5 lg:col-span-3">
           <div className="flex items-center justify-between gap-3">
-            <MonoLabel>OUR OWN MCP SERVER — FIVE TOOLS</MonoLabel>
+            <MonoLabel>AVAILABLE REVIEW ACTIONS</MonoLabel>
             <MonoLabel className="text-ink-400">POST /mcp · JSON-RPC 2.0</MonoLabel>
           </div>
           <ul className="mt-4 space-y-2.5">
@@ -990,10 +988,10 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
         </div>
         <div className="flex flex-col gap-4 lg:col-span-2">
           <div id="stack-graphs" tabIndex={-1} data-tour="stack-graphs" className="scroll-mt-24 rounded-[10px] border border-ink-100 bg-night p-5 text-white">
-            <MonoLabel className="text-ink-300">RUN THE GRAPH — LIVE</MonoLabel>
+            <MonoLabel className="text-ink-300">RUN A SAMPLE TENDER REVIEW</MonoLabel>
             <p className="mt-2.5 text-[13px] leading-relaxed text-ink-200">
-              Fire <span className="font-code text-[11.5px] text-white">review_graph</span> at the MRI tender. Reads via
-              the filesystem MCP, flags against three rules, drafts redlines with the configured LLM (or the template fallback), then raises a gate.
+              Process the sample MRI tender using the available documents and review checks. AI-assisted drafting may be used when configured.
+              An authorized officer must review the findings and approve any award.
             </p>
             <button
               type="button"
@@ -1002,11 +1000,11 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
               className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 text-[13.5px] font-semibold text-white shadow-[0_10px_26px_rgba(217,38,22,0.35)] transition-all hover:bg-brand-700 disabled:opacity-60"
             >
               <Play className="h-4 w-4" aria-hidden="true" />
-              {busy ? "INVOKING GRAPH…" : "RUN FULL REVIEW"}
+              {busy ? "STARTING REVIEW…" : "START SAMPLE REVIEW"}
             </button>
           </div>
           <div className="min-h-0 flex-1 rounded-[12px] panel p-5">
-            <MonoLabel>LATEST RUN — GRAPH TRACE</MonoLabel>
+            <MonoLabel>LATEST TENDER REVIEW</MonoLabel>
             {lastRun ? (
               <div className="mt-3 max-h-56 overflow-y-auto pr-1 [scrollbar-width:thin]">
                 <p className="font-code text-[10.5px] text-ink-400">
@@ -1063,16 +1061,16 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                 ))}
               </div>
             ) : (
-              <p className="mt-3 text-[12.5px] text-ink-500">No run yet — fire the graph to watch it live.</p>
+              <p className="mt-3 text-[12.5px] text-ink-500">No tender reviews have started yet.</p>
             )}
           </div>
         </div>
       </section>
 
       {/* gates */}
-      <section aria-label="Human gates">
+      <section aria-label="Approvals that require an authorized officer">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <MonoLabel>GATES — THE ONLY IRREVERSIBLE TOOL, HELD FOR A NAMED HUMAN</MonoLabel>
+          <MonoLabel>DECISIONS THAT REQUIRE AN AUTHORIZED OFFICER</MonoLabel>
           <MonoLabel className="text-ink-400">{pending.length} PENDING</MonoLabel>
         </div>
         <div className="mt-4 space-y-3">
@@ -1124,7 +1122,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                         onSelect={(name) => setApproverDraft((p) => ({ ...p, [g.id]: { ...draft, name } }))}
                         onExcused={
                           /* An excused seat cannot sign — the roll says so before the record refuses. */
-                          (name) => onToast(`${name.toUpperCase()} IS EXCUSED — ONLY PRESENT MEMBERS OR THE GAVEL MAY SIGN`)
+                          (name) => onToast(`${name} is excused. Only members marked present and the approving officer can sign.`)
                         }
                       />
                       <label htmlFor={`note-${g.id}`} className="mt-3 block text-[12px] font-medium text-ink-700">
@@ -1154,7 +1152,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                           disabled={busy}
                           className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-xl border border-ink-300 bg-white px-4 text-[13px] font-semibold text-ink-800 transition-all hover:border-ink-400 hover:bg-ink-50 disabled:opacity-60"
                         >
-                          RETURN TO AGENT
+                          RETURN FOR CLARIFICATION
                         </button>
                       </div>
                       <p className="mt-2.5 flex items-start gap-1.5 text-[11.5px] leading-relaxed text-ink-500">
@@ -1292,13 +1290,13 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
           </table>
           {log.length === 0 && (
             <p className="px-5 py-8 text-center text-[13px] text-ink-500">
-              The log is empty — fire a run and every call will land here.
+              No activity has been recorded yet.
             </p>
           )}
         </HorizontalScrollRegion>
         <p className="mt-3 flex items-center gap-2 font-code text-[10px] tracking-[0.06em] text-ink-600">
           <Radio className="h-3 w-3 text-brand-600" aria-hidden="true" />
-          POLLING QUORUM-MCP EVERY 3.5S · ENTRIES TRUNCATED FOR DISPLAY, FULL JSONL ON DISK
+          UPDATES EVERY 3.5 SECONDS · LONG ENTRIES ARE SHORTENED FOR DISPLAY
         </p>
       </section>
     </div>

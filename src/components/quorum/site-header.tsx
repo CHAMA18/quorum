@@ -264,7 +264,7 @@ export function SiteHeader({
                     <div className="px-3 pb-2.5 pt-2">
                       <span className="block truncate text-[13.5px] font-semibold text-ink-900">{user.name}</span>
                       <span className="mt-0.5 block truncate type-micro text-ink-400">
-                        {user.organization ?? "Officer desk"}
+                        {user.organization ?? "Officer workspace"}
                       </span>
                     </div>
                     <div className="my-1 h-px bg-ink-100 dark:bg-white/10" aria-hidden="true" />
@@ -388,7 +388,7 @@ export function SiteHeader({
                         {user.name}
                       </span>
                       <span className="mt-0.5 block truncate type-micro text-ink-400">
-                        {user.organization ?? "Officer desk"}
+                        {user.organization ?? "Officer workspace"}
                       </span>
                     </span>
                   </div>

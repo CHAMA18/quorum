@@ -97,20 +97,18 @@ export function ContractAcceptance({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="font-code text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-400">
-            The instrument
+            SUPPLIER CONTRACTS
           </p>
           <h1 className="type-display mt-2 flex items-center gap-2.5 text-[22px] text-ink-950 dark:text-white">
             Contracts
             {contracts !== null ? (
               <span className="rounded-full border border-ink-100 bg-sand/80 px-2 py-0.5 font-code text-[10px] font-semibold text-ink-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-600">
-                {contracts.length} on record
+                {contracts.length} saved
               </span>
             ) : null}
           </h1>
           <p className="mt-1.5 max-w-[66ch] text-[13px] leading-relaxed text-ink-500">
-            A contract appears here after the desk awards and signs a pack for one of your applications. Its
-            acceptance is recorded against the organization session, sealed into the contract hash, and read by the
-            procurement officer at execution.
+            Contracts appear here after the procurement team awards a tender and prepares the contract. You can review the terms and record your organization&apos;s acceptance here.
           </p>
         </div>
         <button
@@ -137,10 +135,9 @@ export function ContractAcceptance({
       ) : contracts.length === 0 ? (
         <div className="rounded-[12px] border border-dashed border-ink-200 px-6 py-16 text-center dark:border-white/15">
           <FileSignature className="mx-auto h-6 w-6 text-ink-400" aria-hidden="true" />
-          <p className="mt-3 text-[14px] font-semibold text-ink-700 dark:text-ink-700">No contract is on record yet</p>
+          <p className="mt-3 text-[14px] font-semibold text-ink-700 dark:text-ink-700">No contracts are available yet</p>
           <p className="mx-auto mt-1.5 max-w-md text-[13px] leading-relaxed text-ink-400">
-            Contracts appear here after the desk awards a tender and signs the contract pack for one of this
-            organization&apos;s applications. Nothing is invented to fill this screen.
+            A contract will appear here if your organization is awarded a tender.
           </p>
         </div>
       ) : (
@@ -175,7 +172,15 @@ export function ContractAcceptance({
                   </div>
                   <div className="flex shrink-0 flex-wrap items-center gap-1.5">
                     <Chip tone={status === "COMPLETED" || status === "LEGACY_UNEXECUTED" ? "muted" : status === "EXECUTED" ? "ok" : canAccept ? "brand" : "ok"}>
-                      {status === "DRAFT" && canAccept ? "AWAITING YOUR ACCEPTANCE" : status}
+                      {canAccept
+                        ? "AWAITING YOUR ACCEPTANCE"
+                        : status === "EXECUTED"
+                          ? "SIGNED AND IN EFFECT"
+                          : status === "COMPLETED"
+                            ? "COMPLETE"
+                            : status === "LEGACY_UNEXECUTED"
+                              ? "ACCEPTANCE NOT AVAILABLE"
+                              : status.replaceAll("_", " ")}
                     </Chip>
                     {acceptedAt ? <Chip tone="ok">ACCEPTED</Chip> : null}
                   </div>
@@ -184,7 +189,7 @@ export function ContractAcceptance({
                 <div className="grid gap-5 px-5 py-4 lg:grid-cols-[1.15fr_1fr]">
                   <div className="space-y-3">
                     <p className="font-code text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-400">
-                      The terms the desk signed
+                      Contract terms
                     </p>
                     <dl className="grid gap-2 text-[12.5px] sm:grid-cols-2">
                       <div>
@@ -257,16 +262,16 @@ export function ContractAcceptance({
                         <p>Signatory: <span className="font-semibold text-ink-900 dark:text-ink-100">{signer ?? "—"}</span></p>
                         {acceptanceHash ? (
                           <p className="break-all font-code text-[10px] leading-relaxed text-ink-500">
-                            SEAL {acceptanceHash}
+                            ACCEPTANCE VERIFICATION CODE · {acceptanceHash}
                           </p>
                         ) : null}
                         {freshHash ? (
                           <p className="break-all font-code text-[10px] text-emerald-700 dark:text-emerald-300">
-                            NEW SEAL {freshHash}
+                            NEW ACCEPTANCE VERIFICATION CODE · {freshHash}
                           </p>
                         ) : null}
                         <p className="text-[11.5px] text-ink-400">
-                          The desk reads this acceptance at contract execution. A second acceptance is not offered.
+                          The procurement team will use this acceptance when the contract takes effect. You cannot submit another acceptance for this contract.
                         </p>
                       </div>
                     ) : canAccept ? (
@@ -283,7 +288,7 @@ export function ContractAcceptance({
                             onChange={(e) => setSignatory((p) => ({ ...p, [row.tenderRef]: e.target.value }))}
                           />
                         </Field>
-                        <Field label="Copy hash or document reference (optional)">
+                        <Field label="Document reference (optional)">
                           <input
                             className={inputCls}
                             placeholder="Reference on the signed copy you hold"
@@ -314,8 +319,8 @@ export function ContractAcceptance({
                     ) : (
                       <p className="mt-2 text-[12.5px] leading-relaxed text-ink-500">
                         {status === "LEGACY_UNEXECUTED"
-                          ? "This contract predates the execution register and cannot be accepted here. Contact the procurement desk."
-                          : `This contract is ${status.toLowerCase()} and is not awaiting acceptance. Its instrument stands on the desk's record.`}
+                          ? "This older contract cannot be accepted here. Contact the procurement team for help."
+                          : `This contract is ${status.toLowerCase().replaceAll("_", " ")} and is not awaiting acceptance. Contact the procurement team if you need help.`}
                       </p>
                     )}
                   </div>

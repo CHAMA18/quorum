@@ -41,15 +41,6 @@ const MCP_CLIENT_GUIDES: Record<McpClient, { setup: string; href?: string }> = {
   "Other MCP client": { setup: "Use the client’s local stdio server configuration format. Most clients accept a command, arguments, and environment variables.", href: "https://modelcontextprotocol.io/docs/develop/connect-local-servers" },
 };
 
-/** The Cursor wordmark, shown on a white chip so its light background stays hidden in dark mode. */
-function CursorLogo() {
-  return (
-    <span className="inline-flex w-fit items-center rounded-lg bg-white px-3 py-2 ring-1 ring-ink-200">
-      <img src="/images/cursor-logo.jpeg" alt="Cursor" className="h-7 w-auto" />
-    </span>
-  );
-}
-
 function clientConfig(client: McpClient, projectPath: string) {
   const server = {
     command: "node",
@@ -96,7 +87,7 @@ const INTEGRATIONS: Integration[] = [
     name: "Slack",
     category: "MESSAGING",
     summary: "Route workspace alerts to a private procurement channel.",
-    use: "Keep evaluation milestones, gate reminders and service notices visible to the team without sending bid documents into chat.",
+    use: "Keep evaluation milestones, approval reminders and service notices visible to the team without sending bid documents into chat.",
     requirements: ["Slack app in your workspace", "Bot token and selected destination channel", "Approved event and message scopes"],
     href: "https://api.slack.com/messaging",
     icon: "slack",
@@ -124,8 +115,8 @@ const INTEGRATIONS: Integration[] = [
     id: "calendar",
     name: "Google & Microsoft calendars",
     category: "SCHEDULING",
-    summary: "Add committee sittings, closing dates and standstill deadlines to calendars.",
-    use: "Calendar events can help officers track statutory clocks and committee meetings.",
+    summary: "Add committee meetings, closing dates and award review periods to calendars.",
+    use: "Calendar events help officers track procurement deadlines and committee meetings.",
     requirements: ["Google Workspace or Microsoft 365 administrator consent", "Calendar scopes and target calendar", "Timezone and event visibility policy"],
     icon: "calendar",
   },
@@ -143,7 +134,7 @@ const INTEGRATIONS: Integration[] = [
     id: "ocds",
     name: "OCDS & procurement portals",
     category: "DATA SOURCES",
-    summary: "Bring published tender notices and award records into the desk.",
+    summary: "Bring published tender notices and award records into the workspace.",
     use: "Connect Open Contracting Data Standard feeds or a supported public procurement portal to reduce manual re-entry.",
     requirements: ["Published API/feed URL and schema", "Jurisdiction-specific field mapping", "Refresh, attribution and provenance policy"],
     href: "https://standard.open-contracting.org/",
@@ -296,7 +287,6 @@ export function IntegrationsView() {
               </label>
               <p className="text-[10px] leading-relaxed text-ink-500 dark:text-ink-400">Install the bridge once with <code>npm install --prefix vscode-extension</code>, then run Quorum locally with <code>bun run dev</code>. Replace the sample path with your repository’s absolute path.</p>
               <p className="text-[11px] leading-relaxed text-ink-700 dark:text-ink-200">{MCP_CLIENT_GUIDES[client].setup}</p>
-              {client === "Cursor" ? <CursorLogo /> : null}
               <a href={MCP_CLIENT_GUIDES[client].href} target="_blank" rel="noreferrer" className="focus-brand inline-flex min-h-11 items-center gap-1 font-code text-[10px] font-bold tracking-[0.06em] text-brand-800 hover:text-brand-600 dark:text-brand-300">
                 {client} MCP setup guide <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
               </a>
@@ -314,14 +304,14 @@ export function IntegrationsView() {
             </div>
             <div className="min-w-0 overflow-hidden rounded-xl border border-ink-200 bg-ink-950 dark:border-white/10">
               <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
-                <span className="font-code text-[10px] font-bold tracking-[0.06em] text-white/80">Local MCP config · read-only bridge</span>
+                <span className="font-code text-[10px] font-bold tracking-[0.06em] text-white/80">Local AI client setup · read-only access</span>
                 <span className="rounded-full bg-emerald-400/10 px-2 py-1 font-code text-[10px] font-bold tracking-[0.06em] text-emerald-200">STDIO</span>
               </div>
               <pre className="max-h-56 overflow-auto p-3 text-[10px] leading-relaxed text-emerald-100"><code>{clientConfig(client, projectPath)}</code></pre>
             </div>
           </div>
           <p className="mt-4 rounded-lg border border-amber-300/70 bg-amber-50 px-3.5 py-3 text-[10px] leading-relaxed text-amber-950 dark:border-amber-500/20 dark:bg-amber-500/[0.07] dark:text-amber-100">
-            Local setup is available now. The hosted Render site is static and the public edge <code>/mcp</code> route is not currently published, so a remote URL will not connect yet. Keep the sidecar on loopback; do not expose port 3031 directly. Remote client setup needs an authenticated HTTPS MCP gateway.
+            Local setup is available now. The hosted site does not currently publish a remote connection, so a remote URL will not connect yet. Keep the local procurement service private; do not expose port 3031 directly. Remote AI client setup requires an authenticated HTTPS connection.
           </p>
         </div>
       </section>
@@ -332,7 +322,7 @@ export function IntegrationsView() {
             <div>
               <p className="font-code text-[10px] font-bold tracking-[0.1em] text-brand-800 dark:text-brand-300">Remote · HTTPS · bearer authentication</p>
               <h2 id="remote-mcp-title" className="mt-1 text-[18px] font-black tracking-tight text-ink-950 dark:text-white">Connect an AI client from anywhere.</h2>
-              <p className="mt-1.5 max-w-3xl text-[11px] leading-relaxed text-ink-600 dark:text-ink-300">The remote gateway uses a client token at the Cloudflare edge and a separate private credential for the origin hop. Only read-only MCP tools are exposed; the sidecar remains loopback-only.</p>
+              <p className="mt-1.5 max-w-3xl text-[11px] leading-relaxed text-ink-600 dark:text-ink-300">Connect an AI client with a private access token. It can read review information but cannot change records or make decisions. The procurement service is not exposed directly to the public internet.</p>
             </div>
             <span className={cn("rounded-full border px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em]", remoteState === "connected" ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300" : "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-500/20 dark:bg-amber-500/[0.07] dark:text-amber-100")}>
               {remoteState === "connected" ? "REMOTE READY" : remoteState === "checking" ? "CHECKING" : remoteState === "unavailable" ? "NOT REACHABLE" : "DEPLOYMENT REQUIRED"}
@@ -341,12 +331,12 @@ export function IntegrationsView() {
           <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
             <div className="space-y-3">
               <div>
-                <span className="mb-1.5 block font-code text-[10px] font-bold tracking-[0.08em] text-ink-700 dark:text-ink-300">Remote MCP URL</span>
+                <span className="mb-1.5 block font-code text-[10px] font-bold tracking-[0.08em] text-ink-700 dark:text-ink-300">AI client connection URL</span>
                 <code className="block break-all rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-[10px] text-ink-900 dark:border-white/10 dark:bg-white/[0.04] dark:text-white">{REMOTE_MCP_ENDPOINT}</code>
               </div>
               <label className="block">
                 <span className="mb-1.5 block font-code text-[10px] font-bold tracking-[0.08em] text-ink-700 dark:text-ink-300">Remote client token</span>
-                <input type="password" autoComplete="off" value={remoteToken} onChange={(event) => setRemoteToken(event.target.value)} placeholder="Paste the MCP_REMOTE_TOKEN set by the service administrator" className="focus-brand min-h-11 w-full rounded-lg border border-ink-200 bg-white px-3 font-mono text-[12px] text-ink-900 outline-none placeholder:text-ink-400 focus:border-brand-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-white" />
+                <input type="password" autoComplete="off" value={remoteToken} onChange={(event) => setRemoteToken(event.target.value)} placeholder="Paste the access token provided by your service administrator" className="focus-brand min-h-11 w-full rounded-lg border border-ink-200 bg-white px-3 font-mono text-[12px] text-ink-900 outline-none placeholder:text-ink-400 focus:border-brand-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-white" />
               </label>
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={() => void copyRemoteConfig()} className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg bg-ink-950 px-3 text-[12px] font-semibold text-white hover:bg-ink-800 dark:bg-white dark:text-ink-950 dark:hover:bg-ink-100">
@@ -378,9 +368,9 @@ export function IntegrationsView() {
             </span>
             <div className="min-w-0 flex-1">
               <p className="font-code text-[10px] font-bold tracking-[0.1em] text-brand-800 dark:text-brand-300">Quorum tool server</p>
-              <h2 id="quorum-mcp-integration-title" className="mt-1 text-[20px] font-black tracking-tight text-ink-950 dark:text-white">Quorum MCP</h2>
+              <h2 id="quorum-mcp-integration-title" className="mt-1 text-[20px] font-black tracking-tight text-ink-950 dark:text-white">AI client connection</h2>
               <p className="mt-2 max-w-3xl text-[12px] leading-relaxed text-ink-600 dark:text-ink-300">
-                The MCP sidecar exposes Quorum tools over JSON-RPC. Local clients connect through the read-only stdio bridge above; direct internet access is not enabled on this deployment.
+                The Model Context Protocol connection gives supported AI clients read-only access to procurement information. Local clients use the setup above. Direct internet access is not enabled for this deployment.
               </p>
             </div>
             <span className={cn(
@@ -412,7 +402,7 @@ export function IntegrationsView() {
 
           {mcpState === "unavailable" ? (
             <p role="status" className="rounded-lg border border-amber-300/70 bg-amber-50 px-3.5 py-3 text-[10.5px] leading-relaxed text-amber-950 dark:border-amber-500/20 dark:bg-amber-500/[0.07] dark:text-amber-100">
-              {localRuntime ? <>The local Quorum web server could not reach its MCP sidecar. Start the project with <code>bun run dev</code>, then check again.</> : <>This hosted page cannot reach the local MCP sidecar. Remote connections require a public authenticated HTTPS MCP gateway; the current static deployment does not provide one.</>}
+            {localRuntime ? <>The local Quorum web server could not reach the AI client service. Start the project with <code>bun run dev</code>, then check again.</> : <>This hosted page cannot reach the local AI client service. Remote access requires a published, authenticated connection, which this deployment does not provide.</>}
             </p>
           ) : null}
         </div>

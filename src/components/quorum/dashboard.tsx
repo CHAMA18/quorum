@@ -242,14 +242,14 @@ type BackendGate = {
 
 /* What each gate kind is called at the desk — the queue renders it on the card. */
 const GATE_TOOL_LABEL: Record<string, string> = {
-  file_gate_submission: "Filing",
+  file_gate_submission: "File approval package",
   record_bid_opening: "Bid opening register",
   certify_evaluation: "Evaluation matrix",
-  resolve_alb: "ALB resolution",
+  resolve_alb: "Low bid review",
   sign_award_report: "Award report",
   publish_award_notice: "Notice of award",
   issue_debrief: "Debrief letter",
-  sign_contract_pack: "Contract pack",
+  sign_contract_pack: "Contract documents",
   approve_variation: "Contract variation",
   certify_payment: "Payment certification",
   record_contract_completion: "Contract completion",
@@ -539,32 +539,32 @@ const NAV_GROUPS: {
   items: NavItem[];
 }[] = [
   {
-    group: "COMMAND",
+    group: "Workspace",
     items: [
       { id: "mc-overview", label: "Overview", icon: Gauge },
-      { id: "mc-runs", label: "Evaluations", icon: Terminal, badge: "runs" },
+      { id: "mc-runs", label: "Tender Reviews", icon: Terminal, badge: "runs" },
       { id: "mc-gates", label: "Approvals", icon: Stamp, badge: "gates" },
-      { id: "mc-cycle", label: "Tender Cycle", icon: Workflow, subpages: CYCLE_PAGE_PAGES },
+      { id: "mc-cycle", label: "Tender Workflow", icon: Workflow, subpages: CYCLE_PAGE_PAGES },
     ],
   },
   {
-    group: "EVIDENCE",
+    group: "Review Records",
     items: [
-      { id: "mc-findings", label: "Findings", icon: ListChecks, badge: "findings" },
+      { id: "mc-findings", label: "Review Findings", icon: ListChecks, badge: "findings" },
       { id: "mc-reports", label: "Reports", icon: Files },
-      { id: "mc-sources", label: "Data Sources", icon: Database },
+      { id: "mc-sources", label: "Source Records", icon: Database },
     ],
   },
   {
-    group: "CONTROL",
+    group: "Administration",
     items: [
-      { id: "mc-governance", label: "Governance", icon: Landmark },
-      { id: "mc-compliance", label: "Compliance", icon: FileCheck2 },
-      { id: "mc-readiness", label: "Readiness", icon: Stamp },
+      { id: "mc-governance", label: "Roles & Approvals", icon: Landmark },
+      { id: "mc-compliance", label: "Compliance Checks", icon: FileCheck2 },
+      { id: "mc-readiness", label: "Workspace Readiness", icon: Stamp },
     ],
   },
   {
-    group: "COMMITTEE",
+    group: "Committee",
     items: [
       { id: "mc-ledger", label: "Award History", icon: Gavel },
       { id: "mc-committee", label: "Committee", icon: Users },
@@ -572,25 +572,25 @@ const NAV_GROUPS: {
     ],
   },
   {
-    group: "SUPPLIERS",
+    group: "Suppliers",
     items: [
       { id: "mc-suppliers", label: "Suppliers", icon: Building2 },
     ],
   },
   {
-    group: "DEVELOPER",
+    group: "System & Integrations",
     items: [
-      { id: "mc-stack", label: "Developer", icon: Terminal },
+      { id: "mc-stack", label: "System Status", icon: Terminal },
       { id: "mc-integrations", label: "Integrations", icon: Cable },
-      { id: "mc-api", label: "API", icon: Braces },
+      { id: "mc-api", label: "API Access", icon: Braces },
     ],
   },
   {
-    group: "SYSTEM",
+    group: "Records & Settings",
     items: [
-      { id: "mc-oversight", label: "Oversight", icon: Scale },
-      { id: "mc-audit", label: "Audit Trail", icon: ScrollText },
-      { id: "mc-rules", label: "Rules & Safeguards", icon: ShieldCheck },
+      { id: "mc-oversight", label: "Independent Review", icon: Scale },
+      { id: "mc-audit", label: "Activity Log", icon: ScrollText },
+      { id: "mc-rules", label: "Rules & Controls", icon: ShieldCheck },
       { id: "mc-settings", label: "Settings", icon: Settings },
       { id: "docs", label: "Documentation", icon: Library, href: "/docs" },
     ],
@@ -749,11 +749,11 @@ function useAgentStatus(): AgentStatus {
 
 function AgentStatusBadge({ mode, className, darkSurface = false }: { mode: AgentMode; className?: string; darkSurface?: boolean }) {
   const label =
-    mode === "online" ? "Agent · online" : mode === "offline" ? "Agent · offline" : "Agent · linking";
+    mode === "online" ? "Review service · online" : mode === "offline" ? "Review service · offline" : "Review service · connecting";
   return (
     <span
       role="status"
-      aria-label={`Agent status: ${mode}`}
+      aria-label={`Review service status: ${mode}`}
       className={cn(
         /* shrink-0 + nowrap: the pill is a status instrument, never a widget
            that yields its width — squeezed, it used to wrap onto two lines. */
@@ -788,114 +788,6 @@ function AgentStatusBadge({ mode, className, darkSurface = false }: { mode: Agen
       </span>
       {label}
     </span>
-  );
-}
-
-/* ── Agent feed terminal ─────────────────────────────────────────────────── */
-
-type FeedKind = "step" | "ok" | "gate";
-type FeedLine = { text: string; kind: FeedKind };
-type LiveLogEntry = { tool?: string; status?: string; kind?: string; runId?: string };
-
-/* Live activity from the quorum-mcp audit log — no scripted replay. */
-function AgentFeed() {
-  const [feed, setFeed] = useState<FeedLine[]>([]);
-
-  useEffect(() => {
-    let alive = true;
-    const pull = async () => {
-      try {
-        const res = await fetch("/api/log?limit=8&XTransformPort=3031");
-        const j = (await res.json()) as { entries?: LiveLogEntry[] };
-        if (!alive) return;
-        const lines: FeedLine[] = (j.entries ?? []).slice(0, 8).reverse().map((e) => {
-          const status = e.status ?? "";
-          const kind: FeedKind =
-            status === "PENDING_GATE" ? "gate" : status === "OK" ? "ok" : "step";
-          const prefix = kind === "gate" ? "⏸" : kind === "ok" ? "✓" : "▸";
-          const label = status === "PENDING_GATE" ? "waiting for approval" : status === "OK" ? "done" : status || "logged";
-          return { text: `${prefix} ${e.tool ?? "event"} · ${label}`, kind };
-        });
-        setFeed(lines);
-      } catch {
-        /* sidecar briefly down — keep the last snapshot */
-      }
-    };
-    void pull();
-    const id = setInterval(() => void pull(), 3500);
-    return () => {
-      alive = false;
-      clearInterval(id);
-    };
-  }, []);
-
-  return (
-    <div
-      data-tour="agent-feed"
-      className="relative overflow-hidden rounded-[16px] border border-white/10 bg-night-2 shadow-[0_2px_4px_rgba(0,0,0,0.5),0_40px_85px_-45px_rgba(0,0,0,0.85)]"
-    >
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.045] via-transparent to-white/[0.015]"
-      />
-      <span aria-hidden="true" className="lit-top pointer-events-none absolute inset-x-0 top-0 h-px" />
-
-      {/* Chrome — the same console as the landing's live run, one desk over */}
-      <div className="relative flex items-center justify-between gap-3 border-b border-white/[0.09] px-5 py-3.5">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="flex gap-1.5" aria-hidden="true">
-            <span className="h-2.5 w-2.5 rounded-full bg-ink-700" />
-            <span className="h-2.5 w-2.5 rounded-full bg-ink-700" />
-            <span className="h-2.5 w-2.5 rounded-full bg-brand-500" />
-          </span>
-          <span className="type-micro text-ink-200">Agent activity</span>
-        </div>
-        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-brand-500/50 bg-brand-600/15 px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.08em] text-brand-300">
-          <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-brand-400" aria-hidden="true" />
-          LIVE
-        </span>
-      </div>
-
-      <div className="relative">
-        <div
-          data-tour="agent-feed-stream"
-          className="mask-tail h-[248px] overflow-hidden px-5 py-4 font-code text-[11px] leading-[2] sm:text-[11.5px]"
-          role="img"
-          aria-label="Live agent activity log"
-        >
-          {feed.map((line, i) => (
-            <p
-              key={`${i}-${line.text}`}
-              className={cn(
-                "grid grid-cols-[1.1rem_1fr] gap-x-2",
-                line.kind === "step" && "text-white/55",
-                line.kind === "ok" && "font-semibold text-white",
-                line.kind === "gate" && "text-brand-300"
-              )}
-            >
-              <span className="text-right text-white/30 tabular" aria-hidden="true">
-                {String(i + 1).padStart(2, "0")}
-              </span>
-              <span className="truncate">{line.text}</span>
-            </p>
-          ))}
-          {feed.length === 0 && <p className="text-white/55">▸ waiting for the agent&apos;s first step…</p>}
-        </div>
-        <p
-          aria-hidden="true"
-          className="pointer-events-none absolute bottom-3 left-5 flex items-center gap-2 font-code text-[12px] text-brand-400"
-        >
-          <span>$</span>
-          <span className="animate-caret-blink inline-block h-3.5 w-[7px] bg-brand-400/90" />
-        </p>
-      </div>
-
-      {/* Footer — what the tail is, so the panel is never just decoration */}
-      <div className="relative flex items-center justify-between gap-3 border-t border-white/[0.09] bg-white/[0.03] px-5 py-3">
-        <p className="type-micro text-white/55">quorum-mcp · tail</p>
-        <p className="type-micro text-white/50">Every tool call logged</p>
-      </div>
-    </div>
   );
 }
 
@@ -988,7 +880,7 @@ function StatCard({
      landing's contract table uses, so the two read as one system. */
   index: string;
   label: string;
-  value: number;
+  value: number | null;
   suffix?: string;
   sub: string;
   /* Optional: only rendered when real trend data exists — never a constant
@@ -998,7 +890,7 @@ function StatCard({
   pulse?: boolean;
   delay: number;
 }) {
-  const n = useCountUp(value);
+  const n = useCountUp(value ?? 0);
   return (
     <motion.div
       initial={{ opacity: 0, y: 22 }}
@@ -1035,8 +927,8 @@ function StatCard({
           )}
         </div>
         <p className="type-num mt-5 flex items-baseline gap-1 text-[42px] lg:text-[46px]">
-          {n}
-          {suffix && (
+          {value === null ? "—" : n}
+          {suffix && value !== null && (
             <span className={cn("text-[24px] text-brand-600", featured && "dark:text-brand-400")}>
               {suffix}
             </span>
@@ -1156,7 +1048,7 @@ function DocStatusChip({ status }: { status: StagedDoc["status"] }) {
     return (
       <span role="status" className="inline-flex shrink-0 items-center gap-1 rounded-full bg-ink-950 px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em] text-white">
         <CircleCheck className="h-2.5 w-2.5" aria-hidden="true" />
-        INDEXED
+        READY
       </span>
     );
   if (status === "PARSING")
@@ -1166,40 +1058,39 @@ function DocStatusChip({ status }: { status: StagedDoc["status"] }) {
           <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-brand-500" aria-hidden="true" />
           <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-600" aria-hidden="true" />
         </span>
-        PARSING
+        READING
       </span>
     );
   return (
     <span role="status" className="inline-flex shrink-0 items-center rounded-full border border-ink-200 px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">
-      RECEIVED
+      ADDED
     </span>
   );
 }
 
-/* Storage chip for real uploads — Cloudflare R2 through the edge gate when
-   it accepts the file, the local vault when it doesn't. Never an error. */
+/* Show whether a document is in cloud storage or the local vault. */
 function StorageChip({ storage }: { storage: NonNullable<StagedDoc["storage"]> }) {
   if (storage === "SYNCING")
     return (
-      <span role="status" aria-label="Saving to Cloudflare R2" className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em] text-brand-700">
+      <span role="status" aria-label="Saving to cloud storage" className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em] text-brand-700">
         <span className="relative flex h-1.5 w-1.5">
           <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-brand-500" aria-hidden="true" />
           <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-600" aria-hidden="true" />
         </span>
-        SYNC
+        SAVING
       </span>
     );
   if (storage === "CLOUD")
     return (
-      <span role="status" aria-label="Saved to Cloudflare R2" className="inline-flex shrink-0 items-center gap-1 rounded-full border border-ink-200 bg-white px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">
+      <span role="status" aria-label="Saved to cloud storage" className="inline-flex shrink-0 items-center gap-1 rounded-full border border-ink-200 bg-white px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">
         <CloudUpload className="h-2.5 w-2.5" aria-hidden="true" />
-        CLOUD
+        CLOUD SAVED
       </span>
     );
   return (
-    <span role="status" aria-label="Kept in the local vault" className="inline-flex shrink-0 items-center gap-1 rounded-full border border-ink-200 bg-white px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">
+    <span role="status" aria-label="Saved in the local vault" className="inline-flex shrink-0 items-center gap-1 rounded-full border border-ink-200 bg-white px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">
       <HardDrive className="h-2.5 w-2.5" aria-hidden="true" />
-      LOCAL
+      LOCAL VAULT
     </span>
   );
 }
@@ -1453,7 +1344,7 @@ function NewRunModal({
           ? (result.staged
               ? `STAGED AS ${(result.kind ?? "doc").toUpperCase()}${pages}${result.note ? ` · ${result.note}` : ""}`
               : result.reason ?? result.note ?? "STORED IN R2 — NOT STAGED FOR REVIEW") + auditTag
-          : "KEPT IN THE LOCAL VAULT — R2 GATE UNAVAILABLE";
+          : "Saved in this browser — cloud storage is unavailable";
         setDocs((cur) =>
           cur.map((x) =>
             x.id === d.id
@@ -1512,13 +1403,13 @@ function NewRunModal({
               <div>
                 <p className="flex items-center gap-2.5 font-code text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-600">
                   <span className="inline-block h-[2px] w-6 bg-brand-600" aria-hidden="true" />
-                  LAUNCH AN EVALUATION
+                  DOCUMENT REVIEW
                 </p>
                 <h2 id="new-evaluation-title" className="mt-3 font-display text-[28px] font-black tracking-[-0.035em] text-ink-950 sm:text-[36px]">
-                  New evaluation<span className="text-brand-600">.</span>
+                  Start a document review<span className="text-brand-600">.</span>
                 </h2>
                 <p className="mt-1.5 max-w-lg text-[12.5px] leading-relaxed text-ink-500 sm:text-[13px]">
-                  Set the tender, stage its source documents, and choose what the review should verify.
+                  Stage source documents and choose which checks to run. For bidder scoring and recommendations, use Tender workflow → Bid evaluation.
                 </p>
               </div>
               <button
@@ -1536,7 +1427,7 @@ function NewRunModal({
 
             {/* Step rail — 01 details · 02 documents · 03 scope */}
             <div data-tour="wiz-rail" className="mt-6 rounded-[10px] border border-ink-100 bg-paper/70 px-3 py-3 sm:mt-7 sm:px-5 sm:py-4">
-              <ol className="flex items-center gap-2 sm:gap-3" aria-label="Evaluation setup, three steps">
+              <ol className="flex items-center gap-2 sm:gap-3" aria-label="Document review setup, three steps">
               {WIZARD_STEPS.map((label, i) => {
                 const state = i === step ? "current" : i < step ? "done" : "todo";
                 return (
@@ -1610,7 +1501,7 @@ function NewRunModal({
                 try {
                   await onLaunch(ref.trim(), title.trim(), format, docs.length, checksOn, sampleSourceRef || undefined);
                 } catch (error) {
-                  setLaunchError(error instanceof Error ? error.message : "The run could not be launched. Please try again.");
+                  setLaunchError(error instanceof Error ? error.message : "This tender review could not be started. Please try again.");
                 } finally {
                   setLaunching(false);
                 }
@@ -1692,26 +1583,30 @@ function NewRunModal({
                         <div className="mb-2 flex items-end justify-between gap-3">
                           <div>
                             <p className="font-code text-[10.5px] font-semibold tracking-[0.12em] text-ink-600">SOURCE FORMAT</p>
-                            <p className="mt-1 text-[11.5px] text-ink-400">Choose the format of the original procurement record.</p>
+                            <p className="mt-1 text-[11.5px] text-ink-400">Choose how the tender information is provided.</p>
                           </div>
                           <span className="font-code text-[10px] font-semibold tracking-[0.08em] text-ink-500">REQUIRED</span>
                         </div>
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3" role="group" aria-label="Source format">
-                          {["OCDS", "PDF PACK", "EMAIL BAG"].map((f) => (
+                          {[
+                            { id: "OCDS", label: "Open Contracting Data (OCDS)" },
+                            { id: "PDF PACK", label: "Tender document pack" },
+                            { id: "EMAIL BAG", label: "Email files" },
+                          ].map(({ id, label }) => (
                             <button
-                              key={f}
+                              key={id}
                               type="button"
-                              onClick={() => setFormat(f)}
-                              aria-pressed={format === f}
+                              onClick={() => setFormat(id)}
+                              aria-pressed={format === id}
                               className={cn(
                                 "flex min-h-12 items-center justify-center gap-2 rounded-xl border px-3 font-code text-[10.5px] font-bold tracking-[0.08em] transition-all sm:min-h-[54px] sm:text-[11px] sm:tracking-[0.1em]",
-                                format === f
+                                format === id
                                   ? "border-ink-950 bg-ink-950 text-white shadow-[0_6px_16px_rgba(11,12,15,0.14)]"
                                   : "border-ink-200 bg-white text-ink-500 hover:border-ink-400 hover:bg-paper"
                               )}
                             >
-                              {format === f && <CircleCheck className="h-3.5 w-3.5" aria-hidden="true" />}
-                              {f}
+                              {format === id && <CircleCheck className="h-3.5 w-3.5" aria-hidden="true" />}
+                              {label}
                             </button>
                           ))}
                         </div>
@@ -1734,13 +1629,13 @@ function NewRunModal({
                           </span>
                         </button>
                         <p className="mt-1.5 text-[11.5px] text-ink-400">
-                          Real, comprehensive packs shipped with the stack — pick one and the review runs the agent’s own documents.
+                          Example tender packs are available for a practice review. Each pack is clearly identified before you start.
                         </p>
                         {samplesOpen && (
                           <div className="mt-2.5 space-y-2 rounded-xl border border-ink-100 bg-paper/60 p-2.5" role="list" aria-label="Sample tenders">
                             {samples.length === 0 && (
                               <p className="px-2 py-3 text-center text-[11px] leading-relaxed text-ink-600">
-                                SAMPLE PACKS COULDN’T BE LOADED — CHECK THAT THE AGENT SERVICE IS RUNNING
+                                Example packs could not be loaded. Please try again shortly.
                               </p>
                             )}
                             {samples.map((s) => (
@@ -1750,7 +1645,7 @@ function NewRunModal({
                                 className="block w-full rounded-lg border border-ink-100 bg-white px-3.5 py-3 transition-all hover:border-brand-400 hover:shadow-[0_2px_10px_rgba(217,38,22,0.07)]"
                               >
                                 <span className="flex flex-wrap items-center gap-2">
-                                  <span className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">BUILT-IN SAMPLE PACK</span>
+                                  <span className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">PRACTICE EXAMPLE</span>
                                   <span className="rounded-full bg-ink-950 px-2 py-0.5 font-code text-[10px] font-bold tracking-[0.04em] text-white">{s.sector}</span>
                                   <span className="ml-auto font-code text-[10px] tracking-normal text-ink-600">{s.budget} · {s.bids} BIDDERS</span>
                                 </span>
@@ -1764,7 +1659,7 @@ function NewRunModal({
                                     className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-md border border-ink-200 px-3 py-2 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-500 hover:bg-ink-50"
                                   >
                                     <Eye className="h-3 w-3" aria-hidden="true" />
-                                    PREVIEW PACK
+                                    PREVIEW EXAMPLE
                                   </button>
                                   <button
                                     type="button"
@@ -1775,7 +1670,7 @@ function NewRunModal({
                                     className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-md border border-brand-200 px-3 py-2 font-code text-[10px] font-bold tracking-[0.06em] text-brand-700 transition-colors hover:border-brand-400 hover:bg-brand-50"
                                   >
                                     <Plus className="h-2.5 w-2.5" aria-hidden="true" />
-                                    STAGE THIS PACK
+                                    USE THIS EXAMPLE
                                   </button>
                                 </span>
                               </div>
@@ -1799,16 +1694,16 @@ function NewRunModal({
                   {step === 1 && (
                     <>
                       <div className="rounded-xl border border-brand-100 bg-brand-50/60 px-4 py-3">
-                        <p className="font-code text-[10px] font-bold tracking-[0.12em] text-brand-700">02 / SOURCE DOCUMENTS</p>
-                        <p className="mt-1 text-[12px] leading-relaxed text-ink-600">Add the tender notice and bid pack. We’ll index each file before the review begins.</p>
+                        <p className="font-code text-[10px] font-bold tracking-[0.12em] text-brand-700">02 / TENDER DOCUMENTS</p>
+                        <p className="mt-1 text-[12px] leading-relaxed text-ink-600">Add the tender notice and bids. We’ll check each file before the review begins.</p>
                       </div>
                       <div>
                         <div className="flex items-baseline justify-between gap-3">
-                          <p id="nr-files-label" className="font-code text-[10.5px] font-semibold tracking-[0.12em] text-ink-600">TENDER PACK</p>
+                          <p id="nr-files-label" className="font-code text-[10.5px] font-semibold tracking-[0.12em] text-ink-600">TENDER DOCUMENTS</p>
                           <p className="font-code text-[10px] tracking-[0.06em] text-ink-600" aria-live="polite">
                             {docs.length === 0
-                              ? "NO DOCUMENTS STAGED"
-                              : `INDEXED ${indexed} OF ${docs.length}${cloudSynced > 0 ? ` · ${cloudSynced} R2` : ""}`}
+                              ? "NO DOCUMENTS ADDED"
+                              : `READY ${indexed} OF ${docs.length}${cloudSynced > 0 ? ` · ${cloudSynced} SAVED TO CLOUD` : ""}`}
                           </p>
                         </div>
                         <div
@@ -1849,10 +1744,10 @@ function NewRunModal({
                           <p className="mt-3 text-[14px] font-semibold text-ink-900">Drop the tender pack here</p>
                           <p className="mt-1 text-[12px] text-ink-500">or browse files from your device</p>
                           <p id="nr-files-help" className="mt-2 text-[11px] leading-relaxed text-ink-600">
-                            NOTICE · BIDS · OCDS JSON · PRICE SCHEDULES · EMAILS — UP TO 12 FILES
+                            NOTICES · BIDS · PRICING SHEETS · EMAILS · OPEN CONTRACTING DATA — UP TO 12 FILES
                           </p>
                           <p id="nr-files-storage" className="mt-1.5 text-[11px] leading-relaxed text-ink-600">
-                            REAL FILES STORE IN CLOUDFLARE R2 · EDGE-GATED · 10 MB EACH
+                            FILES ARE SAVED TO CLOUD STORAGE WHEN AVAILABLE · UP TO 10 MB EACH
                           </p>
                           <button
                             type="button"
@@ -1949,7 +1844,7 @@ function NewRunModal({
                     <>
                       <div className="rounded-xl border border-brand-100 bg-brand-50/60 px-4 py-3">
                         <p className="font-code text-[10px] font-bold tracking-[0.12em] text-brand-700">03 / REVIEW SCOPE</p>
-                        <p className="mt-1 text-[12px] leading-relaxed text-ink-600">Choose the checks for this run. Page-level citations remain on for every finding.</p>
+                        <p className="mt-1 text-[12px] leading-relaxed text-ink-600">Choose which checks to include. Every finding will include its page or source reference.</p>
                       </div>
                       <div>
                         <p className="font-code text-[10.5px] font-semibold tracking-[0.12em] text-ink-600">SCOPE OF REVIEW</p>
@@ -2001,10 +1896,10 @@ function NewRunModal({
                       </div>
                       <p className="rounded-xl bg-paper px-4 py-3 text-center text-[12px] font-semibold leading-relaxed text-ink-800">
                         {docs.length} DOCUMENT{docs.length === 1 ? "" : "S"}
-                        {cloudSynced > 0 ? ` · ${cloudSynced} R2` : ""} · {checksOn} CHECK{checksOn === 1 ? "" : "S"} · EST. {estMinutes} MIN
+                        {cloudSynced > 0 ? ` · ${cloudSynced} IN CLOUD STORAGE` : ""} · {checksOn} CHECK{checksOn === 1 ? "" : "S"} · ABOUT {estMinutes} MIN
                       </p>
                       {checksOn === 0 && (
-                        <p role="status" className="text-center text-[11.5px] text-brand-700">Select at least one review check to launch this run.</p>
+                        <p role="status" className="text-center text-[11.5px] text-brand-700">Select at least one check to start the review.</p>
                       )}
                     </>
                   )}
@@ -2038,7 +1933,7 @@ function NewRunModal({
                 >
                   {step === 0 && "Continue to documents"}
                   {step === 1 && "Continue to scope"}
-                  {step === 2 && (launching ? "Launching your run…" : "Launch run")}
+                  {step === 2 && (launching ? "Starting your review…" : "Start review")}
                   {step === 2 && launching ? (
                     <Radio className="h-4.5 w-4.5 animate-pulse" aria-hidden="true" />
                   ) : (
@@ -2069,7 +1964,7 @@ function NewRunModal({
                 </p>
               )}
               <p className="mt-4 text-center text-[11.5px] leading-relaxed text-ink-600">
-                THE AGENT PREPARES THE FILE — THE COMMITTEE STILL AWARDS
+                Quorum organizes the review. The committee retains authority over the award.
               </p>
             </form>
           </motion.div>
@@ -2121,7 +2016,7 @@ function SidebarContent({
         {navGroupsFor(user).map((group, gi) => (
           <div key={group.group} className={cn(gi > 0 && "mt-4", gi === 0 && "pt-1")}>
             <p className="flex items-center gap-2.5 px-3 pb-2">
-              <span className="font-code text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-400">
+              <span className="font-code text-[11px] font-semibold tracking-[0.14em] text-ink-400">
                 {group.group}
               </span>
               <span className="h-px flex-1 bg-white/[0.055]" aria-hidden="true" />
@@ -2264,31 +2159,6 @@ function SidebarContent({
       </nav>
 
       <div className="border-t border-white/[0.07] px-3 pb-5 pt-4">
-        {/* The rail reports the sidecar it is talking to, not just a brand */}
-        <div className="mb-3 flex items-center gap-2.5 px-1" aria-label={`Agent ${agentModeOf(agent)}`}>
-          <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
-            <span
-              className={cn(
-                "absolute inline-flex h-full w-full animate-ping-slow rounded-full",
-                agentModeOf(agent) === "online" ? "bg-brand-500" : "bg-ink-500"
-              )}
-            />
-            <span
-              className={cn(
-                "relative inline-flex h-1.5 w-1.5 rounded-full",
-                agentModeOf(agent) === "online" ? "bg-brand-500" : "bg-ink-500"
-              )}
-            />
-          </span>
-          <span className="font-code text-[11px] font-semibold tracking-[0.1em] text-ink-400">
-            {agentModeOf(agent) === "online"
-              ? "Agent online"
-              : agentModeOf(agent) === "linking"
-                ? "Agent linking"
-                : "Agent offline"}
-          </span>
-          <span className="ml-auto font-code text-[11px] font-semibold tracking-[0.04em] text-ink-400">Quorum service</span>
-        </div>
         <div>
           <ThemeModeRow />
         </div>
@@ -2303,7 +2173,7 @@ function SidebarContent({
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[13px] font-semibold text-white">{user?.name ?? "Guest officer"}</span>
             <span className="block truncate font-code text-[10px] leading-snug tracking-[0.06em] text-ink-400">
-              {user?.role ? `${ROLE_LABELS[user.role].toUpperCase()} · ${user.email.toUpperCase()}` : "NOT SIGNED IN"}
+              {user?.role ? `${ROLE_LABELS[user.role]} · ${user.email}` : "Not Signed In"}
             </span>
           </span>
           <button
@@ -2323,7 +2193,7 @@ function SidebarContent({
           className="focus-brand mt-1 flex min-h-11 w-full items-center gap-2 rounded-lg px-2 py-2 font-code text-[11px] font-semibold tracking-[0.1em] text-ink-400 transition-colors hover:text-white"
         >
           <ArrowLeft className="h-3 w-3" aria-hidden="true" />
-          BACK TO SITE
+          Back To Site
         </button>
       </div>
     </div>
@@ -2416,19 +2286,19 @@ function RunRegister({
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-200/70 px-5 py-4 dark:border-b-0">
           <div>
             <h2 id="mc-runs-h" className="type-title text-ink-950">
-              Recent evaluations
+              Recent tender reviews
               <span className="ml-2 inline-flex translate-y-[-1px] items-center rounded-full border border-ink-200/70 bg-paper-2/80 px-2 py-1 align-middle font-code text-[10px] font-bold tracking-[0.06em] text-ink-500 dark:border-0 dark:bg-white/[0.06] dark:text-ink-300">
                 {totalBidders} BIDDERS
               </span>
             </h2>
             <p className="mt-1 type-micro text-ink-400">
-              {runDateLabel(dateWindow)} · {filtered.length} of {runs.length} evaluations
+              {runDateLabel(dateWindow)} · {filtered.length} of {runs.length} reviews
             </p>
           </div>
           <div
             data-tour="run-filters"
             role="group"
-            aria-label="Filter evaluations"
+            aria-label="Filter tender reviews"
             className="grid grid-cols-2 gap-1 rounded-2xl border border-ink-200/70 bg-paper-2/70 p-1 dark:border-0 dark:bg-white/[0.045] sm:flex sm:rounded-full"
           >
             {RUN_FILTERS.map((f) => (
@@ -2471,7 +2341,7 @@ function RunRegister({
               value={query}
               onChange={(e) => onQuery(e.target.value)}
               placeholder="Search by reference, title or buyer…"
-              aria-label="Search recent evaluations by reference, title or buyer"
+              aria-label="Search tender reviews by reference, title or buyer"
               className="focus-brand h-11 w-full rounded-lg border border-ink-200/80 bg-[#fffdfb] pl-9 pr-3.5 text-[12.5px] text-ink-900 shadow-[inset_0_1px_1px_rgba(11,12,15,0.03)] outline-none transition-[border-color,background-color] duration-300 placeholder:text-ink-400 focus:border-ink-950 focus:ring-[3px] focus:ring-ink-950/[0.07] dark:border-0 dark:bg-white/[0.035] dark:shadow-[inset_0_1px_3px_rgba(0,0,0,0.42)] dark:focus:bg-white/[0.055] dark:focus:ring-white/[0.09]"
             />
           </label>
@@ -2480,7 +2350,7 @@ function RunRegister({
             <select
               value={dateWindow}
               onChange={(e) => setDateWindow(e.target.value as RunDateWindow)}
-              aria-label="Filter evaluations by date"
+              aria-label="Filter tender reviews by date"
               className="focus-brand h-11 appearance-none rounded-lg border border-ink-200/80 bg-[#fffdfb] pl-3 pr-8 font-code text-[10px] font-bold tracking-[0.08em] text-ink-600 outline-none transition-colors focus:border-ink-950 focus:ring-[3px] focus:ring-ink-950/[0.07] dark:border-0 dark:bg-white/[0.035] dark:text-ink-300 dark:focus:bg-white/[0.055] dark:focus:ring-white/[0.09]"
             >
               {RUN_DATE_WINDOWS.map((w) => (
@@ -2498,7 +2368,7 @@ function RunRegister({
             <button
               type="button"
               onClick={() => onQuery("")}
-              aria-label="Clear evaluation search"
+              aria-label="Clear tender review search"
               className="focus-brand inline-flex h-11 items-center rounded-md px-2.5 font-code text-[10px] font-bold tracking-[0.08em] text-ink-500 transition-colors hover:text-ink-950"
             >
               CLEAR
@@ -2514,16 +2384,16 @@ function RunRegister({
 
         {/* Table */}
         <HorizontalScrollRegion
-          label="Recent evaluations table"
+          label="Recent tender reviews table"
           hint="Swipe or scroll the table to see bidder, status and time columns."
           hintClassName="sm:hidden"
           data-tour="run-rows"
         >
           <table className="w-full min-w-[720px] border-collapse text-left">
-            <caption className="sr-only">Recent evaluations with their findings, bidder count, status, time and expandable details</caption>
+            <caption className="sr-only">Recent tender reviews with their findings, bidder count, status, time and expandable details</caption>
             <thead>
               <tr className="border-b border-ink-200/70 bg-paper-2/70 dark:border-b-0 dark:bg-white/[0.025]">
-                {["Evaluation", "Issues", "No. of bidders", "Status", "Time", "Details"].map((h, i) => (
+                {["Tender", "Issues", "No. of bidders", "Status", "Time", "Details"].map((h, i) => (
                   <th
                     key={i}
                     scope="col"
@@ -2616,15 +2486,15 @@ function RunRegister({
                             {run.status === "running" || run.status === "queued" ? (
                               <p className="text-[13px] leading-relaxed text-ink-600">
                                 <span className="font-semibold text-ink-900">
-                                  Run in progress — reading the pack you staged.
+                                  Review in progress — checking the documents you added.
                                 </span>{" "}
-                                Findings stream in at completion — every claim will carry a page citation, and the file
-                                stops at your gate before anything is awarded.
+                                Findings will appear when the review is complete, each with its page or source reference.
+                                An authorized officer must approve any award.
                               </p>
                             ) : (
                               <>
                                 <p className="font-code text-[10px] font-semibold tracking-[0.04em] text-ink-600">
-                                  TOP ISSUES · {run.findings} FLAGGED · {run.citations} SOURCED · {run.unsourced} WITHOUT A SOURCE
+                                  TOP ISSUES · {run.findings} FOUND · {run.citations} WITH SOURCES · {run.unsourced} WITHOUT A SOURCE
                                 </p>
                                 <ul className="mt-2.5 flex flex-wrap gap-1.5">
                                   {notesFor.map((note, ni) => (
@@ -2637,7 +2507,7 @@ function RunRegister({
                                   ))}
                                   {run.findings > notesFor.length && (
                                     <li className="rounded-md bg-ink-50 px-2.5 py-1.5 font-code text-[10px] font-semibold tracking-[0.1em] text-ink-500">
-                                      +{run.findings - notesFor.length} MORE IN THE SOURCED REPORT
+                                      +{run.findings - notesFor.length} MORE IN THE REVIEW REPORT
                                     </li>
                                   )}
                                 </ul>
@@ -2646,7 +2516,7 @@ function RunRegister({
                             {/* A pack ingested at launch follows the run everywhere */}
                             {typeof run.docs === "number" && (
                               <p className="mt-3 font-code text-[10px] tracking-[0.04em] text-ink-600">
-                                PACK AT LAUNCH · {run.docs} DOCUMENT{run.docs === 1 ? "" : "S"} INDEXED · INGESTED BY QUORUM-AGENT
+                                REVIEW DOCUMENTS · {run.docs} READY
                               </p>
                             )}
                             {run.status === "complete" && (
@@ -2666,11 +2536,11 @@ function RunRegister({
                                   /* Real download: GET /api/runs/:uid/report on the sidecar
                                      returns the sourced report as an attached .md file. */
                                   if (!run.uid) {
-                                    onToast("REPORT UNAVAILABLE — NO BACKEND ID FOR THIS RUN");
+                                    onToast("THIS REVIEW REPORT IS UNAVAILABLE — PLEASE REFRESH THE LIST");
                                     return;
                                   }
                                   onToast(
-                                    `SOURCED REPORT — ${run.reference ?? run.id} · ${run.findings} FINDINGS · ${run.citations} CITATIONS · DOWNLOADING`
+                                    `DOWNLOADING REVIEW REPORT — ${run.reference ?? run.id}`
                                   );
                                   fetch(`/api/runs/${encodeURIComponent(run.uid)}/report?XTransformPort=3031`)
                                     .then(async (res) => {
@@ -2687,12 +2557,12 @@ function RunRegister({
                                       URL.revokeObjectURL(url);
                                       onToast(`REPORT DOWNLOADED — ${run.reference ?? run.id}`);
                                     })
-                                    .catch(() => onToast("REPORT FAILED — AGENT SERVICE UNREACHABLE"));
+                                    .catch(() => onToast("REPORT COULD NOT BE DOWNLOADED — REVIEW SERVICE UNAVAILABLE"));
                                 }}
                                 className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-ink-950 px-3 font-code text-[10px] font-bold tracking-[0.08em] text-white transition-colors hover:bg-brand-600"
                               >
                                 <Download className="h-3 w-3" aria-hidden="true" />
-                                SOURCED REPORT
+                                DOWNLOAD REVIEW REPORT
                               </button>
                               <button
                                 type="button"
@@ -2723,8 +2593,8 @@ function RunRegister({
                   <td colSpan={7} className="px-5 py-10 text-center">
                     <p className="font-code text-[10px] tracking-[0.18em] text-ink-400">
                       {query.trim()
-                        ? `NO RUNS MATCH “${query.trim().toUpperCase()}”`
-                        : `NO RUNS IN ${runDateLabel(dateWindow)}`}
+                        ? `NO REVIEWS MATCH “${query.trim().toUpperCase()}”`
+                        : `NO REVIEWS IN ${runDateLabel(dateWindow)}`}
                     </p>
                     <button
                       type="button"
@@ -2777,7 +2647,7 @@ function QuorumRoll({ quorum, onOpenRoll }: { quorum: CommitteeData | null; onOp
   return (
     <div
       role="region"
-      aria-label="Committee quorum roll call"
+      aria-label="Committee attendance requirement"
       className={cn(
         "border-b px-5 py-4",
         met
@@ -2788,7 +2658,7 @@ function QuorumRoll({ quorum, onOpenRoll }: { quorum: CommitteeData | null; onOp
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="flex items-center gap-1.5 font-code text-[10px] font-bold tracking-[0.1em] text-ink-600">
           <Users className="h-3 w-3" aria-hidden="true" />
-          QUORUM ROLL CALL
+          REQUIRED ATTENDANCE
         </p>
         <span
           className={cn(
@@ -2826,15 +2696,15 @@ function QuorumRoll({ quorum, onOpenRoll }: { quorum: CommitteeData | null; onOp
           aria-live="polite"
           aria-atomic="true"
         >
-          {met ? "QUORUM PRESENT" : `${short} MORE NEEDED`}
+          {met ? "REQUIREMENT MET" : `${short} MORE NEEDED`}
         </span>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <p className="max-w-xl text-[12px] leading-relaxed text-ink-600 dark:text-ink-300">
           {met
-            ? "The roll carries — the committee can decide."
-            : "The roll is short — every gate decision is refused until enough members are marked PRESENT."}
+            ? "Required attendance is met. The committee can record its decision."
+            : "Required attendance has not been met. Decisions remain unavailable until enough committee members are present."}
         </p>
         {onOpenRoll && (
           <button
@@ -3020,7 +2890,7 @@ export function GateQueue({
             aria-live="polite"
             className="ml-auto shrink-0 font-code text-[10px] font-bold tracking-[0.06em] text-ink-600 tabular"
           >
-            {visible.length} OF {queue.length} GATES
+              {visible.length} OF {queue.length} APPROVALS
           </span>
         </div>
 
@@ -3040,8 +2910,8 @@ export function GateQueue({
               >
                 {g.status === "AWAITING_SECOND" ? (
                 <p className="mb-3 rounded-md border border-amber-400/40 bg-amber-400/[0.1] px-2.5 py-1.5 font-code text-[10px] font-bold leading-relaxed tracking-[0.06em] text-amber-900 dark:text-amber-200">
-                    SECOND SIGNATURE REQUIRED — OPENED BY {String(g.firstApprover ?? "AN OFFICER").toUpperCase()}
-                    {g.firstApprovalAt ? ` ${g.firstApprovalAt.toUpperCase()}` : ""}. A DIFFERENT OFFICER MUST COMPLETE IT.
+                    SECOND APPROVAL REQUIRED — STARTED BY {String(g.firstApprover ?? "AN OFFICER").toUpperCase()}
+                    {g.firstApprovalAt ? ` ${g.firstApprovalAt.toUpperCase()}` : ""}. A DIFFERENT OFFICER MUST APPROVE IT.
                   </p>
                 ) : null}
                 <div className="flex items-start justify-between gap-3">
@@ -3057,13 +2927,13 @@ export function GateQueue({
                   {g.flags > 0 && (
                     <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-50 px-2 py-1 font-code text-[10px] font-bold tracking-[0.04em] text-brand-800">
                       <CircleAlert className="h-2.5 w-2.5" aria-hidden="true" />
-                      {g.flags} {g.flags === 1 ? "FLAG" : "FLAGS"}
+                      {g.flags} {g.flags === 1 ? "ISSUE" : "ISSUES"}
                     </span>
                   )}
                 </div>
                 <dl className="mt-3.5 grid grid-cols-2 gap-2 border-t border-ink-200/70 pt-3.5 font-code text-[10px] tracking-[0.04em] text-ink-700 dark:border-white/10 dark:text-ink-300">
                   <div>
-                    <dt className="text-ink-600 dark:text-ink-300">PROPOSED SUPPLIER</dt>
+                    <dt className="text-ink-600 dark:text-ink-300">SUPPLIER</dt>
                     <dd className="mt-0.5 font-semibold text-ink-800">{g.supplier}</dd>
                   </div>
                   <div>
@@ -3074,8 +2944,8 @@ export function GateQueue({
                   </div>
                 </dl>
                 {blocked && (
-                  <p className="mt-3.5 rounded-md border border-brand-200 bg-brand-50 px-2.5 py-1.5 font-code text-[10px] font-bold leading-relaxed tracking-[0.06em] text-brand-900 dark:border-brand-900 dark:bg-brand-950/40 dark:text-brand-200">
-                    QUORUM SHORT — {short} MORE PRESENT NEEDED BEFORE THIS GATE CAN BE DECIDED
+                  <p className="mt-3.5 rounded-md bg-brand-50 px-2.5 py-1.5 font-code text-[10px] font-bold leading-relaxed tracking-[0.06em] text-brand-900 dark:bg-brand-950/40 dark:text-brand-200">
+                    REQUIRED ATTENDANCE NOT MET — {short} MORE MEMBER{short === 1 ? "" : "S"} NEEDED BEFORE A DECISION
                   </p>
                 )}
                 {canSign ? (
@@ -3086,15 +2956,15 @@ export function GateQueue({
                     disabled={g.valueMissing || blocked}
                     title={
                       blocked
-                        ? `Quorum not present — ${presentCount} of ${quorum?.required ?? 0}. Mark members PRESENT in Committee before signing.`
-                        : g.valueMissing
-                          ? "A contract always has a contract value — record the award value before this is signed."
+                        ? `Required attendance not met — ${presentCount} of ${quorum?.required ?? 0} members present. Update attendance in Committee before approving.`
+                          : g.valueMissing
+                          ? "Enter the contract value before approving the award."
                           : undefined
                     }
                     className="focus-brand inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-brand-600 text-[12.5px] font-bold tracking-[0.02em] text-white shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_12px_26px_-14px_rgba(217,38,22,0.9)] transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Stamp className="h-3.5 w-3.5" aria-hidden="true" />
-                    {g.status === "AWAITING_SECOND" ? "Second signature" : "Award"}
+                    {g.status === "AWAITING_SECOND" ? "Record second approval" : "Approve award"}
                   </button>
                   {g.status !== "AWAITING_SECOND" ? (
                     <button
@@ -3103,18 +2973,18 @@ export function GateQueue({
                       disabled={blocked}
                       title={
                         blocked
-                          ? `Quorum not present — ${presentCount} of ${quorum?.required ?? 0}. Mark members PRESENT in Committee before deciding.`
+                          ? `Required attendance not met — ${presentCount} of ${quorum?.required ?? 0} members present. Update attendance in Committee before deciding.`
                           : undefined
                       }
                       className="focus-brand inline-flex min-h-11 flex-1 items-center justify-center rounded-full border border-ink-200/80 text-[12.5px] font-semibold text-ink-700 transition-colors hover:border-ink-400 hover:bg-white hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/12 dark:hover:bg-white/[0.04]"
                     >
-                      Return for review
+                      Return with notes
                     </button>
                   ) : null}
                 </div>
                 ) : (
                   <p className="mt-4 rounded-md border border-ink-200 bg-paper px-2.5 py-2 font-code text-[10px] font-bold leading-relaxed tracking-[0.04em] text-ink-700 dark:border-white/15 dark:bg-white/[0.03] dark:text-ink-300">
-                    READ-ONLY — YOUR WORKSPACE ROLE CANNOT SIGN THIS GATE
+                    VIEW ONLY — YOUR ROLE DOES NOT ALLOW YOU TO APPROVE THIS DECISION
                   </p>
                 )}
                 <p className="mt-3 type-micro text-ink-400">
@@ -3135,14 +3005,14 @@ export function GateQueue({
               <CircleCheck className="h-7 w-7 text-ink-400" aria-hidden="true" />
               <p className="mt-3 type-title text-ink-900">Nothing needs a decision.</p>
               <p className="mt-1.5 max-w-[240px] text-[12.5px] leading-relaxed text-ink-500">
-                No tender is waiting on you or the committee. The agent keeps preparing new files in the meantime.
+                No approval is awaiting action. You can continue with reviews already in progress.
               </p>
             </motion.div>
           )}
 
           {queue.length > 0 && visible.length === 0 && (
             <p className="rounded-xl border border-dashed border-ink-200 px-4 py-10 text-center font-code text-[10px] font-bold tracking-[0.06em] text-ink-600 dark:border-white/10 dark:text-ink-300">
-              NO GATE MATCHES “{q.trim().toUpperCase()}”
+              NO APPROVAL MATCHES “{q.trim().toUpperCase()}”
             </p>
           )}
         </div>
@@ -3177,14 +3047,14 @@ export function GateQueue({
                         hash: row.receipt?.hash,
                       })
                     }
-                    title="Open the decision receipt — the appended signature and its seal"
+                    title="Open the decision record and signature details"
                     className="focus-brand group inline-flex min-h-11 min-w-0 items-center gap-1.5 rounded px-1 text-left transition-colors hover:text-ink-950"
                   >
                     <span className="font-bold text-ink-800 group-hover:text-ink-950">{row.tender}</span>
                     {row.hand && <PenLine className="h-2.5 w-2.5 shrink-0 text-brand-600" aria-hidden="true" />}
                   </button>
                   <span className={cn("font-bold", row.action === "AWARDED" ? "text-ink-950" : "text-brand-600")}>
-                    {row.action}
+                    {row.action === "AWARDED" ? "Award approved" : "Returned for revision"}
                   </span>
                   <span className="ml-auto text-ink-400">
                     {row.by} · {row.at}
@@ -3514,7 +3384,7 @@ function OcpDatasetRow({
           </div>
           {override && (
             <p className="mt-1 font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600 dark:text-ink-300">
-              {enabled ? "IN USE" : "NOT READ BY THE AGENT"} — SET BY {override.by.toUpperCase() || "UNKNOWN"} · {codeStamp(override.at).toUpperCase()}
+              {enabled ? "IN USE" : "NOT USED IN REVIEWS"} — SET BY {override.by.toUpperCase() || "UNKNOWN"} · {codeStamp(override.at).toUpperCase()}
             </p>
           )}
         </div>
@@ -3561,7 +3431,7 @@ function OcpDatasetRow({
                 <span className="text-ink-600 dark:text-ink-300">
                   {" "}
                   {codeStamp(link.checkedAt)} · REGISTRY HTTP {link.registry.status} ·{" "}
-                  {Math.max(1, Math.round(link.registry.bytes / 1024))} KB READ · FIRST OCDS RELEASE{" "}
+                  {Math.max(1, Math.round(link.registry.bytes / 1024))} KB READ · FIRST DATASET RELEASE{" "}
                   {link.registry.ocid} ·{" "}
                 </span>
                 {link.portal.ok ? (
@@ -3966,13 +3836,13 @@ function StandingRuleCard() {
         className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand-500/70 to-transparent"
       />
       <div className="relative">
-        <h3 className="type-title">The standing rule</h3>
+        <h3 className="type-title">Award decision authority</h3>
         <p className="mt-3 font-code text-[10px] leading-[1.7] tracking-[0.08em] text-ink-400">
-          QUORUM PREPARES THE FILE.
+          QUORUM ORGANIZES THE REVIEW.
           <br />
-          IT NEVER AWARDS THE TENDER.
+          IT DOES NOT AWARD THE TENDER.
           <br />
-          <span className="text-brand-400">THE COMMITTEE SIGNS — THE AGENT NEVER DOES.</span>
+          <span className="text-brand-400">THE COMMITTEE MAKES THE AWARD DECISION.</span>
         </p>
         <a
           href="/docs#docs-safeguards"
@@ -3991,9 +3861,9 @@ function NewRunCard({ onNewRun }: { onNewRun: () => void }) {
     <div className="relative overflow-hidden rounded-[12px] border border-ink-950 bg-night p-5 text-white shadow-[0_22px_55px_rgba(11,12,15,0.3)]">
       <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
       <div className="relative">
-        <h3 className="font-display text-[15px] font-black tracking-[-0.01em]">Put the agent in a file</h3>
+        <h3 className="font-display text-[15px] font-black tracking-[-0.01em]">Run document checks</h3>
         <p className="mt-2.5 text-[12.5px] leading-relaxed text-ink-300">
-          Point Quorum at a tender — OCDS, a PDF pack or the email bag. Findings appear here as the agent reads the file.
+          Check tender documents against selected requirements. Bidder scoring and AI recommendations are in Tender workflow → Bid evaluation.
         </p>
         <button
           type="button"
@@ -4001,7 +3871,7 @@ function NewRunCard({ onNewRun }: { onNewRun: () => void }) {
           className="focus-brand mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-brand-600 px-4 font-code text-[10px] font-bold tracking-[0.04em] text-white transition-colors hover:bg-brand-700"
         >
           <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-          QUEUE A RUN
+          RUN DOCUMENT CHECKS
         </button>
       </div>
     </div>
@@ -4011,13 +3881,13 @@ function NewRunCard({ onNewRun }: { onNewRun: () => void }) {
 function GavelProtocolCard() {
   return (
     <div className="rounded-[12px] panel p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
-      <h3 className="font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">The gavel protocol</h3>
+        <h3 className="font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">Committee approval process</h3>
       <ol className="mt-4 space-y-3">
         {[
-          "THE AGENT QUEUES THE FILE AT THE GATE",
-          "THE COMMITTEE READS THE CITED FLAGS",
-          "AWARD OR RETURN — BY NAMED HUMANS",
-          "THE LEDGER LOGS IT, PERMANENTLY",
+          "REVIEW FINDINGS ARE READY FOR APPROVAL",
+          "THE COMMITTEE REVIEWS THE EVIDENCE",
+          "THE AUTHORISED COMMITTEE RECORDS ITS DECISION",
+          "THE AUDIT HISTORY PRESERVES THE RECORD",
         ].map((step, i) => (
           <li key={step} className="flex gap-3 font-code text-[10px] tracking-[0.04em] text-ink-700">
             <span className="shrink-0 font-bold text-brand-600">0{i + 1}</span>
@@ -4100,7 +3970,7 @@ function FindingsView({ rows, onOpenRun }: { rows: FindingRow[]; onOpenRun: () =
     <ViewShell
       fig="08"
       title="Findings"
-      sub="Every flag the agent has raised — classed, cited, and traceable to the page it came from. When the committee clears a gate, its flags clear with it."
+      sub="Review issues are grouped by category and linked to the page or source behind them. Committee members can record how each issue was handled."
     >
       <div className="grid grid-cols-1 gap-4 sm:gap-6">
         <div className="min-w-0">
@@ -4109,7 +3979,7 @@ function FindingsView({ rows, onOpenRun }: { rows: FindingRow[]; onOpenRun: () =
               <div>
                 <h2 className="font-display text-[17px] font-black tracking-[-0.01em] text-ink-950">All findings</h2>
                 <p className="mt-1 font-code text-[10px] tracking-[0.04em] text-ink-600">
-                  {rows.length} FLAGS · {open} OPEN · {rows.filter((x) => !x.src).length} UNSOURCED
+                  {rows.length} ISSUES · {open} OPEN · {rows.filter((x) => !x.src).length} WITHOUT A SOURCE
                 </p>
               </div>
               <div data-tour="findings-filters" className="flex items-center gap-1.5" role="group" aria-label="Filter findings by status">
@@ -4243,7 +4113,7 @@ function FindingsView({ rows, onOpenRun }: { rows: FindingRow[]; onOpenRun: () =
    sha-256 of the sealed bundle computed by the filing graph. Nothing in the
    UI synthesizes a hash; until the gate signs, the pack says so. */
 function sealText(run: Pick<McRun, "seal">): string {
-  return run.seal ? `seal ${run.seal}` : "unsealed — seals at the gate";
+  return run.seal ? "APPROVAL RECORDED — FINAL REPORT" : "DRAFT REPORT — AWAITING APPROVAL";
 }
 
 /* The sealed pack leaves the desk as a real file — the evidence, portable.
@@ -4251,25 +4121,25 @@ function sealText(run: Pick<McRun, "seal">): string {
    seal is the sidecar's receipt hash. Nothing is estimated. */
 function packMarkdown(run: McRun, findings: SeedFinding[], verdict: "AWARDED" | "RETURNED" | null): string {
   const lines = [
-    `# Quorum — committee pack · ${run.reference ?? run.id}`,
+    `# Quorum — tender review report · ${run.reference ?? run.id}`,
     "",
-    `- Run record: ${run.uid ?? run.id}`,
-    `- Status: SEALED${verdict ? ` · ${verdict}` : " AT THE GATE"}`,
-    `- Findings: ${run.findings} · Citations: ${run.citations} · Unsourced: ${run.unsourced}`,
-    `- ${run.seal ? `Seal: ${run.seal}` : "Seal: pending gate signature"}${run.sealedBy ? ` · signed by ${run.sealedBy}` : ""}`,
+    `- Review reference: ${run.reference ?? run.id}`,
+    `- Approval status: ${verdict === "AWARDED" ? "Award approved" : verdict === "RETURNED" ? "Returned for revision" : "Awaiting committee approval"}`,
+    `- Findings: ${run.findings} · With sources: ${run.citations} · Without a source: ${run.unsourced}`,
+    `- Record integrity code: ${run.seal ?? "Available after approval"}${run.sealedBy ? ` · approved by ${run.sealedBy}` : ""}`,
     "",
-    "## Sourced findings",
+    "## Findings and sources",
     ...(findings.length
       ? findings.map((f) => `- [${f.cls}] ${f.note}${f.src ? ` — ${f.src}` : " — NO SOURCE ON FILE"}`)
-      : ["- The bound findings are listed in the sealed file."]),
+      : ["- All findings are listed in this report."]),
     "",
     "## Audit trail",
     "- Every finding above cites the page, clause or registry ID it was read from.",
-    `- Decision: ${verdict ? `${verdict} — signed at the gate.` : "seals at the gate."}`,
+    `- Decision: ${verdict === "AWARDED" ? "Award approved" : verdict === "RETURNED" ? "Returned for revision" : "Awaiting committee approval"}`,
   ];
   const base = lines.join("\n");
   const kb = (new TextEncoder().encode(base).length / 1024).toFixed(1);
-  lines.push("", `- Pack size: ${kb} KB as downloaded · verify the seal against the audit log (Tools & models).`);
+  lines.push("", `- Report size: ${kb} KB · check the record integrity code in the Activity log.`);
   return lines.join("\n");
 }
 
@@ -4344,8 +4214,7 @@ function PackPreviewModal({
                   Committee pack — draft
                 </h3>
                 <p className="mt-2 max-w-xl text-[12.5px] leading-relaxed text-ink-500">
-                  The pack is drafted in full. Nothing leaves the desk until the gate signs — this sheet is exactly what
-                  the sealed file will carry.
+                  The packet is ready for review. It will be submitted only after an authorized officer approves it; this preview shows what the committee will receive.
                 </p>
               </div>
               <button
@@ -4379,22 +4248,22 @@ function PackPreviewModal({
                   </div>
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">
                     <Lock className="h-2.5 w-2.5" aria-hidden="true" />
-                    UNSEALED · PENDING GATE
+                    DRAFT REPORT · AWAITING APPROVAL
                   </span>
                 </div>
 
                 <p className="mt-4 font-code text-[10px] tracking-[0.14em] text-ink-400">TENDER</p>
                 <p className="mt-1 font-display text-[24px] font-black tracking-[-0.02em] text-ink-950">{run.reference ?? run.id}</p>
                 <p className="mt-1 font-code text-[10px] tracking-[0.08em] text-ink-500">
-                  RUN {run.uid ?? run.id} · STARTED {run.startedAt} · PREPARED FOR THE COMMITTEE
+                  REVIEW STARTED {run.startedAt} · PREPARED FOR THE COMMITTEE
                 </p>
 
                 <dl className="mt-5 grid grid-cols-2 gap-3 border-y border-ink-950/10 py-3.5 sm:grid-cols-4">
                   {[
                     { k: "FINDINGS", v: String(run.findings), tone: "text-ink-950" },
-                    { k: "CITED", v: String(run.citations), tone: "text-ink-950" },
-                    { k: "UNSOURCED", v: String(run.unsourced), tone: "text-brand-700" },
-                    { k: "SEAL", v: run.seal ? `${run.seal.slice(0, 10)}…` : "PENDING", tone: "text-ink-950" },
+                    { k: "WITH SOURCES", v: String(run.citations), tone: "text-ink-950" },
+                    { k: "WITHOUT SOURCE", v: String(run.unsourced), tone: "text-brand-700" },
+                    { k: "RECORD CODE", v: run.seal ? `${run.seal.slice(0, 10)}…` : "AFTER APPROVAL", tone: "text-ink-950" },
                   ].map((cell) => (
                     <div key={cell.k}>
                       <dt className="font-code text-[10px] tracking-[0.1em] text-ink-500">{cell.k}</dt>
@@ -4407,28 +4276,28 @@ function PackPreviewModal({
                   {run.sealedBy ? ` · BY ${run.sealedBy.toUpperCase()}` : ""}
                 </p>
 
-                <p className="mt-5 font-code text-[10px] font-bold tracking-[0.14em] text-ink-950">THE PACK BINDS</p>
+                <p className="mt-5 font-code text-[10px] font-bold tracking-[0.14em] text-ink-950">INCLUDED IN THIS REPORT</p>
                 <ul className="mt-2.5 space-y-2">
                   {[
                     {
                       n: "01",
-                      t: `${run.findings} sourced findings`,
-                      d: "classed and cited to the page, clause or registry each was read from.",
+                      t: `${run.findings} findings`,
+                      d: "grouped by category and linked to the page or source behind each issue.",
                     },
                     {
                       n: "02",
                       t: `${run.citations} citations`,
-                      d: "the evidence behind every finding, filed with the run.",
+                      d: "the supporting evidence for this review.",
                     },
                     {
                       n: "03",
-                      t: run.seal ? `Audit seal · ${run.seal}` : "Audit seal · applied at the gate",
-                      d: "a sha-256 of the sealed bundle — verify it against the audit log.",
+                      t: run.seal ? `Record integrity code · ${run.seal}` : "Record integrity code · available after approval",
+                      d: "a unique code that helps confirm the report has not changed.",
                     },
                     {
                       n: "04",
                       t: "Decision sheet",
-                      d: "unsigned — the committee's signature seals the pack.",
+                      d: "the committee's decision and the name of the approving officer.",
                     },
                   ].map((item) => (
                     <li key={item.n} className="flex items-baseline gap-2.5">
@@ -4442,7 +4311,7 @@ function PackPreviewModal({
                 </ul>
 
                 <p className="mt-5 font-code text-[10px] font-bold tracking-[0.14em] text-ink-950">
-                  FIRST FINDINGS, AS THEY&apos;LL SEAL
+                  FINDINGS IN THIS REPORT
                 </p>
                 <ul className="mt-2.5 space-y-2.5">
                   {shown.map((f, i) => (
@@ -4460,13 +4329,13 @@ function PackPreviewModal({
                   ))}
                   {rows.length === 0 && (
                     <li className="font-code text-[10px] tracking-[0.08em] text-ink-500">
-                      FINDING DETAIL BINDS AT SEAL TIME
+                      FINDING DETAILS WILL APPEAR WHEN THE REVIEW IS COMPLETE
                     </li>
                   )}
                 </ul>
                 {rows.length > shown.length && (
                   <p className="mt-2.5 font-code text-[10px] tracking-[0.08em] text-ink-500">
-                    + {rows.length - shown.length} MORE FINDINGS — ALL BOUND IN THE SEALED PACK
+                    + {rows.length - shown.length} MORE FINDINGS IN THIS REPORT
                   </p>
                 )}
 
@@ -4476,9 +4345,9 @@ function PackPreviewModal({
                       <Lock className="h-3.5 w-3.5" aria-hidden="true" />
                     </span>
                     <div>
-                      <p className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-950">EXPORT LOCKED</p>
+                      <p className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-950">REPORT NOT FINAL</p>
                       <p className="mt-0.5 text-[11.5px] leading-snug text-ink-500">
-                        Seals the moment the committee signs at the gate.
+                        Download is available after the committee records its decision.
                       </p>
                     </div>
                   </div>
@@ -4488,7 +4357,7 @@ function PackPreviewModal({
                     className="inline-flex min-h-11 cursor-not-allowed items-center gap-1.5 rounded-lg border border-ink-100 px-3 font-code text-[10px] font-bold tracking-[0.06em] text-ink-500"
                   >
                     <Lock className="h-3 w-3" aria-hidden="true" />
-                    UNLOCKS ON SIGNATURE
+                    AVAILABLE AFTER APPROVAL
                   </button>
                 </div>
               </div>
@@ -4496,7 +4365,7 @@ function PackPreviewModal({
 
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
               <p className="max-w-sm text-[11.5px] leading-relaxed text-ink-400">
-                The verdict prints on the cover once the gate records it — AWARDED or RETURNED.
+                The committee’s decision appears here after it is recorded.
               </p>
               <div className="flex items-center gap-2">
                 {run.status === "gate" && (
@@ -4572,15 +4441,15 @@ function ReportPacksView({
     })
       .then(async (r) => {
         if (r.status === 401) {
-          onToast("SIGN IN FIRST — BINDING IS RECORDED IN THE AUDIT LOG");
+          onToast("SIGN IN TO PREPARE REPORTS");
           return;
         }
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const j = (await r.json()) as { queuedAt: string; by?: string };
         setBinding(j);
-        onToast(`PACK BINDING QUEUED — ${new Date(j.queuedAt).toLocaleTimeString()} · IN THE AUDIT LOG`);
+        onToast(`REPORT PREPARATION STARTED — ${new Date(j.queuedAt).toLocaleTimeString()}`);
       })
-      .catch(() => onToast("BINDING FAILED — AGENT SERVICE UNREACHABLE"));
+      .catch(() => onToast("COULD NOT PREPARE REPORTS — REVIEW SERVICE UNAVAILABLE"));
   };
 
   return (
@@ -4588,16 +4457,15 @@ function ReportPacksView({
     <ViewShell
       fig="09"
       title="Reports"
-      sub="The sourced report is the deliverable — findings, citations and the audit hash, bound to each evaluation. A pack seals the moment the committee signs; after that it is evidence, not a document."
+      sub="View one report for each tender review. Reports include the findings, source references and the committee’s recorded decision."
     >
       <div data-tour="reports-intro" className="relative overflow-hidden rounded-[12px] border border-ink-950 bg-night p-5 text-white shadow-[0_22px_55px_rgba(11,12,15,0.3)] sm:p-6">
         <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h3 className="font-display text-[15px] font-black tracking-[-0.01em]">The committee pack</h3>
+            <h3 className="font-display text-[15px] font-black tracking-[-0.01em]">Reports for committee review</h3>
             <p className="mt-2 max-w-md text-[12.5px] leading-relaxed text-ink-300">
-              Every sealed report for the sitting, bound into one cited file with a shared audit hash — the pack the
-              committee actually reads.
+              Bring the findings and source references together so committee members can review the tender and make an informed decision.
             </p>
           </div>
           <button
@@ -4606,7 +4474,7 @@ function ReportPacksView({
             className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-4 font-code text-[10px] font-bold tracking-[0.06em] text-white transition-colors hover:bg-brand-700"
           >
             <Files className="h-3.5 w-3.5" aria-hidden="true" />
-            QUEUE BINDING
+              PREPARE REPORTS
           </button>
         </div>
         {binding && (
@@ -4623,9 +4491,9 @@ function ReportPacksView({
           const v = verdicts[run.id];
           const decision =
             v === "AWARDED"
-              ? "AWARDED — SIGNED AT THE GATE"
+              ? "AWARD APPROVED"
               : v === "RETURNED"
-                ? "RETURNED — RE-FILED AFTER CLARIFICATION"
+                ? "RETURNED FOR REVISION"
                 : null;
           const packFindings = findings.filter((f) => f.run === run.id);
           return (
@@ -4644,12 +4512,12 @@ function ReportPacksView({
                       <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-brand-500" aria-hidden="true" />
                       <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-600" aria-hidden="true" />
                     </span>
-                    ASSEMBLING
+                    AWAITING APPROVAL
                   </span>
                 ) : (
                   <span className="inline-flex min-h-6 items-center gap-1 rounded-full bg-ink-950 px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.06em] text-white">
                     <CircleCheck className="h-2.5 w-2.5" aria-hidden="true" />
-                    SEALED
+                    FINAL REPORT
                   </span>
                 )}
               </div>
@@ -4660,11 +4528,11 @@ function ReportPacksView({
                   <dd className="mt-1 text-[13px] font-bold text-ink-950 tabular">{run.findings}</dd>
                 </div>
                 <div>
-                  <dt className="text-ink-500">CITED</dt>
+                  <dt className="text-ink-500">WITH SOURCES</dt>
                   <dd className="mt-1 text-[13px] font-bold text-ink-950 tabular">{run.citations}</dd>
                 </div>
                 <div>
-                  <dt className="text-ink-500">UNSOURCED</dt>
+                  <dt className="text-ink-500">WITHOUT SOURCE</dt>
                   <dd className="mt-1 text-[13px] font-bold text-brand-700 tabular">{run.unsourced}</dd>
                 </div>
               </dl>
@@ -4686,22 +4554,22 @@ function ReportPacksView({
                     className="focus-brand inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg border border-ink-200 px-3 font-code text-[10.5px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-400 hover:text-ink-900"
                   >
                     <Eye className="h-3 w-3" aria-hidden="true" />
-                    PREVIEW ONLY
+                    PREVIEW REPORT
                   </button>
                 ) : (
                   <button
                     type="button"
                     onClick={() => {
                       downloadText(
-                        `quorum-${(run.reference ?? run.id).replace(/[^\w-]+/g, "-")}-pack.md`,
+                        `quorum-${(run.reference ?? run.id).replace(/[^\w-]+/g, "-")}-report.md`,
                         packMarkdown(run, packFindings, v ?? null),
                       );
-                      onToast(`PACK DOWNLOADED — ${run.reference ?? run.id} · MARKDOWN + AUDIT HASH`);
+                      onToast(`REPORT DOWNLOADED — ${run.reference ?? run.id}`);
                     }}
                     className="focus-brand inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg bg-ink-950 px-3 font-code text-[10.5px] font-bold tracking-[0.06em] text-white transition-colors hover:bg-brand-600"
                   >
                     <Download className="h-3 w-3" aria-hidden="true" />
-                    DOWNLOAD PACK
+                    DOWNLOAD REPORT
                   </button>
                 )}
                 <button
@@ -4798,7 +4666,7 @@ function RequestsPanel({ requests }: { requests: SourceRequestRow[] }) {
 }
 
 function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; firstName: string }) {
-  const standards = ["OCDS 1.1", "MCP TOOLS", "LLM DRAFTING", "PAGE CITATIONS"];
+  const standards = ["Open Contracting Data Standard", "Official procurement sources", "Page and source references", "Human approval required"];
   const { data: registry, failed: registryFailed, reload: reloadRegistry, setData: setRegistry } = useOcpRegistry();
   const [connecting, setConnecting] = useState(false);
   const [connectProgress, setConnectProgress] = useState<{ done: number; total: number } | null>(null);
@@ -4966,9 +4834,9 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
           if (!single) setConnectProgress({ done: Math.min(i + chunk.length, ids.length), total: ids.length });
         }
         reloadRegistry();
-        onToast(single ? "PORTAL RE-CHECKED — THE RESULT IS SAVED" : "CONNECTION PASS COMPLETE — EVERY CHECK IS SAVED");
+        onToast(single ? "SOURCE CHECK COMPLETE — RESULT SAVED" : "SOURCE CHECKS COMPLETE — RESULTS SAVED");
       } catch {
-        onToast("THE CONNECTION CHECK COULD NOT RUN — NOTHING WAS RECORDED");
+        onToast("SOURCE CHECK COULD NOT COMPLETE — PLEASE TRY AGAIN");
       } finally {
         setConnecting(false);
         setConnectProgress(null);
@@ -4991,7 +4859,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
       const d = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
       if (!res.ok || !d?.ok) throw new Error(d?.error || `HTTP ${res.status}`);
       reloadRegistry();
-      onToast("OCP REGISTRY REFRESHED — THE LIVE SNAPSHOT IS UPDATED");
+      onToast("OPEN CONTRACTING DATA REGISTRY UPDATED");
     } catch {
       reloadRegistry();
       onToast("THE REGISTRY REFRESH FAILED — THE LAST SNAPSHOT IS STILL IN USE");
@@ -5003,8 +4871,8 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
   return (
     <ViewShell
       fig="10"
-      title="Data Sources"
-      sub="A finding is only as lawful as its source. Every bid is read against national portals, supplier registries and the OCDS record — and each finding cites which."
+      title="Source records"
+      sub="Check tender details against official procurement data and supplier registers. Each finding links to the source used in its review."
       action={
         <button
           type="button"
@@ -5027,7 +4895,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
             className="rounded-[12px] panel p-4 shadow-[0_1px_2px_rgba(11,12,15,0.04)]"
           >
             <p className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-900">{s}</p>
-            <p className="mt-1.5 font-code text-[10px] tracking-[0.06em] text-ink-500">STANDARD {String(i + 1).padStart(2, "0")}</p>
+            <p className="mt-1.5 font-code text-[10px] tracking-[0.06em] text-ink-500">REVIEW FOUNDATION {String(i + 1).padStart(2, "0")}</p>
           </motion.div>
         ))}
       </div>
@@ -5046,20 +4914,20 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
                       } NO LONGER UPDATED${disabledCount > 0 ? ` · ${disabledCount} SWITCHED OFF` : ""}`
                     : registryFailed
                       ? "THE REGISTRY SNAPSHOT COULD NOT BE READ"
-                      : "READING THE OCP DATA REGISTRY…"}
+                      : "READING THE OPEN CONTRACTING DATA REGISTRY…"}
                 </p>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
                 <span className="inline-flex min-h-8 items-center gap-2 rounded-full border border-ink-200 bg-white px-3 py-1.5 font-code text-[10px] font-semibold tracking-[0.05em] text-ink-700">
                   <span className="h-1.5 w-1.5 rounded-full bg-ink-950" aria-hidden="true" />
-                  OCP REGISTRY{registry ? ` · ${codeDate(registry.source.retrieved)}` : ""}
+                  OPEN CONTRACTING DATA REGISTRY{registry ? ` · ${codeDate(registry.source.retrieved)}` : ""}
                 </span>
                 <button
                   type="button"
                   onClick={() => void refreshNow()}
                   disabled={refreshing || Boolean(refresh?.running)}
                   className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 font-code text-[10.5px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-50"
-                  title="Refresh the OCP registry snapshot now — the source pages are read again and the new record is saved"
+                  title="Refresh the Open Contracting Data Registry — source pages are checked again and the latest record is saved"
                 >
                   <RefreshCw
                     className={cn("h-3 w-3", (refreshing || refresh?.running) && "animate-spin")}
@@ -5075,7 +4943,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
                   title={
                     disabledCount === datasets.length
                       ? "Every portal is switched off — turn one on and the connection pass can run again"
-                      : "Open every published file in use, read its first OCDS release, and check the publisher's portal — each result is dated and saved. Portals switched off are skipped."
+                      : "Open each published dataset, read its first tender record, and check the publisher's website. Results are dated and saved; disabled sources are skipped."
                   }
                 >
                   {connecting ? (
@@ -5094,7 +4962,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
             {registryFailed && !registry ? (
               <div className="flex flex-wrap items-center gap-3 px-5 py-5">
                 <p className="min-w-0 flex-1 font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600">
-                  THE OCP DATA REGISTRY SNAPSHOT COULD NOT BE READ — THE quorum-mcp SIDECAR IS NOT RESPONDING
+                  The Open Contracting data list is temporarily unavailable. Try again shortly.
                 </p>
                 <button
                   type="button"
@@ -5120,7 +4988,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
             )}
             <footer className="border-t border-ink-100 bg-sand px-5 py-3.5">
               <p className="font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600">
-                READ FROM THE OCP DATA REGISTRY ·{" "}
+                SOURCE: OPEN CONTRACTING DATA REGISTRY ·{" "}
                 <a
                   href="https://data.open-contracting.org/en/search/"
                   target="_blank"
@@ -5138,10 +5006,10 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
                   : "EVERY FIELD IS THE REGISTRY'S OWN — COUNTRIES, PUBLISHERS, COVERAGE, RETRIEVALS, FORMATS, LICENCES AND COUNTS."}
                 <br />
                 {registry
-                  ? `CONNECTIONS · EVERY DATASET OPENED AND ITS FIRST OCDS RELEASE READ · ${linkedCount}/${registry.datasets.length} LINKED · ${portalUpCount}/${registry.datasets.length} PUBLISHER PORTALS ANSWERED${disabledCount > 0 ? ` · ${disabledCount} SWITCHED OFF AND SKIPPED BY THE PASS` : ""} · LAST CHECK ${
+                  ? `SOURCE CHECKS · ${linkedCount}/${registry.datasets.length} DATASETS OPENED · ${portalUpCount}/${registry.datasets.length} PUBLISHER WEBSITES REPLIED${disabledCount > 0 ? ` · ${disabledCount} DISABLED AND SKIPPED` : ""} · LAST CHECK ${
                       registry.links.updatedAt ? codeStamp(registry.links.updatedAt) : "NOT YET"
                     }`
-                  : "CONNECTIONS · THE SIDECAR OPENS EVERY PUBLISHED FILE AND CHECKS EACH PUBLISHER PORTAL."}
+                  : "SOURCE CHECKS · QUORUM OPENS EACH DATASET AND CHECKS ITS PUBLISHER WEBSITE."}
                 <br />
                 {refreshStatusLine(refresh)}
               </p>
@@ -5161,7 +5029,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
                       } NO LONGER UPDATED${globalDisabledCount > 0 ? ` · ${globalDisabledCount} SWITCHED OFF` : ""}`
                     : registryFailed
                       ? "THE GLOBAL SNAPSHOT COULD NOT BE READ"
-                      : "READING THE OCP DATA REGISTRY…"}
+                      : "READING THE OPEN CONTRACTING DATA REGISTRY…"}
                 </p>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
@@ -5177,7 +5045,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
                   title={
                     globalDisabledCount === globalDatasets.length
                       ? "Every global portal is switched off — turn one on and the connection pass can run again"
-                      : "Open every global published file in use, read its first OCDS release, and check the publisher's portal — each result is dated and saved"
+                      : "Open each published dataset, read its first tender record, and check the publisher's website. Results are dated and saved."
                   }
                 >
                   {connecting ? (
@@ -5196,7 +5064,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
             {registryFailed && !registry ? (
               <div className="flex flex-wrap items-center gap-3 px-5 py-5">
                 <p className="min-w-0 flex-1 font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600">
-                  THE GLOBAL SNAPSHOT COULD NOT BE READ — THE quorum-mcp SIDECAR IS NOT RESPONDING
+                  The global procurement data list is temporarily unavailable. Try again shortly.
                 </p>
                 <button
                   type="button"
@@ -5208,7 +5076,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
                 </button>
               </div>
             ) : !registry ? (
-              <p className="px-5 py-6 font-code text-[10px] tracking-[0.04em] text-ink-600">READING THE OCP DATA REGISTRY…</p>
+              <p className="px-5 py-6 font-code text-[10px] tracking-[0.04em] text-ink-600">READING THE OPEN CONTRACTING DATA REGISTRY…</p>
             ) : globalDatasets.length === 0 ? (
               <p className="px-5 py-6 font-code text-[10px] tracking-[0.04em] text-ink-600">NO GLOBAL SNAPSHOT IS PRESENT — REFRESH THE REGISTRY</p>
             ) : (
@@ -5248,8 +5116,8 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
             )}
             <footer className="border-t border-ink-100 bg-sand px-5 py-3.5">
               <p className="font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600">
-                SAME OCP RETRIEVAL AS THE AFRICAN DESK ·{" "}
-                {global ? `${global.source.scope.toUpperCase()} · RETRIEVED ${codeDate(global.source.retrieved)}` : "READ FROM THE OCP DATA REGISTRY"}
+                SAME OPEN CONTRACTING DATA REGISTRY ·{" "}
+                {global ? `${global.source.scope.toUpperCase()} · RETRIEVED ${codeDate(global.source.retrieved)}` : "SOURCE: OPEN CONTRACTING DATA REGISTRY"}
                 <br />
                 {global
                   ? `GLOBAL CONNECTIONS · ${globalLinkedCount}/${globalDatasets.length} LINKED · ${globalPortalUpCount}/${globalDatasets.length} PUBLISHER PORTALS ANSWERED${globalDisabledCount > 0 ? ` · ${globalDisabledCount} SWITCHED OFF AND SKIPPED BY THE PASS` : ""}`
@@ -5269,7 +5137,7 @@ function SourcesView({ onToast, firstName }: { onToast: (m: string) => void; fir
           <div className="flex items-start gap-3 rounded-[10px] border border-ink-100 bg-sand p-5">
             <ShieldCheck className="h-4 w-4 shrink-0 text-brand-700" aria-hidden="true" />
               <p className="font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600">
-              AUDIT LOGS sha256-SEALED · ON-PREM READY · NO TRACKERS
+              VERIFIABLE AUDIT RECORDS · ON-PREMISES DEPLOYMENT · NO TRACKERS
             </p>
           </div>
         </div>
@@ -5427,8 +5295,8 @@ function AwardLedgerView({
   return (
     <ViewShell
       fig="11"
-      title="Award History"
-      sub="Every decision made at a gate — who signed, what they signed, and when. The agent writes everything else; only this page carries the gavel."
+      title="Award history"
+      sub="See each award or return decision, who made it and when. Open a decision to review its supporting record."
     >
       <div className="grid grid-cols-1 gap-4 sm:gap-6">
         <div className="min-w-0 space-y-4 sm:space-y-6">
@@ -5437,7 +5305,7 @@ function AwardLedgerView({
               { label: "DECISIONS LOGGED", value: ledger.length },
               { label: "AWARDED", value: awarded },
               { label: "RETURNED", value: returned },
-              { label: "AWAITING GATE", value: awaiting },
+              { label: "AWAITING APPROVAL", value: awaiting },
             ].map((s, i) => (
               <motion.div
                 key={s.label}
@@ -5455,7 +5323,7 @@ function AwardLedgerView({
           <div data-tour="ledger-rows" className="overflow-hidden rounded-[12px] panel shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
             <HorizontalScrollRegion label="Award history table">
               <table className="w-full min-w-[640px] border-collapse text-left">
-                <caption className="sr-only">Award History — decisions signed at the approval gate</caption>
+                <caption className="sr-only">Award history — recorded award and return decisions</caption>
                 <thead>
                   <tr className="border-b border-ink-100 bg-paper/60">
                     {["TENDER", "DECISION", "SIGNED BY", "LOGGED", "INK"].map((h) => (
@@ -5487,7 +5355,7 @@ function AwardLedgerView({
                           hash: row.receipt?.hash,
                         })
                       }
-                      title="Open the decision receipt — the appended signature and its seal"
+                      title="Open the decision record and signature details"
                       className="cursor-pointer border-b border-ink-100 transition-colors last:border-b-0 hover:bg-paper"
                     >
                       <td className="py-3.5 pl-5 pr-4 font-code text-[10px] font-bold tracking-[0.08em] text-ink-950">
@@ -5507,7 +5375,7 @@ function AwardLedgerView({
                           ) : (
                             <CircleAlert className="h-2.5 w-2.5" aria-hidden="true" />
                           )}
-                          {row.action}
+                          {row.action === "AWARDED" ? "Awarded" : "Returned for revision"}
                         </span>
                       </td>
                       <td className="px-4 text-[13px] font-semibold text-ink-700">{row.by}</td>
@@ -5527,7 +5395,7 @@ function AwardLedgerView({
                   {ledger.length === 0 && (
                     <tr>
                       <td colSpan={5} className="px-5 py-10 text-center font-code text-[10px] tracking-[0.18em] text-ink-400">
-                        THE LEDGER IS BLANK — DECISIONS APPEAR THE MOMENT A GATE SIGNS
+                        No decisions recorded yet. Award and return decisions will appear here.
                       </td>
                     </tr>
                   )}
@@ -5541,13 +5409,13 @@ function AwardLedgerView({
           <div className="relative overflow-hidden rounded-[12px] border border-ink-950 bg-night p-5 text-white shadow-[0_22px_55px_rgba(11,12,15,0.3)]">
             <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
             <div className="relative">
-              <h3 className="font-display text-[15px] font-black tracking-[-0.01em]">The gavel has no autoplay</h3>
+              <h3 className="font-display text-[15px] font-black tracking-[-0.01em]">People make the award decision</h3>
               <p className="mt-3 font-code text-[10px] leading-[1.7] tracking-[0.08em] text-ink-400">
-                EVERY LINE CARRIES A NAME
+                EVERY DECISION HAS A NAME
                 <br />
-                AND A TIMESTAMP.
+                AND A DATE.
                 <br />
-                <span className="text-brand-400">THE AGENT PREPARES, FLAGS AND CITES — IT CAN NEVER SIGN.</span>
+                <span className="text-brand-400">AUTOMATED CHECKS SUPPORT THE REVIEW. AUTHORISED OFFICIALS DECIDE.</span>
               </p>
             </div>
           </div>
@@ -5657,7 +5525,7 @@ function minutesMarkdown(s: SittingView): string {
     `- Room: ${s.joinUrl} (Jitsi Meet — open source, Apache-2.0)`,
     s.status === "OPEN"
       ? "- Status: OPEN — the room is live"
-      : `- Status: SEALED${s.closedAt ? ` at ${dayOf(s.closedAt)}, ${summonsClock(s.closedAt)}` : ""}`,
+      : `- Status: CLOSED${s.closedAt ? ` at ${dayOf(s.closedAt)}, ${summonsClock(s.closedAt)}` : ""}`,
     ...(s.agenda ? [`- Agenda: ${s.agenda}`] : []),
     "",
     "## The door — admitted to the meeting",
@@ -5672,7 +5540,7 @@ function minutesMarkdown(s: SittingView): string {
         }`,
     ),
     "",
-    "## The minutes — written from the Quorum desk",
+    "## Meeting minutes — Quorum procurement workspace",
     s.notes.trim() ? s.notes.trim() : "(no minutes were written)",
   ];
   if (s.notesUpdatedAt) {
@@ -5824,9 +5692,9 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
       onToast(
         d.minted
           ? d.open === 0
-            ? "QUORUM PRESENT — ROOM MINTED; THE SITTING CAN PROCEED"
-            : `SITTING SUMMONS ISSUED — ROOM MINTED; ${d.open} SEAT${d.open === 1 ? "" : "S"} STILL PENDING QUORUM CALL`
-          : "A SITTING IS ALREADY OPEN — ITS ROOM IS ON THE DESK"
+            ? "MEETING STARTED — REQUIRED ATTENDANCE MET"
+            : `MEETING STARTED — ${d.open} MEMBER${d.open === 1 ? "" : "S"} STILL NEEDED FOR REQUIRED ATTENDANCE`
+          : "A COMMITTEE MEETING IS ALREADY OPEN"
       );
       if (d.minted) {
         setTab("desk");
@@ -5836,7 +5704,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
         }, 180);
       }
     } catch {
-      onToast("SUMMONS FAILED — COMMITTEE SERVICE UNREACHABLE");
+      onToast("COULD NOT START THE COMMITTEE MEETING — PLEASE TRY AGAIN");
     } finally {
       setSummoning(false);
     }
@@ -5884,9 +5752,9 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
       const d = (await res.json()) as CommitteeData | { error: string };
       if (!res.ok || "error" in d) throw new Error("failed");
       setData(d);
-      onToast(admitted ? "ADMITTED — ON THE DOOR RECORD" : "ADMISSION WITHDRAWN — THE DOOR NARROWS");
+      onToast(admitted ? "MEMBER ADDED TO ATTENDANCE" : "MEMBER REMOVED FROM ATTENDANCE");
     } catch {
-      onToast("THE DOOR REFUSED THE CHANGE — RETRY");
+      onToast("COULD NOT UPDATE ATTENDANCE — PLEASE TRY AGAIN");
     } finally {
       setAdmitBusy(null);
     }
@@ -5912,9 +5780,9 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
       const d = (await res.json()) as CommitteeData | { error: string };
       if (!res.ok || "error" in d) throw new Error("failed");
       setData(d);
-      onToast("SITTING SEALED — THE MINUTES ARE EVIDENCE NOW");
+      onToast("MEETING CLOSED — MINUTES SAVED");
     } catch {
-      onToast("THE SEAL FAILED — THE SITTING STAYS OPEN");
+      onToast("COULD NOT CLOSE THE MEETING — PLEASE TRY AGAIN");
     }
   };
 
@@ -5924,7 +5792,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
       await navigator.clipboard.writeText(deskSitting.joinUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2400);
-      onToast("ROOM LINK COPIED — SHARE IT ONLY WITH THE REGISTER");
+      onToast("MEETING LINK COPIED — SHARE IT WITH INVITED MEMBERS");
     } catch {
       onToast("COPY REFUSED BY THE BROWSER — SELECT THE ADDRESS BY HAND");
     }
@@ -5933,14 +5801,14 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
   const downloadMinutes = () => {
     if (!deskSitting) return;
     downloadText(`quorum-${deskSitting.room}-minutes.md`, minutesMarkdown(deskSitting));
-    onToast("MINUTES DOWNLOADED — MARKDOWN, READY FOR THE FILE");
+      onToast("MEETING MINUTES DOWNLOADED");
   };
 
   const addMember = async () => {
     if (memberBusy) return;
     const name = memberDraft.name.trim();
     if (name.length < 2) {
-      setMemberErr("A full name is required — the register admits named humans, not seats.");
+      setMemberErr("Enter the committee member’s full name.");
       return;
     }
     setMemberBusy(true);
@@ -5956,7 +5824,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
       setData(d);
       setMemberOpen(false);
       setMemberDraft({ name: "", email: "", role: "", isChair: false });
-      onToast("MEMBER REGISTERED — THE DOOR LIST READS THE REGISTER");
+      onToast("COMMITTEE MEMBER ADDED");
     } catch (err) {
       setMemberErr(
         err instanceof Error && err.message !== "failed"
@@ -5980,15 +5848,15 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
       setData(d);
       onToast(
         patch.office
-          ? "OFFICE SET — THE STATUTORY GATES READ IT AT SIGNATURE TIME"
+          ? "ROLE UPDATED"
           : patch.status === "EXCUSED"
-            ? "MARKED EXCUSED — THE QUORUM ACCOUNTING FOLLOWS"
+            ? "MEMBER MARKED AS EXCUSED"
             : patch.status === "PRESENT"
-              ? "BACK ON THE ROLL — MARKED PRESENT"
-              : "THE CHAIR SEAT MOVES"
+              ? "MEMBER MARKED AS PRESENT"
+              : "COMMITTEE CHAIR UPDATED"
       );
     } catch {
-      onToast("THE ROSTER UPDATE FAILED — RETRY");
+      onToast("COULD NOT UPDATE THE COMMITTEE LIST — PLEASE TRY AGAIN");
     }
   };
 
@@ -6004,9 +5872,9 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
       const d = (await res.json()) as CommitteeData | { error: string };
       if (!res.ok || "error" in d) throw new Error("failed");
       setData(d);
-      onToast("MEMBER REMOVED FROM THE REGISTER");
+      onToast("COMMITTEE MEMBER REMOVED");
     } catch {
-      onToast("THE REMOVAL FAILED — RETRY");
+      onToast("COULD NOT REMOVE THE MEMBER — PLEASE TRY AGAIN");
     }
   };
 
@@ -6086,7 +5954,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
       roll.push({
         initials: initialsOf(data.you.name),
         name: `${data.you.name} — you`,
-        role: "PROCUREMENT OFFICER · HOLDS THE GAVEL",
+        role: "PROCUREMENT OFFICER",
         you: true,
       });
     rest.forEach((m) => roll.push({ initials: initialsOf(m.name), name: m.name, role: m.role, id: m.id, ...(m.office ? { office: m.office } : {}) }));
@@ -6098,9 +5966,9 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
   const vacantSeatCount = data ? Math.max(0, data.seats - roll.length) : 0;
   const attendanceNeeded = data ? Math.max(0, data.required - data.present) : 0;
   const committeeTabs: { id: CommitteeTab; label: string; mobileLabel: string; icon: LucideIcon }[] = [
-    { id: "roll", label: "Roll call", mobileLabel: "Roll", icon: Users },
-    { id: "quorum", label: "Quorum", mobileLabel: "Quorum", icon: Scale },
-    { id: "desk", label: "Sitting desk", mobileLabel: "Desk", icon: FileText },
+    { id: "roll", label: "Members", mobileLabel: "Members", icon: Users },
+    { id: "quorum", label: "Attendance", mobileLabel: "Attendance", icon: Scale },
+    { id: "desk", label: "Meeting room", mobileLabel: "Meeting", icon: FileText },
   ];
   const handleCommitteeTabKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     const current = committeeTabs.findIndex((item) => item.id === tab);
@@ -6122,8 +5990,8 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
       title="Committee"
       sub={
         data
-          ? `${capWord(countWord(data.seats))} seats, ${countWord(data.present)} present — the quorum the law asks for before an award counts. The agent attends every sitting; it holds no seat and no gavel.`
-          : "The roll-call is being read from the committee record — the seats, the presence, and the quorum the law asks for before an award counts."
+          ? `${capWord(countWord(data.seats))} committee members, ${countWord(data.present)} present. At least ${data.required} members must attend before an award can be approved.`
+          : "Loading committee members, attendance and meeting details."
       }
       action={
         <div className="flex flex-wrap items-center justify-end gap-2">
@@ -6148,7 +6016,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
               className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 font-code text-[10px] font-bold tracking-[0.12em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950"
             >
               <UserPlus className="h-3.5 w-3.5" aria-hidden="true" />
-              REGISTER A MEMBER
+              ADD COMMITTEE MEMBER
             </button>
           )}
         </div>
@@ -6230,16 +6098,16 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
             <div className="mb-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-4 rounded-[12px] panel px-5 py-4 sm:mb-6">
               <div className="min-w-0">
                 <p className="font-code text-[10.5px] font-bold tracking-[0.16em] text-ink-950">
-                  CONVENING — {data.present} OF {data.seats} PRESENT
+                  ATTENDANCE — {data.present} OF {data.seats} MEMBERS PRESENT
                 </p>
                 <p className="mt-1 text-[14px] leading-snug text-ink-600">
                   {attendanceNeeded > 0 && data.open === 0
-                    ? `The required quorum of ${data.required} exceeds the ${data.seats} available seats. Review Committee settings.`
+                    ? `The required attendance of ${data.required} is higher than the ${data.seats} committee members. Update the committee settings.`
                     : attendanceNeeded > 0
-                      ? `${attendanceNeeded} more member${attendanceNeeded === 1 ? "" : "s"} needed to reach quorum; ${data.open} seat${data.open === 1 ? " remains" : "s remain"} open.`
+                      ? `${attendanceNeeded} more member${attendanceNeeded === 1 ? " is" : "s are"} needed before the committee can make decisions.`
                       : data.open > 0
-                        ? `Quorum met with ${data.present} present; ${data.open} seat${data.open === 1 ? " remains" : "s remain"} open.`
-                        : "Quorum met — every seat is present."}
+                        ? `Required attendance met with ${data.present} members present; ${data.open} place${data.open === 1 ? " remains" : "s remain"} open.`
+                        : "Required attendance met — all committee members are present."}
                 </p>
               </div>
               <div className="flex items-center gap-4">
@@ -6265,7 +6133,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                   disabled={summoning}
                   className="focus-brand inline-flex min-h-11 shrink-0 items-center rounded-xl bg-ink-950 px-4 font-code text-[10px] font-bold tracking-[0.12em] text-white transition-colors hover:bg-brand-600 disabled:opacity-50"
                 >
-                  {summoning ? "SUMMONING…" : "SUMMON THE SITTING"}
+                  {summoning ? "STARTING MEETING…" : "START MEETING"}
                 </button>
               </div>
             </div>
@@ -6421,7 +6289,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
             <div className="bg-grid-dark pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
             <div className="relative">
               <div className="flex items-center justify-between gap-4">
-                <h3 className="font-display text-[15px] font-black tracking-[-0.01em]">Quorum</h3>
+                <h3 className="font-display text-[15px] font-black tracking-[-0.01em]">Required attendance</h3>
                 <div className="grid grid-cols-3 gap-1" aria-hidden="true">
                   {data
                     ? Array.from({ length: data.seats }).map((_, i) => (
@@ -6448,13 +6316,12 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                 {data ? data.seats : "—"}
               </p>
               <p className="mt-3 text-[12.5px] leading-relaxed text-ink-300">
-                The minimum of members a committee needs before an award becomes lawful — the mark on the door is that
-                threshold, drawn.
+                At least {data?.required ?? "—"} members must attend before the committee can make an award decision.
               </p>
               <p className="mt-4 font-code text-[10px] tracking-[0.1em] text-ink-300">
                 {data
-                  ? `PRESENT TODAY ${data.present} · OPEN ${data.open} · A SITTING REQUIRES ${data.required}`
-                  : "READING THE COMMITTEE RECORD…"}
+                  ? `PRESENT ${data.present} · PLACES OPEN ${data.open} · REQUIRED ${data.required}`
+                  : "LOADING COMMITTEE DETAILS…"}
               </p>
             </div>
           </div>
@@ -6466,11 +6333,11 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
             disabled={!data || summoning}
             className="focus-brand inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-ink-200 bg-white px-4 font-code text-[10px] font-bold tracking-[0.12em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {summoning ? "ISSUING SUMMONS…" : "SUMMON THE SITTING"}
+            {summoning ? "STARTING MEETING…" : "START MEETING"}
           </button>
           {data?.lastSummonsAt && (
             <p className="text-center font-code text-[10px] tracking-[0.1em] text-ink-500">
-              LAST SUMMONS {summonsClock(data.lastSummonsAt)} · RECORDED IN THE COMMITTEE REGISTER
+              LAST MEETING STARTED {summonsClock(data.lastSummonsAt)}
             </p>
           )}
         </div>
@@ -6491,21 +6358,20 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="flex items-center gap-2.5 font-code text-[10px] font-bold uppercase tracking-[0.14em] text-ink-500">
             <span className="inline-block h-[2px] w-6 bg-brand-600" aria-hidden="true" />
-            The sitting room
+            Committee meeting room
           </p>
           <span className="inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white px-3 py-1.5 font-code text-[10px] font-bold tracking-[0.06em] text-ink-500">
             <Video className="h-3 w-3 text-brand-600" aria-hidden="true" />
-            OPEN-SOURCE VIDEO · JITSI MEET
+            VIDEO MEETING ROOM
           </span>
         </div>
 
         {data && !deskSitting && (
           <div className="mt-3 rounded-[10px] border border-dashed border-ink-200 bg-white/60 p-6 text-center sm:p-10">
-            <p className="font-code text-[10px] font-bold tracking-[0.14em] text-ink-500">NO SITTING HAS BEEN SUMMONED</p>
+            <p className="font-code text-[10px] font-bold tracking-[0.14em] text-ink-500">NO MEETING HAS STARTED</p>
             <p className="mx-auto mt-2 max-w-xl text-[13px] leading-relaxed text-ink-500">
-              A summons mints the room — a fresh, unlisted Jitsi address that no other meeting has ever used — and
-              opens the minutes on this desk. The door list is written from the committee register and nothing else:
-              only registered names are admitted, and every admission is recorded against the sitting.
+              Start a meeting to create a private video link and open its minutes here. Only committee members can join,
+              and attendance is recorded with the meeting.
             </p>
             <div className="mx-auto mt-5 flex max-w-md flex-col gap-2 sm:flex-row">
               <input
@@ -6513,7 +6379,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                 onChange={(e) => setAgenda(e.target.value)}
                 placeholder="Agenda — optional, e.g. 'Award decision: GRZ/2026/041'"
                 className="h-11 min-w-0 flex-1 rounded-xl border border-ink-200 bg-white px-3.5 text-[14px] text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950"
-                aria-label="Optional agenda for the sitting"
+                aria-label="Optional committee meeting agenda"
               />
               <button
                 type="button"
@@ -6522,11 +6388,11 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                 className="focus-brand inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 font-code text-[10px] font-bold tracking-[0.06em] text-white shadow-[0_10px_26px_rgba(217,38,22,0.28)] transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Video className="h-3.5 w-3.5" aria-hidden="true" />
-                {summoning ? "MINTING THE ROOM…" : "SUMMON & MINT THE ROOM"}
+                {summoning ? "CREATING MEETING…" : "START MEETING"}
               </button>
             </div>
             <p className="mt-3 font-code text-[10px] leading-relaxed tracking-[0.06em] text-ink-500">
-              THE OFFICER HOLDS THE GAVEL AND IS ADMITTED AT THE SUMMONS · THE MINUTES OPEN WITH THE ROOM
+              The meeting link and minutes open together. Attendance is recorded with the meeting.
             </p>
           </div>
         )}
@@ -6536,7 +6402,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
             {!openSitting ? (
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-[12px] panel px-4 py-3">
                 <p className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-700">
-                  NO SITTING IS OPEN — THE DESK SHOWS A SEALED RECORD
+                  NO MEETING IS OPEN — VIEWING A PREVIOUS MEETING RECORD
                 </p>
                 <div className="flex min-w-0 items-center gap-2">
                   <input
@@ -6544,7 +6410,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                     onChange={(e) => setAgenda(e.target.value)}
                     placeholder="Agenda (optional)"
                     className="focus-brand h-11 w-48 min-w-0 rounded-lg border border-ink-200 bg-white px-3 text-[14px] text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950"
-                    aria-label="Optional agenda for the next sitting"
+                    aria-label="Optional agenda for the next committee meeting"
                   />
                   <button
                     type="button"
@@ -6553,21 +6419,21 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                     className="focus-brand inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg bg-brand-600 px-4 font-code text-[10px] font-bold tracking-[0.04em] text-white transition-colors hover:bg-brand-700 disabled:opacity-60"
                   >
                     <Video className="h-3.5 w-3.5" aria-hidden="true" />
-                    {summoning ? "MINTING…" : "SUMMON A NEW SITTING"}
+                    {summoning ? "CREATING MEETING…" : "START NEW MEETING"}
                   </button>
                 </div>
               </div>
             ) : deskSitting.id !== openSitting.id ? (
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-[12px] panel px-4 py-3">
                 <p className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">
-                  READING HISTORY — A SITTING IS OPEN
+                  VIEWING A PREVIOUS MEETING — ANOTHER MEETING IS OPEN
                 </p>
                 <button
                   type="button"
                   onClick={() => setSelectedId(null)}
                   className="focus-brand inline-flex min-h-11 items-center font-code text-[10px] font-bold tracking-[0.06em] text-brand-700 transition-colors hover:text-brand-800"
                 >
-                  BACK TO THE OPEN SITTING →
+                  RETURN TO THE OPEN MEETING →
                 </button>
               </div>
             ) : null}
@@ -6590,7 +6456,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                       >
                         {deskSitting.status === "OPEN"
                           ? `LIVE · SUMMONED ${summonsClock(deskSitting.summonedAt)}`
-                          : `SEALED ${deskSitting.closedAt ? summonsClock(deskSitting.closedAt) : ""}`}
+                          : `CLOSED ${deskSitting.closedAt ? summonsClock(deskSitting.closedAt) : ""}`}
                       </span>
                     </div>
                     <h3 className="mt-3 font-display text-[24px] font-black leading-tight tracking-[-0.02em] sm:text-[28px]">
@@ -6600,14 +6466,14 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                         </>
                       ) : (
                         <>
-                          The record is sealed<span className="text-brand-500">.</span>
+                          The meeting is closed<span className="text-brand-500">.</span>
                         </>
                       )}
                     </h3>
                     <p className="mt-2 max-w-xl text-[12.5px] leading-relaxed text-ink-300">
                       {deskSitting.status === "OPEN"
-                        ? "Open the room in a second tab — keep this desk on screen. The minutes write into the record as the meeting talks, and the door below admits only names the register knows."
-                        : "The room's address is kept in the record and never reused. The minutes are evidence; the door list is final."}
+                        ? "Open the meeting in a new tab and keep this page open. Meeting notes are saved to the record, and only committee members listed below can be admitted."
+                        : "This meeting link cannot be reused. The saved notes and attendance list are part of the final record."}
                     </p>
                     <div className="mt-4 flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3.5 py-2.5">
                       <Lock className="h-3.5 w-3.5 shrink-0 text-ink-400" aria-hidden="true" />
@@ -6629,13 +6495,13 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                           className="inline-flex h-11 items-center gap-2 rounded-xl bg-brand-600 px-5 text-[13px] font-semibold text-white shadow-[0_10px_26px_rgba(217,38,22,0.3)] transition-colors hover:bg-brand-700"
                         >
                           <Video className="h-4 w-4" aria-hidden="true" />
-                          Open the room — Jitsi
+                          Join the meeting
                           <ArrowUpRight className="h-3.5 w-3.5 opacity-70" aria-hidden="true" />
                         </a>
                       ) : (
                         <span className="inline-flex h-11 items-center gap-2 rounded-xl border border-white/15 px-5 text-[12px] font-semibold text-ink-300">
                           <Lock className="h-4 w-4" aria-hidden="true" />
-                          Room retired — the record keeps its address
+                          Meeting closed — the saved record remains available
                         </span>
                       )}
                       <button
@@ -6648,8 +6514,8 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                       </button>
                     </div>
                     <p className="mt-3.5 font-code text-[10px] leading-relaxed tracking-[0.06em] text-ink-500">
-                      JITSI MEET · FREE & OPEN SOURCE (APACHE-2.0) · NO ACCOUNT, NO INSTALL · MINTED FOR THIS SITTING ONLY
-                      {deskSitting.status === "OPEN" && <> · SUMMONED BY {deskSitting.summonedBy.toUpperCase()}</>}
+                      VIDEO MEETING · NO ACCOUNT OR INSTALLATION REQUIRED · UNIQUE LINK FOR THIS MEETING
+                      {deskSitting.status === "OPEN" && <> · STARTED BY {deskSitting.summonedBy.toUpperCase()}</>}
                     </p>
                   </div>
                 </div>
@@ -6657,9 +6523,9 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                 <div className="overflow-hidden rounded-[12px] panel shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
                   <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 px-5 py-4">
                     <div>
-                      <h3 className="font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">The minutes — captured here</h3>
+                      <h3 className="font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">Meeting notes</h3>
                       <p className="mt-0.5 font-code text-[10px] tracking-[0.06em] text-ink-500">
-                        WRITTEN FROM THE DESK · EVERY SAVE LANDS IN THE RECORD
+                        SAVED WITH THE MEETING RECORD
                       </p>
                     </div>
                     <span
@@ -6675,7 +6541,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                       )}
                     >
                       {deskSitting.status !== "OPEN"
-                        ? "SEALED — THE MINUTES STAND"
+                        ? "SAVED — MEETING COMPLETE"
                         : notesState === "saving"
                           ? "SAVING…"
                           : notesState === "dirty"
@@ -6698,14 +6564,14 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                       readOnly={deskSitting.status !== "OPEN"}
                       placeholder={
                         deskSitting.status === "OPEN"
-                          ? "Type the minutes as the room talks — the motion, the mover, the numbers cited, who hesitated. Autosaves to the sitting record."
-                          : "Sealed — the minutes above are the final text."
+                          ? "Record the decisions, who proposed them, key figures, and any outstanding questions. Notes save automatically to this meeting record."
+                          : "This meeting is closed. The notes above are final."
                       }
                       className={cn(
                         "min-h-[240px] w-full resize-y rounded-xl border border-ink-200 bg-paper px-4 py-3 text-[13.5px] leading-relaxed text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10",
                         deskSitting.status !== "OPEN" && "cursor-not-allowed bg-ink-50/60 text-ink-600"
                       )}
-                      aria-label="The minutes of the sitting"
+                      aria-label="Meeting notes"
                     />
                     <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                   <p className="font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600">
@@ -6744,7 +6610,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                             )}
                           >
                             <Stamp className="h-3.5 w-3.5" aria-hidden="true" />
-                            {confirmClose ? "TAP AGAIN — SEAL THE SITTING" : "SEAL & CLOSE"}
+                            {confirmClose ? "TAP AGAIN TO CLOSE THE MEETING" : "CLOSE MEETING"}
                           </button>
                         )}
                       </div>
@@ -6758,14 +6624,13 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                 <div className="overflow-hidden rounded-[12px] panel shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
                   <header className="border-b border-ink-100 px-5 py-4">
                     <div className="flex items-center justify-between gap-3">
-                      <h3 className="font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">The door</h3>
+                      <h3 className="font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">Attendance</h3>
                       <span className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-700">
-                        {deskSitting.attendance.filter((a) => a.admitted).length}/{deskSitting.attendance.length} ADMITTED
+                        {deskSitting.attendance.filter((a) => a.admitted).length}/{deskSitting.attendance.length} PRESENT
                       </span>
                     </div>
                     <p className="mt-1 text-[11.5px] leading-relaxed text-ink-500">
-                      The door list is the committee register, read into this sitting. No registered name, no entry —
-                      and every admission is recorded.
+                      Only listed committee members can join. Attendance changes are recorded with the meeting.
                     </p>
                   </header>
                   <ul className="divide-y divide-ink-100">
@@ -6805,7 +6670,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                             )}
                           >
                             {a.admitted ? <Check className="h-3 w-3" aria-hidden="true" /> : <Plus className="h-3 w-3" aria-hidden="true" />}
-                            {a.admitted ? "ADMITTED" : "ADMIT"}
+                            {a.admitted ? "PRESENT" : "MARK PRESENT"}
                           </button>
                         ) : (
                           <span
@@ -6814,21 +6679,20 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                               a.admitted ? "bg-ink-50 text-ink-700" : "border border-ink-200 text-ink-500"
                             )}
                           >
-                            {a.admitted ? "ADMITTED" : "ABSENT"}
+                            {a.admitted ? "PRESENT" : "ABSENT"}
                           </span>
                         )}
                       </li>
                     ))}
                     {deskSitting.attendance.length === 0 && (
                       <li className="px-5 py-6 text-center font-code text-[10px] tracking-[0.04em] text-ink-600">
-                        THE REGISTER IS EMPTY — REGISTER THE MEMBERS AND THEY APPEAR AT THE DOOR
+                        No committee members are listed. Add members before starting a meeting.
                       </li>
                     )}
                   </ul>
                   <footer className="border-t border-ink-100 bg-paper/70 px-5 py-3">
                     <p className="font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600">
-                      A JITSI ROOM CANNOT VERIFY IDENTITIES BY ITSELF — THIS DOOR IS THE VERIFICATION. ADMIT ONLY
-                      REGISTERED NAMES; ANY STRANGER IN THE ROOM IS NOT OF THIS COMMITTEE.
+                      The video meeting does not verify identities. Confirm each attendee against the committee list before marking them present.
                     </p>
                   </footer>
                 </div>
@@ -6868,7 +6732,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                             s.status === "OPEN" ? "bg-brand-600 text-white" : "border border-ink-200 text-ink-500"
                           )}
                         >
-                          {s.status === "OPEN" ? "OPEN" : "SEALED"}
+                          {s.status === "OPEN" ? "OPEN" : "CLOSED"}
                         </span>
                       </button>
                     </li>
@@ -6931,8 +6795,8 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                     Register a member<span className="text-brand-600">.</span>
                   </h3>
                   <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-500">
-                    Only names on this register are admitted to a sitting&apos;s room — and only PRESENT members count
-                    toward quorum. Register the humans; the door does the rest.
+                    Only listed committee members can join a meeting. The required number of members must be present
+                    before the committee can approve a decision.
                   </p>
                 </div>
                 <button
@@ -6966,7 +6830,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                     placeholder="member@organisation.gov.zm"
                     className="focus-brand mt-1.5 h-11 w-full rounded-xl border border-ink-200 bg-white px-3.5 text-[13px] text-ink-950 outline-none transition placeholder:text-ink-400 focus:border-ink-950 dark:border-white/15 dark:bg-[#0b0d12] dark:text-white dark:placeholder:text-ink-500"
                   />
-                  <span className="mt-1 block text-[11.5px] leading-relaxed text-ink-600">This links their signed-in account to their committee seat for declarations and evaluation records.</span>
+                  <span className="mt-1 block text-[11.5px] leading-relaxed text-ink-600">This connects their account to the committee member record used for declarations and tender reviews.</span>
                 </label>
                 <label className="block">
                   <span className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-700">Role on the committee</span>
@@ -6984,7 +6848,7 @@ function CommitteeView({ user, onToast }: { user: AuthUser | null; onToast: (m: 
                     onChange={(e) => setMemberDraft((d) => ({ ...d, isChair: e.target.checked }))}
                     className="h-4 w-4 accent-brand-600"
                   />
-                  <span className="text-[12.5px] text-ink-600">Sits as chair — opens the roll at every sitting</span>
+                  <span className="text-[12.5px] text-ink-600">Committee chair — can start each meeting</span>
                 </label>
               </div>
               {memberErr && (
@@ -7055,8 +6919,8 @@ function WorkspaceRoleMatrix() {
         <p className="font-code text-[10px] font-semibold tracking-[0.08em] text-ink-600">ACCESS BY ROLE</p>
         <h4 id="workspace-role-matrix-heading" className="mt-1 text-[13px] font-bold text-ink-950">Workspace permission matrix</h4>
         <p className="mt-1 text-[11px] leading-relaxed text-ink-500">
-          These permissions are enforced by the server for the role on the authenticated account. Gate signatures also
-          require the right statutory office, roster status and any required step-up authentication.
+          These permissions are enforced for each signed-in account. Approvals also require the assigned office,
+          committee attendance and any additional identity check.
         </p>
       </div>
       <HorizontalScrollRegion label="Workspace role capability matrix">
@@ -7237,7 +7101,7 @@ function TeamMembersSection({
               className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg border border-ink-200 bg-paper px-4 py-2 font-code text-[10.5px] font-bold tracking-[0.08em] text-ink-700 transition-colors hover:border-ink-400 hover:text-ink-950"
             >
               <Gauge className="h-3 w-3" aria-hidden="true" />
-              CONTROL ROOM
+              ADMINISTRATION
             </a>
           )}
         </div>
@@ -7443,14 +7307,14 @@ function SettingsView({
   const health = agent.health;
   const connection: { label: string; value: string }[] = [
     { label: "Status", value: mode === "online" ? "ONLINE" : mode === "offline" ? "OFFLINE" : "LINKING" },
-    { label: "Service", value: health ? `${health.service} · v${health.version}` : "—" },
+    { label: "Review service version", value: health ? `Version ${health.version}` : "—" },
     {
-      label: "Filesystem MCP",
-      value: health ? `${health.fsMcp.status.toUpperCase()} · ${health.fsMcp.tools.length} TOOLS` : "—",
+      label: "Document access",
+      value: health ? (health.fsMcp.status === "connected" ? "AVAILABLE" : "UNAVAILABLE") : "—",
     },
-    { label: "Agent graphs", value: health ? String(health.graphs.length) : "—" },
-    { label: "Evaluations recorded", value: health ? health.counts.runs.toLocaleString("en-US") : "—" },
-    { label: "Tool calls logged", value: health ? health.counts.toolCalls.toLocaleString("en-US") : "—" },
+    { label: "Review workflows", value: health ? String(health.graphs.length) : "—" },
+    { label: "Tender reviews recorded", value: health ? health.counts.runs.toLocaleString("en-US") : "—" },
+    { label: "Recorded service actions", value: health ? health.counts.toolCalls.toLocaleString("en-US") : "—" },
   ];
 
   const cardClass = "rounded-[12px] panel p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]";
@@ -7461,7 +7325,7 @@ function SettingsView({
     <ViewShell
       fig="14"
       title="Settings"
-      sub="Your account, the agent connection and this session. Identity comes from sign-in and agent values are read live from the sidecar, so neither is edited here."
+      sub="Your account, review service connection and current session. Identity is verified at sign-in; service status is read from the workspace."
     >
       <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
         <div data-tour="settings-account" className={cardClass}>
@@ -7493,7 +7357,7 @@ function SettingsView({
           <p className={labelClass}>SESSION</p>
           <h3 className={titleClass}>Sign out of this workspace</h3>
           <p className="mt-1 text-[12.5px] text-ink-500">
-            Ends this browser session. Runs and the audit trail stay on the sidecar.
+            Your tender reviews and activity history remain available in this workspace.
           </p>
           <button
             type="button"
@@ -7514,9 +7378,9 @@ function SettingsView({
         </div>
 
         <div data-tour="settings-agent" className={`${cardClass} lg:col-span-2`}>
-          <p className={labelClass}>AGENT CONNECTION</p>
-          <h3 className={titleClass}>Agent service</h3>
-          <p className="mt-1 text-[12.5px] text-ink-500">Live status of the agent service — the part that reads the files, runs the review and logs every step.</p>
+          <p className={labelClass}>REVIEW SERVICE</p>
+          <h3 className={titleClass}>Review service status</h3>
+          <p className="mt-1 text-[12.5px] text-ink-500">Service health, review availability and recorded activity for this workspace.</p>
           <dl className="mt-5 grid grid-cols-1 divide-y divide-ink-100 sm:grid-cols-2 sm:divide-y-0">
             {connection.map((row) => (
               <div key={row.label} className="flex items-center justify-between gap-4 border-ink-100 py-3 sm:border-b sm:pr-4">
@@ -7554,117 +7418,117 @@ const WALKTHROUGH: WalkthroughChapter[] = [
   {
     section: "mc-overview",
     title: "Start with the overview",
-    summary: "Your command deck. Every live run, every open approval and the agent's latest moves on one screen.",
+    summary: "Workspace overview with current review activity, pending approvals and actions for your team.",
     steps: [
-      "Start with New evaluation — name the tender and stage its pack; the register below fills in as the agent reads.",
-      "Check the counters for evaluations in progress and approvals waiting on a named officer.",
-      "Begin each session here to see what needs your signature first.",
+      "Open Bid evaluation to choose a recorded tender and review bidder submissions against its published matrix.",
+      "Check how many tender reviews are in progress and how many approvals are waiting.",
+      "Begin here to see what the team should work on next.",
     ],
-    tip: "If nothing is waiting, the committee has nothing to decide, and the agent has nothing to hand over.",
+    tip: "If no approvals are pending, no committee action is required.",
     tour: [
       {
-        target: "ov-new-run",
-        title: "Brief the agent",
-        body: "Every review starts here. Name the tender and stage its pack — the agent reads it, and the register fills in with every claim cited.",
+        target: "ov-bid-evaluation",
+        title: "Open Bid evaluation",
+        body: "Choose a tender, review the published criteria and bidder submissions, and generate an advisory recommendation with source citations.",
       },
       {
         target: "ov-stats",
-        title: "Four counters, read live",
-        body: "Runs in progress, issues found, citation coverage and approvals waiting. The last turns brand-coloured the moment the committee is on the clock.",
+        title: "Workspace summary",
+        body: "See tender reviews in progress, issues found, source coverage and approvals waiting for a committee decision.",
       },
       {
         target: "gate-queue",
-        title: "What needs your signature first",
-        body: "A finished run lands here as a gate. Nothing moves past it without a named officer.",
+        title: "What needs approval",
+        body: "A completed tender review appears here when an authorized officer needs to approve or return it.",
       },
     ],
   },
   {
     section: "mc-runs",
-    title: "Launch an evaluation",
-    summary: "A run is one tender reviewed end to end. The wizard takes three steps and never starts until you confirm the scope.",
+      title: "Start a document review",
+      summary: "Run document checks against selected requirements. Bid scoring and recommendations are in Tender workflow → Bid evaluation.",
     steps: [
-      "Details: Quorum assigns the system reference. Add the published tender title and choose the source format (OCDS, PDF pack or email bag).",
-      "Documents: drop up to 12 files. Each one moves from RECEIVED to PARSING to INDEXED before you can continue. Real uploads also mirror to cloud storage, or stay in the local vault.",
-      "Scope: choose which checks the review runs. Page-level citations stay on for every finding.",
-      "Launch: the evaluation is queued and you land on Evaluations, where it goes live.",
+      "Tender details: Quorum assigns a reference. Add the published title and choose how the tender information is provided.",
+      "Documents: add up to 12 files. Quorum checks each file before you continue. Files are saved to cloud storage when available, or kept in the local vault.",
+      "Review checks: choose what to check. Each finding includes a page or source reference.",
+      "Start review: the tender appears in Tender reviews with its current status.",
     ],
     tip: "Use the step rail to go back and correct details at any point before launch.",
     tour: [
       {
         target: "wiz-rail",
         action: "open-wizard",
-        title: "Three steps, shown before you commit",
-        body: "01 details · 02 documents · 03 scope. The rail stays visible so you always know what is left.",
+        title: "Three simple setup steps",
+        body: "Add tender details, provide documents, and choose the checks to run. The progress bar shows where you are.",
       },
       {
         target: "wiz-body",
-        title: "Details the audit trail will cite",
-        body: "The tender reference and its published title. Leave the reference blank and Quorum continues the register's sequence — the form says so when it does.",
+        title: "Tender details",
+        body: "Quorum assigns a reference for the tender. Add its title exactly as published so the review can be matched to the official notice.",
       },
       {
         target: "wiz-next",
         placement: "top",
-        title: "The wizard refuses to guess",
-        body: "Continue advances only when the step is complete. On scope, this same button queues the evaluation — and it goes live straight away.",
+        title: "Check before you start",
+        body: "Complete each step before continuing. On the final step, select Start review to begin the checks.",
       },
     ],
     launch: true,
   },
   {
     section: "mc-runs",
-    title: "Follow the evaluations",
-    summary: "Every tender the agent is working on, with its status and what it has found so far.",
+    title: "Follow tender reviews",
+    summary: "Tender reviews, their current status and recorded findings.",
     steps: [
-      "RUNNING: the agent is still working through the checks.",
-      "GATE: the evaluation has finished and is waiting for a committee decision.",
-      "COMPLETE: the evaluation has been filed, returned or has failed.",
-      "Search and filter the list, or open an evaluation's notes.",
+      "In progress: automated checks are running.",
+      "Needs approval: an authorized committee member must review the findings.",
+      "Complete: the tender review record is ready.",
+      "Search and filter the list, or open a review to see its findings.",
     ],
-    tip: "An evaluation in GATE is waiting on people, not on the agent.",
+    tip: "A review marked NEEDS APPROVAL requires an authorised committee member.",
     tour: [
       {
         target: "run-register",
-        title: "Every evaluation, at a glance",
-        body: "Newest first: the tender, its bids, issues found and the share of findings that carry a citation. Search narrows by reference, title or buyer.",
+        title: "All tender reviews",
+        body: "See the tender, number of bids, issues found and the share of findings with a source. Search by reference, title or buyer.",
       },
       {
         target: "run-filters",
         title: "Filter to what needs you",
-        body: "IN PROGRESS · NEEDS APPROVAL · COMPLETED. An evaluation in NEEDS APPROVAL is waiting on people, not on the agent.",
+        body: "Filter reviews by progress, approval status or completion. Needs approval means an authorized officer must decide what happens next.",
       },
       {
         target: "run-rows",
         title: "Expand any row",
-        body: "The top findings and the evaluation's audit trail open in place — every figure traces to a line in the tool log.",
+        body: "Open a review to see its main findings, sources and decision history.",
       },
     ],
   },
   {
     section: "mc-gates",
-    title: "Sign or return approvals",
-    summary: "The human gate. Each pending decision shows the supplier, the value and how many findings were flagged.",
+    title: "Review pending approvals",
+    summary: "Each approval shows the supplier, contract value and findings to review before you decide.",
     steps: [
       "Review the flagged findings for the bid in question.",
-      "Sign to award the tender, or return it for clarification.",
-      "Only committee members on the roster can sign. The system refuses any other signature.",
+      "Approve the award or return the review with a request for clarification.",
+      "Only authorized committee members can record a decision.",
     ],
-    tip: "The agent prepares the file and never awards. Every decision is recorded under the name of the officer who signed.",
+    tip: "Quorum supports the review; the authorised committee makes the award decision. Each decision is recorded under the signer’s name.",
     tour: [
       {
         target: "gate-queue",
-        title: "The human gate",
-        body: "Each card is one file the agent finished and halted: the proposed supplier, the contract value and the flags behind it.",
+        title: "Approvals awaiting a decision",
+        body: "Each card shows a completed tender review, the supplier, contract value and findings that need attention.",
       },
       {
         target: "gate-actions",
         title: "Award or return — by name",
-        body: "Award signs the decision under your name; Return sends it back with a task. Only roster names can sign — the system refuses anyone else.",
+        body: "Approve the award or return it with a note explaining what needs to change. Your decision is recorded under your name.",
       },
       {
         target: "gate-ledger",
         title: "Decisions land here",
-        body: "Every sign or return is appended with the name and the time — and mirrored into the award history.",
+        body: "Every approval or return is recorded with the decision maker and date, then added to Award history.",
       },
     ],
   },
@@ -7676,81 +7540,81 @@ const WALKTHROUGH: WalkthroughChapter[] = [
       "Classes: DOCUMENT, COMPLIANCE, REGISTRY, PRICING, ARITHMETIC, DISCLOSURE, LOGISTICS and SECURITY.",
       "Each finding carries a page, clause or registry citation.",
       "A finding with no citation is marked unsourced and should not be relied on.",
-      "Open a finding's run to see it in context.",
+      "Open a tender review to see each finding in context.",
     ],
-    tip: "Unsourced findings are the first thing to check before a gate is signed.",
+    tip: "Check that each finding has a source before approving an award.",
     tour: [
       {
         target: "findings-filters",
-        title: "Classes and states, filtered",
-        body: "Filter by OPEN, CLEARED or RE-CHECK. The counters above name every finding and how many remain open — 0 UNSOURCED is the one that must never move.",
+        title: "Filter by category and status",
+        body: "Filter findings by their category, open status or requested recheck. The counters show the total and how many still need attention.",
       },
       {
         target: "findings-rows",
         title: "Read the source before the sentence",
-        body: "Each row carries its class, its state and the page, clause or registry ID it came from. Open a row for the evaluation behind it.",
+        body: "Each row shows its category, status and page or source reference. Open a row to see the tender review it came from.",
       },
     ],
   },
   {
     section: "mc-reports",
-    title: "Read report packs",
-    summary: "A pack per evaluation, ready to hand to the committee: the findings, their sources and the verdict.",
+    title: "Review tender reports",
+    summary: "One report for each tender review, with findings, sources and the recorded decision.",
     steps: [
-      "Open a run's pack to read the full set of findings.",
-      "The verdict shows whether the evaluation was awarded or returned.",
+      "Open a report to read all findings and source references.",
+      "The decision shows whether the tender was awarded or returned for revision.",
     ],
-    tip: "Packs are the document the committee reads at the sitting.",
+    tip: "Reports give the committee the findings and sources it needs to make a decision.",
     tour: [
       {
         target: "reports-intro",
-        title: "The committee pack",
-        body: "Every sealed report for the sitting, bound into one cited file sharing a single audit hash — the document the committee reads.",
+        title: "Tender review reports",
+        body: "Reports bring findings and their sources together for the committee to review.",
       },
       {
         target: "reports-list",
-        title: "One pack per finished evaluation",
-        body: "Findings, citations, the sha-256 tag and the verdict. A pack seals on signature — before that it previews only.",
+        title: "One report for each completed review",
+        body: "Each report includes findings, source references and the recorded decision. Reports are available after approval.",
       },
       {
         target: "report-download",
-        title: "Export when sealed",
-        body: "Download unlocks the moment the gate signs. Until then the button previews what the sealed pack will carry.",
+        title: "Download the report",
+        body: "Download a report after an authorized officer records a decision.",
       },
     ],
   },
   {
     section: "mc-sources",
     title: "Check data sources",
-    summary: "Every African dataset the OCP Data Registry lists — who publishes it, what it covers, when it was last pulled, and a dated connection record for each.",
+    summary: "Public procurement datasets, their publishers, coverage, retrieval dates and connection status.",
     steps: [
-      "See the registries the agent can read, country by country — coverage span, formats and the latest retrieval date.",
-      "Expand a country to check a dataset's licence, counts and the publisher's own portal before leaning on it in a run.",
-      "Connect the portals: the agent opens each published file, reads its first OCDS release as proof, and checks the publisher's own portal — every result is dated and saved.",
+      "Review available datasets by country, including coverage, supported formats and latest retrieval date.",
+      "Open a country to check a dataset's licence, coverage and publisher before using it in a tender review.",
+      "Check a source connection to confirm that the published record is available. Each result includes its check date.",
     ],
-    tip: "A dataset the publisher stopped updating carries the registry's own flag — a gap downstream is never a silent pass.",
+    tip: "Check the publisher's latest update before relying on a dataset. Missing or outdated data is shown clearly.",
     tour: [
       {
         target: "sources-standards",
-        title: "What every finding stands on",
-        body: "OCDS 1.1, the MCP tool surface, LLM drafting and page citations — the four standards the review pipeline holds itself to.",
+        title: "Sources behind each finding",
+        body: "Quorum uses published procurement data, document checks and source references so reviewers can see what each finding is based on.",
       },
       {
         target: "sources-portals",
         title: "The registries it reads",
-        body: "Every African dataset on the Open Contracting Partnership's registry — one row per country. Expand one for licences, coverage, counts and the publisher's own portal. Each dataset keeps a real connection record: the first OCDS release the sidecar read from the published file, and whether the publisher's portal answered. Re-check any time — a failed check is shown, never hidden.",
+        body: "Browse public procurement datasets by country. Open a record to check its licence, coverage, update date and publisher. Connection checks show whether the published data is available.",
       },
       {
         target: "sources-request-btn",
-        title: "Missing a source? File it",
-        body: "A request lands in the register with a name and a timestamp, so the gap is recorded where the next run can see it.",
+        title: "Request a data source",
+        body: "Record a missing source so workspace administrators can review the request.",
       },
     ],
   },
   {
     section: "mc-ledger",
-    title: "Consult the award history",
-    summary: "The ledger of every AWARDED and RETURNED decision, with who signed and when.",
+    title: "Review award history",
+    summary: "Award and return decisions, with the decision maker and date.",
     steps: [
       "Each row names the tender, the decision, the signer and the time.",
       "Entries are appended, never edited.",
@@ -7759,8 +7623,8 @@ const WALKTHROUGH: WalkthroughChapter[] = [
     tour: [
       {
         target: "ledger-stats",
-        title: "The gavel's arithmetic",
-        body: "Decisions logged, awarded, returned and awaiting — the ledger's four totals, read live.",
+        title: "Decision summary",
+        body: "See how many decisions were recorded, approved, returned or are awaiting approval.",
       },
       {
         target: "ledger-rows",
@@ -7771,183 +7635,183 @@ const WALKTHROUGH: WalkthroughChapter[] = [
   },
   {
     section: "mc-committee",
-    title: "Sit on the committee",
-    summary: "The roster in roll-call order: the chair, the members present and any excused.",
+    title: "Manage committee meetings",
+    summary: "View committee members, attendance and scheduled meetings.",
     steps: [
-      "Summon a sitting to call the roll.",
-      "When quorum is present, the sitting can proceed to decisions.",
+      "Schedule a committee meeting and record who will attend.",
+      "The required number of members must be present before the committee can make decisions.",
     ],
-    tip: "Quorum is checked before any gate can be signed in a sitting.",
+    tip: "Required attendance is checked before committee members can approve an award.",
     tour: [
       {
         target: "committee-roll",
         tab: "roll",
-        title: "The roll, in reading order",
-        body: "The chair opens, the gavel seat follows, then the members — excused seats close the roll. Every card is a stored record, not a hardcoded name.",
+        title: "Committee members",
+        body: "See the chair, other committee members and anyone excused from the meeting.",
       },
       {
         target: "committee-quorum",
         tab: "quorum",
-        title: "The mark on the door",
-        body: "Seats present against seats required. Quorum is the threshold an award must clear before the sitting can decide.",
+        title: "Required attendance",
+        body: "See how many members are present and how many must attend before the committee can decide.",
       },
       {
         target: "committee-summon",
         tab: "quorum",
-        title: "Summon the sitting",
-        body: "A summons mints a fresh Jitsi room, opens the minutes and admits only names on this register. One sitting is open at a time.",
+        title: "Schedule a meeting",
+        body: "Create a meeting link, start meeting minutes and invite the committee members listed here.",
       },
     ],
   },
   {
     section: "mc-calendar",
-    title: "Read the committee calendar",
-    summary: "Every date the desk answers to — statutory clocks, committee sittings and gate signatures — on one grid.",
+    title: "Committee calendar",
+    summary: "See procurement deadlines, committee meetings and approval dates in one place.",
     steps: [
-      "Statutory clocks come from each tender's own cycle record: closing, ALB response, standstill end, milestones, complaint responses.",
-      "A sitting lands on the day it was summoned; while the room is open it reads live.",
-      "Select any day for its agenda, or jump the grid straight to a clock from the rail.",
+      "Deadlines come from each tender's record, including closing dates, responses to low-bid concerns, award review periods and complaint responses.",
+      "Scheduled committee meetings appear on the calendar and update while they are open.",
+      "Select a day to see its schedule, or choose an upcoming deadline to open that date.",
     ],
-    tip: "An overdue clock stays on the grid in red — the record writes the dates, and this page never moves one.",
+    tip: "Overdue deadlines stay visible in red. Update the tender record to change a deadline.",
     tour: [
       {
         target: "cal-month",
-        title: "The month, on the record",
-        body: "One cell per day, one chip per item: statutory clocks, sittings, files at the gate and signatures. Today is ringed; overdue dates stay red.",
+        title: "Your month at a glance",
+        body: "See deadlines, committee meetings and decisions by date. Today is highlighted and overdue dates appear in red.",
       },
       {
         target: "cal-agenda",
         title: "One day, read in full",
-        body: "Select a day and its agenda opens beside the grid — every clock with its countdown, every sitting with its door record, every decision with the name that signed it.",
+        body: "Select a day to see its deadlines, scheduled meetings and recorded decisions.",
       },
       {
         target: "cal-clocks",
-        title: "The next clocks",
-        body: "The open statutory dates, soonest first. Select one and the month turns to the day it falls on. Export the month to .ics and it lands in any diary.",
+        title: "Upcoming deadlines",
+        body: "See upcoming dates in order, select one to open it on the calendar, or download a calendar file to add dates to your calendar app.",
       },
     ],
   },
   {
     section: "mc-stack",
-    title: "Inspect tools and models",
-    summary: "The sidecar's tools, the agent graphs and the LLM endpoint behind them.",
+    title: "Check system status",
+    summary: "See whether the services and data connections used for tender reviews are available.",
     steps: [
-      "Each graph runs its checks and stops at the human gate.",
-      "The tool log records every call the agent makes.",
+      "Tender reviews depend on the review service and its document connections.",
+      "The activity log records actions and approval requests for later review.",
     ],
-    tip: "If something looks wrong, the tool log shows exactly what the agent did and in what order.",
+    tip: "If something looks wrong, review the activity log to see what happened and when.",
     tour: [
       {
         target: "stack-tools",
-        title: "Our own MCP server — five tools",
-        body: "Each tool is tagged READ, WRITES or IRREVERSIBLE. The irreversible one — filing — can only ever raise a gate for a human.",
+        title: "Review service connections",
+        body: "Check which services are available. Filing and award decisions still require an authorized officer.",
       },
       {
         target: "stack-graphs",
-        title: "Run the graph, live",
-        body: "Fire the review graph and watch the nodes work: read over the filesystem MCP, requirements pinned, findings flagged, a gate raised.",
+        title: "Review service activity",
+        body: "See the actions taken during a tender review, the findings recorded and any approval still needed.",
       },
       {
         target: "stack-log",
-        title: "The tool log",
-        body: "Every call, append-only, JSONL on disk. If something looks wrong, this shows exactly what the agent did and in what order.",
+        title: "Recorded activity",
+        body: "Review a time-ordered history of actions and decisions. Use it to follow what happened during a tender review.",
       },
     ],
   },
   {
     section: "mc-rules",
-    title: "Set rules and safeguards",
-    summary: "The thresholds the agent applies: price variance and the document checklist.",
+    title: "Manage review rules",
+    summary: "Set thresholds for automated price checks and document requirements.",
     steps: [
       "Price variance: flag any bid priced above the framework median by 15%, 25% or 40%.",
-      "Document checklist: standard or strict, before a run may complete.",
+      "Document checklist: choose standard or strict requirements for a tender review.",
       "Every change is written to the audit trail.",
     ],
-    tip: "The standing rule holds regardless of settings: the committee signs, and the agent never does.",
+    tip: "Automated checks can support an award review, but authorized committee members make the decision.",
     tour: [
       {
         target: "rules-guards",
-        title: "Three tunable guards",
-        body: "Price variance, the document checklist and the registry cross-check. Change a pill and the sidecar stores it the moment you click.",
+        title: "Review checks you can update",
+        body: "Set the price threshold, document checklist and supplier register check. Changes are saved as soon as you select them.",
       },
       {
         target: "rules-locked",
-        title: "One guard is not a setting",
-        body: "Page-level citations on every claim — locked by design, not offered as a toggle.",
+        title: "Source references stay on",
+        body: "Every finding must include a page or source reference. This requirement cannot be turned off.",
       },
       {
         target: "rules-audit",
         title: "Your name, on every change",
-        body: "The last-change line and the trail behind it: who, when, before and after. READ THE TRAIL jumps to the full record.",
+        body: "See who changed a rule, when it changed and what the previous value was. Open the activity log for the full history.",
       },
     ],
   },
   {
     section: "mc-settings",
     title: "Manage your account",
-    summary: "Your signed-in identity, the agent connection and this session.",
+    summary: "Your account details, tender review service status and current sign-in session.",
     steps: [
-      "Account shows the officer signed in. Identity comes from sign-in.",
-      "Agent connection shows whether the sidecar is online and how many runs it has recorded.",
-      "Sign out ends this browser session. Runs and the audit trail stay on the sidecar.",
+      "Account shows which officer is signed in.",
+      "Review service status shows whether new tender reviews can be started and how many have been recorded.",
+      "Sign out ends this browser session. Tender reviews and activity history remain saved in the workspace.",
     ],
-    tip: "If the sidecar shows offline, decisions cannot be recorded until it is back.",
+    tip: "If the review service is offline, decisions cannot be recorded until it is available again.",
     tour: [
       {
         target: "settings-account",
-        title: "The name that signs",
-        body: "Identity comes from sign-in — the officer shown here is the name every decision records.",
+        title: "Your account",
+        body: "The officer shown here is the name attached to decisions you record.",
       },
       {
         target: "settings-agent",
-        title: "The agent connection, live",
-        body: "Sidecar status, filesystem tools, runs recorded and calls logged — read straight from quorum-mcp.",
+        title: "Review service status",
+        body: "View service availability and the review activity reported for this workspace.",
       },
       {
         target: "settings-signout",
         title: "Ending the session",
-        body: "Sign out closes this browser session. Runs, gates and the audit trail stay on the sidecar.",
+        body: "Sign out ends this browser session. Tender reviews, approvals and activity history stay saved in the workspace.",
       },
     ],
   },
   {
     section: "mc-suppliers",
-    title: "Keep the supplier list",
-    summary: "The platform's roll of named bidders — every firm your entity deals with, with the registration detail a compliant bid must carry.",
+    title: "Manage suppliers",
+    summary: "Keep supplier registrations, tax clearances and business categories up to date for tender reviews.",
     steps: [
-      "Open Suppliers from the sidebar, then fill the Add Supplier intake on the right: name, registration number, ZRA tax detail and the sector regulator where one applies.",
-      "The table shows every supplier with their tax clearance state, categories and audit trail of who added them.",
-      "Edit a firm when its papers change; suspend or blacklist when it should not be considered.",
+      "Open Suppliers and add the business name, registration number, ZRA tax details and any required sector licence.",
+      "The list shows each supplier's tax clearance status, business categories and who added the record.",
+      "Update supplier details when documents change. Suspend or exclude suppliers when required.",
     ],
-    tip: "A supplier carrying an expired ZRA tax clearance is the classic non-responsiveness — keep the register current before a run reads it.",
+    tip: "Check that tax clearance is current before a supplier is considered for an award.",
     tour: [
       {
         target: "suppliers-add",
         title: "Add a supplier",
-        body: "The intake opens as a modal; pick a firm from the ZPPA roll and the record fills itself — or type a new one by hand.",
+        body: "Choose a supplier from the public procurement list to fill in its details, or enter the information manually.",
       },
       {
         target: "suppliers-roll",
-        title: "The roll, full width",
-        body: "Every firm with its registration, tax-clearance state, categories, and who added it — and when.",
+        title: "Supplier list",
+        body: "See each supplier's registration, tax clearance, business categories and record history.",
       },
       {
         target: "suppliers-filters",
-        title: "Filter by standing",
-        body: "Active, suspended, blacklisted. A firm carrying an expired tax clearance is the classic non-responsiveness — keep the register current before a run reads it.",
+        title: "Filter by status",
+        body: "Find active, suspended or excluded suppliers. Check tax clearance before considering a supplier for an award.",
       },
     ],
   },
   {
     href: "/docs",
     title: "Read the documentation",
-    summary: "The full handbook, at its own address: the review pipeline, every rule the agent applies, the gate protocol and Zambia's procurement law.",
+    summary: "Learn how tender reviews work, what each check means, how committee approvals are recorded and which procurement rules apply in Zambia.",
     steps: [
       "Open Documentation from the sidebar — it leaves the workspace for its own page.",
-      "Chapters run in reading order, from what Quorum is to the glossary; search jumps straight to a rule, a method or a field.",
-      "The Zambia chapter carries the lawful procurement methods, live from the agent's own method register.",
+      "Browse the handbook from the product overview to the glossary, or search for a rule, method or field.",
+      "The Zambia chapter lists the procurement methods currently available in Quorum.",
     ],
-    tip: "When a finding surprises you, its rule code is documented there with the exact trigger and the committee's move.",
+    tip: "If a finding is unclear, look up its rule in the handbook to see what it checks and how the committee can respond.",
   },
 ];
 
@@ -7958,26 +7822,28 @@ const SECTION_ICON = Object.fromEntries(
 function WalkthroughView({
   onOpen,
   onNewRun,
+  onOpenEvaluation,
   onTour,
   done,
 }: {
   onOpen: (id: SectionId) => void;
   onNewRun: () => void;
+  onOpenEvaluation: () => void;
   onTour: (chapter: number) => void;
   done: number[];
 }) {
   return (
     <ViewShell
       fig="15"
-      title="Walkthrough"
-      sub="A tour of every part of Quorum, in the order a tender moves through it. Start a chapter and the screen dims, the control is spotlit, and Quorum walks you through it — what the screen does, what you decide there, and where to go next."
+      title="Guided tour"
+      sub="Explore Quorum in the order a tender review moves through the workspace. Each step explains what the screen shows, what decisions belong to you and where to go next."
       action={
         <button
           type="button"
-          onClick={onNewRun}
+          onClick={onOpenEvaluation}
           className="group inline-flex h-11 items-center gap-2 rounded-xl bg-brand-600 px-5 text-[13.5px] font-semibold text-white shadow-[0_10px_26px_rgba(217,38,22,0.3)] transition-all hover:-translate-y-0.5 hover:bg-brand-700"
         >
-          Launch a run
+          Open Bid evaluation
           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
         </button>
       }
@@ -8060,7 +7926,7 @@ function WalkthroughView({
                       className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-ink-200 px-3.5 font-code text-[10px] font-bold tracking-[0.04em] text-ink-700 transition-colors hover:border-ink-950 hover:text-ink-950"
                     >
                       {ch.launch
-                        ? "LAUNCH AN EVALUATION"
+                        ? "START A DOCUMENT REVIEW"
                         : ch.section
                           ? `OPEN ${SECTION_LABEL[ch.section].toUpperCase()}`
                           : "OPEN"}
@@ -8248,7 +8114,7 @@ function SupplierStatusChip({ status }: { status: SupplierStatus }) {
       )}
     >
       {status === "ACTIVE" && <CircleCheck className="h-2.5 w-2.5" aria-hidden="true" />}
-      {status}
+      {status === "BLACKLISTED" ? "EXCLUDED" : status}
     </span>
   );
 }
@@ -8648,7 +8514,7 @@ function AddSupplierModal({
       await onRegistered(name);
       onClose();
     } catch {
-      setError("The sidecar is offline — suppliers cannot be written right now.");
+      setError("Supplier records are temporarily unavailable. Please try again shortly.");
     } finally {
       setBusy(false);
     }
@@ -9037,7 +8903,7 @@ function AddSupplierModal({
 
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-ink-100 pt-5">
             <p className="max-w-[220px] font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600 sm:max-w-none">
-              WRITTEN VIA quorum-mcp · {(firstName || "unknown").toUpperCase()} IS THE RECORDED ACTOR
+              SUBMITTED BY {(firstName || "unknown").toUpperCase()} · SAVED TO THE REVIEW RECORD
             </p>
             <div className="ml-auto flex items-center gap-2">
               {activeStep > 0 && (
@@ -9212,7 +9078,7 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
       await reload();
       onToast(`REGISTER UPDATED — ${name.toUpperCase()} · CHANGES WRITTEN TO THE AUDIT TRAIL`);
     } catch {
-      setEditError("The sidecar is offline — the change was not written.");
+      setEditError("Supplier records are temporarily unavailable. Your change was not saved.");
     } finally {
       setEditBusy(false);
     }
@@ -9226,7 +9092,7 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
         body: JSON.stringify({ status, actor: firstName || "unknown" }),
       });
       if (!res.ok) {
-        onToast((await sidecarError(res, "CHANGE NOT WRITTEN")).toUpperCase());
+        onToast((await sidecarError(res, "Supplier change was not saved. Please try again.")).toUpperCase());
         return;
       }
       await reload();
@@ -9236,7 +9102,7 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
           : `SUPPLIER ${status} — ${s.name.toUpperCase()}`,
       );
     } catch {
-      onToast("CHANGE NOT WRITTEN — quorum-mcp NOT RESPONDING");
+      onToast("SUPPLIER CHANGE WAS NOT SAVED — PLEASE TRY AGAIN");
     }
   };
 
@@ -9247,14 +9113,14 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
         headers: { "x-quorum-actor": firstName || "unknown" },
       });
       if (!res.ok) {
-        onToast((await sidecarError(res, "REMOVAL NOT WRITTEN")).toUpperCase());
+        onToast((await sidecarError(res, "Supplier record was not removed. Please try again.")).toUpperCase());
         return;
       }
       setConfirmDelete(null);
       await reload();
       onToast(`SUPPLIER REMOVED — ${s.name.toUpperCase()} · REMOVAL LOGGED`);
     } catch {
-      onToast("REMOVAL NOT WRITTEN — quorum-mcp NOT RESPONDING");
+      onToast("SUPPLIER RECORD WAS NOT REMOVED — PLEASE TRY AGAIN");
     }
   };
 
@@ -9262,14 +9128,14 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
     { id: "ALL", label: "ALL", n: counts.total },
     { id: "ACTIVE", label: "ACTIVE", n: counts.active },
     { id: "SUSPENDED", label: "SUSPENDED", n: counts.suspended },
-    { id: "BLACKLISTED", label: "BLACKLISTED", n: counts.blacklisted },
+    { id: "BLACKLISTED", label: "EXCLUDED", n: counts.blacklisted },
   ];
 
   return (
     <ViewShell
       fig="16"
       title="Suppliers"
-      sub="Every bidder the platform knows — held with the registration detail Zambia's regime asks a bidder to carry: PACRA number, ZRA tax clearance, sector registration. The agent reads this roll when it checks a bid; you keep it true. New entries can start straight off the published ZPPA e-GP record."
+      sub="Maintain supplier records, including PACRA registration, ZRA tax clearance and sector registration. Reviewers can compare bidder details against this register. New entries can be added from a published ZPPA e-GP record."
       action={
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex min-h-8 items-center gap-2 rounded-full border border-ink-200 bg-white px-3 py-1.5 font-code text-[10px] font-semibold tracking-[0.04em] text-ink-700">
@@ -9357,7 +9223,7 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
                 <thead>
                   <tr className="border-b border-ink-100 bg-paper">
                     {["SUPPLIER", "ZRA TAX", "SECTOR REGISTRATION", "CONTACT", "STATUS", "ACTIONS"].map((h) => (
-                      <th
+                        <th
                         key={h}
                         scope="col"
                         className={cn(
@@ -9490,7 +9356,7 @@ function SuppliersView({ firstName, onToast }: { firstName: string; onToast: (m:
                         </p>
                         <p className="mx-auto mt-2 max-w-md text-[12.5px] leading-relaxed text-ink-500">
                           {suppliers.length === 0
-                            ? "Register the firms your entity deals with — or pull one straight off the published ZPPA record; the intake fills itself. The agent reads this roll when it checks bids."
+                            ? "Register the firms your entity works with, or add a supplier from a published ZPPA record. Supplier details are available to authorised reviewers."
                             : "Clear the search or switch the status filter to see the rest of the roll."}
                         </p>
                         {suppliers.length === 0 && (
@@ -9768,7 +9634,7 @@ function RulesView({
     {
       no: "02",
       title: "Document checklist",
-      desc: "Minimum documents present before a run may complete —",
+      desc: "Minimum documents required before a tender review can be completed —",
       control: (
         <GuardPills
           value={checklistLabelOf(shown.checklist)}
@@ -9782,7 +9648,7 @@ function RulesView({
     {
       no: "03",
       title: "Dual approval",
-      desc: "Two different officers must sign a gate at or above this value. 0 disables the rule —",
+      desc: "Two different officers must approve decisions at or above this value. Set to 0 to turn off the second approval —",
       control: (
         <div className="flex flex-wrap items-center gap-2">
           <input
@@ -9915,8 +9781,8 @@ function RulesView({
   return (
     <ViewShell
       fig="13"
-      title="Rules & Safeguards"
-      sub="The thresholds the agent must obey inside a run. Three clauses are carved; the guards below are tunable — and every change is written to the audit trail with your name on it."
+      title="Rules & controls"
+      sub="Set the thresholds and document checks used during a review. Quorum records each permitted change with the person who made it."
     >
       {/* Full-width: guards flow edge-to-edge in a two-column grid,
           with the standing-rule rail as a full-width row beneath. */}
@@ -10043,30 +9909,32 @@ function RunsView({
   return (
     <ViewShell
       fig="05"
-      title="Evaluations"
-      sub="Every file the agent has opened — live, queued, at a gate or decided. Expand an evaluation for its top findings and its audit trail."
+      title="Tender reviews"
+      sub="Browse tender reviews by status. Open a review to inspect its findings, supporting evidence and audit history."
       action={
         <DeskStatus tone={live > 0 ? "live" : runs.length > 0 ? "clear" : "idle"}>
           {live > 0
-            ? `${reading} reading · ${atGate} at a gate`
-            : runs.length > 0
-              ? "Agent idle"
-              : "Desk empty"}
+            ? `${reading} in progress · ${atGate} awaiting approval`
+            : queued > 0
+              ? `${queued} waiting to start`
+              : runs.length > 0
+                ? "No active reviews"
+                : "No reviews yet"}
         </DeskStatus>
       }
       summary={
         <StageStrip
-          label="Review pipeline"
+          label="Review status"
           meta={
             runs.length > 0
-              ? `${runs.length} FILE${runs.length === 1 ? "" : "S"} ON THE DESK${coverage !== null ? ` · ${coverage}% SOURCED` : ""}`
-              : "NO FILES OPENED"
+              ? `${runs.length} TENDER REVIEW${runs.length === 1 ? "" : "S"} RECORDED${coverage !== null ? ` · ${coverage}% OF FINDINGS HAVE SOURCES` : ""}`
+              : "NO TENDER REVIEWS YET"
           }
           items={[
-            { key: "queued", label: "Queued", count: queued, caption: "WAITING FOR THE AGENT" },
-            { key: "reading", label: "Reading", count: reading, caption: "AGENT IN THE FILES", tone: reading ? "brand" : "idle" },
-            { key: "gate", label: "At a gate", count: atGate, caption: "A HUMAN MUST DECIDE", tone: atGate ? "brand" : "idle" },
-            { key: "decided", label: "Decided", count: decided, caption: "SIGNED AND FILED", tone: decided ? "emerald" : "idle" },
+            { key: "queued", label: "Waiting", count: queued, caption: "NOT STARTED" },
+            { key: "reading", label: "In progress", count: reading, caption: "CHECKS RUNNING", tone: reading ? "brand" : "idle" },
+            { key: "gate", label: "Awaiting approval", count: atGate, caption: "DECISION NEEDED", tone: atGate ? "brand" : "idle" },
+            { key: "decided", label: "Complete", count: decided, caption: "DECISION RECORDED", tone: decided ? "emerald" : "idle" },
           ]}
         />
       }
@@ -10128,7 +9996,7 @@ function GatesView({
     <ViewShell
       fig="06"
       title="Approvals"
-      sub="The stop only a human can pass. The agent assembles the file and halts; the committee reads the cited flags and decides — by name, on the record."
+      sub="Tender reviews awaiting a committee decision. Members can inspect the findings and sources, then record their decision under their own name."
       action={
         <DeskStatus tone={queue.length > 0 ? "live" : "clear"}>
           {queue.length > 0 ? `${queue.length} waiting on a signature` : "All clear"}
@@ -10197,10 +10065,10 @@ function GatesView({
             <div className="relative">
               <h3 className="font-display text-[15px] font-black tracking-[-0.01em]">Who signs? The committee.</h3>
               <p className="mt-2.5 text-[12.5px] leading-relaxed text-ink-300">
-                Five of nine seats present before an award counts. Meet the roster and the quorum rule.
+                At least five of the nine committee members must be present before an award can be approved.
               </p>
               <span className="mt-4 inline-flex min-h-11 items-center gap-1.5 font-code text-[10px] font-bold tracking-[0.06em] text-brand-300">
-                OPEN THE ROSTER
+                VIEW COMMITTEE MEMBERS
                 <ArrowUpRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden="true" />
               </span>
             </div>
@@ -10362,16 +10230,18 @@ export function Dashboard({
   const hour = now?.getHours() ?? 10;
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
-  const activeRuns = runs.filter((r) => r.status === "running" || r.status === "queued").length;
+  const activeRuns = runs.filter((r) => r.status === "running").length;
   const findingsTotal = runs
     .filter((r) => r.status === "gate" || r.status === "complete")
     .reduce((sum, r) => sum + r.findings, 0);
   const citedTotal = runs
     .filter((r) => r.status === "gate" || r.status === "complete")
     .reduce((sum, r) => sum + r.citations, 0);
-  const citationPct = findingsTotal > 0 ? Math.round((citedTotal / findingsTotal) * 100) : 100;
-  /* Real, not asserted: claims with no source behind them. */
-  const unsourcedTotal = runs.reduce((sum, r) => sum + (r.unsourced ?? 0), 0);
+  const citationPct = findingsTotal > 0 ? Math.round((citedTotal / findingsTotal) * 100) : null;
+  /* Count unsourced findings in the same finished review set as the KPI above. */
+  const unsourcedTotal = runs
+    .filter((r) => r.status === "gate" || r.status === "complete")
+    .reduce((sum, r) => sum + (r.unsourced ?? 0), 0);
 
   const findingRows = useMemo(() => buildFindingRows(findings, runs, verdicts), [findings, runs, verdicts]);
   const openFindings = findingRows.filter((r) => r.status === "OPEN").length;
@@ -10391,15 +10261,16 @@ export function Dashboard({
     switchTo("mc-cycle");
   };
 
-  /* One launch door for every button and tour action — a read-only role never
-     reaches the wizard, even when a chapter points at it. */
+  /* Document checks remain a separate, permissioned workflow from bidder
+     scoring in Tender workflow → Bid evaluation. */
   const openNewRun = () => {
     if (!canDo(user?.role, "run_reviews")) {
-      onToast("YOUR WORKSPACE ROLE CANNOT LAUNCH AN EVALUATION");
+      onToast("YOUR WORKSPACE ROLE CANNOT START A DOCUMENT REVIEW");
       return;
     }
     setModalOpen(true);
   };
+  const openBidEvaluation = () => switchToCyclePage("evaluation");
 
   /* The palette's contents: two actions, then every section of the desk in the
      same order as the rail, carrying the same live counts as the sidebar. */
@@ -10407,14 +10278,24 @@ export function Dashboard({
     {
       label: "Actions",
       entries: [
+        ...(canOpenSection(user, "mc-cycle")
+          ? [{
+              id: "open-bid-evaluation",
+              label: "Open Bid evaluation",
+              icon: Scale,
+              hint: "TENDER WORKFLOW",
+              keywords: "bid evaluation bidder Meta AI tender workflow",
+              run: openBidEvaluation,
+            }]
+          : []),
         ...(canDo(user?.role, "run_reviews")
           ? [
               {
-                id: "new-evaluation",
-                label: "New evaluation",
+                id: "new-document-review",
+                label: "Start a document review",
                 icon: Plus,
-                hint: "LAUNCH",
-                keywords: "start run tender review upload",
+                hint: "DOCUMENT CHECKS",
+                keywords: "start run document review upload",
                 run: openNewRun,
               },
             ]
@@ -10463,11 +10344,11 @@ export function Dashboard({
         body: JSON.stringify({ tenderId: sourceRef || ref, reference: ref }),
       });
     } catch {
-      throw new Error("The run service is unavailable. Check your connection and try again.");
+      throw new Error("The review service is unavailable. Check your connection and try again.");
     }
-    if (!res.ok) throw new Error(`The run service could not start this review (HTTP ${res.status}). Check the tender reference and try again.`);
+    if (!res.ok) throw new Error(`The review service could not start this review (HTTP ${res.status}). Check the tender reference and try again.`);
     setModalOpen(false);
-    /* Guide the officer to the register — the run goes live in front of them. */
+    /* Guide the officer to the register — the review status updates there. */
     setActive("mc-runs");
     requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" }));
     onToast(`RUN QUEUED — ${title.toUpperCase()} · ${format.toUpperCase()} · ${docs} DOC${docs === 1 ? "" : "S"} · ${checks} CHECK${checks === 1 ? "" : "S"}`);
@@ -10482,7 +10363,7 @@ export function Dashboard({
        gate never reaches the sidecar. */
     const stepUp = await requestStepUp(g.id);
     if (!stepUp) {
-      onToast("GATE NOT SIGNED — STEP-UP CANCELLED");
+      onToast("APPROVAL NOT RECORDED — ADDITIONAL SIGN-IN WAS CANCELLED");
       return false;
     }
     try {
@@ -10503,11 +10384,11 @@ export function Dashboard({
       if (!res.ok) {
         /* The sidecar says why it refused (e.g. not on the committee roster). */
         const data = (await res.json().catch(() => ({}))) as { error?: string };
-        onToast(data.error ? data.error.toUpperCase() : "DECISION NOT RECORDED");
+        onToast(data.error ? data.error.toUpperCase() : "DECISION NOT RECORDED — CHECK YOUR PERMISSIONS AND TRY AGAIN");
         return false;
       }
     } catch {
-      onToast("DECISION NOT RECORDED — quorum-mcp NOT RESPONDING");
+      onToast("DECISION NOT RECORDED — THE REVIEW SERVICE IS UNAVAILABLE");
       return false;
     }
     void refresh();
@@ -10538,12 +10419,12 @@ export function Dashboard({
       return;
     }
     if (!(await decideGate(g, "APPROVE", ink))) return;
-    onToast(`GATE SIGNED — ${g.tender} AWARDED · WET-INK SIGNATURE + SEAL LOGGED`);
+    onToast(`APPROVAL RECORDED — ${g.tender} AWARDED · SIGNATURE SAVED`);
   };
 
   const returnGate = async (g: GateItem) => {
     if (!(await decideGate(g, "REJECT"))) return;
-    onToast(`${g.tender} RETURNED — AGENT TASKED WITH CLARIFICATION`);
+    onToast(`${g.tender} RETURNED FOR CLARIFICATION`);
   };
 
   /* ── The guided walkthrough ─────────────────────────────────────────────
@@ -10613,8 +10494,8 @@ export function Dashboard({
       return (
         <ViewShell
           fig="—"
-          title="Restricted"
-          sub={`Your workspace role${user?.role ? ` (${ROLE_LABELS[user.role]})` : ""} does not open this section. The server enforces the same boundary on every write.`}
+          title="Access unavailable"
+          sub={`Your account${user?.role ? ` (${ROLE_LABELS[user.role]})` : ""} does not have access to this section. Contact a workspace administrator if you need access.`}
         >
           <button
             type="button"
@@ -10659,6 +10540,7 @@ export function Dashboard({
             user={user}
             onToast={onToast}
             canDeleteDocuments={canDo(user?.role, "run_reviews")}
+            canReviewBids={canDo(user?.role, "read_documents")}
             selectedPage={activeCyclePage}
             onPageChange={setActiveCyclePage}
           />
@@ -10712,6 +10594,7 @@ export function Dashboard({
           <WalkthroughView
             onOpen={switchTo}
             onNewRun={openNewRun}
+            onOpenEvaluation={openBidEvaluation}
             onTour={startTour}
             done={toured}
           />
@@ -10980,10 +10863,10 @@ export function Dashboard({
             >
               <span className="inline-flex h-2 w-2 shrink-0 animate-pulse rounded-full bg-brand-600" aria-hidden="true" />
               <p className="text-[12.5px] font-medium text-brand-900">
-                The agent service (quorum-mcp sidecar) is not answering — the numbers below may be stale.
+                The review service is not responding. Some workspace information may be out of date.
               </p>
               <p className="font-code text-[10px] tracking-[0.04em] text-brand-800">
-                CHECK TOOLS &amp; MODELS FOR THE LIVE STATUS
+                VIEW SERVICE STATUS IN SETTINGS
               </p>
             </div>
           )}
@@ -11006,16 +10889,16 @@ export function Dashboard({
                 <p className="type-micro text-ink-400">{now ? dateLine(now) : "—"}</p>
                 <button
                   type="button"
-                  data-tour="ov-new-run"
-                  onClick={openNewRun}
+                  data-tour="ov-bid-evaluation"
+                  onClick={openBidEvaluation}
                   className="focus-brand group relative inline-flex h-12 items-center gap-2.5 overflow-hidden rounded-full bg-brand-600 pl-5 pr-4 text-[14px] font-semibold text-white shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_16px_34px_-16px_rgba(217,38,22,0.9)] transition-colors hover:bg-brand-700"
                 >
                   <span
                     aria-hidden="true"
                     className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full"
                   />
-                  <Plus className="relative h-4 w-4" aria-hidden="true" />
-                  <span className="relative">New evaluation</span>
+                  <Scale className="relative h-4 w-4" aria-hidden="true" />
+                  <span className="relative">Open Bid evaluation</span>
                 </button>
               </div>
             </div>
@@ -11027,31 +10910,43 @@ export function Dashboard({
             >
               <StatCard
                 index="01"
-                label="Evaluations in progress"
+                label="Reviews in progress"
                 value={activeRuns}
-                sub={activeRuns > 0 ? "AGENT IS READING A TENDER" : "AGENT IS IDLE — START AN EVALUATION"}
+                sub={activeRuns > 0 ? "REVIEW IN PROGRESS" : "NO REVIEWS IN PROGRESS"}
                 delay={0.05}
               />
               <StatCard
                 index="02"
                 label="Issues found"
                 value={findingsTotal}
-                sub={unsourcedTotal > 0 ? `${unsourcedTotal} STILL AWAIT A SOURCE` : "EACH ONE LINKED TO A SOURCE"}
+                sub={
+                  findingsTotal === 0
+                    ? "AVAILABLE AFTER A REVIEW"
+                    : unsourcedTotal > 0
+                      ? `${unsourcedTotal} STILL AWAIT A SOURCE`
+                      : "ALL FINDINGS LINKED TO SOURCES"
+                }
                 delay={0.12}
               />
               <StatCard
                 index="03"
-                label="Sources confirmed"
+                label="Citation coverage"
                 value={citationPct}
                 suffix="%"
-                sub={`${unsourcedTotal} CLAIM${unsourcedTotal === 1 ? "" : "S"} WITHOUT A SOURCE`}
+                sub={
+                  findingsTotal === 0
+                    ? "AVAILABLE AFTER FINDINGS ARE RECORDED"
+                    : unsourcedTotal > 0
+                      ? `${unsourcedTotal} FINDING${unsourcedTotal === 1 ? "" : "S"} WITHOUT A SOURCE`
+                      : "ALL FINDINGS LINKED TO SOURCES"
+                }
                 delay={0.19}
               />
               <StatCard
                 index="04"
-                label="Approvals waiting"
+                label="Approvals awaiting action"
                 value={queue.length}
-                sub={queue.length > 0 ? "THE COMMITTEE NEEDS TO DECIDE" : "NO DECISIONS NEEDED"}
+                sub={queue.length > 0 ? "AUTHORISATION IS REQUIRED" : "NO APPROVALS PENDING"}
                 featured
                 pulse={queue.length > 0}
                 delay={0.26}
@@ -11082,14 +10977,9 @@ export function Dashboard({
             />
           </div>
 
-          {/* Feed */}
-          <div className="mt-6 min-w-0">
-            <AgentFeed />
-          </div>
-
           {/* Bottom strip */}
           <p className="mt-12 border-t border-ink-200/70 pt-5 text-center type-micro text-ink-400 dark:border-white/10">
-            Quorum · workspace · session {initialsOf(user?.name ?? "Q")} · audit-grade logs · no trackers
+            Quorum · workspace · session {initialsOf(user?.name ?? "Q")} · verifiable audit history · no trackers
           </p>
               </motion.div>
             ) : (

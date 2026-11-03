@@ -11,10 +11,10 @@ type JsonResponse = { ok: boolean; status: number; body: Record<string, unknown>
 
 const INITIAL_CHECKS: ApiCheck[] = [
   { id: "discovery", label: "API discovery", state: "checking", detail: "Waiting for the API directory" },
-  { id: "runtime", label: "Procurement runtime", state: "checking", detail: "Checking the MCP sidecar" },
-  { id: "readiness", label: "Web API readiness", state: "checking", detail: "Checking the public health route" },
+  { id: "runtime", label: "Procurement service", state: "checking", detail: "Checking the procurement service" },
+  { id: "readiness", label: "Web service health", state: "checking", detail: "Checking the web service" },
   { id: "session", label: "Workspace session", state: "checking", detail: "Resolving your Quorum session" },
-  { id: "gateway", label: "REST gateway", state: "checking", detail: "Checking an authenticated sidecar read" },
+  { id: "gateway", label: "Authenticated API access", state: "checking", detail: "Checking access to protected API actions" },
 ];
 
 const QUICKSTART = [
@@ -77,8 +77,7 @@ export function ApiView() {
     const user = asRecord(session.body?.user);
     const hasSession = session.ok && Boolean(user);
 
-    /* This route self-starts a stopped sidecar, so follow-up checks exercise
-       the real request path after the procurement runtime is ready. */
+    /* Start the procurement service if needed, then check the signed-in API path. */
     const runtime = await getJson("/api/agent-status");
     const health = asRecord(runtime.body?.health);
     const runtimeOk = runtime.ok && health?.service === "quorum-mcp";
@@ -106,13 +105,13 @@ export function ApiView() {
         id: "runtime",
         label: "Procurement runtime",
         state: runtimeOk ? "online" : "offline",
-        detail: runtimeOk ? "quorum-mcp is " + sidecarState + "; REST tools are responding" : responseError(runtime, "Procurement sidecar did not become ready"),
+        detail: runtimeOk ? "The procurement service is " + sidecarState + "; API actions are responding." : responseError(runtime, "The procurement service did not become ready"),
       },
       {
         id: "readiness",
         label: "Web API readiness",
         state: healthOk ? "online" : "offline",
-        detail: healthOk ? "The web API can reach the procurement runtime" : responseError(readiness, "Health route reported the API unavailable"),
+        detail: healthOk ? "The web service can reach the procurement service." : responseError(readiness, "The web service is unavailable"),
       },
       {
         id: "session",
@@ -125,13 +124,13 @@ export function ApiView() {
         label: "REST gateway",
         state: gatewayOk ? "online" : hasSession && runtimeOk ? "offline" : "warning",
         detail: gatewayOk
-          ? toolCount + " tools reachable through the session and role-checked gateway"
+          ? toolCount + " actions available to your signed-in account"
           : !hasSession
             ? "Sign in to exercise protected REST routes"
             : !runtimeOk
-              ? "Waiting for the procurement runtime"
+              ? "Waiting for the procurement service"
               : gateway
-                ? responseError(gateway, "Authenticated sidecar route failed")
+                ? responseError(gateway, "Could not check access to the procurement API")
                 : "Gateway check was skipped",
       },
     ]);
@@ -167,7 +166,7 @@ export function ApiView() {
                 <p className="font-code text-[10px] font-bold tracking-[0.08em] text-brand-700 dark:text-brand-300">DEVELOPER · REST API</p>
                 <h1 id="api-view-title" className="mt-1 text-[22px] font-black tracking-tight text-ink-950 dark:text-white">Connect to Quorum’s API.</h1>
                 <p className="mt-2 max-w-3xl text-[12px] leading-relaxed text-ink-600 dark:text-ink-300">
-                  Explore the live API surfaces, see how each one is protected, and check the web service, procurement runtime, and authenticated gateway from this workspace.
+                  Explore the live API routes, see what sign-in they require, and check that the web and procurement services are available.
                 </p>
               </div>
             </div>
@@ -197,7 +196,7 @@ export function ApiView() {
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 px-5 py-4 dark:border-white/[0.07] sm:px-7">
           <div className="flex items-center gap-2.5">
             <Activity className="h-4 w-4 text-brand-600 dark:text-brand-400" aria-hidden="true" />
-            <h2 id="api-diagnostics-title" className="text-[14px] font-bold text-ink-950 dark:text-white">Live API diagnostics</h2>
+          <h2 id="api-diagnostics-title" className="text-[14px] font-bold text-ink-950 dark:text-white">Live service checks</h2>
           </div>
           <span className="font-code text-[10px] font-semibold tracking-[0.05em] text-ink-600 dark:text-ink-400">
             {lastChecked ? "LAST CHECKED " + lastChecked : "CHECKING ROUTES"}
@@ -222,7 +221,7 @@ export function ApiView() {
         <section className="panel overflow-hidden rounded-[12px]" aria-labelledby="api-surfaces-title">
           <div className="border-b border-ink-100 px-5 py-4 dark:border-white/[0.07] sm:px-6">
             <h2 id="api-surfaces-title" className="text-[14px] font-bold text-ink-950 dark:text-white">API surfaces</h2>
-            <p className="mt-1 text-[11.5px] leading-relaxed text-ink-600 dark:text-ink-400">Routes currently served by Quorum’s web application, procurement sidecar, and supplier portal.</p>
+            <p className="mt-1 text-[11.5px] leading-relaxed text-ink-600 dark:text-ink-400">Routes provided by Quorum’s web application, procurement service and supplier portal.</p>
           </div>
           <div className="divide-y divide-ink-100 dark:divide-white/[0.07]">
             {API_DIRECTORY.surfaces.map((surface) => (
@@ -248,7 +247,7 @@ export function ApiView() {
           <section className="panel overflow-hidden rounded-[12px]" aria-labelledby="api-auth-title">
             <div className="flex items-center gap-2.5 border-b border-ink-100 px-5 py-4 dark:border-white/[0.07]">
               <ShieldCheck className="h-4 w-4 text-brand-600 dark:text-brand-400" aria-hidden="true" />
-              <h2 id="api-auth-title" className="text-[14px] font-bold text-ink-950 dark:text-white">Authentication model</h2>
+              <h2 id="api-auth-title" className="text-[14px] font-bold text-ink-950 dark:text-white">Access and sign-in</h2>
             </div>
             <div className="space-y-3 px-5 py-4">
               {Object.entries(API_DIRECTORY.authentication).map(([key, description]) => (
@@ -261,7 +260,7 @@ export function ApiView() {
             <div className="mx-5 mb-5 rounded-lg border border-amber-300/70 bg-amber-50 px-3.5 py-3 dark:border-amber-500/20 dark:bg-amber-500/[0.07]">
               <p className="flex items-start gap-2 text-[11.5px] leading-relaxed text-amber-950 dark:text-amber-100">
                 <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                REST API access uses the signed-in session; Quorum does not issue generic REST API keys. For remote AI clients, use the authenticated read-only MCP setup in Integrations.
+                API access uses the signed-in session; Quorum does not issue shared API keys. Remote AI clients can connect through the read-only Model Context Protocol (MCP) setup in Integrations.
               </p>
             </div>
           </section>
@@ -270,7 +269,7 @@ export function ApiView() {
             <div className="flex items-center justify-between gap-3 border-b border-ink-100 px-5 py-4 dark:border-white/[0.07]">
               <div className="flex items-center gap-2.5">
                 <Braces className="h-4 w-4 text-brand-600 dark:text-brand-400" aria-hidden="true" />
-                <h2 id="api-quickstart-title" className="text-[14px] font-bold text-ink-950 dark:text-white">Same-origin request</h2>
+                <h2 id="api-quickstart-title" className="text-[14px] font-bold text-ink-950 dark:text-white">Request from the signed-in workspace</h2>
               </div>
               <button
                 type="button"

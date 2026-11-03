@@ -447,7 +447,7 @@ export function TenderPackPreview({
                 <BookOpen className="h-3.5 w-3.5 shrink-0 text-brand-600" aria-hidden="true" />
                 {sample.files.length === 0
                   ? "This sample has no source files, so it cannot be staged for a review."
-                  : "The agent reads exactly these files over MCP — the review runs the pack’s own bytes, nothing synthetic."}
+                  : "Quorum reviews the files you selected. Findings are based on those documents and the checks shown in the review."}
               </p>
               <button
                 type="button"

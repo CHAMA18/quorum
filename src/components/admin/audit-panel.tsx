@@ -50,7 +50,7 @@ function stateOf(entry: AdminAuditEntry): EntryState {
 
 const STATE_TONE: Record<EntryState, { dot: "emerald" | "amber" | "red" | "neutral"; label: string; text: string }> = {
   ok: { dot: "emerald", label: "OK", text: "text-emerald-700 dark:text-emerald-400" },
-  parked: { dot: "amber", label: "PARKED", text: "text-amber-700 dark:text-amber-300" },
+  parked: { dot: "amber", label: "AWAITING APPROVAL", text: "text-amber-700 dark:text-amber-300" },
   refused: { dot: "red", label: "REFUSED", text: "text-red-700 dark:text-red-400" },
   error: { dot: "red", label: "ERROR", text: "text-red-700 dark:text-red-400" },
 };
@@ -95,16 +95,16 @@ export function AuditPanel({ data, query, setQuery, refresh }: PanelProps) {
     <div className="space-y-6">
       <SectionHead
         index="06"
-        eyebrow="Audit spine"
+        eyebrow="Audit history"
         title={
           <>
-            Every act, in order, <span className="text-brand-600">sealed to the one before it.</span>
+            A record of actions, <span className="text-brand-600">with integrity checks.</span>
           </>
         }
         lede={
           <>
-            Append-only by construction: each row carries the hash of its own payload chained to the previous row, so
-            editing an old line breaks the tail. The verifier re-walks the file and names the exact row where it snaps.
+            Every action is saved with a verification code linked to the action before it. The system checks the full
+            history and identifies the first entry if any saved information has changed.
           </>
         }
         actions={
@@ -113,7 +113,7 @@ export function AuditPanel({ data, query, setQuery, refresh }: PanelProps) {
               <Download className="h-3 w-3" aria-hidden="true" /> EXPORT SHOWN
             </Button>
             <Button size="sm" onClick={() => refresh()}>
-              <RotateCw className="h-3 w-3" aria-hidden="true" /> RE-READ CHAIN
+              <RotateCw className="h-3 w-3" aria-hidden="true" /> REFRESH HISTORY
             </Button>
           </>
         }
@@ -130,7 +130,7 @@ export function AuditPanel({ data, query, setQuery, refresh }: PanelProps) {
         >
           <div className="flex items-center gap-1.5">
             <Dot tone={chainOk ? "emerald" : "red"} pulse={!chainOk} />
-            <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Chain state</p>
+            <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">History integrity</p>
           </div>
           <p
             className={cn(
@@ -138,33 +138,33 @@ export function AuditPanel({ data, query, setQuery, refresh }: PanelProps) {
               chainOk ? "text-emerald-800 dark:text-emerald-200" : "text-red-800 dark:text-red-200",
             )}
           >
-            {chainOk ? "INTACT" : verify || ledger ? "BROKEN" : "UNREAD"}
+            {chainOk ? "VERIFIED" : verify || ledger ? "CHECK FAILED" : "NOT CHECKED"}
           </p>
           <p className="mt-0.5 text-[10.5px] leading-relaxed text-ink-600">
             {chainOk
-              ? `${fmtNum(verify?.checked ?? ledger?.checked ?? entries.length)} rows re-walked, every link holds`
+              ? `${fmtNum(verify?.checked ?? ledger?.checked ?? entries.length)} entries checked; all match`
               : verify?.brokenAt != null
-                ? `first break at row ${verify.brokenAt}`
+                ? `First mismatch at entry ${verify.brokenAt}`
                 : ledger?.brokenAt != null
-                  ? `ledger break at row ${ledger.brokenAt}`
-                  : "the verifier did not answer — treat as unproven"}
+                  ? `First mismatch at entry ${ledger.brokenAt}`
+                  : "Could not check the history. Treat it as unverified."}
           </p>
         </div>
         {[
           {
-            label: "Rows in window",
+            label: "Actions shown",
             value: entries.length,
-            note: data.desk.online ? "read from the sidecar log" : "sidecar unreachable — window is empty",
+            note: data.desk.online ? "from the saved activity history" : "Activity history is unavailable",
           },
           {
-            label: "Refused attempts",
+            label: "Blocked actions",
             value: refused,
-            note: `${parked} more parked at a gate`,
+            note: `${parked} more awaiting approval`,
           },
           {
-            label: "Rows matching",
+            label: "Matching actions",
             value: filtered.length,
-            note: `of ${fmtNum(data.desk.audit.allTotal)} recorded calls on this desk`,
+            note: `of ${fmtNum(data.desk.audit.allTotal)} recorded actions`,
           },
         ].map((stat) => (
           <div key={stat.label} className="panel rounded-2xl px-4 py-3.5">
@@ -177,23 +177,22 @@ export function AuditPanel({ data, query, setQuery, refresh }: PanelProps) {
 
       {verify && verify.restarts.length > 0 && (
         <div className="rounded-xl border border-ink-200 bg-paper-2/60 px-4 py-3 text-[10.5px] leading-relaxed text-ink-500 dark:border-white/10 dark:bg-white/[0.02]">
-          <span className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Epochs</span>{" "}
-          The log holds {verify.segments} sealed segment{verify.segments === 1 ? "" : "s"} across {verify.restarts.length}{" "}
-          restart{verify.restarts.length === 1 ? "" : "s"}. Each restart re-anchors the chain explicitly, so continuity is
-          declared rather than assumed.
+          <span className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Service restarts</span>{" "}
+          The history contains {verify.segments} verified section{verify.segments === 1 ? "" : "s"} across {verify.restarts.length}{" "}
+          restart{verify.restarts.length === 1 ? "" : "s"}. Each section is checked separately so gaps are visible.
         </div>
       )}
 
       <Panel>
         <PanelHead
-          eyebrow="The ledger"
-          title="Append-only tool log"
-          description="Newest first. Open a row to read what the agent asked for, what the boundary returned, and the hash that binds it."
+          eyebrow="Saved activity"
+          title="Administrative audit history"
+          description="Newest first. Open an entry to review the action, system response and verification code."
           action={
             <div className="flex items-center gap-1.5">
-              <Chip tone="neutral">head {shortHash(ledger?.head ?? entries[0]?.self ?? null, 10)}</Chip>
+              <Chip tone="neutral">latest code {shortHash(ledger?.head ?? entries[0]?.self ?? null, 10)}</Chip>
               <Chip tone={chainOk ? "emerald" : "red"} dot>
-                {chainOk ? "SEALED" : "UNPROVEN"}
+                {chainOk ? "VERIFIED" : "CHECK FAILED"}
               </Chip>
             </div>
           }
@@ -207,7 +206,7 @@ export function AuditPanel({ data, query, setQuery, refresh }: PanelProps) {
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Find by tool, actor, run, kind or hash…"
+              placeholder="Find by action, person, tender review or verification code…"
               aria-label="Search the audit log"
               className={cn(inputCls, "w-full pl-8")}
             />
@@ -244,8 +243,8 @@ export function AuditPanel({ data, query, setQuery, refresh }: PanelProps) {
             title="No row matches"
             body={
               entries.length === 0
-                ? "The sidecar returned no log window. The console shows nothing rather than inventing a record."
-                : "Clear the search or widen the window. Network filtering never touches the ledger itself."
+                ? "Activity history is unavailable. No entries are shown until the service responds."
+                : "Clear the search or show more entries. Filtering does not change saved history."
             }
           />
         ) : (
@@ -253,7 +252,7 @@ export function AuditPanel({ data, query, setQuery, refresh }: PanelProps) {
             <table className="w-full min-w-[760px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-ink-100 dark:border-white/8">
-                  {["SEQ", "TOOL", "ACTOR", "RUN", "STATE", "ROW HASH", "AT"].map((head) => (
+                  {["NO.", "ACTION", "PERSON", "TENDER REVIEW", "RESULT", "VERIFY CODE", "DATE"].map((head) => (
                     <th
                       key={head}
                       scope="col"
@@ -298,9 +297,8 @@ export function AuditPanel({ data, query, setQuery, refresh }: PanelProps) {
             <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">What a refusal means</p>
           </div>
           <p className="mt-2 text-[10.5px] leading-relaxed text-ink-500">
-            A refused row is the boundary doing its job: an agent asked for a tool outside its scope, a path outside the
-            workspace, or an approval it may not give. The attempt is logged so the boundary can be audited, not merely
-            trusted.
+            A blocked action occurs when a person or service attempts something outside its assigned permissions. The
+            attempt is recorded so administrators can review why access was denied.
           </p>
         </div>
         <div className="rounded-2xl border border-ink-200/80 bg-paper-2/60 px-5 py-4 dark:border-white/10 dark:bg-white/[0.02]">
@@ -309,9 +307,8 @@ export function AuditPanel({ data, query, setQuery, refresh }: PanelProps) {
             <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">How the seal works</p>
           </div>
           <p className="mt-2 text-[10.5px] leading-relaxed text-ink-500">
-            Each row stores the SHA-256 of its own payload chained to the previous row&apos;s hash. Verification recomputes
-            the whole file. Change one character in row 12 and rows 12 through the tail all fail — which is how a ledger
-            earns the name.
+            Each entry has a verification code linked to the one before it. The system checks the entire history and
+            flags any entry that no longer matches its saved version.
           </p>
         </div>
       </div>
@@ -396,7 +393,7 @@ function AuditRow({
               <span className="font-code text-[10px] text-ink-700">{shortHash(entry.prev, 16)}</span>
               <span className="font-code text-[10px] font-bold uppercase tracking-[0.08em] text-ink-600">Current</span>
               <span className="font-code text-[10px] text-ink-700">{shortHash(entry.self, 16)}</span>
-              <CopyButton value={entry.self ?? ""} label="row hash" />
+              <CopyButton value={entry.self ?? ""} label="verification code" />
               <span className="ml-auto text-[10px] text-ink-600">
                 id {entry.id} · {entry.server} · {entry.durationMs} ms
               </span>

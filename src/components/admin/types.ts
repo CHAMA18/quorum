@@ -24,14 +24,14 @@ export type SectionMeta = {
 };
 
 export const SECTIONS: SectionMeta[] = [
-  { id: "deck", index: "01", label: "Command Deck", blurb: "The whole desk, one readout" },
-  { id: "people", index: "02", label: "People", blurb: "Authority, sessions, invitations" },
-  { id: "orgs", index: "03", label: "Organizations", blurb: "The supplier door and its appeals" },
-  { id: "work", index: "04", label: "Evaluations", blurb: "Runs, findings and model attribution" },
-  { id: "gates", index: "05", label: "Human Gates", blurb: "The signature the machine cannot press" },
-  { id: "audit", index: "06", label: "Audit Spine", blurb: "The hash-chained record" },
-  { id: "system", index: "07", label: "System", blurb: "Runtime, model chain, roster" },
-  { id: "support", index: "08", label: "Support", blurb: "Barry requests waiting for a reply" },
+  { id: "deck", index: "01", label: "Overview", blurb: "Workspace activity and outstanding actions" },
+  { id: "people", index: "02", label: "People & access", blurb: "Accounts, roles and invitations" },
+  { id: "orgs", index: "03", label: "Supplier organizations", blurb: "Profiles, applications and appeals" },
+  { id: "work", index: "04", label: "Tender reviews", blurb: "Review history, findings and outcomes" },
+  { id: "gates", index: "05", label: "Approvals", blurb: "Pending actions and recorded decisions" },
+  { id: "audit", index: "06", label: "Audit log", blurb: "A verifiable record of system activity" },
+  { id: "system", index: "07", label: "System health", blurb: "Services, integrations and configuration" },
+  { id: "support", index: "08", label: "Support requests", blurb: "Requests awaiting a response" },
 ];
 
 export function isAdminSection(value: string): value is AdminSection {

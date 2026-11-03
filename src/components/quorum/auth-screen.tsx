@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
-import { ArrowRight, CircleAlert, Eye, EyeOff, FileText, Landmark, Loader2, Lock, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowRight, CircleAlert, Eye, EyeOff, Loader2, Lock, ShieldCheck, UserRound } from "lucide-react";
 import { AuthFilm } from "@/components/quorum/auth-film";
 import { QuorumLogo } from "@/components/quorum/logo";
 import { MasterSwitcher } from "@/components/quorum/master-switcher";
+import { StoryShowcase } from "@/components/quorum/story-showcase";
 import type { AuthMode, AuthUser } from "@/lib/auth-types";
 import {
   completeGoogleRedirect,
@@ -157,31 +158,15 @@ function StoryPanel() {
 
       <div className="relative my-auto max-w-xl space-y-6">
         <h1 className="type-display text-[42px] text-white">
-          The agent reads the file.
+          A clearer review record.
           <br />
-          <span className="text-brand-500">You</span> still award the tender.
+          <span className="text-brand-500">Your committee</span> makes the decision.
         </h1>
         <p className="text-[15.5px] leading-relaxed text-ink-300">
-          Your account is the last mile of that promise — every run, every finding and every sign-off
-          is tied to a named human. No ghost decisions, no silent awards, one audit spine.
+          Keep tender documents, verified findings and approvals together. Each action is associated
+          with an authorised person and retained in the procurement record.
         </p>
-        <ul className="space-y-3.5">
-          {[
-            { icon: ShieldCheck, title: "Named-human gates", body: "Every signature is an officer's — the agent stops and waits at twenty gate points across the cycle." },
-            { icon: FileText, title: "Every finding cited", body: "The agent prepares the file with citations you can open; the committee reads before it awards." },
-            { icon: Landmark, title: "One audit spine", body: "Runs, gates and awards append to the same record the supplier portal reads — nothing happens silently." },
-          ].map((item) => (
-            <li key={item.title} className="flex gap-3.5">
-              <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-brand-400/25 bg-brand-400/10 text-brand-300">
-                <item.icon className="h-4 w-4" aria-hidden="true" />
-              </span>
-              <div>
-                <p className="text-[14.5px] font-semibold text-white">{item.title}</p>
-                <p className="text-[13px] leading-relaxed text-ink-400">{item.body}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <StoryShowcase audience="quorum" />
       </div>
 
     </aside>
@@ -199,12 +184,14 @@ function MobileBrandBand() {
       <div className="relative">
         <p className="font-code text-[10px] font-semibold tracking-[0.12em] text-brand-300">OFFICER DESK</p>
         <h2 className="type-display mt-2 text-[22px] text-white">
-          The agent reads. <span className="text-brand-500">You</span> award.
+          Review with evidence. <span className="text-brand-500">Decide together.</span>
         </h2>
         <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-400">
-          Sign in to the desk where every finding is cited and every award carries a named human&apos;s
-          signature.
+          Sign in to review tender evidence and record approvals with your team.
         </p>
+        <div className="mt-3.5">
+          <StoryShowcase compact audience="quorum" />
+        </div>
       </div>
     </div>
   );
@@ -363,15 +350,15 @@ function SuccessPanel({
         </h2>
         <p className="mx-auto mt-2.5 max-w-sm text-[13.5px] leading-relaxed text-ink-600 dark:text-ink-300">
           {mode === "register"
-            ? "Your workspace is live. Connect a portal, map your checklist — and remember: the committee still holds the pen."
-            : "The file is where you left it. Every finding still cited, every gate still human."}
+            ? "Your workspace is ready. Add tender documents, configure your review checks and invite your team."
+            : "Open your workspace to continue with tender reviews and any pending approvals."}
         </p>
 
         {autoEnter && (
           <div className="mx-auto mt-6 w-full max-w-sm" aria-hidden="true">
             <div className="flex items-center justify-between font-code text-[10px] tracking-[0.06em] text-ink-600 dark:text-ink-300">
               <span>OPENING WORKSPACE</span>
-              <span>SESSION · HTTPONLY</span>
+              <span>SECURE SESSION</span>
             </div>
             <div className="mt-2 h-[3px] w-full overflow-hidden rounded-full bg-ink-100 dark:bg-ink-800">
               <motion.div
@@ -405,9 +392,9 @@ function SuccessPanel({
 
         <dl className="mx-auto mt-7 grid max-w-sm grid-cols-3 divide-x divide-ink-100 rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 py-4 dark:bg-night-2">
           {[
-            ["SESSION", "HTTPONLY"],
-            ["PASSWORD", "SCRYPT"],
-            ["GATE", "HUMAN"],
+            ["SESSION", "PROTECTED"],
+            ["PASSWORD", "SECURE"],
+            ["DECISIONS", "HUMAN"],
           ].map(([k, v]) => (
             <div key={k} className="px-2">
               <dt className="font-code text-[10px] tracking-[0.06em] text-ink-600 dark:text-ink-300">{k}</dt>
@@ -793,11 +780,6 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
           <div className="w-full max-w-[480px]">
             <MobileBrandBand />
 
-            {/* Portal tag — the Quorum / Supplier switcher sits inside the card, above the brand. */}
-            <div className="mb-5 hidden items-center justify-end lg:flex">
-              <span className="font-code text-[10px] font-semibold tracking-[0.1em] text-brand-700 dark:text-brand-400">OFFICER PORTAL · /</span>
-            </div>
-
             <div className="rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-6 shadow-[0_16px_48px_rgba(11,12,15,0.08)] sm:p-8 dark:bg-night-2">
               <MasterSwitcher active="quorum" className="mb-5 w-full [&>button]:flex-1" />
               <AnimatePresence mode="wait">
@@ -873,8 +855,8 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
                     </div>
                     <p className="mt-3 text-[12.5px] text-ink-500 dark:text-ink-400">
                       {mode === "register"
-                        ? "One account for your procurement team — the agent prepares the file, you keep the gavel."
-                        : "Sign in to your Quorum workspace. The file is waiting, every finding cited."}
+                        ? "Create an account for your procurement team to manage reviews, evidence and approvals."
+                        : "Sign in to manage tender reviews, supporting evidence and committee approvals."}
                     </p>
 
                     <div className="mt-4 space-y-3.5">
@@ -1221,8 +1203,8 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
                                         <>
                                           <p className="mt-1.5 text-[13px] leading-relaxed text-ink-700 dark:text-ink-200">
                                             Enter your work email and we&apos;ll send a self-service
-                                            reset link. Pilot users can also reply to their onboarding
-                                            mail to reach the gate administrator.
+                                            reset link. If you need account help, contact your workspace
+                                            administrator.
                                           </p>
                                           <div className="mt-3 flex items-stretch gap-2">
                                             <input
@@ -1337,9 +1319,6 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
                       </button>
                     </p>
 
-                    <p className="mt-5 text-center font-code text-[10px] leading-relaxed tracking-[0.08em] text-ink-500 dark:text-ink-400">
-                      SCRYPT-HASHED PASSWORDS · HTTPONLY SESSIONS · NO TRACKERS
-                    </p>
                   </motion.div>
                 )}
               </AnimatePresence>

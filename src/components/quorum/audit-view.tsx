@@ -23,11 +23,8 @@ import { cn } from "@/lib/utils";
 /**
  * Audit explorer.
  *
- * The product's promise is "nothing happens silently". This page is where a
- * sceptic checks that promise: the hash-chained tool log, filtered and
- * exportable; the file-level chain verifier; and the Ed25519 receipt behind
- * every executed gate. It is deliberately read-only — auditing is not an
- * editing surface.
+ * The activity log and approval records, available as a read-only review
+ * surface with integrity checks and export options.
  */
 
 type LogEntry = {
@@ -105,10 +102,11 @@ function auditStatusLabel(status: string): string {
   const labels: Record<string, string> = {
     OK: "Succeeded",
     PENDING_GATE: "Awaiting approval",
-    GATED: "Held at gate",
+    GATED: "Awaiting approval",
     PENDING: "Pending",
-    EXECUTED: "Executed",
-    REJECTED: "Rejected",
+    APPROVED: "Approved",
+    EXECUTED: "Completed",
+    REJECTED: "Declined",
     ERROR: "Error",
   };
   return labels[status] ?? status.replace(/_/g, " ");
@@ -119,9 +117,18 @@ function auditKindLabel(kind: string): string {
     READ: "Read",
     WRITES: "Write",
     IRREVERSIBLE: "Irreversible action",
-    GATE_DECISION: "Gate decision",
+    GATE_DECISION: "Approval decision",
   };
   return labels[kind] ?? kind.replace(/_/g, " ");
+}
+
+function actionLabel(action: string): string {
+  return action
+    .replace(/[_-]+/g, " ")
+    .replace(/\bgate\b/gi, "approval")
+    .replace(/\brun\b/gi, "review")
+    .replace(/\bapi\b/gi, "service")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function download(name: string, content: string, type: string) {
@@ -216,10 +223,10 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
       if (!res.ok) throw new Error(String(res.status));
       const data = (await res.json()) as ChainVerdict;
       setChain(data);
-      onToast(data.ok ? `AUDIT CHAIN VERIFIED — ${data.checked} ENTRIES` : `AUDIT CHAIN BROKEN AT ENTRY ${data.brokenAt ?? "?"}`);
+      onToast(data.ok ? `ACTIVITY LOG CHECKED — ${data.checked} ENTRIES` : `ACTIVITY LOG ISSUE FOUND AT ENTRY ${data.brokenAt ?? "?"}`);
     } catch {
       setChain({ ok: false, brokenAt: null, checked: 0, lines: 0, error: "The log verifier is unreachable." });
-      onToast("AUDIT CHAIN VERIFIER UNREACHABLE");
+      onToast("COULD NOT CHECK THE ACTIVITY LOG");
     } finally {
       setChainBusy(false);
     }
@@ -233,10 +240,10 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
       if (!res.ok) throw new Error(String(res.status));
       const data = (await res.json()) as ReceiptVerdict;
       setReceipt(data);
-      onToast(data.signatureValid ? `RECEIPT VERIFIED — ${id}` : `RECEIPT NOT VALID — ${data.reason ?? "signature mismatch"}`);
+      onToast(data.signatureValid ? `APPROVAL RECORD VERIFIED — ${id}` : `APPROVAL RECORD COULD NOT BE VERIFIED — ${data.reason ?? "The signature did not match."}`);
     } catch {
       receiptReturnFocusRef.current = null;
-      onToast("RECEIPT VERIFIER UNREACHABLE");
+      onToast("COULD NOT VERIFY THE APPROVAL RECORD");
     } finally {
       setReceiptBusy(null);
     }
@@ -263,13 +270,13 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
   return (
     <div className="space-y-7">
       <section>
-        <SpecBar index="Audit" label="The record" meta="Hash-chained · exportable · read-only" />
+        <SpecBar index="Activity log" label="A record you can check" meta="Tamper-evident · exportable · read-only" />
         <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="type-display text-[32px] text-ink-950 sm:text-[40px]">Every action, checkable.</h1>
+            <h1 className="type-display text-[32px] text-ink-950 sm:text-[40px]">A clear record of every action.</h1>
             <p className="type-lede mt-3 text-ink-600">
-              Every tool call is recorded in a tamper-evident log. Signed gate receipts show what was approved, by whom,
-              and whether the record has changed. Verify the log, inspect a receipt, or export the records.
+              Quorum records each action and approval, including who made the decision and when. Check the activity log
+              for changes, review signed approval records, or download the history.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -278,7 +285,7 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
               onClick={() => void pull()}
               className="focus-brand inline-flex h-11 min-h-11 items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.08em] text-ink-700 transition-colors hover:border-ink-950"
             >
-              <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} aria-hidden="true" /> REFRESH
+              <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} aria-hidden="true" /> REFRESH LOG
             </button>
             <button
               type="button"
@@ -286,7 +293,7 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
               disabled={entries.length === 0}
               className="focus-brand inline-flex h-11 min-h-11 items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.08em] text-ink-700 transition-colors hover:border-ink-950 disabled:opacity-40"
             >
-              <Download className="h-3.5 w-3.5" aria-hidden="true" /> CSV
+              <Download className="h-3.5 w-3.5" aria-hidden="true" /> DOWNLOAD CSV
             </button>
             <button
               type="button"
@@ -294,7 +301,7 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
               disabled={entries.length === 0}
               className="focus-brand inline-flex h-11 min-h-11 items-center gap-2 rounded-lg bg-ink-950 px-3 font-code text-[10px] font-bold tracking-[0.08em] text-white transition-colors hover:bg-ink-800 disabled:opacity-40"
             >
-              <Download className="h-3.5 w-3.5" aria-hidden="true" /> EXPORT JSON
+              <Download className="h-3.5 w-3.5" aria-hidden="true" /> DOWNLOAD JSON
             </button>
           </div>
         </div>
@@ -302,10 +309,10 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          { label: "LOG ENTRIES", value: allTotal.toLocaleString(), note: `${entries.length} in this view` },
-          { label: "CHAIN STATUS", value: chain ? (chain.ok ? "VERIFIED" : "BROKEN") : "UNVERIFIED", note: chain ? `${chain.checked} checked` : "Run the verifier" },
-          { label: "SIGNED RECEIPTS", value: String(signedGates.length), note: `${gates.length} gates on record` },
-          { label: "PENDING GATES", value: String(pending), note: "waiting on a named human" },
+          { label: "ACTIVITY RECORDS", value: allTotal.toLocaleString(), note: `${entries.length} shown` },
+          { label: "LOG INTEGRITY", value: chain ? (chain.ok ? "CHECKED" : "ISSUE FOUND") : "NOT CHECKED", note: chain ? `${chain.checked} records checked` : "Check the activity log" },
+          { label: "SIGNED APPROVALS", value: String(signedGates.length), note: `${gates.length} approval records` },
+          { label: "AWAITING APPROVAL", value: String(pending), note: "Needs an authorized decision maker" },
         ].map((card) => (
           <div key={card.label} className="rounded-xl border border-ink-200/80 bg-white px-4 py-3.5">
             <p className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-500">{card.label}</p>
@@ -318,11 +325,10 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
       <section className="rounded-xl border border-ink-200/80 bg-white p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-[13px] font-semibold text-ink-950">Hash-chain verification</h2>
+            <h2 className="text-[13px] font-semibold text-ink-950">Activity log integrity</h2>
             <p className="mt-1 max-w-[70ch] text-[11.5px] leading-relaxed text-ink-500">
-              Re-reads <span className="font-code text-[10.5px] text-ink-800">tool-log.jsonl</span> from disk and
-              recomputes every <span className="font-code text-[10.5px] text-ink-800">prev</span>/<span className="font-code text-[10.5px] text-ink-800">self</span> link.
-              A broken link names the exact entry.
+              Check that recorded activity has not been changed. The result identifies the first entry that needs
+              attention.
             </p>
           </div>
           <button
@@ -332,7 +338,7 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
             className="focus-brand inline-flex h-11 min-h-11 items-center gap-2 rounded-lg border border-ink-950 bg-white px-3 font-code text-[10px] font-bold tracking-[0.08em] text-ink-950 transition-colors hover:bg-ink-950 hover:text-white disabled:opacity-50"
           >
             {chainBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />}
-            {chainBusy ? "VERIFYING…" : "VERIFY CHAIN"}
+            {chainBusy ? "CHECKING…" : "CHECK ACTIVITY LOG"}
           </button>
         </div>
         {chain ? (
@@ -344,10 +350,10 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
           >
             {chain.ok ? <CheckCircle2 className="h-4 w-4 text-emerald-700" aria-hidden="true" /> : <ShieldAlert className="h-4 w-4 text-red-700" aria-hidden="true" />}
             <p className={cn("text-[11.5px] font-semibold", chain.ok ? "text-emerald-900" : "text-red-900")}>
-              {chain.ok ? `Chain intact — ${chain.checked} entries checked.` : chain.error ?? `Chain broken at entry ${chain.brokenAt}.`}
+              {chain.ok ? `No changes found — ${chain.checked} records checked.` : chain.error ?? `A change was found at entry ${chain.brokenAt}.`}
             </p>
             <p className="font-code text-[10px] tracking-[0.04em] text-ink-600">
-              {chain.lines} LINES · {chain.checked} CHECKED · VERIFIED {new Date().toLocaleTimeString("en-GB")}
+              {chain.lines} RECORDS · {chain.checked} CHECKED · CHECKED {new Date().toLocaleTimeString("en-GB")}
             </p>
           </div>
         ) : null}
@@ -356,7 +362,7 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
       <section className="rounded-xl border border-ink-200/80 bg-white">
         <div className="border-b border-ink-100 px-4 py-3.5">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-[13px] font-semibold text-ink-950">Tool-call log</h2>
+            <h2 className="text-[13px] font-semibold text-ink-950">Activity log</h2>
             <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">
               {total.toLocaleString()} MATCHING · {allTotal.toLocaleString()} TOTAL
             </p>
@@ -382,12 +388,12 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
             <select
               value={filters.tool}
               onChange={(e) => setFilters((f) => ({ ...f, tool: e.target.value }))}
-              aria-label="Filter by tool"
+              aria-label="Filter by action"
               className="focus-brand h-11 rounded-lg border border-ink-200 bg-white px-2 text-[12px] text-ink-900 outline-none focus:border-ink-950"
             >
-              <option value="">All tools</option>
+              <option value="">All actions</option>
               {tools.map((t) => (
-                <option key={t} value={t}>{t}</option>
+                <option key={t} value={t}>{actionLabel(t)}</option>
               ))}
             </select>
             <select
@@ -404,10 +410,10 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
             <select
               value={filters.kind}
               onChange={(e) => setFilters((f) => ({ ...f, kind: e.target.value }))}
-              aria-label="Filter by tool kind"
+              aria-label="Filter by action type"
               className="focus-brand h-11 rounded-lg border border-ink-200 bg-white px-2 text-[12px] text-ink-900 outline-none focus:border-ink-950"
             >
-              <option value="">All kinds</option>
+              <option value="">All action types</option>
               {["READ", "WRITES", "IRREVERSIBLE", "GATE_DECISION"].map((k) => (
                 <option key={k} value={k}>{auditKindLabel(k)}</option>
               ))}
@@ -443,14 +449,14 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
 
         {failed ? (
           <div className="px-4 py-8 text-center">
-            <p className="text-[12.5px] font-medium text-ink-800">The audit service is unreachable.</p>
+            <p className="text-[12.5px] font-medium text-ink-800">The activity log is unavailable.</p>
             <button type="button" onClick={() => void pull()} className="mt-2 inline-flex min-h-11 items-center rounded-md px-2 font-code text-[10px] font-bold tracking-[0.08em] text-brand-700 hover:underline">
               RETRY
             </button>
           </div>
         ) : loading && entries.length === 0 ? (
           <div className="flex items-center justify-center gap-2 px-4 py-10 font-code text-[10px] font-bold tracking-[0.1em] text-ink-500">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> READING THE SPINE…
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> LOADING ACTIVITY…
           </div>
         ) : entries.length === 0 ? (
           <p className="px-4 py-10 text-center text-[12.5px] text-ink-500">No entries match these filters.</p>
@@ -459,7 +465,7 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
             <table className="w-full min-w-[760px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-ink-100 bg-paper/50">
-                  {["", "Seq", "When", "Actor", "Tool", "Kind", "Status", "Run"].map((h) => (
+                  {["", "No.", "When", "Changed by", "Action", "Action type", "Status", "Review"].map((h) => (
                     <th key={h} className="px-3 py-2.5 font-code text-[10px] font-bold tracking-[0.1em] text-ink-500 first:pl-4">{h}</th>
                   ))}
                 </tr>
@@ -480,13 +486,13 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
       <section className="rounded-xl border border-ink-200/80 bg-white">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 px-4 py-3.5">
           <div>
-            <h2 className="text-[13px] font-semibold text-ink-950">Signed gate receipts</h2>
-            <p className="mt-0.5 text-[11px] text-ink-500">Ed25519 over the decision, approver, inputs hash and filing receipt.</p>
+            <h2 className="text-[13px] font-semibold text-ink-950">Signed approval records</h2>
+            <p className="mt-0.5 text-[11px] text-ink-500">Digital signatures help confirm that an approval record has not changed.</p>
           </div>
           <span className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">{signedGates.length} SIGNED</span>
         </div>
         {signedGates.length === 0 ? (
-          <p className="px-4 py-8 text-center text-[12.5px] text-ink-500">No gate has been signed yet. Sign one from Approvals.</p>
+          <p className="px-4 py-8 text-center text-[12.5px] text-ink-500">No signed approvals yet. Approved decisions will appear here.</p>
         ) : (
           <div className="divide-y divide-ink-100">
             {signedGates.slice(0, 12).map((g) => (
@@ -498,8 +504,7 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
                     <span className="font-code text-[10px] font-normal text-ink-500">{g.id}</span>
                   </p>
                   <p className="mt-0.5 font-code text-[10.5px] leading-relaxed tracking-[0.02em] text-ink-600">
-                    {g.approver ?? "UNSIGNED"} · {g.status} · {g.signature?.keyId ?? "NO KEY"} ·{" "}
-                    {g.signatureValid ? "SIGNATURE VALID" : "SIGNATURE INVALID"}
+                    {g.approver ?? "Approver not recorded"} · {auditStatusLabel(g.status)} · {g.signatureValid ? "Signature valid" : "Signature needs review"}
                   </p>
                 </div>
                 <span
@@ -539,8 +544,8 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
           >
             <div className="sticky top-0 flex items-start justify-between gap-3 border-b border-ink-100 bg-[#fffdfb] px-5 py-4">
               <div>
-                <h3 id="receipt-title" className="text-[14px] font-semibold text-ink-950">Gate receipt · {receipt.gateId}</h3>
-                <p className="mt-0.5 font-code text-[10.5px] tracking-[0.02em] text-ink-500">{systemReferenceLabel(receipt.systemReference, "Tender record")} · {receipt.status}</p>
+                <h3 id="receipt-title" className="text-[14px] font-semibold text-ink-950">Approval record · {receipt.gateId}</h3>
+                <p className="mt-0.5 font-code text-[10.5px] tracking-[0.02em] text-ink-500">{systemReferenceLabel(receipt.systemReference, "Tender record")} · {auditStatusLabel(receipt.status)}</p>
               </div>
               <button ref={receiptCloseRef} type="button" onClick={() => setReceipt(null)} aria-label="Close receipt" className="focus-brand grid h-11 w-11 place-items-center rounded-full text-ink-400 hover:bg-ink-950/[0.05] hover:text-ink-800">
                 <X className="h-4 w-4" aria-hidden="true" />
@@ -551,21 +556,21 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
                 {receipt.signatureValid ? <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" aria-hidden="true" /> : <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-red-700" aria-hidden="true" />}
                 <div>
                   <p className={cn("text-[12px] font-semibold", receipt.signatureValid ? "text-emerald-900" : "text-red-900")}>
-                    {receipt.signatureValid ? "Ed25519 signature verifies" : "Signature does not verify"}
+                    {receipt.signatureValid ? "This record is verified" : "This record could not be verified"}
                   </p>
                   <p className="mt-0.5 text-[11px] leading-relaxed text-ink-600">
-                    {receipt.signatureValid ? "The gate record is exactly what the key signed." : receipt.reason ?? "The record changed after signing."}
+                    {receipt.signatureValid ? "The approval details still match the signed record." : receipt.reason ?? "The record may have changed since it was signed."}
                   </p>
                 </div>
               </div>
               <dl className="grid gap-2 text-[11.5px] sm:grid-cols-2">
                 <div><dt className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">APPROVER</dt><dd className="mt-0.5 text-ink-900">{receipt.approver ?? "—"}</dd></div>
                 <div><dt className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">DECIDED</dt><dd className="mt-0.5 text-ink-900">{receipt.decidedAt ? stamp(receipt.decidedAt) : "—"}</dd></div>
-                <div><dt className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">STEP-UP</dt><dd className="mt-0.5 text-ink-900">{receipt.stepUp ? `${receipt.stepUp.by} · ${receipt.stepUp.method}` : "—"}</dd></div>
-                <div><dt className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">KEY ID</dt><dd className="mt-0.5 font-code text-[10.5px] text-ink-900">{receipt.signature?.keyId ?? "—"}</dd></div>
+                <div><dt className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">ADDITIONAL SIGN-IN</dt><dd className="mt-0.5 text-ink-900">{receipt.stepUp ? `${receipt.stepUp.by} · ${receipt.stepUp.method}` : "—"}</dd></div>
+                <div><dt className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">SIGNING KEY</dt><dd className="mt-0.5 font-code text-[10.5px] text-ink-900">{receipt.signature?.keyId ?? "—"}</dd></div>
               </dl>
               <details className="rounded-lg border border-ink-200 bg-white">
-                <summary className="focus-brand inline-flex min-h-11 cursor-pointer items-center px-3 font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">SIGNED RECEIPT JSON</summary>
+                <summary className="focus-brand inline-flex min-h-11 cursor-pointer items-center px-3 font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">ADVANCED SIGNATURE DETAILS</summary>
                 <pre className="max-h-[300px] overflow-auto border-t border-ink-100 p-3 font-code text-[10px] leading-relaxed text-ink-800">{JSON.stringify(receipt, null, 2)}</pre>
               </details>
               <button
@@ -573,7 +578,7 @@ export function AuditView({ onToast }: { onToast: (msg: string) => void }) {
                 onClick={() => download(`quorum-receipt-${receipt.gateId}.json`, JSON.stringify(receipt, null, 2), "application/json")}
                 className="focus-brand inline-flex h-11 min-h-11 items-center gap-2 rounded-lg bg-ink-950 px-3 font-code text-[10px] font-bold tracking-[0.08em] text-white hover:bg-ink-800"
               >
-                <Download className="h-3.5 w-3.5" aria-hidden="true" /> DOWNLOAD RECEIPT
+                <Download className="h-3.5 w-3.5" aria-hidden="true" /> DOWNLOAD VERIFICATION FILE
               </button>
             </div>
           </div>
@@ -595,7 +600,7 @@ function FragmentRow({ entry: e, open, onToggle }: { entry: LogEntry; open: bool
         <td className="px-3 py-2.5 font-code text-[10.5px] text-ink-600">{e.seq}</td>
         <td className="whitespace-nowrap px-3 py-2.5 text-[11.5px] text-ink-700">{stamp(e.ts)}</td>
         <td className="px-3 py-2.5 text-[11px] font-medium text-ink-900">{e.actor}</td>
-        <td className="px-3 py-2.5 font-code text-[11px] text-ink-900">{e.tool}</td>
+        <td className="px-3 py-2.5 text-[11px] text-ink-900">{actionLabel(e.tool)}</td>
         <td className="px-3 py-2.5 font-code text-[10px] tracking-[0.02em] text-ink-700">{auditKindLabel(e.kind)}</td>
         <td className="px-3 py-2.5">
           <span className={cn("inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold", statusTone(e.status))}>{auditStatusLabel(e.status)}</span>
@@ -608,16 +613,16 @@ function FragmentRow({ entry: e, open, onToggle }: { entry: LogEntry; open: bool
           <td colSpan={7} className="px-3 py-3">
             <div className="grid gap-2 lg:grid-cols-2">
               <div>
-                <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">Inputs</p>
+                <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">Recorded details</p>
                 <pre className="mt-1 max-h-[180px] overflow-auto rounded-lg border border-ink-200 bg-white p-2.5 font-code text-[10.5px] leading-relaxed text-ink-900">{JSON.stringify(e.inputs, null, 2)}</pre>
               </div>
               <div>
-                <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">Outputs</p>
+                <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">Outcome</p>
                 <pre className="mt-1 max-h-[180px] overflow-auto rounded-lg border border-ink-200 bg-white p-2.5 font-code text-[10.5px] leading-relaxed text-ink-900">{JSON.stringify(e.outputs, null, 2)}</pre>
               </div>
             </div>
             <p className="mt-2 break-all font-code text-[10px] tracking-[0.02em] text-ink-600">
-              SELF {e.self ?? "—"} · PREV {e.prev ?? "—"} · {e.durationMs}ms
+              RECORD CHECK {e.self ? "AVAILABLE" : "—"} · {e.durationMs}ms
             </p>
           </td>
         </tr>

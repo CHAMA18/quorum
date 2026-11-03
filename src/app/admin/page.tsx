@@ -8,14 +8,14 @@ import { can } from "@/lib/permissions";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Quorum Control Room",
+  title: "Quorum Administration",
   description:
-    "The operator's control room: authority, suppliers, evaluation runs, human gates and the hash-chained audit spine — one readout, no softer way in.",
+    "Manage user access, supplier organizations, review activity, approvals, system health and audit records.",
   robots: { index: false, follow: false },
 };
 
 /**
- * /admin — the control room.
+ * /admin — the administration workspace.
  *
  * The session is verified SERVER-SIDE before a single byte of the console is
  * rendered, and the door is the oversight capability: owners, admins and
@@ -34,28 +34,27 @@ export default async function AdminPage() {
       <main className="admin-surface grid min-h-screen place-items-center bg-paper px-6">
         <div className="panel w-full max-w-md rounded-2xl px-6 py-7">
           <p className="font-code text-[10px] font-bold uppercase tracking-[0.12em] text-brand-600">
-            ACCESS REFUSED
+            ADMINISTRATOR ACCESS REQUIRED
           </p>
           <h1 className="mt-2 font-display text-[24px] font-black tracking-[-0.02em] text-ink-950">
-            The control room is oversight, not seniority.
+            Your account does not have permission to open this area.
           </h1>
           <p className="mt-2 text-[12.5px] leading-relaxed text-ink-500">
-            You are signed in as <strong className="text-ink-800">{user.role}</strong>. Only owners, admins and
-            auditors may read the whole desk — the roster, the supplier door, every run and the audit spine. Your
-            workspace is unchanged.
+            You are signed in as <strong className="text-ink-800">{user.role}</strong>. This area is limited to
+            owners, administrators and auditors. Contact your workspace administrator if you need access.
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
             <a
               href="/#/dashboard"
               className="focus-brand inline-flex min-h-11 items-center rounded-lg bg-ink-950 px-4 font-code text-[10px] font-bold uppercase tracking-[0.08em] text-white dark:bg-white dark:text-[#0b0c0f]"
             >
-              RETURN TO THE WORKSPACE
+              RETURN TO WORKSPACE
             </a>
             <a
               href="/"
               className="focus-brand inline-flex min-h-11 items-center rounded-lg border border-ink-200 px-4 font-code text-[10px] font-bold uppercase tracking-[0.08em] text-ink-600 dark:border-white/15 dark:text-ink-300"
             >
-              LANDING
+              PUBLIC SITE
             </a>
           </div>
         </div>

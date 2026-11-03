@@ -95,6 +95,18 @@ is measured, not claimed (`data/eval/report.json`, `identicalAcrossRuns`).
    It processes at most five pages per upload, records the call summary in the
    hash-chained tender upload event, and leaves `humanReviewRequired` set.
 
+8. **Correlated run traces and recovery** — the authenticated gateway assigns a
+   trace ID; it follows the request into the durable `REVIEW_RUN` job, LangGraph
+   audit events and the run record. `GET /api/observability` reports workspace-
+   scoped job counts and operation latency/error summaries, while
+   `GET /api/traces/:traceId` returns a chronological event timeline. In the
+   default JSON mode the job file is atomically replaced under the sidecar's
+   single-writer lock; with `DATABASE_URL`, Postgres claims due jobs with
+   `FOR UPDATE SKIP LOCKED`. Expired leases are retried with bounded attempts
+   and backoff. A failed run is replayed from its beginning rather than from an
+   internal LangGraph node checkpoint. Filing is idempotent by gate ID and its
+   receipt always says `SIMULATED`; the adapter makes no live e-GP request.
+
 ## 4. The live-model path, measured (2026-10-27)
 
 The scoring criteria ask whether run-to-run variation is measured or hidden, and
@@ -131,3 +143,6 @@ in the committed suite. A judge can re-run `bun eval.ts` and
 - **A hosted-endpoint cost figure** — the formula and the per-run token counts
   are published; any price list can be multiplied out by an auditor.
 - Human desk time (see `09-fit.md` §3): unmeasured until the pilot runs.
+- Independent second-review agreement: the blinded-to-output source packet is
+  prepared, but the reviewer has not returned annotations. No independent
+  accuracy number is published until the completed pack is scored.

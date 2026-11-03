@@ -137,7 +137,7 @@ export type StatusTone = "progress" | "done" | "muted";
 export function statusMeta(status: string): { label: string; tone: StatusTone; note: string } {
   switch (status.toUpperCase()) {
     case "RECEIVED":
-      return { label: "Received", tone: "progress", note: "Sitting with the desk" };
+      return { label: "Received", tone: "progress", note: "Awaiting review" };
     case "WITHDRAWN":
       return { label: "Withdrawn", tone: "muted", note: "Pulled from the record" };
     case "AMENDED":

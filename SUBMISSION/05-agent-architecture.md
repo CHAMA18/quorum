@@ -73,7 +73,7 @@ The same server also exposes an officer-facing **source-request queue** (REST, l
 ## How does a tender actually flow?
 
 1. **Upload and extract.** The officer drops tender files; PDF, DOCX and XLSX text is extracted server-side and staged into the tender directory the review graph reads, while the original bytes are stored in Cloudflare R2.
-2. **Launch.** `POST /api/runs` starts the review graph; every node is audit-logged as it happens.
+2. **Launch.** `POST /api/runs` persists a `REVIEW_RUN` job before acknowledging it. A single sidecar worker claims the job, tracks a lease, retries transient failures with bounded backoff, and resumes interrupted `RUNNING` records after restart. Recovery replays from the graph's beginning; it is not an internal node checkpoint.
 3. **Review.** Requirements pinned, findings flagged *with citations*, redlines drafted.
 4. **Park.** The agent raises `file_gate_submission` → the tool returns `gate_pending`, a human-gate entry is created, and the run stops in AWAITING_GATE.
 5. **Sign-off.** A **named** approver opens the gate and signs — with the roll quorate:
@@ -81,7 +81,7 @@ The same server also exposes an officer-facing **source-request queue** (REST, l
    - `403` — refused if the name isn't on the PRESENT committee roster,
    - `409` — refused if fewer than the configured quorum are PRESENT (the response carries the live count),
    - `503` — fail-closed if the roster simply *cannot be read* (no roster, no approval).
-6. **File.** Only now `filing_graph` runs: sha-256 seal → submit to the e-GP portal → receipt written into `data/submissions/` → run flips to FILED.
+6. **File.** Only now `filing_graph` runs: sha-256 seal → idempotent local simulation adapter → a `SIMULATED` receipt written into `data/submissions/` → run flips to FILED. The adapter makes no national e-GP network request; a live connector remains future work.
 7. **Return.** A REJECT sends the bundle back to the agent for correction — and the whistleblower is the log line that says who returned it.
 
 > In plain words: *the clerk prepares the file; the committee decides; the paper trail proves both.*
@@ -104,7 +104,7 @@ Three storage layers, each with a clear role:
 **Outbound:**
 - The **LLM endpoint** for redline drafting — Llama 3.2 via Ollama in the live demo, or the Meta Model API / any OpenAI-compatible endpoint.
 - The **committee roster read** from the web app — fail-closed on failure.
-- The **e-GP procurement portal** for award transmission (simulated in the demo, with real sha-256 receipts).
+- The **local e-GP simulation adapter** records an idempotent simulated receipt; it does not connect to a procurement portal.
 - **Firebase** (authentication) and **Cloudflare R2** through the `quorum-edge` Worker (tender document storage; the edge secret stays server-side).
 - **Filesystem stdio** to the official third-party filesystem MCP server, which is the only thing allowed to open tender documents.
 

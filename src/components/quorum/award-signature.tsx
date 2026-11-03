@@ -638,7 +638,7 @@ export function AwardSignatureHost() {
                   <div className="mt-2 flex items-center justify-between">
                     <p aria-live="polite" className="text-[10.5px] leading-relaxed text-ink-600">
                       {!hasInk
-                        ? "Your signature will be trimmed and sealed with the decision."
+                        ? "Your signature will be added to the approved decision record."
                         : enoughInk
                           ? "Ready to review and confirm."
                           : "Add more to your signature; the mark is too small to sign."}
@@ -895,7 +895,7 @@ export function SignatureReceiptDialog({ row, onClose }: { row: SignatureReceipt
                 )}
                 {row.hash && (
                   <div className="flex items-center justify-between gap-3">
-                    <dt className="shrink-0 text-ink-500">Seal hash</dt>
+                    <dt className="shrink-0 text-ink-500">Verification code</dt>
                     <dd className="truncate font-code text-[10.5px] font-semibold text-ink-950">{row.hash}</dd>
                   </div>
                 )}
@@ -903,7 +903,7 @@ export function SignatureReceiptDialog({ row, onClose }: { row: SignatureReceipt
 
               <p className="mt-4 flex items-center gap-1.5 text-[10px] leading-relaxed text-ink-600">
                 <ShieldCheck className="h-3 w-3" aria-hidden="true" />
-                Re-authentication sealed · Ed25519 receipt · Verifiable offline
+                Your identity was checked again · Digital signature recorded · Can be verified offline
               </p>
             </div>
           </motion.div>

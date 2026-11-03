@@ -14,7 +14,7 @@ import { DocumentationView } from "@/components/quorum/documentation";
 export const metadata: Metadata = {
   title: "Documentation — Quorum",
   description:
-    "The complete Quorum handbook: the agentic review pipeline, every rule the agent applies, the gate protocol, the supplier list and Zambia's procurement law — written for first-time officers and auditors alike.",
+    "Guidance for procurement officers, committees and administrators using Quorum to review tenders, record evidence, manage approvals and maintain a traceable procurement history.",
 };
 
 export default function DocsPage() {
@@ -58,10 +58,10 @@ export default function DocsPage() {
       <footer className="border-t border-ink-100">
         <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-6">
           <p className="font-code text-[10px] tracking-[0.08em] text-ink-500">
-            QUORUM · AGENTIC PROCUREMENT · THE HANDBOOK
+            QUORUM · PROCUREMENT REVIEW HANDBOOK
           </p>
           <p className="font-code text-[10px] tracking-[0.08em] text-ink-500">
-            THE AGENT PREPARES THE FILE — THE COMMITTEE SIGNS
+            REVIEW SUPPORT · COMMITTEE AUTHORITY
           </p>
         </div>
       </footer>

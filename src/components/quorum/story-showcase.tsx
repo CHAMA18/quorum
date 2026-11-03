@@ -1,13 +1,13 @@
 "use client";
 
 /**
- * RegisterShowcase — the story panel's carousel.
+ * StoryShowcase — the shared story-panel carousel for both product doors.
  *
  * The organization door used to list three value propositions statically;
  * they now rotate so the door can carry more of the product's story in the
  * same space without growing a scroll. Every slide states a fact the
  * portal actually honours — the fields the register asks for, the board,
- * the audit spine, the disciplines — nothing invented for decoration.
+ * supplier requirements and application history.
  *
  * Craft notes:
  *   · auto-advances on a fixed clock; the progress fill's animation duration
@@ -21,47 +21,81 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Building2, ChevronLeft, ChevronRight, Landmark, ScrollText, ShieldCheck } from "lucide-react";
+import { Building2, ChevronLeft, ChevronRight, FileText, Landmark, Scale, ScrollText, ShieldCheck, Workflow } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { nextRovingTabIndex } from "@/lib/a11y";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 const INTERVAL_MS = 6_500;
 
-const SLIDES = [
+const SUPPLIER_SLIDES = [
   {
     icon: Building2,
     kicker: "Your profile",
     title: "One profile, kept current",
-    body: "Legal identity, tax clearance, sector registrations — the exact fields the register asks for, verified once and reused on every application.",
+    body: "Add your organization, tax and sector-registration details once, then use them for each tender application.",
   },
   {
     icon: Landmark,
-    kicker: "The board",
-    title: "Apply from the board",
+    kicker: "Open tenders",
+    title: "Find tenders accepting bids",
     body: "Every open tender with its closing date in one view. File an application in a single pass — no re-typing the same legal identity per tender.",
   },
   {
     icon: ShieldCheck,
-    kicker: "The disciplines",
-    title: "Refused honestly, on the record",
-    body: "One bid per tender, and nothing accepted after the closing date. The register refuses the rest — and tells you exactly why.",
+    kicker: "Submission requirements",
+    title: "Know when a submission can proceed",
+    body: "One application per tender, submitted before closing. If a submission cannot proceed, the portal explains why.",
   },
   {
     icon: ScrollText,
-    kicker: "The record",
-    title: "Nothing happens silently",
-    body: "Each application is attested as org:<name> and appended to the same audit spine the officer's desk reads — receipts, not promises.",
+    kicker: "Application history",
+    title: "Applications have a clear history",
+    body: "Each application is attributed to your registered organization and retained in the procurement history for authorised officers to review.",
   },
 ] as const;
 
-export function RegisterShowcase({ compact = false }: { compact?: boolean }) {
+const QUORUM_SLIDES = [
+  {
+    icon: FileText,
+    kicker: "Tender reviews",
+    title: "One record from review to decision",
+    body: "Bring tender documents, findings, approvals and committee decisions together in a shared procurement record.",
+  },
+  {
+    icon: ShieldCheck,
+    kicker: "Evidence",
+    title: "Findings stay linked to their source",
+    body: "Review each issue against the cited page, clause or procurement record before deciding what to do.",
+  },
+  {
+    icon: Scale,
+    kicker: "Bid evaluation",
+    title: "Compare bids against the published matrix",
+    body: "AI helps surface evidence and recommendations for committee review; evaluators remain responsible for scores and decisions.",
+  },
+  {
+    icon: Workflow,
+    kicker: "Tender workflow",
+    title: "Carry the record through award",
+    body: "Follow notices, evaluation, award review periods and contract administration in one workspace.",
+  },
+] as const;
+
+export function StoryShowcase({
+  compact = false,
+  audience = "supplier",
+}: {
+  compact?: boolean;
+  audience?: "supplier" | "quorum";
+}) {
+  const slides = audience === "quorum" ? QUORUM_SLIDES : SUPPLIER_SLIDES;
   const reduce = useReducedMotion();
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const idPrefix = useId();
   const regionRef = useRef<HTMLDivElement>(null);
-  const count = SLIDES.length;
+  const count = slides.length;
 
   const go = useCallback((next: number) => setIndex(((next % count) + count) % count), [count]);
   const step = useCallback((dir: 1 | -1) => setIndex((i) => (((i + dir) % count) + count) % count), [count]);
@@ -83,7 +117,7 @@ export function RegisterShowcase({ compact = false }: { compact?: boolean }) {
     requestAnimationFrame(() => document.getElementById(`${idPrefix}-tab-${next}`)?.focus());
   };
 
-  const slide = SLIDES[index];
+  const slide = slides[index];
   const Icon = slide.icon;
 
   return (
@@ -91,7 +125,7 @@ export function RegisterShowcase({ compact = false }: { compact?: boolean }) {
       ref={regionRef}
       role="group"
       aria-roledescription="carousel"
-      aria-label="What the supplier portal gives you"
+      aria-label={audience === "quorum" ? "How Quorum supports procurement teams" : "What the supplier portal gives you"}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
@@ -147,7 +181,7 @@ export function RegisterShowcase({ compact = false }: { compact?: boolean }) {
           a segment click is a jump, not a decoration. */}
       <div className="mt-4 flex items-center gap-3">
         <div className="flex items-center gap-1.5" role="tablist" aria-label="Choose a slide">
-          {SLIDES.map((s, i) => (
+          {slides.map((s, i) => (
             <button
               key={s.title}
               type="button"

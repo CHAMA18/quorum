@@ -9,40 +9,34 @@ import { MuseAssistantGate } from "@/components/quorum/muse-assistant-gate";
 import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "Quorum — Agentic tender review for public health procurement",
+  title: "Quorum — Public procurement review workspace",
   description:
-    "Quorum reads a public health tender end to end — specs against clinical need, quantities against real consumption, prices against other buyers, every finding cited. Then it stops: the committee decides.",
+    "Review public health tenders with consistent criteria, source-linked findings and a traceable decision history. Authorised committees retain control of every award.",
   keywords: [
     "Quorum",
-    "agentic AI",
+    "procurement review software",
     "public procurement",
     "health procurement",
     "health commodity tenders",
     "medical supplies",
     "tender review",
-    "MCP",
-    "Model Context Protocol",
-    "Meta Model API",
-    "Muse Spark",
-    "Llama 3.2",
-    "SAM 3.1",
     "Open Contracting",
     "OCDS",
-    "human in the loop",
+    "committee approval",
   ],
   authors: [{ name: "Quorum" }],
   openGraph: {
-    title: "Quorum — Agentic tender review for public health procurement",
+    title: "Quorum — Public procurement review workspace",
     description:
-      "The agent prepares the tender file, every finding cited — and a hard stop before the committee's award.",
+      "Source-linked tender reviews, clear officer dispositions and accountable committee decisions.",
     siteName: "Quorum",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Quorum — Agentic tender review for public health procurement",
+    title: "Quorum — Public procurement review workspace",
     description:
-      "Agents prepare the file, committees award the tender. Agentic procurement for public health supply chains, built for Africa.",
+      "A procurement review workspace for public institutions, health agencies and oversight teams.",
   },
 };
 

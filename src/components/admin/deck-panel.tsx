@@ -69,8 +69,8 @@ function alertsOf(data: AdminOverview, now: number): Alert[] {
     alerts.push({
       id: "runtime",
       tone: "red",
-      title: "The agent runtime is not answering",
-      detail: desk.error ?? "No health response from the sidecar. Runs, gates and the audit tail are unreadable.",
+      title: "The review service is unavailable",
+      detail: desk.error ?? "The service health check did not respond. Tender reviews, approvals and recent audit activity may be unavailable.",
       section: "system",
       cta: "Open system",
     });
@@ -84,7 +84,7 @@ function alertsOf(data: AdminOverview, now: number): Alert[] {
       alerts.push({
         id: "spine-health",
         tone: "red",
-        title: "The audit spine is reporting its own wound",
+        title: "Audit record health needs attention",
         detail: [
           spine.stateCorrupt ? "state file quarantined" : null,
           spine.stateSaveFailing ? "state writes failing" : null,
@@ -93,15 +93,15 @@ function alertsOf(data: AdminOverview, now: number): Alert[] {
           .filter(Boolean)
           .join(" · "),
         section: "system",
-        cta: "Inspect vitals",
+        cta: "View system status",
       });
     }
     if (spine && spine.unsignedExecuted > 0) {
       alerts.push({
         id: "unsigned",
         tone: "red",
-        title: `${spine.unsignedExecuted} executed gate${spine.unsignedExecuted === 1 ? "" : "s"} without a signature`,
-        detail: "A decided gate has neither a signature nor a consumed step-up. This is an evidence defect.",
+        title: `${spine.unsignedExecuted} completed approval${spine.unsignedExecuted === 1 ? "" : "s"} without a signature`,
+        detail: "These decisions have no saved signature or completed identity check. Review the records before relying on them.",
         section: "audit",
         cta: "Read the trail",
       });
@@ -110,13 +110,13 @@ function alertsOf(data: AdminOverview, now: number): Alert[] {
       alerts.push({
         id: "agent-mode",
         tone: agentMode === "disabled" ? "red" : "amber",
-        title: agentMode === "disabled" ? "The agent is switched off" : "The agent is read-only",
+        title: agentMode === "disabled" ? "Automated review is disabled" : "Automated review is in read-only mode",
         detail:
           agentMode === undefined
-            ? "The runtime did not declare its mode."
-            : "Reviews can be read, but no new run can write to the file.",
+            ? "The service did not report its current mode."
+            : "Existing reviews are available, but new reviews cannot be started.",
         section: "system",
-        cta: "Open runtime",
+        cta: "View system status",
       });
     }
     /* A configured chain with no recorded answer is worth saying out loud: the
@@ -125,10 +125,10 @@ function alertsOf(data: AdminOverview, now: number): Alert[] {
       alerts.push({
         id: "model-quiet",
         tone: "sky",
-        title: "The model chain is configured but has not answered",
-        detail: `${healthModel.model ?? "the configured model"} is wired and has no call in the log. Drafts are template-generated and labelled so.`,
+      title: "AI-assisted drafting is configured but has not been used",
+      detail: "No AI-generated response has been recorded yet. Drafts are created from clearly labelled templates.",
         section: "system",
-        cta: "Read the chain",
+        cta: "Review system settings",
       });
     }
   }
@@ -137,20 +137,20 @@ function alertsOf(data: AdminOverview, now: number): Alert[] {
     alerts.push({
       id: "chain",
       tone: "red",
-      title: "The audit chain does not verify",
-      detail: `Broken at entry ${fmtNum(desk.verify.brokenAt ?? 0)} of ${fmtNum(desk.verify.lines)}. Treat the record as suspect until explained.`,
+      title: "The audit record could not be verified",
+      detail: `Verification failed at entry ${fmtNum(desk.verify.brokenAt ?? 0)} of ${fmtNum(desk.verify.lines)}. Review the record before relying on it.`,
       section: "audit",
-      cta: "Read the verdict",
+      cta: "Review audit history",
     });
   }
   if (desk.ledger && !desk.ledger.ok) {
     alerts.push({
       id: "ledger",
       tone: "red",
-      title: "The decision ledger does not verify",
-      detail: `The independent act ledger breaks at row ${fmtNum(desk.ledger.brokenAt ?? 0)}.`,
+      title: "The approval history could not be verified",
+      detail: `Verification failed at entry ${fmtNum(desk.ledger.brokenAt ?? 0)}.`,
       section: "audit",
-      cta: "Read the ledger",
+      cta: "Review approval history",
     });
   }
 
@@ -163,8 +163,8 @@ function alertsOf(data: AdminOverview, now: number): Alert[] {
     alerts.push({
       id: "gates",
       tone: "amber",
-      title: `${waiting.length} gate${waiting.length === 1 ? "" : "s"} waiting for a named human`,
-      detail: `Oldest has waited ${minutesSince(oldest, now)} minutes. The machine cannot press this button.`,
+      title: `${waiting.length} approval request${waiting.length === 1 ? "" : "s"} waiting for a decision`,
+      detail: `The oldest request has been waiting ${minutesSince(oldest, now)} minutes. Only an authorized officer can approve it.`,
       section: "gates",
       cta: "Open the queue",
     });
@@ -176,7 +176,7 @@ function alertsOf(data: AdminOverview, now: number): Alert[] {
       id: "appeals",
       tone: "amber",
       title: `${openAppeals.length} suspension appeal${openAppeals.length === 1 ? "" : "s"} undecided`,
-      detail: "A closed supplier door has a lawful way back in; no decision is a decision to keep it shut.",
+      detail: "Review each appeal and record the decision before supplier access can be restored.",
       section: "orgs",
       cta: "Decide appeals",
     });
@@ -190,7 +190,7 @@ function alertsOf(data: AdminOverview, now: number): Alert[] {
       id: "failed-runs",
       tone: "amber",
       title: `${failed.length} review${failed.length === 1 ? "" : "s"} failed in the last seven days`,
-      detail: failed[0].error ? failed[0].error.slice(0, 160) : "The run ended without a file. Read the run record.",
+      detail: failed[0].error ? failed[0].error.slice(0, 160) : "The review ended without a report. Open its record for details.",
       section: "work",
       cta: "Read evaluations",
     });
@@ -200,8 +200,8 @@ function alertsOf(data: AdminOverview, now: number): Alert[] {
     alerts.push({
       id: "quorum",
       tone: "amber",
-      title: "The roll is short of quorum",
-      detail: `${committee.present} present against ${committee.required} required. A gate decision will be refused with 409 until the roll is restored.`,
+      title: "Not enough committee members are present",
+      detail: `${committee.present} committee members are present; ${committee.required} are required before an approval can be made.`,
       section: "system",
       cta: "Read the roster",
     });
@@ -240,7 +240,7 @@ function alertsOf(data: AdminOverview, now: number): Alert[] {
       id: "governance",
       tone: "sky",
       title: `${unreadGovernance} governance change${unreadGovernance === 1 ? "" : "s"} in the last 24 hours`,
-      detail: "Role, access and supplier-door changes are recorded separately from the agent's tool log.",
+      detail: "Role, access and supplier organization changes are recorded separately from review activity.",
       section: "people",
       cta: "Read the log",
     });
@@ -309,17 +309,16 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
     <div className="space-y-6">
       <SectionHead
         index="01"
-        eyebrow="Command deck"
+        eyebrow="Administration overview"
         title={
           <>
-            Every desk. <span className="text-brand-600">One window.</span>
+            Procurement oversight<span className="text-brand-600">, in one place.</span>
           </>
         }
         lede={
           <>
-            Authority, suppliers, evaluations and the record itself — read as one instrument. The desk&apos;s work is
-            prepared by the agent and awarded by named humans; this room watches both, and changes nothing it cannot
-            attribute.
+            Manage user access, supplier organizations, review activity and audit records from one workspace.
+            Administrative actions remain tied to the signed-in account and assigned permissions.
           </>
         }
         aside={
@@ -339,7 +338,7 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
             className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg bg-ink-950 px-3.5 font-code text-[10px] font-bold uppercase tracking-[0.1em] text-white transition-colors hover:bg-ink-800 dark:bg-white dark:text-[#0b0c0f] dark:hover:bg-[#e9eaec]"
           >
             <Fingerprint className="h-3.5 w-3.5" aria-hidden="true" />
-            THE RECORD
+            AUDIT HISTORY
             <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
         }
@@ -348,40 +347,40 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
       {/* Instrument strip */}
       <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
         <Readout
-          label="Agent runtime"
+          label="Review service"
           value={desk.online ? "ONLINE" : "OFFLINE"}
           tone={desk.online ? "emerald" : "red"}
           pulse={desk.online}
-          detail={health ? `up ${Math.floor((health.uptimeSec ?? 0) / 60)}m · ${health.fsMcp?.status === "connected" ? "fs-MCP attached" : `fs-MCP ${health.fsMcp?.status ?? "not declared"}`}` : "no health response"}
+          detail={health ? `Available for ${Math.floor((health.uptimeSec ?? 0) / 60)} minutes · document access ${health.fsMcp?.status === "connected" ? "connected" : health.fsMcp?.status ?? "not reported"}` : "Status unavailable"}
         />
         <Readout
-          label="Audit spine"
-          value={desk.verify ? (desk.verify.ok ? "CHAIN INTACT" : "CHAIN BROKEN") : "UNVERIFIED"}
+          label="Audit record"
+          value={desk.verify ? (desk.verify.ok ? "VERIFIED" : "CHECK FAILED") : "NOT CHECKED"}
           tone={desk.verify ? (desk.verify.ok ? "emerald" : "red") : "amber"}
           detail={desk.verify ? `${fmtNum(desk.verify.lines)} lines · ${fmtNum(desk.verify.segments)} segments` : "verification did not answer"}
         />
         <Readout
-          label="Model chain"
-          value={model?.configured ? (model.model ?? "configured") : "TEMPLATE FALLBACK"}
+          label="Drafting support"
+          value={model?.configured ? "AI AVAILABLE" : "TEMPLATES"}
           tone={model?.configured ? "sky" : "neutral"}
-          detail={model?.configured ? `${model.providerLabel ?? "model"} · ${model.residency?.residency ?? "residency not declared"}` : "deterministic redlines, labelled"}
+          detail={model?.configured ? "AI-assisted drafting is enabled; generated content is identified." : "Drafts use clearly labelled templates."}
         />
         <Readout
-          label="Agent mode"
+          label="Automated review"
           value={(health?.agent?.mode ?? "unknown").toUpperCase()}
           tone={health?.agent?.mode === "enabled" ? "emerald" : health?.agent?.mode === "disabled" ? "red" : "amber"}
-          detail={`${posture?.deploymentMode ?? "—"} deployment · key ${posture?.gateKey?.source ?? "—"}`}
+          detail={`${posture?.deploymentMode ?? "—"} environment · approval signing key ${posture?.gateKey?.source ?? "—"}`}
         />
       </div>
 
       {/* Primary measures */}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric
-          label="Evaluations"
+          label="Tender reviews"
           value={fmtNum(desk.runs.length)}
           tone="brand"
           icon={<ClipboardCheck className="h-4 w-4" aria-hidden="true" />}
-          note={`${awaiting} awaiting a gate · ${filed} filed`}
+          note={`${awaiting} awaiting approval · ${filed} completed`}
           footer={
             <div className="flex h-1 overflow-hidden rounded-full bg-ink-100 dark:bg-white/10">
               <span
@@ -396,7 +395,7 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
           }
         />
         <Metric
-          label="Awaiting signature"
+          label="Pending approvals"
           value={fmtNum(waiting.length)}
           tone={waiting.length ? "amber" : "emerald"}
           icon={<Stamp className="h-4 w-4" aria-hidden="true" />}
@@ -409,7 +408,7 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
                   ),
                   now,
                 )}m · committee signs in the workspace`
-              : "No irreversible act is parked. The desk is clear."
+              : "No approval requests are waiting."
           }
           footer={
             waiting.length ? (
@@ -469,12 +468,12 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
           <Panel>
             <PanelHead
               eyebrow="Signal · 14 days"
-              title="The desk's pulse"
-              description="Every call that executed, by kind, from the append-only tool log. Reads include document and desk reads; gates are irreversible acts held for a human."
+              title="Recent activity"
+              description="Actions recorded by the workspace, including document access, changes, approvals and errors."
               action={
                 <div className="text-right">
                   <p className="type-num text-[22px] text-ink-950">{fmtNum(totalCalls)}</p>
-                  <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Calls in window</p>
+                  <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Actions in this period</p>
                 </div>
               }
             />
@@ -483,14 +482,14 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ink-100 px-5 py-2.5 dark:border-white/8">
               <p className="text-[10.5px] leading-relaxed text-ink-600">
-                {fmtNum(desk.audit.allTotal)} lines in the chain · newest {desk.audit.entries[0] ? fmtAgo(desk.audit.entries[0].ts, now) : "—"}
+                {fmtNum(desk.audit.allTotal)} recorded actions · latest {desk.audit.entries[0] ? fmtAgo(desk.audit.entries[0].ts, now) : "—"}
               </p>
               <button
                 type="button"
                 onClick={() => navigate("audit")}
                 className="focus-brand inline-flex min-h-11 items-center rounded-lg px-2 font-code text-[10px] font-bold uppercase tracking-[0.06em] text-ink-600 hover:bg-ink-100 hover:text-ink-950 dark:hover:bg-white/[0.06] dark:hover:text-white"
               >
-                READ THE CHAIN →
+                VIEW AUDIT HISTORY →
               </button>
             </div>
           </Panel>
@@ -499,12 +498,12 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
           <Panel>
             <PanelHead
               eyebrow="Attention"
-              title="What needs a person"
+              title="Needs attention"
               description="Derived from the live snapshot — no invented urgency. Every row opens the surface that can resolve it."
               action={<Chip tone={alerts.length ? "amber" : "emerald"} dot>{alerts.length ? `${alerts.length} open` : "all clear"}</Chip>}
             />
             {alerts.length === 0 ? (
-              <Empty title="Nothing is on fire." body="Runtime healthy, chain intact, no gate parked and no appeal waiting. The desk is quiet — verified, not assumed." />
+              <Empty title="No urgent actions" body="The review service is available, the audit record is verified, and no approvals or appeals are waiting." />
             ) : (
               <ul className="divide-y divide-ink-100 dark:divide-white/8">
                 {alerts.slice(0, 7).map((alert) => (
@@ -536,17 +535,17 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
           <Panel>
             <PanelHead
               eyebrow="Register"
-              title="The working record"
-              description="One line each, read from the same snapshot as every other panel."
+              title="Workspace summary"
+              description="Current totals for reviews, findings, committee attendance and recent decisions."
             />
             <dl className="grid grid-cols-2 divide-x divide-y divide-ink-100 sm:grid-cols-3 dark:divide-white/8">
               {[
                 { label: "Findings flagged", value: findings, note: "each carries a citation" },
                 { label: "Redlines drafted", value: drafts, note: "model or labelled template" },
-                { label: "Requirements pinned", value: desk.runs.reduce((sum, run) => sum + run.requirements, 0), note: "SHALL/must clauses" },
-                { label: "Committee present", value: `${committee.present}/${committee.required}`, note: "quorum threshold" },
+                { label: "Requirements identified", value: desk.runs.reduce((sum, run) => sum + run.requirements, 0), note: "from the tender documents" },
+                { label: "Committee attendance", value: `${committee.present}/${committee.required}`, note: "minimum required to approve" },
                 { label: "Pending invitations", value: pendingInvites, note: "single-use, 14 days" },
-                { label: "Recent decisions", value: desk.decisions.length, note: "independent act ledger" },
+                { label: "Recent decisions", value: desk.decisions.length, note: "saved approval history" },
               ].map((item) => (
                 <div key={item.label} className="px-4 py-3.5">
                   <dt className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">{item.label}</dt>
@@ -561,8 +560,8 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
           <Panel>
             <PanelHead
               eyebrow="Live activity"
-              title="The agent's hands, as they moved"
-              description="Newest first. Inputs and outputs stay in the audit spine; this is the readable surface."
+              title="Latest recorded actions"
+              description="Most recent first. Requests and responses are saved in the audit history."
               action={
                 <button
                   type="button"
@@ -574,7 +573,7 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
               }
             />
             {desk.audit.entries.length === 0 ? (
-              <Empty title="No call recorded yet" body="The spine is empty. Nothing has executed on this desk — which is a fact, not a failure." />
+              <Empty title="No activity recorded yet" body="Actions will appear here after the workspace is used." />
             ) : (
               <ul className="divide-y divide-ink-100 dark:divide-white/8">
                 {desk.audit.entries.slice(0, 8).map((entry) => (
@@ -609,8 +608,8 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
           <Panel>
             <PanelHead
               eyebrow="Vitals"
-              title="Is the desk honest?"
-              description="The spine reports its own durability — nothing degrades silently."
+              title="Service and record status"
+              description="Check service availability and confirm the integrity of saved audit and approval records."
               action={
                 <button
                   type="button"
@@ -623,51 +622,51 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
             />
             <div className="divide-y divide-ink-100 dark:divide-white/8">
               <VitalRow
-                label="Agent runtime"
+                label="Automated review service"
                 value={desk.online ? "online" : "offline"}
                 tone={desk.online ? "emerald" : "red"}
                 detail={desk.online ? `answered · uptime ${Math.floor((health?.uptimeSec ?? 0) / 60)}m` : "no answer in 4s"}
               />
               <VitalRow
-                label="Filesystem MCP"
+                label="Document access"
                 value={health ? (health.fsMcp?.status ?? "not declared") : "unknown"}
                 tone={health?.fsMcp?.status === "connected" ? "emerald" : "amber"}
-                detail={health?.fsMcp ? `${fmtNum(health.fsMcp.tools)} tools · official third-party server` : "the runtime did not publish its fs-MCP state"}
+                detail={health?.fsMcp ? `${fmtNum(health.fsMcp.tools)} available actions` : "The service did not report document access status."}
               />
               <VitalRow
-                label="Audit chain"
-                value={desk.verify ? (desk.verify.ok ? "intact" : "broken") : "unverified"}
+                label="Audit history"
+                value={desk.verify ? (desk.verify.ok ? "verified" : "check failed") : "not checked"}
                 tone={desk.verify ? (desk.verify.ok ? "emerald" : "red") : "amber"}
-                detail={desk.verify ? `${fmtNum(desk.verify.checked)} checked · ${fmtNum(desk.verify.epochs.length)} sealed epoch${desk.verify.epochs.length === 1 ? "" : "s"}` : "verify did not answer"}
+                detail={desk.verify ? `${fmtNum(desk.verify.checked)} entries checked · ${fmtNum(desk.verify.epochs.length)} record groups verified` : "Verification status unavailable"}
               />
               <VitalRow
-                label="Decision ledger"
+                label="Approval history"
                 value={desk.ledger ? (desk.ledger.ok ? "intact" : "broken") : "unread"}
                 tone={desk.ledger ? (desk.ledger.ok ? "emerald" : "red") : "amber"}
-                detail={desk.ledger ? `head ${shortHash(desk.ledger.head, 12)}` : "ledger did not answer"}
+                detail={desk.ledger ? `Latest verification code ${shortHash(desk.ledger.head, 12)}` : "Approval history status unavailable"}
               />
               <VitalRow
-                label="Gate key custody"
+                label="Signing key status"
                 value={posture?.gateKey?.source ?? "not declared"}
                 tone={posture?.gateKey?.source === "managed-dev" ? "amber" : posture ? "emerald" : "neutral"}
-                detail={posture?.gateKey?.keyId ? `key id ${posture.gateKey.keyId}` : "the runtime has not published its seal key"}
+                detail={posture?.gateKey?.keyId ? `Key ID ${posture.gateKey.keyId}` : "Signing key status has not been reported"}
               />
               <VitalRow
                 label="Storage"
                 value={health?.agent?.storage ?? "unknown"}
                 tone="neutral"
-                detail={health ? `${health.graphs.length} graphs wired` : "—"}
+                detail={health ? `${health.graphs.length} connected services` : "—"}
               />
             </div>
           </Panel>
 
           <Panel>
-            <PanelHead eyebrow="Model chain" title="Who answered" description="Attribution is recorded, never inferred." />
+            <PanelHead eyebrow="Drafting support" title="Draft source" description="The system records whether each draft came from AI or a template." />
             <div className="space-y-3 px-5 py-4">
               <div className="rounded-xl border border-ink-200/80 bg-white/60 px-3 py-2.5 dark:border-white/10 dark:bg-white/[0.03]">
                 <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Primary</p>
                 <p className="mt-1 truncate text-[12px] font-semibold text-ink-950">
-                  {model?.configured ? model.model : "Deterministic template"}
+                  {model?.configured ? model.model : "Standard template"}
                 </p>
                 <p className="truncate text-[10.5px] text-ink-600">
                   {model?.configured
@@ -713,7 +712,7 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
           </Panel>
 
           <Panel>
-            <PanelHead eyebrow="Quorum" title="The roll behind the gavel" action={<Chip tone="neutral">{fmtNum(committee.seats)} seats</Chip>} />
+            <PanelHead eyebrow="Committee" title="Member attendance" action={<Chip tone="neutral">{fmtNum(committee.seats)} members</Chip>} />
             <div className="flex items-center gap-4 px-5 py-4">
               <Ring
                 value={committee.present}
@@ -724,15 +723,15 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
               />
               <div className="min-w-0">
                 <p className="text-[11.5px] leading-relaxed text-ink-600">
-                  A gate needs <strong className="text-ink-950">{committee.required}</strong> present names. The signed-in
-                  officer holds the gavel and counts once.
+                  At least <strong className="text-ink-950">{committee.required}</strong> committee members must be present
+                  before an authorized officer can approve a decision.
                 </p>
                 <button
                   type="button"
                   onClick={() => navigate("system")}
                   className="focus-brand mt-2 inline-flex min-h-11 items-center rounded-lg px-2 font-code text-[10px] font-bold uppercase tracking-[0.06em] text-ink-600 hover:bg-ink-100 hover:text-ink-950 dark:hover:bg-white/[0.06] dark:hover:text-white"
                 >
-                  READ THE ROSTER →
+                  VIEW COMMITTEE MEMBERS →
                 </button>
               </div>
             </div>
@@ -752,9 +751,9 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
           </Panel>
 
           <Panel>
-            <PanelHead eyebrow="Governance" title="Changes to authority" description="Recorded in the desk store, separate from the agent's log." />
+            <PanelHead eyebrow="Governance" title="Changes to authority" description="Recorded in the administration log, separate from review activity." />
             {governance.length === 0 ? (
-              <Empty title="No change recorded" body="No role, access or supplier-door change has been made on this desk." />
+              <Empty title="No changes recorded" body="No user access or supplier organization changes have been recorded." />
             ) : (
               <ol className="divide-y divide-ink-100 dark:divide-white/8">
                 {governance.slice(0, 5).map((event) => (
@@ -782,15 +781,15 @@ export function DeckPanel({ data, now, navigate }: PanelProps) {
         <div className="flex items-start gap-2.5">
           <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-ink-400" aria-hidden="true" />
           <p className="max-w-[86ch] text-[10.5px] leading-relaxed text-ink-500">
-            This room reads one snapshot at a time and writes only through the endpoints that already enforce the
-            rules. Signing, filing and awarding are deliberately absent: those acts belong to named humans in the
-            workspace, with a step-up and a receipt.
+            This console shows current workspace information and records administrative changes. Tender approvals,
+            submissions and award decisions must be completed by authorized officers in the procurement workspace,
+            with an identity check and a saved receipt.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Gavel className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
           <span className="text-[10px] font-semibold text-ink-600">
-            THE MACHINE NEVER HOLDS THE PEN
+            DECISIONS REQUIRE AN AUTHORIZED OFFICER
           </span>
         </div>
       </div>

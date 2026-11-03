@@ -48,7 +48,7 @@ import { SystemPanel } from "@/components/admin/system-panel";
 import { SupportPanel } from "@/components/admin/support-panel";
 
 /**
- * The Control Room.
+ * Workspace administration.
  *
  * One window over every surface of the desk — the officer roster, the supplier
  * door, the review runs, the human gates, and the hash-chained spine that
@@ -69,6 +69,20 @@ const ICONS: Record<AdminSection, LucideIcon> = {
 };
 
 type Toast = { id: number; message: string; tone: ToastTone };
+
+function readableStatus(status: string): string {
+  const labels: Record<string, string> = {
+    AWAITING_GATE: "Awaiting approval",
+    AWAITING_SECOND: "Awaiting second approval",
+    EXECUTED: "Approved",
+    FAILED: "Could not complete",
+    FILED: "Complete",
+    PENDING: "Awaiting approval",
+    REJECTED: "Returned",
+    RUNNING: "In progress",
+  };
+  return labels[status] ?? status.replace(/_/g, " ").toLowerCase().replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
+}
 
 export function AdminConsole({ user }: { user: { id: string; name: string; email: string; role: string } }) {
   const [data, setData] = useState<AdminOverview | null>(null);
@@ -149,13 +163,13 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
         return;
       }
       const body = (await res.json().catch(() => ({}))) as AdminOverview & { error?: string };
-      if (!res.ok) throw new Error(body.error ?? "The control room snapshot could not be read.");
+      if (!res.ok) throw new Error(body.error ?? "The administration workspace could not be loaded.");
       setData(body);
       setError(null);
       setLastLoaded(Date.now());
       hasLoaded.current = true;
     } catch (err) {
-      setError((err as Error).message || "The control room snapshot could not be read.");
+      setError((err as Error).message || "The administration workspace could not be loaded.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -256,7 +270,7 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
 
   useEffect(() => {
     const previous = document.title;
-    document.title = `${current.label} · Quorum Control Room`;
+    document.title = `${current.label} · Quorum Administration`;
     return () => {
       document.title = previous;
     };
@@ -299,7 +313,7 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
         href="#admin-main"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[90] focus:rounded-lg focus:bg-ink-950 focus:px-4 focus:py-2 focus:text-[13px] focus:font-semibold focus:text-white"
       >
-        Skip to control room
+        Skip to administration
       </a>
       <div className={cn("lg:grid", navCollapsed ? "lg:grid-cols-1" : "lg:grid-cols-[252px_minmax(0,1fr)]")}>
         {/* ── Rail ─────────────────────────────────────────────────────── */}
@@ -316,15 +330,15 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
           <div className="border-b border-white/10 px-5 py-5 pr-14">
             <QuorumLogo variant="light" tagline={false} />
             <p className="mt-3 font-code text-[10px] font-bold uppercase tracking-[0.12em] text-brand-300">
-              CONTROL ROOM
+              ADMINISTRATION
             </p>
           </div>
 
-          <nav aria-label="Control room sections" className="flex-1 overflow-y-auto px-2.5 py-4">
+          <nav aria-label="Administration sections" className="flex-1 overflow-y-auto px-2.5 py-4">
             <p className="px-2.5 pb-2 font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-300">
-              SURFACES
+              ADMINISTRATION
             </p>
-            <ul className="space-y-0.5">
+            <ul className="space-y-1">
               {SECTIONS.map((item) => {
                 const Icon = ICONS[item.id];
                 const active = item.id === section;
@@ -335,8 +349,9 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
                       type="button"
                       onClick={() => navigate(item.id)}
                       aria-current={active ? "page" : undefined}
+                      title={item.label}
                       className={cn(
-                        "focus-brand group relative flex min-h-11 w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors",
+                        "focus-brand group relative flex min-h-12 w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors",
                         active
                           ? "bg-white/[0.07] text-white ring-1 ring-inset ring-white/10"
                           : "text-ink-400 hover:bg-white/[0.04] hover:text-white",
@@ -346,10 +361,7 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
                         <span className="absolute bottom-2 left-0 top-2 w-[2px] rounded-r bg-brand-500" aria-hidden="true" />
                       )}
                       <Icon className={cn("h-4 w-4 shrink-0", active ? "text-brand-400" : "text-ink-300")} aria-hidden="true" />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[12px] font-semibold">{item.label}</span>
-                        <span className="block truncate text-[10.5px] leading-snug text-ink-300">{item.blurb}</span>
-                      </span>
+                      <span className="min-w-0 flex-1 truncate text-[12px] font-semibold">{item.label}</span>
                       {count !== undefined && (
                         <span
                           className={cn(
@@ -370,15 +382,6 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
               })}
             </ul>
 
-            <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3">
-              <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-300">
-                The standing rule
-              </p>
-              <p className="mt-1.5 text-[10.5px] leading-relaxed text-ink-400">
-                The agent prepares the file. This console never signs a gate — the committee does, by name, in
-                the workspace.
-              </p>
-            </div>
           </nav>
 
           <div className="border-t border-white/10 px-3 py-3">
@@ -421,7 +424,7 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
           <header className="sticky top-0 z-40 border-b border-ink-200/80 bg-paper/85 backdrop-blur-xl dark:border-white/10">
             <div className="mx-auto flex w-full max-w-[1500px] items-center gap-2 px-4 py-2.5 sm:px-6 lg:px-8">
               <div className="flex min-w-0 flex-1 items-center gap-2.5">
-                <a href="/admin" className="lg:hidden" aria-label="Control room home">
+                <a href="/admin" className="lg:hidden" aria-label="Administration home">
                   <span className="grid h-11 w-11 place-items-center rounded-lg bg-ink-950">
                     <span className="h-2 w-2 rounded-full bg-brand-500" aria-hidden="true" />
                   </span>
@@ -439,12 +442,12 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
                 )}
                 <div className="min-w-0">
                   <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">
-                    QUORUM · CONTROL ROOM
+                    QUORUM · ADMINISTRATION
                   </p>
                   <div className="flex items-center gap-1.5">
                     <span className="truncate text-[12.5px] font-semibold text-ink-950">{current.label}</span>
                     <span className="hidden text-[10px] text-ink-600 sm:inline">
-                      / {String(data?.desk.audit.allTotal ?? 0)} RECORDED CALLS
+                      / {String(data?.desk.audit.allTotal ?? 0)} RECORDED ACTIONS
                     </span>
                   </div>
                 </div>
@@ -503,7 +506,7 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
                 type="button"
                 onClick={(event) => openPalette(event.currentTarget)}
                 data-admin-search-trigger
-                aria-label="Search the control room"
+                aria-label="Search administration"
                 className="focus-brand grid h-11 w-11 place-items-center rounded-lg border border-ink-200 bg-white text-ink-500 sm:hidden dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-400"
               >
                 <Search className="h-3.5 w-3.5" aria-hidden="true" />
@@ -513,7 +516,7 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
             {/* Mobile section strip */}
             <nav aria-label="Control room sections" className="border-t border-ink-100 px-2 py-1.5 lg:hidden dark:border-white/8">
               <HorizontalScrollRegion
-                label="Scrollable control room section list"
+                label="Administration sections"
                 hint="Swipe or scroll to see every section. Focus this row and use the arrow keys to scroll."
                 hintClassName="px-2 py-1 text-[10.5px]"
                 className="flex gap-1 py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -561,7 +564,7 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
                   Snapshot unavailable
                 </p>
                 <h1 className="mt-2 font-display text-[24px] font-black tracking-[-0.02em] text-ink-950">
-                  The control room could not read the desk.
+                  The administration workspace could not load its data.
                 </h1>
                 <p className="mt-2 max-w-[60ch] text-[12.5px] leading-relaxed text-ink-500">
                   {error ?? "The snapshot request failed."} No data was shown rather than stale data being passed
@@ -592,7 +595,7 @@ export function AdminConsole({ user }: { user: { id: string; name: string; email
           </main>
 
           <footer className="mx-auto flex w-full max-w-[1500px] flex-wrap items-center justify-between gap-3 border-t border-ink-200/70 px-4 py-5 text-[10px] font-semibold text-ink-600 sm:px-6 lg:px-8 dark:border-white/10">
-            <span>QUORUM · CONTROL ROOM · {data?.actor.role ?? user.role} ACCESS</span>
+            <span>QUORUM · ADMINISTRATION · {data?.actor.role ?? user.role} ACCESS</span>
             <span className="flex items-center gap-3">
               <a href="/" className="focus-brand inline-flex min-h-11 items-center px-2 hover:text-ink-950 dark:hover:text-white">Landing</a>
               <a href="/#/dashboard" className="focus-brand inline-flex min-h-11 items-center px-2 hover:text-ink-950 dark:hover:text-white">Workspace</a>
@@ -765,7 +768,7 @@ function CommandPalette({
       id: "action-export",
       group: "ACTIONS",
       label: "Export the audit package",
-      sub: "Full hash-chained log, oldest first",
+      sub: "Complete activity history, oldest first",
       action: "export",
       icon: <Download className="h-3.5 w-3.5" aria-hidden="true" />,
     });
@@ -773,7 +776,7 @@ function CommandPalette({
       id: "action-workspace",
       group: "ACTIONS",
       label: "Open the workspace",
-      sub: "Return to the officer desk",
+      sub: "Return to the procurement workspace",
       action: "workspace",
       icon: <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />,
     });
@@ -815,9 +818,9 @@ function CommandPalette({
       for (const run of data.desk.runs.slice(0, 40)) {
         push({
           id: `run-${run.id}`,
-          group: "EVALUATIONS",
+          group: "TENDER REVIEWS",
           label: systemReferenceLabel(run.systemReference),
-          sub: `${run.status} · ${run.id}`,
+          sub: `${readableStatus(run.status)} · ${run.id}`,
           section: "work",
           query: run.systemReference ?? run.id,
           icon: <ClipboardCheck className="h-3.5 w-3.5" aria-hidden="true" />,
@@ -826,8 +829,8 @@ function CommandPalette({
       for (const gate of data.desk.gates.slice(0, 40)) {
         push({
           id: `gate-${gate.id}`,
-          group: "GATES",
-          label: `${systemReferenceLabel(gate.systemReference)} · ${gate.status}`,
+          group: "APPROVALS",
+          label: `${systemReferenceLabel(gate.systemReference)} · ${readableStatus(gate.status)}`,
           sub: gate.id,
           section: "gates",
           query: gate.id,
@@ -904,7 +907,7 @@ function CommandPalette({
         onKeyDown={trapPaletteTab}
         className="panel panel-lift relative w-full max-w-xl overflow-hidden rounded-2xl"
       >
-        <h2 id="control-room-search-title" className="sr-only">Search the control room</h2>
+        <h2 id="control-room-search-title" className="sr-only">Search administration</h2>
         <div className="flex items-center gap-2.5 border-b border-ink-100 px-4 py-3 dark:border-white/8">
           <Search className="h-4 w-4 shrink-0 text-ink-400" aria-hidden="true" />
           <input
@@ -920,7 +923,7 @@ function CommandPalette({
             aria-controls="palette-results"
             aria-autocomplete="list"
             aria-activedescendant={results[activeIndex] ? `palette-${results[activeIndex].id}` : undefined}
-            placeholder="Search people, tenders, gates, the audit trail…"
+            placeholder="Search people, tenders, approvals or audit history…"
             className="min-h-11 min-w-0 flex-1 bg-transparent text-[14px] text-ink-950 outline-none placeholder:text-ink-400 dark:text-ink-900"
           />
           <kbd className="rounded border border-ink-200 bg-ink-50 px-1.5 py-1 font-code text-[10px] font-bold text-ink-600 dark:border-white/10 dark:bg-white/[0.06] dark:text-ink-300">
@@ -994,7 +997,7 @@ function CommandPalette({
           </span>
           <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5", TONE.neutral as string)}>
             <Dot tone="emerald" pulse />
-            {data.desk.online ? "DESK ONLINE" : "DESK OFFLINE"}
+            {data.desk.online ? "SERVICE ONLINE" : "SERVICE OFFLINE"}
           </span>
         </div>
       </div>

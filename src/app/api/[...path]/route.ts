@@ -58,6 +58,7 @@ async function proxy(req: NextRequest) {
   }
   const actor = session.name;
   const workspaceId = session.workspaceId;
+  const traceId = crypto.randomUUID();
   const requestedPath = req.nextUrl.pathname;
 
   /* Reads are authorised per surface, not just per session: an auditor may read
@@ -89,6 +90,7 @@ async function proxy(req: NextRequest) {
     /* Forward the content type, and the attested identity + HMAC seal the
        sidecar checks on every mutation. */
     const forward: Record<string, string> = {};
+    forward["x-quorum-trace-id"] = traceId;
     const contentType = req.headers.get("content-type");
     if (contentType) forward["content-type"] = contentType;
     /* The browser's step-up token for an irreversible gate decision. The
@@ -116,13 +118,14 @@ async function proxy(req: NextRequest) {
     /* Reading supplier, bid or audit data is itself a recordable act. The line
        is written to the same spine, attested, and never blocks the response. */
     if (req.method === "GET" && isSensitiveRead(url.pathname)) {
-      auditRead(port, session.name, session.workspaceId, url.pathname, upstream.status);
+      auditRead(port, session.name, session.workspaceId, url.pathname, upstream.status, traceId);
     }
 
     return new NextResponse(upstream.body, {
       status: upstream.status,
       headers: {
         "content-type": upstream.headers.get("content-type") ?? "application/json",
+        "x-quorum-trace-id": upstream.headers.get("x-quorum-trace-id") ?? traceId,
       },
     });
   } catch {
@@ -149,12 +152,13 @@ function isSensitiveRead(path: string): boolean {
 }
 
 /** Write the read to the spine. A failure is quiet here and loud in the log. */
-function auditRead(port: string, actor: string, workspaceId: string, path: string, status: number) {
+function auditRead(port: string, actor: string, workspaceId: string, path: string, status: number, traceId: string) {
   const ts = Date.now();
   void fetch(`http://127.0.0.1:${port}/api/audit/read`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
+      "x-quorum-trace-id": traceId,
       "x-quorum-actor": actor,
       "x-quorum-workspace": workspaceId,
       "x-quorum-ts": String(ts),

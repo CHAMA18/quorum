@@ -8,26 +8,25 @@ import { cn } from "@/lib/utils";
 
 const TIERS = [
   {
-    name: "ENTERPRISE",
+    name: "INSTITUTIONAL",
     price: "Custom",
-    per: "on-prem, open weights, your jurisdiction",
-    blurb: "For ministries and regulators with data-residency and integration mandates.",
+    per: "scoped to volume, deployment and support needs",
+    blurb: "For public institutions adopting a shared review workflow across teams and committees.",
     features: [
-      "Your data centre or sovereign cloud",
-      "Data residency in-country",
-      "SSO + registry integration",
-      "Unlimited gate seats",
-      "SLA, onboarding and training",
+      "Hosting and data-residency requirements agreed for your jurisdiction",
+      "Integration planning for identity and public data sources",
+      "Reviewer roles and committee approval rules",
+      "Onboarding and training for procurement teams",
+      "Support and service commitments set out in the proposal",
     ],
-    cta: "Talk to us",
+    cta: "Request a pilot",
     href: "#get-started",
     featured: false,
   },
 ];
 
 /**
- * Pricing — three tiers, honest and compact. Every tier keeps the two
- * non-negotiables: every finding cited, a human gate on every award.
+ * Institutional pricing is scoped to deployment and support requirements.
  */
 export function Pricing() {
   const reduce = useReducedMotion();
@@ -39,18 +38,18 @@ export function Pricing() {
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
             <Reveal>
-              <SpecBar index="09" label="Pricing" meta="Pilot tier · free for three tenders" />
+              <SpecBar index="09" label="Pricing" meta="Three tender reviews included at no cost" />
             </Reveal>
             <Reveal delay={0.06}>
               <h2 className="type-display mt-6 max-w-2xl text-[34px] text-ink-950 sm:text-[44px]">
-                Pay per tender, or per committee.
+                A pilot first. A tailored institutional plan when you are ready.
               </h2>
             </Reveal>
           </div>
           <Reveal delay={0.12}>
             <p className="max-w-sm text-[15px] leading-relaxed text-ink-500">
-              Every tier keeps the two non-negotiables: every finding cited, a human gate on
-              every award. No exceptions.
+              Start with up to three tender reviews at no cost. Broader deployment is scoped to
+              review volume, integrations, data-residency requirements and support.
             </p>
           </Reveal>
         </div>

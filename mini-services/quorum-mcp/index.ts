@@ -48,6 +48,7 @@ import {
   DATA,
   loadState,
   saveState,
+  flushState,
   shaOf,
   state,
   toolLog,
@@ -60,6 +61,9 @@ import {
   type Supplier,
   type SupplierApplication,
 } from "./store";
+import { currentTraceId, requestTraceId, withTrace } from "./telemetry-context";
+import { claimDueJobs, enqueueDurableJob, finishDurableJob, heartbeatDurableJob, listDurableJobs, requeueDurableJob, retryStaleRunningJobs, type DurableJob } from "./postgres";
+import { summarizeQueue, summarizeToolEvents } from "./observability";
 import { acquireWriterLock, postgresHandle } from "./writer";
 import { appendDecision, mirrorDecision, readLedger, verifyLedger } from "./decisions-ledger";
 import { handleReportRequest } from "./report";
@@ -202,6 +206,7 @@ function recordDecision(gate: Gate, decision: "APPROVE" | "REJECT", actor: strin
       gateStatus: gate.status,
       signatureKeyId: gate.signature?.keyId ?? null,
       payloadHash: gate.signature?.payloadHash ?? null,
+      idempotencyKey: `gate:${workspaceId}:${gate.id}:${decision}:${actor.trim().toLowerCase()}`,
     });
     void mirrorDecision(postgresHandle(), row);
   } catch (err) {
@@ -331,9 +336,22 @@ bindEngine({
   save: saveState,
   raiseGate(g) {
     g.workspaceId = currentWorkspaceId();
+    const existing = state.gates.find((candidate) =>
+      candidate.runId === g.runId &&
+      candidate.tool === g.tool &&
+      candidate.status === "PENDING" &&
+      (candidate.workspaceId ?? "demo") === currentWorkspaceId(),
+    );
+    if (existing) {
+      /* A run replay after a crash reuses its already-raised human gate. */
+      existing.inputs = g.inputs;
+      saveState();
+      return existing;
+    }
     state.gates.unshift(g);
     saveState();
     notifyWebSoon({ type: "GATE_WAITING", gateId: g.id, tenderId: g.tenderId, tool: g.tool, requiredOffice: g.requiredOffice });
+    return g;
   },
   guards: () => state.guards,
   registry: () => state.suppliers.map((s) => ({ name: s.name, status: s.status })),
@@ -477,13 +495,46 @@ function handInkFrom(body: unknown): { image: string; signedAt: string; strokes:
   };
 }
 
+const decisionLocks = new Map<string, Promise<void>>();
+async function withDecisionLock<T>(key: string, work: () => Promise<T>): Promise<T> {
+  const previous = decisionLocks.get(key) ?? Promise.resolve();
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  const tail = previous.then(() => held);
+  decisionLocks.set(key, tail);
+  await previous;
+  try {
+    return await work();
+  } finally {
+    release();
+    if (decisionLocks.get(key) === tail) decisionLocks.delete(key);
+  }
+}
+
 async function decideGate(id: string, decision: string, approver: string, note?: string, signedInAs?: string, stepUpToken?: string, workspaceId = currentWorkspaceId(), hand?: { image: string; signedAt: string; strokes: number }, attestedActorId?: string) {
+  return withDecisionLock(`${workspaceId}:${id}`, () => decideGateUnlocked(id, decision, approver, note, signedInAs, stepUpToken, workspaceId, hand, attestedActorId));
+}
+
+async function decideGateUnlocked(id: string, decision: string, approver: string, note?: string, signedInAs?: string, stepUpToken?: string, workspaceId = currentWorkspaceId(), hand?: { image: string; signedAt: string; strokes: number }, attestedActorId?: string) {
   const gate = state.gates.find((g) => g.id === id && (g.workspaceId ?? "demo") === workspaceId);
   if (!gate) return { error: "gate not found", code: 404 };
+  const name = approver?.trim();
+  if (name && (gate.status === "EXECUTED" || gate.status === "REJECTED")) {
+    const previous = readLedger(DECISIONS_FILE).find((row) => row.workspaceId === workspaceId && row.gateId === id && row.actor.trim().toLowerCase() === name.toLowerCase() && row.decision === decision);
+    if (previous) {
+      if (auditHealth.stateSaveFailing) {
+        try { await flushState(); } catch { return { error: "The signed result is recorded, but its state snapshot is still not durable.", code: 503 }; }
+      }
+      return { gate, replayed: true };
+    }
+  }
+  if (name && gate.status === "AWAITING_SECOND" && decision === "APPROVE" && gate.firstApproval?.by.trim().toLowerCase() === name.toLowerCase()) {
+    const previous = readLedger(DECISIONS_FILE).find((row) => row.workspaceId === workspaceId && row.gateId === id && row.actor.trim().toLowerCase() === name.toLowerCase() && row.decision === "APPROVE");
+    if (previous) return { gate, awaitingSecond: true, replayed: true };
+  }
   const awaitingSecond = gate.status === "AWAITING_SECOND";
   if (gate.status !== "PENDING" && !awaitingSecond)
     return { error: `gate already ${gate.status}`, code: 409 };
-  const name = approver?.trim();
   if (!name || name.length < 3) return { error: "A named human is required — provide the approving officer's full name.", code: 422 };
   if (decision !== "APPROVE" && decision !== "REJECT") {
     return { error: "Decision must be APPROVE or REJECT.", code: 422 };
@@ -638,6 +689,7 @@ async function decideGate(id: string, decision: string, approver: string, note?:
       note: note?.trim() || undefined,
     };
     gate.status = "AWAITING_SECOND";
+    recordDecision(gate, "APPROVE", name, workspaceId);
     appendLog({
       actor: name,
       server: "quorum-mcp",
@@ -655,6 +707,7 @@ async function decideGate(id: string, decision: string, approver: string, note?:
       durationMs: 0,
     });
     saveState();
+    try { await flushState(); } catch (err) { return { error: (err as Error).message, code: 503 }; }
     return { gate, awaitingSecond: true };
   }
 
@@ -703,6 +756,7 @@ async function decideGate(id: string, decision: string, approver: string, note?:
       run.progress.push(`✗ ${name} returned the submission — back to the agent`);
     }
     saveState();
+    try { await flushState(); } catch (err) { return { error: (err as Error).message, code: 503 }; }
     notifyWebSoon({ type: "GATE_DECIDED", gateId: gate.id, tenderId: gate.tenderId, tool: gate.tool, actor: name, outcome: "REJECTED", note: gate.note });
     return { gate };
   }
@@ -746,6 +800,7 @@ async function decideGate(id: string, decision: string, approver: string, note?:
     run.progress.push(`✓ ${name} signed the gate — bundle filed · ${gate.receipt?.submissionId ?? "receipt pending"}${hand ? ` · hand signature ${shaOf(hand.image).slice(0, 12)}` : ""}`);
   }
   saveState();
+  try { await flushState(); } catch (err) { return { error: (err as Error).message, code: 503 }; }
   notifyWebSoon({ type: "GATE_DECIDED", gateId: gate.id, tenderId: gate.tenderId, tool: gate.tool, actor: name, outcome: "EXECUTED", note: gate.note });
   return { gate };
 }
@@ -757,6 +812,7 @@ const json = (data: unknown, code = 200) =>
     status: code,
     headers: {
       "content-type": "application/json",
+      ...(currentTraceId() ? { "x-quorum-trace-id": currentTraceId()! } : {}),
     },
   });
 
@@ -768,6 +824,125 @@ async function readBody(req: Request): Promise<Record<string, unknown>> {
   }
 }
 
+let workflowWorkerBusy = false;
+
+async function runReviewJob(job: DurableJob) {
+  const runId = String(job.payload.runId ?? "");
+  const workspaceId = String(job.payload.workspaceId ?? "demo");
+  const traceId = String(job.payload.traceId ?? `recovery-${runId}`);
+  const run = state.runs.find((row) => row.id === runId && (row.workspaceId ?? "demo") === workspaceId);
+  if (!run) {
+    await finishDurableJob(job.id);
+    return;
+  }
+  if (run.status === "AWAITING_GATE" || run.status === "FILED" || run.status === "REJECTED") {
+    await finishDurableJob(job.id);
+    return;
+  }
+
+  const heartbeat = setInterval(() => { void heartbeatDurableJob(job.id); }, 15_000);
+  try {
+    await withWorkspace(workspaceId, () => withTrace(traceId, async () => {
+      run.status = "RUNNING";
+      run.error = undefined;
+      run.updatedAt = new Date().toISOString();
+      run.progress.push(job.attempts > 1 ? `↻ review resumed from the last durable run record (attempt ${job.attempts}/${job.maxAttempts ?? 5})` : "▸ review job claimed by the durable worker");
+      saveState();
+      try {
+        const engine = await import("./engine");
+        await engine.runReview(run);
+        if (String(run.status) === "FAILED") throw new Error(run.error || "review graph failed");
+        await flushState();
+        await finishDurableJob(job.id);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "review worker failed";
+        appendLog({
+          actor: "orchestrator",
+          server: "quorum-mcp-worker",
+          tool: "review_job",
+          kind: "WRITES",
+          runId,
+          inputs: { attempt: job.attempts, maxAttempts: job.maxAttempts ?? 5 },
+          outputs: { error: message.slice(0, 400) },
+          status: "ERROR",
+          durationMs: 0,
+        });
+        if (job.attempts >= (job.maxAttempts ?? 5)) {
+          run.status = "FAILED";
+          run.error = `Review failed after ${job.attempts} attempts: ${message}`.slice(0, 800);
+          run.updatedAt = new Date().toISOString();
+          run.progress.push("✗ automatic recovery attempts exhausted; operator review required");
+          saveState();
+          try { await flushState(); } catch { /* health endpoint reports a failed snapshot */ }
+        } else {
+          try { await flushState(); } catch { /* the retry queue remains authoritative */ }
+        }
+        await finishDurableJob(job.id, message);
+      }
+    }));
+  } finally {
+    clearInterval(heartbeat);
+  }
+}
+
+async function drainWorkflowJobs() {
+  if (workflowWorkerBusy) return;
+  workflowWorkerBusy = true;
+  try {
+    await retryStaleRunningJobs(60_000);
+    const due = await claimDueJobs(5);
+    for (const job of due) {
+      if (job.kind === "REVIEW_RUN") await runReviewJob(job);
+      else await finishDurableJob(job.id, `unsupported durable job kind: ${job.kind}`);
+    }
+  } catch (error) {
+    console.error("[workflow-worker] job polling failed:", error);
+  } finally {
+    workflowWorkerBusy = false;
+  }
+}
+
+async function recoverInterruptedRuns() {
+  try {
+    await retryStaleRunningJobs(10_000);
+    const jobs = await listDurableJobs(500);
+    for (const run of state.runs) {
+      if (run.status !== "RUNNING") continue;
+      const id = `review:${run.id}`;
+      const existing = jobs.find((job) => job.id === id);
+      if (!existing) {
+        await enqueueDurableJob({
+          id,
+          kind: "REVIEW_RUN",
+          payload: { runId: run.id, workspaceId: run.workspaceId ?? "demo", traceId: run.traceId ?? `recovery-${run.id}` },
+          status: "PENDING",
+          attempts: 0,
+          maxAttempts: 5,
+          runAt: new Date().toISOString(),
+        });
+      } else if (existing.status === "DONE") {
+        const requeued = await requeueDurableJob(id);
+        if (!requeued && existing.attempts >= (existing.maxAttempts ?? 5)) {
+          run.status = "FAILED";
+          run.error ??= "Review recovery attempts were exhausted before the previous process stopped.";
+          run.updatedAt = new Date().toISOString();
+          saveState();
+        }
+      } else if (existing.status === "FAILED" && existing.attempts >= (existing.maxAttempts ?? 5)) {
+        run.status = "FAILED";
+        run.error ??= "Review recovery attempts were exhausted before the previous process stopped.";
+        run.updatedAt = new Date().toISOString();
+        saveState();
+      }
+    }
+    if (state.runs.some((run) => run.status === "FAILED" && run.error?.includes("recovery attempts were exhausted"))) await flushState();
+  } catch (error) {
+    console.error("[workflow-worker] interrupted run recovery failed:", error);
+  }
+  setInterval(() => { void drainWorkflowJobs(); }, 3_000);
+  void drainWorkflowJobs();
+}
+
 Bun.serve({
   port: PORT,
   /* Loopback only — the sidecar has no auth of its own; the Next gateway
@@ -775,6 +950,8 @@ Bun.serve({
   hostname: "127.0.0.1",
   idleTimeout: 120,
   async fetch(req) {
+    const traceId = requestTraceId(req.headers.get("x-quorum-trace-id"));
+    return withTrace(traceId, async () => {
     const url = new URL(req.url);
     const path = url.pathname;
 
@@ -817,6 +994,8 @@ Bun.serve({
       return json({ error: "The agent is disabled; all changes are paused." }, 423);
     }
 
+    return withWorkspace(workspaceId, async () => {
+
     /* MCP surface */
     if (path === "/mcp" && req.method === "POST") {
       const body = (await readBody(req)) as { id?: unknown; method?: string; params?: never };
@@ -830,6 +1009,7 @@ Bun.serve({
 
     /* REST surface */
     if (path === "/api/health") {
+      const jobs = await listDurableJobs(500);
       return json({
         ok: true,
         service: "quorum-mcp",
@@ -838,6 +1018,7 @@ Bun.serve({
         fsMcp: { status: fsMcp.status, tools: fsMcp.tools },
         agent: { mode: state.agentMode, storage: process.env.DATABASE_URL ? "postgres-configured" : "json" },
         graphs: ["review_graph (8 nodes)", "filing_graph (2 nodes)"],
+        workflowQueue: { driver: process.env.DATABASE_URL?.trim() ? "postgres" : "json", ...summarizeQueue(jobs) },
         /* Configured endpoint + the newest real model answer in the log. */
         model: { ...modelStatus(), residency: residencyFromEnv(), lastCall: latestModelCall() },
         counts: { toolCalls: toolLog.length, runs: state.runs.length, gates: state.gates.length, pendingGates: state.gates.filter((g) => g.status === "PENDING").length },
@@ -862,6 +1043,50 @@ Bun.serve({
           /* Key custody — env/file/development-managed, with the live key id. */
           gateKey: signingKeyStatus(),
         },
+      });
+    }
+
+    if (path === "/api/observability" && req.method === "GET") {
+      const [entries, jobs] = await Promise.all([readLogEntries(), listDurableJobs(500)]);
+      const scopedEntries = entries.filter((entry) => (entry.workspaceId ?? "demo") === workspaceId);
+      const scopedRuns = workspaceRows(state.runs, workspaceId);
+      const traces = new Map<string, { first: string; last: string; count: number; errors: number; runIds: Set<string> }>();
+      for (const entry of scopedEntries) {
+        if (!entry.traceId) continue;
+        const row = traces.get(entry.traceId) ?? { first: entry.ts, last: entry.ts, count: 0, errors: 0, runIds: new Set<string>() };
+        row.first = entry.ts < row.first ? entry.ts : row.first;
+        row.last = entry.ts > row.last ? entry.ts : row.last;
+        row.count += 1;
+        if (entry.status === "ERROR") row.errors += 1;
+        if (entry.runId) row.runIds.add(entry.runId);
+        traces.set(entry.traceId, row);
+      }
+      return json({
+        generatedAt: new Date().toISOString(),
+        traces: [...traces.entries()].map(([traceId, row]) => ({ traceId, startedAt: row.first, latestAt: row.last, events: row.count, errors: row.errors, runIds: [...row.runIds] })).sort((a, b) => b.latestAt.localeCompare(a.latestAt)).slice(0, 30),
+        operations: summarizeToolEvents(scopedEntries),
+        runs: {
+          total: scopedRuns.length,
+          running: scopedRuns.filter((run) => run.status === "RUNNING").length,
+          failed: scopedRuns.filter((run) => run.status === "FAILED").length,
+          awaitingGate: scopedRuns.filter((run) => run.status === "AWAITING_GATE").length,
+        },
+        queue: summarizeQueue(jobs),
+        storage: process.env.DATABASE_URL?.trim() ? "postgres" : "single-writer-json",
+        traceStore: "workspace-scoped hash-chained tool log",
+      });
+    }
+
+    const traceMatch = path.match(/^\/api\/traces\/([A-Za-z0-9._:-]{8,80})$/);
+    if (traceMatch && req.method === "GET") {
+      const traceId = traceMatch[1];
+      const entries = (await readLogEntries()).filter((entry) => entry.traceId === traceId && (entry.workspaceId ?? "demo") === workspaceId).sort((a, b) => a.seq - b.seq);
+      const runs = workspaceRows(state.runs, workspaceId).filter((run) => run.traceId === traceId);
+      if (!entries.length && !runs.length) return json({ error: "trace not found" }, 404);
+      return json({
+        traceId,
+        runs: runs.map((run) => ({ id: run.id, reference: run.reference, tenderId: run.tenderId, status: run.status, startedAt: run.startedAt, updatedAt: run.updatedAt, error: run.error ?? null, gateId: run.gateId ?? null })),
+        events: entries.map(({ id, seq, ts, actor, server, tool, kind, runId, inputs, outputs, status, durationMs, prev, self }) => ({ id, seq, ts, actor, server, tool, kind, runId, inputs, outputs, status, durationMs, prev, self })),
       });
     }
 
@@ -1210,6 +1435,7 @@ Bun.serve({
       }
       const run: Run = {
         id: `run_${randomUUID().slice(0, 8)}`,
+        traceId: currentTraceId(),
         workspaceId: currentWorkspaceId(),
         reference,
         tenderId,
@@ -1224,7 +1450,26 @@ Bun.serve({
         ...(detail ? { detail } : {}),
       };
       state.runs.unshift(run);
-      saveState();
+      try {
+        /* Commit the run record first. If the process stops before the job
+           insert, startup recovery sees this RUNNING record and enqueues it.
+           Once we return 201, both the record and its durable job exist. */
+        saveState();
+        await flushState();
+        await enqueueDurableJob({
+          id: `review:${run.id}`,
+          kind: "REVIEW_RUN",
+          payload: { runId: run.id, workspaceId: run.workspaceId ?? "demo", traceId: run.traceId ?? "" },
+          status: "PENDING",
+          attempts: 0,
+          maxAttempts: 5,
+          runAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        state.runs.splice(state.runs.indexOf(run), 1);
+        try { await flushState(); } catch { /* the failed request is not acknowledged */ }
+        return json({ error: `review could not be queued durably: ${(err as Error).message}` }, 503);
+      }
       appendLog({
         actor: "web-app",
         server: "quorum-mcp",
@@ -1236,7 +1481,6 @@ Bun.serve({
         status: "OK",
         durationMs: 0,
       });
-      void import("./engine").then((m) => m.runReview(run));
       return json({ run }, 201);
     }
 
@@ -2815,6 +3059,8 @@ Bun.serve({
     }
 
     return json({ error: "not found" }, 404);
+    });
+    });
   },
 });
 
@@ -2895,6 +3141,7 @@ await loadState();
   }
   if (changed) saveState();
 }
+await recoverInterruptedRuns();
 void initFsMcp();
 startOcpAutoRefresh();
 console.log(

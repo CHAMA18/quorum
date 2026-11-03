@@ -9,7 +9,7 @@ import { DesktopDownloads } from "@/components/quorum/desktop-downloads";
 import { Overview } from "@/components/quorum/overview";
 import { RuleBand } from "@/components/quorum/rule-band";
 import { UseCases } from "@/components/quorum/use-cases";
-import { Film } from "@/components/quorum/film";
+import { ReviewProcess } from "@/components/quorum/review-process";
 import { InsideRun } from "@/components/quorum/inside-box";
 import { ReportMock } from "@/components/quorum/report-mock";
 import { ProofBand } from "@/components/quorum/proof-band";
@@ -23,7 +23,7 @@ import { MuseAssistant } from "@/components/quorum/muse-assistant";
 import type { AuthMode, AuthUser } from "@/lib/auth-types";
 
 /**
- * Quorum — agentic tender review for public procurement.
+ * Quorum — a traceable tender review workspace for public procurement.
  * Three views on one route: the landing page, the full-screen
  * authentication screen (#/register, #/login) and the workspace
  * (#/dashboard) — all back-button friendly via the URL hash.
@@ -218,7 +218,7 @@ export default function Home() {
                 <Overview />
                 <RuleBand />
                 <UseCases />
-                <Film />
+                <ReviewProcess />
                 <InsideRun />
                 <ReportMock />
                 <ProofBand />

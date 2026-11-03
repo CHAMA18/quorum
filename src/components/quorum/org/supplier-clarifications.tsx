@@ -19,6 +19,14 @@ type Dossier = {
 
 const fieldClass = "focus-brand w-full rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-[13px] text-ink-900 outline-none placeholder:text-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 dark:border-white/10 dark:bg-night-2 dark:text-white dark:placeholder:text-ink-500";
 
+function outcomeLabel(outcome: string): string {
+  if (outcome === "JUSTIFIED") return "Explanation accepted";
+  if (outcome === "REJECTED") return "Price not supported";
+  if (outcome === "WITHDRAWN") return "Bid withdrawn";
+  const readable = outcome.replace(/_/g, " ").toLowerCase();
+  return readable.charAt(0).toUpperCase() + readable.slice(1);
+}
+
 export function SupplierClarifications() {
   const [dossiers, setDossiers] = useState<Dossier[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -104,11 +112,11 @@ export function SupplierClarifications() {
               <li key={`${dossier.tenderRef}-${dossier.id}`} className="px-5 py-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
-                    <p className="text-[14px] font-semibold leading-snug text-ink-900 dark:text-white">{publicReferenceLabel(dossier.systemReference)} · Abnormally low bid clarification</p>
+                    <p className="text-[14px] font-semibold leading-snug text-ink-900 dark:text-white">{publicReferenceLabel(dossier.systemReference)} · Low bid clarification</p>
                     <p className="mt-1 flex flex-wrap items-center gap-1.5 font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-500"><Clock3 className="h-3 w-3 shrink-0" aria-hidden="true" />Opened {fmtDate(dossier.openedAt)} · reply due {fmtDate(dossier.responseDueAt)}</p>
                   </div>
                   {dossier.resolution ? (
-                    <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 font-code text-[10px] font-bold tracking-[0.08em] text-emerald-800 dark:text-emerald-300">{dossier.resolution.outcome}</span>
+                    <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 font-code text-[10px] font-bold tracking-[0.08em] text-emerald-800 dark:text-emerald-300">{outcomeLabel(dossier.resolution.outcome)}</span>
                   ) : dossier.response ? (
                     <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 font-code text-[10px] font-bold tracking-[0.08em] text-emerald-800 dark:text-emerald-300">RESPONSE RECEIVED</span>
                   ) : expired || dossier.noResponseRecordedAt ? (
@@ -122,7 +130,7 @@ export function SupplierClarifications() {
                   <div className="mt-3 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.04] p-3 text-[11.5px] dark:bg-emerald-500/[0.06]">
                     <p className="flex items-center gap-1.5 text-[12px] font-semibold text-emerald-900 dark:text-emerald-200"><CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />Submitted {fmtStamp(dossier.response.receivedAt).time} · {fmtDate(dossier.response.receivedAt)}</p>
                     <p className="mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-ink-700 dark:text-ink-200">{dossier.response.text}</p>
-                    <p className="mt-2 break-words font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-500">Evidence {dossier.response.evidenceRef} · Receipt {dossier.response.receiptHash?.slice(0, 16) ?? "RECORDED"}</p>
+                    <p className="mt-2 break-words font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-500">Evidence {dossier.response.evidenceRef} · Confirmation code {dossier.response.receiptHash?.slice(0, 16) ?? "RECORDED"}</p>
                   </div>
                 ) : null}
                 {dossier.resolution?.note ? <p className="mt-2 text-[12.5px] leading-relaxed text-ink-700 dark:text-ink-200">Buyer review: {dossier.resolution.note}</p> : null}
@@ -134,15 +142,15 @@ export function SupplierClarifications() {
                     </label>
                     <div className="flex flex-col justify-between gap-2">
                       <label className="space-y-1.5">
-                        <span className="font-code text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-500">Supporting evidence reference</span>
-                        <input className={`${fieldClass} min-h-11`} value={draft.evidenceRef} onChange={(event) => update(dossier.id, "evidenceRef", event.target.value)} required maxLength={240} aria-describedby={`clarification-requirement-${dossier.id}`} placeholder="Document name / page / attachment ref" />
+                        <span className="font-code text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-500">Supporting document</span>
+                        <input className={`${fieldClass} min-h-11`} value={draft.evidenceRef} onChange={(event) => update(dossier.id, "evidenceRef", event.target.value)} required maxLength={240} aria-describedby={`clarification-requirement-${dossier.id}`} placeholder="Document name, page number or attachment" />
                       </label>
                       <button type="button" onClick={() => void submit(dossier)} aria-busy={saving === dossier.id} disabled={saving === dossier.id || draft.response.trim().length < 20 || !draft.evidenceRef.trim()} className="focus-brand inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 text-[12.5px] font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-45 dark:bg-brand-500 dark:hover:bg-brand-400">
                         {saving === dossier.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Send className="h-3.5 w-3.5" aria-hidden="true" />}
                         {saving === dossier.id ? "Submitting response…" : "Submit response"}
                       </button>
                       <p id={`clarification-requirement-${dossier.id}`} className="text-[11.5px] leading-relaxed text-ink-600 dark:text-ink-400">
-                        Submit when your explanation is at least 20 characters and you have added a supporting evidence reference.
+                        Submit an explanation of at least 20 characters and identify the document that supports it.
                       </p>
                     </div>
                   </div>

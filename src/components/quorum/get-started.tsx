@@ -1,26 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, Check, Gauge, Send } from "lucide-react";
+import { ArrowRight, Check, ClipboardCheck, Send } from "lucide-react";
 import { Reveal } from "@/components/quorum/reveal";
 import type { AuthUser } from "@/lib/auth-types";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
-
-const CHECKLIST = [
-  { id: "portal", label: "Connect a portal — OCDS in, no scraping" },
-  { id: "checklist", label: "Map your checklist — the documents your committee requires" },
-  { id: "pilot", label: "Run a pilot tender — unedited, on live notices" },
-  { id: "review", label: "Review findings — every claim carries its citation" },
-  { id: "gate", label: "Sign the gate — the committee awards" },
-];
 
 type FormState = "idle" | "sending" | "sent" | "error";
 
 /**
- * Get started — the product path from portal to first sourced report,
- * an interactive first-run readiness checklist, and a pilot-request
- * form persisted through /api/contact.
+ * Get started — account access and a direct request for an institutional pilot.
  */
 export function GetStarted({
   user,
@@ -31,22 +20,15 @@ export function GetStarted({
   onCreateAccount?: () => void;
   onSignIn?: () => void;
 }) {
-  const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [form, setForm] = useState({
     name: user?.name ?? "",
     email: user?.email ?? "",
     institution: user?.organization ?? "",
+    notes: "",
   });
   const [state, setState] = useState<FormState>("idle");
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-
-  const count = CHECKLIST.filter((c) => checked[c.id]).length;
-  const ready = count === CHECKLIST.length;
-
-  function toggle(id: string) {
-    setChecked((prev) => ({ ...prev, [id]: !prev[id] }));
-  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -54,7 +36,7 @@ export function GetStarted({
 
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim());
     if (form.name.trim().length < 2 || !emailOk) {
-      setError("Please give a name and a valid work email.");
+      setError("Enter your name and a valid work email to continue.");
       return;
     }
 
@@ -67,7 +49,7 @@ export function GetStarted({
           name: form.name.trim(),
           email: form.email.trim(),
           company: form.institution.trim() || undefined,
-          message: `Pilot request — institution: ${form.institution.trim() || "not specified"}.`,
+          notes: form.notes.trim(),
         }),
       });
       if (!res.ok) {
@@ -77,7 +59,7 @@ export function GetStarted({
       setState("sent");
       toast({
         title: "Request received",
-        description: "We'll reply within one working day with your pilot portal list.",
+        description: "Your request and notes have been sent to our team. We’ll reply within one working day.",
       });
     } catch (err) {
       setState("error");
@@ -101,12 +83,13 @@ export function GetStarted({
             </Reveal>
             <Reveal delay={0.08}>
               <h2 className="type-display mt-6 text-[36px] text-white sm:text-[52px]">
-                Start with one tender. Scale when the file convinces you.
+                Start with a focused review. Expand across your institution when ready.
               </h2>
             </Reveal>
             <Reveal delay={0.16}>
               <p className="mt-5 max-w-xl text-[17px] leading-relaxed text-white/85">
-                Your first run reads the tender end to end, on a real portal, with real notices.
+                Begin with a published notice or your own tender documents. Review the evidence and
+                workflow with your team before expanding.
               </p>
             </Reveal>
             <Reveal delay={0.22}>
@@ -116,7 +99,7 @@ export function GetStarted({
                   onClick={onCreateAccount}
                   className="group inline-flex h-[52px] items-center gap-2 rounded-full bg-ink-950 px-7 text-[15px] font-semibold text-white transition-all hover:bg-ink-900 hover:shadow-[0_14px_36px_rgba(11,12,15,0.35)]"
                 >
-                  Create your account
+                  Create an officer account
                   <ArrowRight
                     className="h-4.5 w-4.5 transition-transform group-hover:translate-x-1"
                     aria-hidden="true"
@@ -126,7 +109,7 @@ export function GetStarted({
                   href="#pricing"
                   className="inline-flex h-[52px] items-center rounded-full border border-white/35 px-7 text-[15px] font-semibold text-white transition-all hover:border-white hover:bg-white/10"
                 >
-                  Compare tiers
+                  View pricing
                 </a>
               </div>
             </Reveal>
@@ -144,103 +127,43 @@ export function GetStarted({
             </Reveal>
           </div>
 
-          {/* First-run readiness checklist */}
+          {/* Materials to prepare for a first review */}
           <Reveal delay={0.14} className="lg:col-span-5">
             <div className="rounded-[16px] bg-white p-6 shadow-[0_32px_80px_rgba(11,12,15,0.35)] sm:p-8">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-50 ring-1 ring-brand-200">
-                    <Gauge className="h-5 w-5 text-brand-600" aria-hidden="true" />
-                  </span>
-                  <div>
-                    <p className="font-code text-[10px] font-semibold tracking-[0.24em] text-ink-500">
-                      FIRST-RUN READINESS
-                    </p>
-                    <p className="font-display text-[18px] font-extrabold tracking-tight text-ink-950">
-                      {ready ? "Ready for your first run" : `${count} of ${CHECKLIST.length} ready`}
-                    </p>
-                  </div>
-                </div>
-                <span
-                  className={cn(
-                    "font-code text-[12px] font-bold tabular",
-                    ready ? "text-brand-600" : "text-ink-400"
-                  )}
-                >
-                  {Math.round((count / CHECKLIST.length) * 100)}%
+              <div className="flex items-center gap-3 border-b border-ink-100 pb-5">
+                <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-50 text-brand-700 ring-1 ring-brand-200">
+                  <ClipboardCheck className="h-5 w-5" aria-hidden="true" />
                 </span>
+                <div>
+                  <p className="font-code text-[10px] font-semibold tracking-[0.18em] text-ink-500">
+                    PREPARING FOR A PILOT
+                  </p>
+                  <p className="mt-1 font-display text-[18px] font-extrabold tracking-tight text-ink-950">
+                    What your team will need
+                  </p>
+                </div>
               </div>
 
-              {/* Progress bar */}
-              <div
-                className="mt-5 h-2 w-full overflow-hidden rounded-full bg-ink-100"
-                role="progressbar"
-                aria-valuenow={count}
-                aria-valuemin={0}
-                aria-valuemax={CHECKLIST.length}
-                aria-label="First-run readiness"
-              >
-                <div
-                  className="h-full rounded-full bg-brand-600 transition-all duration-500 ease-out"
-                  style={{ width: `${(count / CHECKLIST.length) * 100}%` }}
-                />
-              </div>
-
-              <ul className="mt-5 space-y-2.5">
-                {CHECKLIST.map((item) => {
-                  const on = !!checked[item.id];
-                  return (
-                    <li key={item.id}>
-                      <label
-                        htmlFor={`chk-${item.id}`}
-                        className={cn(
-                          "flex cursor-pointer items-start gap-3 rounded-xl border px-3.5 py-3 transition-all focus-within:ring-2 focus-within:ring-brand-600/40 focus-within:ring-offset-2",
-                          on
-                            ? "border-brand-300 bg-brand-50/70"
-                            : "border-ink-100 bg-paper hover:border-ink-200"
-                        )}
-                      >
-                        <input
-                          id={`chk-${item.id}`}
-                          type="checkbox"
-                          checked={on}
-                          onChange={() => toggle(item.id)}
-                          className="peer sr-only"
-                        />
-                        <span
-                          aria-hidden="true"
-                          className={cn(
-                            "mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md border transition-all",
-                            on ? "border-brand-600 bg-brand-600 text-white" : "border-ink-300 bg-white"
-                          )}
-                        >
-                          {on && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
-                        </span>
-                        <span
-                          className={cn(
-                            "text-[13.5px] font-medium leading-snug transition-colors",
-                            on ? "text-brand-900" : "text-ink-700"
-                          )}
-                        >
-                          {item.label}
-                        </span>
-                      </label>
-                    </li>
-                  );
-                })}
-              </ul>
-
-              <p
-                aria-live="polite"
-                className={cn(
-                  "mt-5 rounded-xl px-4 py-3 text-center font-code text-[10.5px] font-semibold tracking-[0.16em] transition-colors",
-                  ready ? "bg-brand-600 text-white" : "bg-sand text-ink-500"
-                )}
-              >
-                {ready
-                  ? "FIVE FOR FIVE — READY FOR YOUR FIRST RUN"
-                  : "TICK ALL FIVE — THEN LAUNCH YOUR FIRST RUN"}
+              <p className="mt-4 text-[13.5px] leading-relaxed text-ink-600">
+                Start with a tender your team knows well and the criteria already used to review it.
               </p>
+
+              <ul className="mt-5 space-y-3">
+                {[
+                  "The published notice and tender requirements",
+                  "Bid submissions and supporting documents",
+                  "Your evaluation criteria and approved references",
+                ].map((item, index) => (
+                  <li key={item} className="flex items-start gap-3 rounded-xl border border-ink-100 bg-paper/70 px-3.5 py-3">
+                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-white font-code text-[10px] font-bold text-brand-700 ring-1 ring-ink-100">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <span className="pt-0.5 text-[13.5px] font-medium leading-snug text-ink-700">
+                      {item}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
           </Reveal>
         </div>
@@ -258,11 +181,11 @@ export function GetStarted({
                     Request received.
                   </p>
                   <p className="mt-1.5 text-[14.5px] text-ink-600">
-                    We&apos;ll reply within one working day with your pilot portal list.
+                    Your request and notes have been sent to the Quorum team. A member will reply within one working day.
                   </p>
                 </div>
                 <p className="font-code text-[10px] tracking-[0.18em] text-brand-600">
-                  GATE RULE APPLIES TO US TOO — A HUMAN REPLIES, NOT A BOT
+                  SENT TO THE QUORUM TEAM
                 </p>
               </div>
             ) : (
@@ -270,18 +193,18 @@ export function GetStarted({
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="font-code text-[10px] font-semibold tracking-[0.24em] text-brand-700">
-                      REQUEST A PILOT
+                      PILOT ACCESS
                     </p>
                     <p className="mt-1 text-[15px] font-semibold text-ink-950">
-                      Three tenders, free — on your own portals.
+                      Up to three tender reviews at no cost.
                     </p>
                   </div>
                   <p className="font-code text-[10px] tracking-[0.16em] text-ink-400">
-                    NO CARD · NO DECK · A REAL RUN
+                    REVIEW VOLUME · DATA SOURCES · DEPLOYMENT NEEDS
                   </p>
                 </div>
 
-                <form onSubmit={submit} className="mt-5 grid gap-3 sm:grid-cols-[1fr_1.2fr_1fr_auto]" noValidate>
+                <form onSubmit={submit} className="mt-5 grid gap-3 sm:grid-cols-3" noValidate>
                   <div>
                     <label htmlFor="pilot-name" className="mb-1 block font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">
                       NAME
@@ -324,7 +247,30 @@ export function GetStarted({
                       className="h-12 w-full rounded-lg border border-ink-200 bg-paper px-4 text-[14px] text-ink-900 outline-none transition-all placeholder:text-ink-400 focus:border-ink-950 focus:bg-white focus:ring-2 focus:ring-ink-950/10 dark:placeholder:text-ink-400"
                     />
                   </div>
-                  <div className="flex items-end">
+                  <div className="sm:col-span-3">
+                    <div className="mb-1">
+                      <label htmlFor="pilot-notes" className="font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">
+                        NOTES · OPTIONAL
+                      </label>
+                      <p id="pilot-notes-hint" className="mt-1 text-[12px] leading-relaxed text-ink-500">
+                        Sent to our team with your request. Share review volume, data sources, or deployment needs.
+                      </p>
+                    </div>
+                    <textarea
+                      id="pilot-notes"
+                      value={form.notes}
+                      onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                      placeholder="Tell us what your team would like to review."
+                      rows={3}
+                      maxLength={3000}
+                      aria-describedby="pilot-notes-hint pilot-notes-count"
+                      className="w-full resize-y rounded-lg border border-ink-200 bg-paper px-4 py-3 text-[14px] leading-relaxed text-ink-900 outline-none transition-all placeholder:text-ink-400 focus:border-ink-950 focus:bg-white focus:ring-2 focus:ring-ink-950/10"
+                    />
+                    <p id="pilot-notes-count" className="mt-1 text-right text-[11px] tabular-nums text-ink-400">
+                      {form.notes.length.toLocaleString()} / 3,000
+                    </p>
+                  </div>
+                  <div className="flex items-end sm:col-span-3 sm:justify-end">
                     <button
                       type="submit"
                       disabled={state === "sending"}

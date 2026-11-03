@@ -441,7 +441,7 @@ export function DayBars({ points }: { points: DayPoint[] }) {
   const total = points.reduce((sum, p) => sum + p.read + p.write + p.gate + p.error, 0);
   return (
     <div>
-      <div className="flex items-end gap-1.5 sm:gap-2" style={{ height: 140 }} role="img" aria-label={`${total} recorded calls over the last ${points.length} days`}>
+      <div className="flex items-end gap-1.5 sm:gap-2" style={{ height: 140 }} role="img" aria-label={`${total} recorded actions over the last ${points.length} days`}>
         {points.map((point) => {
           const rows = [
             { key: "gate", value: point.gate, color: "bg-brand-600" },
@@ -463,13 +463,13 @@ export function DayBars({ points }: { points: DayPoint[] }) {
               {total === 0 && <div className="h-[2px] w-full rounded bg-ink-200 dark:bg-white/10" />}
               <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden w-[124px] -translate-x-1/2 rounded-lg border border-ink-200 bg-white px-2.5 py-2 shadow-xl group-hover:block dark:border-white/15 dark:bg-ink-950">
                 <p className="font-code text-[10px] font-bold uppercase tracking-[0.08em] text-ink-600">{point.label}</p>
-                <p className="mt-1 font-code text-[10.5px] text-ink-900">{point.read + point.write + point.gate + point.error} calls</p>
+                <p className="mt-1 font-code text-[10.5px] text-ink-900">{point.read + point.write + point.gate + point.error} actions</p>
                 <p className="text-[10px] text-ink-600">
                   {point.read} read · {point.write} write
                 </p>
                 {(point.gate > 0 || point.error > 0) && (
                   <p className="text-[10px] text-brand-800">
-                    {point.gate} gate · {point.error} error
+                    {point.gate} approval · {point.error} errors
                   </p>
                 )}
               </div>
@@ -485,7 +485,7 @@ export function DayBars({ points }: { points: DayPoint[] }) {
       <div className="mt-3 flex flex-wrap items-center gap-3 font-code text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-600">
         <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-3 rounded-sm bg-sky-500/70" /> reads</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-3 rounded-sm bg-amber-500" /> writes</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-3 rounded-sm bg-brand-600" /> gates</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-3 rounded-sm bg-brand-600" /> approvals</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-3 rounded-sm bg-red-500" /> errors</span>
       </div>
     </div>

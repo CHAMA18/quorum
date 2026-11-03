@@ -40,7 +40,7 @@ export function DesktopDownloads() {
             </Reveal>
             <Reveal delay={0.08} y={20}>
               <h2 className="type-display type-display-md mt-4 max-w-[13ch] text-ink-950 dark:text-white">
-                Your review desk, ready when you are.
+                Your procurement workspace, available on your computer.
               </h2>
             </Reveal>
             <Reveal delay={0.16} y={18}>

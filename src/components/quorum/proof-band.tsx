@@ -18,9 +18,7 @@ interface LiveTotals {
   runs: number;
 }
 
-const EMPTY: LiveTotals = { tenders: 0, findings: 0, drafts: 0, runs: 0 };
-
-function CountUp({ value }: { value: number }) {
+function CountUp({ value }: { value: number | null }) {
   const reduce = useReducedMotion();
   const [display, setDisplay] = useState(0);
   const [started, setStarted] = useState(false);
@@ -46,7 +44,7 @@ function CountUp({ value }: { value: number }) {
   // One eased count-up, cancelled cleanly; the final value is derived at render time
   // (`done`), so later live-data changes show up without touching state in an effect.
   useEffect(() => {
-    if (!started || reduce || done) return;
+    if (value === null || !started || reduce || done) return;
     const t0 = performance.now();
     const DURATION = 1400;
     let raf = 0;
@@ -61,8 +59,8 @@ function CountUp({ value }: { value: number }) {
     return () => cancelAnimationFrame(raf);
   }, [started, reduce, value, done]);
 
-  const shown = !started ? 0 : done ? value : display;
-  return <span ref={ref}>{Math.round(shown).toLocaleString("en-US")}</span>;
+  const shown = value === null ? null : reduce ? value : !started ? 0 : done ? value : display;
+  return <span ref={ref}>{shown === null ? "—" : Math.round(shown).toLocaleString("en-US")}</span>;
 }
 
 /**
@@ -70,7 +68,7 @@ function CountUp({ value }: { value: number }) {
  * Shows zero until a run exists; nothing is invented.
  */
 export function ProofBand() {
-  const [totals, setTotals] = useState<LiveTotals>(EMPTY);
+  const [totals, setTotals] = useState<LiveTotals | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -79,6 +77,7 @@ export function ProofBand() {
         /* The public counters come from the redacted summary — no bidder names,
            no bid values, nothing that belongs to a signed-in desk. */
         const res = await fetch("/api/public/summary");
+        if (!res.ok) throw new Error("Public summary unavailable");
         const json = (await res.json()) as { counts?: { tenders?: number; findings?: number; drafts?: number; runs?: number } };
         if (!alive) return;
         const counts = json.counts ?? {};
@@ -89,7 +88,7 @@ export function ProofBand() {
           runs: counts.runs ?? 0,
         });
       } catch {
-        /* Sidecar unreachable — counters stay at zero rather than showing invented numbers. */
+        /* No connected public summary — render an unavailable state, not invented zeroes. */
       }
     })();
     return () => {
@@ -98,10 +97,10 @@ export function ProofBand() {
   }, []);
 
   const STATS = [
-    { value: totals.tenders, label: "tenders reviewed" },
-    { value: totals.runs, label: "review runs" },
-    { value: totals.findings, label: "findings flagged" },
-    { value: totals.drafts, label: "redlines drafted" },
+    { value: totals?.tenders ?? null, label: "tenders reviewed" },
+    { value: totals?.runs ?? null, label: "tender reviews" },
+    { value: totals?.findings ?? null, label: "findings flagged" },
+    { value: totals?.drafts ?? null, label: "clarification drafts" },
   ];
 
   return (
@@ -119,17 +118,17 @@ export function ProofBand() {
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
             <Reveal>
-              <SpecBar index="08" label="Live from this workspace" tone="light" />
+              <SpecBar index="08" label="Workspace activity" tone="light" />
             </Reveal>
             <Reveal delay={0.06}>
               <h2 className="type-display mt-6 max-w-2xl text-[34px] text-white sm:text-[44px]">
-                <WordReveal text="What the agent has actually done." stagger={0.06} />
+                <WordReveal text="Review activity, drawn from the record." stagger={0.06} />
               </h2>
             </Reveal>
           </div>
           <Reveal delay={0.12}>
             <p className="max-w-sm text-[15px] leading-relaxed text-ink-400">
-              Counted from the review runs on this server. Zero means no run has happened yet.
+              Counts reflect records available through the connected workspace. An em dash means no public summary is available.
             </p>
           </Reveal>
         </div>

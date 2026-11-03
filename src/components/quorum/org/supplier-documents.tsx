@@ -188,12 +188,12 @@ export function SupplierDocumentsSection({
           </h4>
           <p className="mt-0.5 max-w-[72ch] text-[11.5px] leading-relaxed text-ink-600 dark:text-ink-300">
             Upload each document once here — it is held against your organization for every opportunity.
-            When you apply, the notice still asks you to attach the set it requires. Open any file on record
-            to preview it, or scan it with Meta AI to check what it is, who it names and when it lapses.
+            When you apply, the tender notice still asks you to attach the required files. Open any saved file
+            to preview it, or request an optional AI-assisted check of its document type, named entity and expiry date.
           </p>
         </div>
         <span className="rounded-full border border-ink-200/80 px-2.5 py-1 font-code text-[10px] tracking-[0.06em] text-ink-600 tabular dark:border-white/10 dark:text-ink-300">
-          {documents === null ? "READING…" : `${documents.length} OF ${ALL_REQUIRED_DOCUMENTS.length} ON RECORD`}
+          {documents === null ? "LOADING…" : `${documents.length} OF ${ALL_REQUIRED_DOCUMENTS.length} SAVED`}
         </span>
       </div>
 
@@ -293,8 +293,8 @@ export function SupplierDocumentsSection({
                             <button
                               type="button"
                               onClick={() => setInspecting({ document: { ...uploaded }, autoScan: true })}
-                              aria-label={`Scan ${document} with Meta AI`}
-                              title="Scan with Meta AI"
+                              aria-label={`Review ${document} with AI`}
+                              title="Review document with AI"
                               className="focus-brand grid h-8 w-8 place-items-center rounded-md border border-ink-200/80 text-ink-600 transition-colors hover:border-brand-400 hover:text-brand-700 dark:border-white/10 dark:text-ink-300 dark:hover:border-brand-500/40 dark:hover:text-brand-300"
                             >
                               <ScanSearch className="h-3.5 w-3.5" aria-hidden="true" />

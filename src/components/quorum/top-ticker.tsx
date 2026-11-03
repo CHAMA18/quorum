@@ -1,15 +1,13 @@
 import {
-  Braces,
   Coins,
-  Crosshair,
+  ClipboardCheck,
   FileSearch,
   Globe,
   Package,
   Scale,
-  Sparkles,
+  ScrollText,
   Stethoscope,
   Ticket,
-  Timer,
 } from "lucide-react";
 
 /**
@@ -21,17 +19,15 @@ import {
  * collar on the left names the feed; only the feed itself scrolls.
  */
 const ITEMS = [
-  { icon: Sparkles, text: "MUSE SPARK 1.3 ON META MODEL API · LLAMA 3.2 IN-REGION" },
-  { icon: Globe, text: "BUILT FOR PUBLIC HEALTH PROCUREMENT ACROSS AFRICA" },
-  { icon: Scale, text: "AGENTS PREPARE THE FILE — COMMITTEES AWARD THE TENDER" },
-  { icon: FileSearch, text: "EVERY FINDING CITED, OR IT DOESN'T COUNT" },
-  { icon: Stethoscope, text: "SPECS VS CLINICAL NEED" },
-  { icon: Package, text: "QUANTITIES VS REAL CONSUMPTION" },
-  { icon: Coins, text: "PRICES VS OTHER BUYERS" },
-  { icon: Braces, text: "OCDS IN · SOURCED REPORT OUT" },
-  { icon: Crosshair, text: "MCP SIDECAR · EVERY TOOL CALL LOGGED" },
-  { icon: Ticket, text: "FREE FOR YOUR FIRST THREE TENDERS" },
-  { icon: Timer, text: "THE AGENT PREPARES THE FILE · THE COMMITTEE HOLDS THE GATE" },
+  { icon: ClipboardCheck, text: "PUBLIC HEALTH PROCUREMENT REVIEW" },
+  { icon: Globe, text: "PUBLIC PROCUREMENT DATA SOURCES ACROSS AFRICA" },
+  { icon: Scale, text: "THE COMMITTEE MAKES THE AWARD DECISION" },
+  { icon: FileSearch, text: "FINDINGS LINKED TO SOURCE DOCUMENTS" },
+  { icon: Stethoscope, text: "TECHNICAL REQUIREMENTS · CLINICAL REFERENCES" },
+  { icon: Package, text: "SUPPLIER DOCUMENTS · QUANTITY CHECKS" },
+  { icon: Coins, text: "PRICE REVIEW · PUBLIC AWARD REFERENCES" },
+  { icon: ScrollText, text: "A TRACEABLE HISTORY FOR EVERY REVIEW" },
+  { icon: Ticket, text: "THREE TENDER REVIEWS AT NO COST" },
 ];
 
 function Row({ items, hidden }: { items: typeof ITEMS; hidden?: boolean }) {
@@ -54,7 +50,7 @@ export function TopTicker() {
   return (
     <div
       className="group relative flex overflow-hidden border-b border-white/[0.07] bg-ink-950"
-      aria-label="Quorum announcements"
+      aria-label="Quorum review standards"
     >
       {/* Feed collar — names the band and never scrolls away */}
       <span className="relative z-10 hidden shrink-0 items-center gap-2.5 bg-ink-950 pl-4 pr-4 sm:flex sm:pl-6">
@@ -62,7 +58,7 @@ export function TopTicker() {
           <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-brand-500" />
           <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-500" />
         </span>
-        <span className="type-micro text-white">Quorum · wire</span>
+        <span className="type-micro text-white">Quorum · review standards</span>
         <span className="h-3.5 w-px bg-white/12" aria-hidden="true" />
       </span>
 

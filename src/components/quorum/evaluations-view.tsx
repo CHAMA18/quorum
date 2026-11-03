@@ -369,12 +369,12 @@ function EvaluationRow({
             </section>
             <section>
               <div className="flex items-center justify-between gap-3">
-                <h3 className="font-code text-[10px] font-bold tracking-[0.16em] text-ink-400 uppercase">Audit Trail</h3>
+                <h3 className="font-code text-[10px] font-bold tracking-[0.16em] text-ink-400 uppercase">Activity history</h3>
                 <span className="font-code text-[10px] text-ink-500">{audit.entries.length} entries</span>
               </div>
               {audit.loading ? <p className="mt-3 text-[11px] text-ink-400">Loading audit entries…</p> : null}
               {audit.error ? <p role="alert" className="mt-3 text-[11px] text-brand-300">{audit.error}</p> : null}
-              {!audit.loading && !audit.error && audit.entries.length === 0 ? <p className="mt-3 text-[11px] text-ink-400">No audit calls are linked to this evaluation yet.</p> : null}
+              {!audit.loading && !audit.error && audit.entries.length === 0 ? <p className="mt-3 text-[11px] text-ink-400">No recorded actions are linked to this tender review yet.</p> : null}
               <ol className="mt-3 max-h-[390px] space-y-2 overflow-y-auto">
                 {audit.entries.map((entry) => (
                   <li key={entry.seq} className="rounded-lg border border-white/[0.07] bg-black/15 p-3">
@@ -384,7 +384,7 @@ function EvaluationRow({
                     </div>
                     <p className="mt-1 text-[10px] text-ink-500">{entry.actor} · {entry.ts ? new Date(entry.ts).toLocaleString() : "—"}</p>
                     <details className="mt-2">
-                      <summary className="cursor-pointer font-code text-[10px] text-ink-400">INPUTS, OUTPUTS & HASH LINKS</summary>
+                      <summary className="cursor-pointer font-code text-[10px] text-ink-400">View technical record details</summary>
                       <div className="mt-2 grid gap-2 lg:grid-cols-2">
                         <pre className="max-h-36 overflow-auto whitespace-pre-wrap break-all rounded bg-black/20 p-2 font-code text-[10px] text-ink-300">{JSON.stringify(entry.inputs, null, 2)}</pre>
                         <pre className="max-h-36 overflow-auto whitespace-pre-wrap break-all rounded bg-black/20 p-2 font-code text-[10px] text-ink-300">{JSON.stringify(entry.outputs, null, 2)}</pre>
@@ -468,14 +468,14 @@ function EmptyState({
 }) {
   const needle = query.trim();
   const message = needle
-    ? `No evaluations match “${needle}”.`
+    ? `No tender reviews match “${needle}”.`
     : filter === FILTER_ALL
-      ? "No evaluations yet. Queue a run to see it here."
+      ? "No tender reviews yet. Start a review to see it here."
       : filter === FILTER_IN_PROGRESS
-        ? "No evaluations in progress. Queue a new run or wait for the agent to pick one up."
+        ? "No tender reviews are in progress. Start a review when you are ready."
         : filter === FILTER_NEEDS_APPROVAL
           ? "Nothing waiting for the committee right now. New decisions will appear here."
-          : "No completed evaluations in this window.";
+          : "No completed tender reviews in this period.";
 
   return (
     <motion.div
@@ -513,13 +513,13 @@ function PageHeader({ onNewRun }: { onNewRun: () => void }) {
       <div className="flex items-center gap-3">
         <span className="h-px w-8 bg-gradient-to-r from-brand-500/60 to-transparent" aria-hidden="true" />
         <span className="font-code text-[10px] font-bold tracking-[0.22em] text-ink-400 uppercase">
-          FIG. 05
+          PROCUREMENT / REVIEWS
         </span>
       </div>
 
       <h1 className="mt-2 flex items-baseline gap-3">
         <span className="font-display text-[30px] font-bold tracking-tight text-white">
-          Evaluations
+          Tender reviews
         </span>
         <span className="shrink-0 rounded-full bg-brand-500/15 p-1" aria-hidden="true">
           <span className="relative flex h-2 w-2">
@@ -530,8 +530,7 @@ function PageHeader({ onNewRun }: { onNewRun: () => void }) {
       </h1>
 
       <p className="mt-2.5 max-w-2xl text-[13px] leading-[1.7] text-ink-400">
-        Every file the agent has opened — live, queued, at a gate, or decided.
-        Expand an evaluation for its top findings and its audit trail.
+        See tender reviews that are in progress, awaiting approval or complete. Open a review to read its findings and activity history.
       </p>
 
       {/* Two action cards — purpose-first, not decoration-first */}
@@ -568,11 +567,10 @@ function NewRunPrompt({ onNewRun }: { onNewRun: () => void }) {
 
       <div className="relative">
         <h2 className="font-display text-[17px] font-bold tracking-tight text-white">
-          Put the agent in a file
+          Start a document review
         </h2>
         <p className="mt-2.5 font-body text-[12.5px] leading-relaxed text-ink-400">
-          Point Quorum at a tender — OCDS, a PDF pack, or the email bag.
-          Findings appear here as the agent reads the file.
+          Run document checks against published requirements. For bidder scoring and AI recommendations, open Tender workflow → Bid evaluation.
         </p>
         <button
           type="button"
@@ -580,7 +578,7 @@ function NewRunPrompt({ onNewRun }: { onNewRun: () => void }) {
           className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-brand-500 px-5 py-2.5 text-[12px] font-bold tracking-[0.08em] text-brand-950 transition-colors hover:bg-brand-400 active:scale-[0.98]"
         >
           <Terminal className="h-3.5 w-3.5" aria-hidden="true" />
-          QUEUE A RUN
+          START DOCUMENT REVIEW
         </button>
       </div>
     </div>
@@ -598,21 +596,21 @@ function StandingRuleCard() {
   return (
     <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-5 py-5 sm:px-6 sm:py-6">
       <h2 className="font-display text-[17px] font-bold tracking-tight text-white">
-        The standing rule
+        How decisions are made
       </h2>
       <div className="mt-3 rounded-lg bg-ink-950/40 p-4">
         <p className="font-code text-[11px] font-bold tracking-[0.14em] text-white/60 uppercase">
-          Quorum&apos;s place at the desk
+          Quorum&apos;s role
         </p>
         <blockquote className="mt-3 space-y-1 text-[13px] leading-[1.85] text-ink-100">
           <p>
-            <span className="text-ink-300">Quorum prepares the file.</span>
+            <span className="text-ink-300">Quorum organizes the evidence.</span>
           </p>
           <p>
             <span className="text-ink-300">It never awards the tender.</span>
           </p>
           <p className="text-brand-300">
-            The committee signs — the agent never does.
+            Authorized officers make and approve decisions.
           </p>
         </blockquote>
       </div>
@@ -759,7 +757,7 @@ export function EvaluationsSubview({
             </span>
             <span className="flex items-center gap-1.5 font-code tracking-[0.14em] uppercase text-ink-500">
               <Gavel className="h-3 w-3 shrink-0 text-brand-400" aria-hidden="true" />
-              <span className="text-brand-300">{envelope.needsApproval} at a gate</span>
+              <span className="text-brand-300">{envelope.needsApproval} awaiting approval</span>
             </span>
             <span className="flex items-center gap-1.5 font-code tracking-[0.14em] uppercase text-ink-500">
               <Check className="h-3 w-3 shrink-0 text-white/50" aria-hidden="true" />

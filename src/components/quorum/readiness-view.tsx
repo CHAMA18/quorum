@@ -55,6 +55,12 @@ const STATUS_TONE: Record<Criterion["status"], string> = {
   FAIL: "border-brand-500/40 bg-brand-500/[0.06] text-brand-700 dark:text-brand-300",
 };
 
+const STATUS_LABEL: Record<Criterion["status"], string> = {
+  PASS: "Complete",
+  PENDING: "In progress",
+  FAIL: "Needs attention",
+};
+
 export function ReadinessView({ user, onToast }: { user: AuthUser | null; onToast: (msg: string) => void }) {
   const [data, setData] = useState<ReadinessPayload | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -70,7 +76,7 @@ export function ReadinessView({ user, onToast }: { user: AuthUser | null; onToas
       if (!res.ok) throw new Error("refused");
       setData((await res.json()) as ReadinessPayload);
     } catch {
-      setLoadError("The readiness gate could not be computed — the desk's services must all answer before the gate can read.");
+      setLoadError("Workspace readiness checks could not be loaded. Refresh the page and try again.");
     }
   }, []);
 
@@ -88,7 +94,7 @@ export function ReadinessView({ user, onToast }: { user: AuthUser | null; onToas
       });
       const body = (await res.json()) as { error?: string; by?: string };
       if (!res.ok) throw new Error(body.error ?? "refused");
-      onToast(`Launch sign-off recorded — ${body.by}. The gate now holds a named signature.`);
+      onToast(`Workspace readiness confirmed by ${body.by}.`);
       setNote("");
       await load();
     } catch (err) {
@@ -103,16 +109,16 @@ export function ReadinessView({ user, onToast }: { user: AuthUser | null; onToas
 
   return (
     <div>
-      <SpecBar index="RDY" label="Workspace" meta="Launch readiness" />
+      <SpecBar index="RDY" label="Administration" meta="Workspace readiness" />
       <div className="mt-6 flex flex-wrap items-end justify-between gap-5">
         <div className="min-w-0">
           <h1 className="type-display text-[30px] text-ink-950 sm:text-[38px]">
-            Launch readiness
+            Workspace readiness
             <span className="text-brand-600">.</span>
           </h1>
           <p className="type-lede mt-3 text-ink-600">
-            The product launches when the machine can see the evidence — governance signed, roles segregated, the audit
-            chain verified link by link, imports holding real proof, and a named human at the bottom of the gate.
+            Confirm the workspace is ready for live procurement. Review access, required documents, approval rules,
+            record integrity and the remaining setup checks before you begin.
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2 pb-1.5">
@@ -122,7 +128,7 @@ export function ReadinessView({ user, onToast }: { user: AuthUser | null; onToas
             className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.04em] text-ink-700 transition-colors hover:border-ink-950"
           >
             <RefreshCw className="h-3 w-3" aria-hidden="true" />
-            RECOMPUTE
+            Refresh checks
           </button>
         </div>
       </div>
@@ -141,10 +147,10 @@ export function ReadinessView({ user, onToast }: { user: AuthUser | null; onToas
             <ShieldAlert className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
           )}
           <p className={cn("font-code text-[10px] font-bold tracking-[0.12em]", ready ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300")}>
-            {ready ? "LAUNCH GATE · READY" : "LAUNCH GATE · NOT READY"}
+            {ready ? "READY TO USE" : "SETUP INCOMPLETE"}
           </p>
           <p className="text-[12px] text-ink-600">
-            {data.summary.pass} of {data.criteria.length} criteria hold{data.summary.pending > 0 ? ` · ${data.summary.pending} pending` : ""}{data.summary.fail > 0 ? ` · ${data.summary.fail} FAILING` : ""} · computed {data.generatedAt.slice(0, 16).replace("T", " ")}
+            {data.summary.pass} of {data.criteria.length} checks complete{data.summary.pending > 0 ? ` · ${data.summary.pending} in progress` : ""}{data.summary.fail > 0 ? ` · ${data.summary.fail} need attention` : ""} · checked {data.generatedAt.slice(0, 16).replace("T", " ")}
           </p>
         </div>
       )}
@@ -158,10 +164,10 @@ export function ReadinessView({ user, onToast }: { user: AuthUser | null; onToas
 
       {data && (
         <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-          <section className={card} aria-label="Launch criteria">
+          <section className={card} aria-label="Workspace readiness checks">
             <div className="border-b border-ink-100 px-5 py-4">
               <p className="font-code text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-600">
-                The nine criteria — each checked live
+                Readiness checks
               </p>
             </div>
             <ul className="divide-y divide-ink-100">
@@ -177,7 +183,7 @@ export function ReadinessView({ user, onToast }: { user: AuthUser | null; onToas
                     )}
                     <span className="text-[13.5px] font-semibold text-ink-950">{c.label}</span>
                     <span className={cn("inline-flex min-h-6 items-center rounded-full border px-2 font-code text-[10px] font-bold tracking-[0.04em]", STATUS_TONE[c.status])}>
-                      {c.status}
+                      {STATUS_LABEL[c.status]}
                     </span>
                   </div>
                   <p className="mt-1.5 pl-6 text-[12px] leading-relaxed text-ink-600">{c.detail}</p>
@@ -187,7 +193,7 @@ export function ReadinessView({ user, onToast }: { user: AuthUser | null; onToas
             {canManageRules && (
               <div className="space-y-2 border-t border-ink-100 px-5 py-4">
                 <label className="block text-[11px] font-semibold text-ink-700" htmlFor="launch-note">
-                  The human sign-off — record it once the eight machine criteria hold
+                  Administrator confirmation — record it after the required checks are complete
                   <textarea
                     id="launch-note"
                     value={note}
@@ -205,7 +211,7 @@ export function ReadinessView({ user, onToast }: { user: AuthUser | null; onToas
                   className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg bg-brand-600 px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
                 >
                   {busy === "signoff" ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <PenLine className="h-3.5 w-3.5" aria-hidden="true" />}
-                  Sign the launch gate
+                  Confirm workspace readiness
                 </button>
               </div>
             )}
@@ -217,19 +223,19 @@ export function ReadinessView({ user, onToast }: { user: AuthUser | null; onToas
                 <div className="border-b border-ink-100 px-5 py-4">
                   <p className="flex items-center gap-2 font-code text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-600">
                     <Timer className="h-3 w-3" aria-hidden="true" />
-                    Pilot metrics — read from live state
+                    Review activity
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-px bg-ink-100">
                   {[
-                    { label: "RUNS LAUNCHED", value: metrics.runsLaunched },
-                    { label: "FILED VIA GATE", value: metrics.runsFiled },
-                    { label: "HUMAN OVERRIDES", value: metrics.humanOverrides },
-                    { label: "FINDINGS RAISED", value: metrics.findingsRaised },
-                    { label: "DISPOSITIONS", value: `${metrics.findingsDisposed}${metrics.dispositionCoverage !== null ? ` (${metrics.dispositionCoverage}%)` : ""}` },
-                    { label: "ACCEPTED / REJECTED", value: `${metrics.findingsAccepted} / ${metrics.findingsRejected}` },
-                    { label: "CHAIN ENTRIES", value: metrics.auditChainEntries ?? "—" },
-                    { label: "OVERRIDE RATE", value: metrics.overrideRate !== null ? `${Math.round(metrics.overrideRate * 100)}%` : "—" },
+                    { label: "REVIEWS STARTED", value: metrics.runsLaunched },
+                    { label: "SENT FOR APPROVAL", value: metrics.runsFiled },
+                    { label: "MANUAL CHANGES", value: metrics.humanOverrides },
+                    { label: "ISSUES IDENTIFIED", value: metrics.findingsRaised },
+                    { label: "ISSUES RESOLVED", value: `${metrics.findingsDisposed}${metrics.dispositionCoverage !== null ? ` (${metrics.dispositionCoverage}%)` : ""}` },
+                    { label: "ACCEPTED / DECLINED", value: `${metrics.findingsAccepted} / ${metrics.findingsRejected}` },
+                    { label: "ACTIVITY RECORDS", value: metrics.auditChainEntries ?? "—" },
+                    { label: "MANUAL CHANGE RATE", value: metrics.overrideRate !== null ? `${Math.round(metrics.overrideRate * 100)}%` : "—" },
                   ].map((m) => (
                     <div key={m.label} className="bg-white px-4 py-3">
                       <p className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-600">{m.label}</p>
@@ -245,26 +251,26 @@ export function ReadinessView({ user, onToast }: { user: AuthUser | null; onToas
               <section className={card} aria-label="Independent quality record">
                 <div className="border-b border-ink-100 px-5 py-4">
                   <p className="font-code text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-600">
-                    The eval lab's own record
+                    Review quality results
                   </p>
                 </div>
                 <div className="grid grid-cols-3 gap-px bg-ink-100">
                   <div className="bg-white px-4 py-3">
-                    <p className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-600">RECALL (COVERED)</p>
+                    <p className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-600">REQUIRED ISSUES FOUND</p>
                     <p className="mt-1 text-[18px] font-semibold text-ink-950 tabular">{Math.round(data.eval.original.recallCovered ?? 0)}%</p>
                   </div>
                   <div className="bg-white px-4 py-3">
-                    <p className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-600">PRECISION</p>
+                    <p className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-600">FINDINGS CONFIRMED</p>
                     <p className="mt-1 text-[18px] font-semibold text-ink-950 tabular">{Math.round(data.eval.original.precision ?? 0)}%</p>
                   </div>
                   <div className="bg-white px-4 py-3">
-                    <p className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-600">MUTATION CATCH</p>
+                    <p className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-600">CHANGED FILES DETECTED</p>
                     <p className="mt-1 text-[18px] font-semibold text-ink-950 tabular">{Math.round(data.eval.mutation?.overallDetectionRate ?? 0)}%</p>
                   </div>
                 </div>
                 <p className="border-t border-ink-100 px-5 py-3 text-[11px] leading-relaxed text-ink-500">
-                  Produced by the eval lab against pre-written labels and mutation tests — the platform prints the files
-                  verbatim rather than re-stating them.
+                  Measured against prepared test documents and reviewed examples. These results show how often the
+                  checks find known issues and changes.
                 </p>
               </section>
             )}

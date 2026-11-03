@@ -77,7 +77,7 @@ const OFFICE_LABEL: Record<string, string> = {
   PROCUREMENT_UNIT: "Procurement unit",
   EVALUATION_COMMITTEE: "Evaluation committee",
   ACCOUNTING_OFFICER: "Accounting officer",
-  OVERSIGHT: "Oversight / audit",
+    OVERSIGHT: "Independent review",
 };
 
 const card = "rounded-[12px] panel overflow-hidden";
@@ -105,7 +105,7 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
       if (a.ok) setAccess((await a.json()) as AccessReview);
       if (m.ok) setMfa((await m.json()) as AccessSnapshot);
     } catch {
-      setLoadError("The governance service did not answer. The desk still runs — try the refresh control in a moment.");
+      setLoadError("Role and approval settings could not be loaded. Refresh the page and try again.");
     }
   }, []);
 
@@ -123,7 +123,7 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
       });
       const data = (await res.json()) as { signedOff?: { by: string }; error?: string };
       if (!res.ok) throw new Error(data.error ?? "refused");
-      onToast(`Governance sign-off recorded — ${data.signedOff?.by ?? "named actor"}.`);
+      onToast(`Approval rules confirmed by ${data.signedOff?.by ?? "an administrator"}.`);
       await load();
     } catch (err) {
       onToast(err instanceof Error ? err.message : "The sign-off could not be recorded.");
@@ -142,7 +142,7 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data.error ?? "refused");
-      onToast(enabled ? "MFA for privileged accounts is ON — gate signatures now demand a second factor." : "MFA policy OFF — a passphrase alone signs gates again.");
+      onToast(enabled ? "Two-step sign-in is required for administrator accounts." : "Two-step sign-in is no longer required for administrator accounts.");
       await load();
     } catch (err) {
       onToast(err instanceof Error ? err.message : "The policy change was refused.");
@@ -157,7 +157,7 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
       const res = await fetch(`${SVC}/access-review`, { method: "POST" });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data.error ?? "refused");
-      onToast("Access review recorded in the governance log.");
+      onToast("Account access review recorded.");
       await load();
     } catch (err) {
       onToast(err instanceof Error ? err.message : "The access review could not be recorded.");
@@ -167,24 +167,24 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
   }
 
   const stats = [
-    { label: "GOVERNED ACTIONS", value: String(gov?.actions.length ?? "—"), note: "each mapped to role, office and evidence" },
-    { label: "SEPARATION RULES", value: String(gov?.duties.length ?? "—"), note: "enforced in code, not in slides" },
-    { label: "APPROVAL BANDS", value: String(gov?.bands.length ?? "—"), note: gov?.confirmed ? "confirmed by the operational owner" : "illustrative — awaiting sign-off" },
-    { label: "PRIVILEGED ACCOUNTS", value: access ? String(access.privileged.count) : "—", note: mfa?.enabled ? "MFA policy ON" : "MFA policy OFF" },
+    { label: "ACTIONS WITH APPROVAL RULES", value: String(gov?.actions.length ?? "—"), note: "assigned to a role and responsible office" },
+    { label: "INDEPENDENT REVIEW CHECKS", value: String(gov?.duties.length ?? "—"), note: "helps prevent conflicts of responsibility" },
+    { label: "APPROVAL LIMITS", value: String(gov?.bands.length ?? "—"), note: gov?.confirmed ? "confirmed by an administrator" : "sample limits need review" },
+    { label: "ADMINISTRATOR ACCOUNTS", value: access ? String(access.privileged.count) : "—", note: mfa?.enabled ? "two-step sign-in required" : "two-step sign-in not required" },
   ];
 
   return (
     <div>
-      <SpecBar index="GOV" label="Workspace" meta="Governance" />
+      <SpecBar index="GOV" label="Administration" meta="Roles & approvals" />
       <div className="mt-6 flex flex-wrap items-end justify-between gap-5">
         <div className="min-w-0">
           <h1 className="type-display text-[30px] text-ink-950 sm:text-[38px]">
-            Governance
+            Roles & approvals
             <span className="text-brand-600">.</span>
           </h1>
           <p className="type-lede mt-3 text-ink-600">
-            The system supports procurement decisions; it does not replace procurement authority. This is the authority
-            picture on the record — who may do what, which office must sign, and how segregation is enforced in code.
+            Set who can take each action, which office must approve it and what limits apply. Review account access
+            and the checks that keep responsibilities separate.
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2 pb-1.5">
@@ -194,7 +194,7 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
             className="focus-brand inline-flex h-11 min-h-11 items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.08em] text-ink-700 transition-colors hover:border-ink-950"
           >
             <RefreshCw className="h-3 w-3" aria-hidden="true" />
-            REFRESH
+            Refresh
           </button>
           {canManageRules && (
             <button
@@ -204,13 +204,13 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
               className="focus-brand inline-flex h-11 min-h-11 items-center gap-2 rounded-lg bg-ink-950 px-3 font-code text-[10px] font-bold tracking-[0.08em] text-white transition-colors hover:bg-ink-800 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {busy === "signoff" ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <BadgeCheck className="h-3 w-3" aria-hidden="true" />}
-              {gov?.confirmed ? "SIGN-OFF RECORDED" : "RECORD SIGN-OFF"}
+              {gov?.confirmed ? "Rules confirmed" : "Confirm approval rules"}
             </button>
           )}
         </div>
       </div>
 
-      <section className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Governance summary">
+      <section className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Roles and approval summary">
         {stats.map((stat) => (
           <div key={stat.label} className="rounded-xl border border-ink-200/80 bg-white px-4 py-3.5">
             <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-500">{stat.label}</p>
@@ -231,8 +231,8 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
         <div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3.5 text-[12.5px] leading-relaxed text-amber-900">
           <Gavel className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <p>
-            <strong>The approval bands are illustrative defaults.</strong> They name the office that approves in each band
-            but the operational owner has not signed this configuration yet. {canManageRules ? "Record the sign-off once you have reviewed the matrix below." : "Ask an administrator to record the sign-off after review."}
+            <strong>These approval limits are examples.</strong> An administrator must review and confirm which office
+            approves each amount. {canManageRules ? "Review the rules below, then confirm them." : "Ask an administrator to review and confirm them."}
           </p>
         </div>
       )}
@@ -243,10 +243,10 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
           <section className={`${card} mt-5`} aria-labelledby="gov-matrix">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 px-5 py-4">
               <p id="gov-matrix" className="font-code text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-500">
-                Authority matrix — every governed action
+                Who can approve each action
               </p>
               <p className="font-code text-[10px] tracking-[0.03em] text-ink-500">
-                {gov.updatedBy ? `bands updated by ${gov.updatedBy}${gov.updatedAt ? ` · ${gov.updatedAt.slice(0, 10)}` : ""}` : "defaults in force"}
+                {gov.updatedBy ? `Updated by ${gov.updatedBy}${gov.updatedAt ? ` · ${gov.updatedAt.slice(0, 10)}` : ""}` : "Example rules"}
               </p>
             </div>
             <ul className="divide-y divide-ink-100">
@@ -256,7 +256,7 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
                     <span className="text-[13.5px] font-semibold text-ink-950">{action.action}</span>
                     {action.gated && (
                       <span className="inline-flex min-h-7 items-center rounded-full border border-brand-300 bg-brand-50 px-2.5 font-code text-[10px] font-bold tracking-[0.04em] text-brand-800 dark:border-brand-500/40 dark:bg-brand-500/10 dark:text-brand-300">
-                        GATE
+                        APPROVAL REQUIRED
                       </span>
                     )}
                     {action.office && (
@@ -267,9 +267,9 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
                   </div>
                   <div className="mt-2 grid gap-x-8 gap-y-1 text-[12.5px] leading-relaxed text-ink-700 md:grid-cols-2">
                     <p><span className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-500">ROLE · </span>{action.role}</p>
-                    <p><span className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-500">ESCALATION · </span>{action.escalation}</p>
-                    <p className="md:col-span-2"><span className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-500">BASIS · </span>{action.basis}</p>
-                    <p className="md:col-span-2"><span className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-500">EVIDENCE · </span>{action.evidence}</p>
+                    <p><span className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-500">NEXT STEP · </span>{action.escalation}</p>
+                    <p className="md:col-span-2"><span className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-500">WHY THIS RULE APPLIES · </span>{action.basis}</p>
+                    <p className="md:col-span-2"><span className="font-code text-[10px] font-bold tracking-[0.04em] text-ink-500">RECORD CREATED · </span>{action.evidence}</p>
                   </div>
                 </li>
               ))}
@@ -281,7 +281,7 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
             <section className={card} aria-labelledby="gov-duties">
               <div className="border-b border-ink-100 px-5 py-4">
                 <p id="gov-duties" className="font-code text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-500">
-                  Separation of duties — and how it is enforced
+                  Independent review checks
                 </p>
               </div>
               <ul className="divide-y divide-ink-100">
@@ -292,7 +292,7 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
                       {duty.rule}
                     </p>
                     <p className="mt-1.5 text-[12px] leading-relaxed text-ink-600">{duty.enforcement}</p>
-                    <p className="mt-1 font-code text-[10px] tracking-[0.03em] text-ink-500">Enforced by · {duty.enforcedBy}</p>
+                    <p className="mt-1 font-code text-[10px] tracking-[0.03em] text-ink-500">Checked by · {duty.enforcedBy}</p>
                   </li>
                 ))}
               </ul>
@@ -303,7 +303,7 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
               <section className={card} aria-labelledby="gov-bands">
                 <div className="border-b border-ink-100 px-5 py-4">
                   <p id="gov-bands" className="font-code text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-500">
-                    Approval bands — value to office
+                    Approval limits by contract value
                   </p>
                 </div>
                 <ul className="divide-y divide-ink-100">
@@ -328,7 +328,7 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
                 <section className={card} aria-labelledby="gov-access">
                   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 px-5 py-4">
                     <p id="gov-access" className="font-code text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-500">
-                      Access posture — live
+                      Account access
                     </p>
                     {canManagePeople && (
                       <button
@@ -338,22 +338,22 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
                         className="focus-brand inline-flex h-11 min-h-11 items-center gap-2 rounded-lg border border-ink-200 bg-white px-2.5 font-code text-[10px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-950 disabled:opacity-50"
                       >
                         {busy === "review" ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <ClipboardCheck className="h-3 w-3" aria-hidden="true" />}
-                        RECORD REVIEW
+                        Review accounts
                       </button>
                     )}
                   </div>
                   <div className="px-5 py-4">
                     <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-[12.5px]">
                       <div>
-                        <dt className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-500">ACCOUNTS</dt>
+                        <dt className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-500">USER ACCOUNTS</dt>
                         <dd className="mt-0.5 text-ink-900 tabular">{access.totals.users} · by role: {Object.entries(access.byRole).map(([r, n]) => `${r.toLowerCase()} ${n}`).join(", ") || "—"}</dd>
                       </div>
                       <div>
-                        <dt className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-500">LIVE SESSIONS</dt>
-                        <dd className="mt-0.5 text-ink-900 tabular">{access.totals.activeSessions} · {access.totals.pendingInvites} invite(s) pending</dd>
+                        <dt className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-500">SIGNED-IN USERS</dt>
+                        <dd className="mt-0.5 text-ink-900 tabular">{access.totals.activeSessions} · {access.totals.pendingInvites} invitations awaiting acceptance</dd>
                       </div>
                       <div>
-                        <dt className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-500">MFA POLICY</dt>
+                        <dt className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-500">TWO-STEP SIGN-IN</dt>
                         <dd className="mt-0.5 flex items-center gap-2">
                           <span className={cn("inline-flex min-h-7 items-center rounded-full border px-2.5 font-code text-[10px] font-bold tracking-[0.04em]", mfa?.enabled ? "border-emerald-500/30 bg-emerald-500/[0.06] text-emerald-700" : "border-amber-500/40 bg-amber-500/[0.06] text-amber-700")}>
                             {mfa?.enabled ? "ON" : "OFF"}
@@ -365,13 +365,13 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
                               disabled={busy === "mfa"}
                               className="focus-brand inline-flex min-h-11 items-center rounded px-2 font-code text-[10px] font-bold tracking-[0.04em] text-ink-700 underline decoration-dotted underline-offset-2 hover:text-ink-950 disabled:opacity-50"
                             >
-                              {busy === "mfa" ? "…" : mfa?.enabled ? "TURN OFF" : "TURN ON"}
+                              {busy === "mfa" ? "…" : mfa?.enabled ? "Disable" : "Require"}
                             </button>
                           )}
                         </dd>
                       </div>
                       <div>
-                        <dt className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-500">LAST ACCESS REVIEW</dt>
+                        <dt className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-500">LAST ACCOUNT REVIEW</dt>
                         <dd className="mt-0.5 text-ink-900">
                           {access.lastReview ? `${access.lastReview.by} · ${access.lastReview.at.slice(0, 10)}` : "none recorded yet"}
                         </dd>
@@ -380,8 +380,8 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
                     {access.privileged.withoutMfa.length > 0 && (
                       <p className="mt-3 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-900">
                         <UserCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                        Privileged without a second factor: {access.privileged.withoutMfa.map((u) => `${u.name} (${u.role.toLowerCase()})`).join(", ")}.
-                        {mfa?.enabled ? " They cannot sign gates until they enroll." : " Turn the policy on to require enrollment."}
+                        Administrator accounts without two-step sign-in: {access.privileged.withoutMfa.map((u) => `${u.name} (${u.role.toLowerCase()})`).join(", ")}.
+                        {mfa?.enabled ? " These users must set it up before approving actions." : " Require it in the setting above to protect administrator access."}
                       </p>
                     )}
                   </div>
@@ -392,8 +392,7 @@ export function GovernanceView({ user, onToast }: { user: AuthUser | null; onToa
 
           <p className="mt-5 flex items-start gap-2 text-[11.5px] leading-relaxed text-ink-500">
             <Users className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            {gov.note} The matrix above is served live by the same service that enforces it — this screen cannot drift from
-            the code the way a document can.
+            {gov.note} These settings are kept in sync with the rules used to control workspace access and approvals.
           </p>
         </>
       )}

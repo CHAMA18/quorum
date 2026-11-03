@@ -24,7 +24,7 @@ import {
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-/** The formats Muse Spark can read directly — the same set the route enforces. */
+/** The formats supported by the optional document review route. */
 const SCANNABLE_TYPES = new Set(["application/pdf", "image/png", "image/jpeg", "image/webp"]);
 
 export type InspectableProfileDocument = {
@@ -154,7 +154,7 @@ export function SupplierDocumentInspector({
         if (!active) return;
         setScanFailure({
           key: scanKey,
-          error: error instanceof Error ? error.message : "Muse Spark could not scan this document.",
+          error: error instanceof Error ? error.message : "The document review could not be completed.",
         });
       }
     })();
@@ -175,7 +175,7 @@ export function SupplierDocumentInspector({
     } catch (error) {
       setScanFailure({
         key: scanKey,
-        error: error instanceof Error ? error.message : "Muse Spark could not scan this document.",
+        error: error instanceof Error ? error.message : "The document review could not be completed.",
       });
     } finally {
       setScanningKey((current) => (current === scanKey ? null : current));
@@ -380,12 +380,12 @@ export function SupplierDocumentInspector({
               </div>
 
               <aside
-                aria-label="Muse Spark document scan"
+                aria-label="AI-assisted document check"
                 className="min-h-0 overflow-y-auto border-t border-ink-100 p-4 lg:border-l lg:border-t-0 dark:border-white/10"
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-code text-[10px] font-semibold tracking-[0.12em] text-ink-500 dark:text-ink-300">
-                    MUSE SPARK · META MODEL API
+                    OPTIONAL AI DOCUMENT CHECK
                   </p>
                   {scan.status === "done" ? (
                     <span className="rounded-full border border-ink-200/80 px-2 py-0.5 font-code text-[9.5px] tracking-[0.06em] text-ink-500 dark:border-white/10 dark:text-ink-300">
@@ -403,19 +403,19 @@ export function SupplierDocumentInspector({
                       Reading the document…
                     </p>
                     <p className="mt-1 text-[11px] leading-relaxed text-ink-600 dark:text-ink-300">
-                      The file is sent inline for this one request. Meta does not keep it, and nothing about the
-                      document changes while the scan runs.
+                      The file is sent inline to Meta for this request only. Meta does not retain it, and no
+                      eligibility decision is made from this check.
                     </p>
                   </div>
                 ) : (
                   <div className="mt-3">
                     <p className="text-[12px] leading-relaxed text-ink-700 dark:text-ink-200">
-                      Ask Meta&apos;s multimodal model to read this file and report what it is, who it names, its dates
-                      and anything doubtful — evidence for you to check, never an eligibility decision.
+                      Request an AI-assisted check to identify the document, named entity, dates and items that may
+                      need attention. Review the original file before relying on any result.
                     </p>
                     {!scannable ? (
                       <p className="mt-2 rounded-lg border border-amber-500/25 bg-amber-500/[0.06] px-2.5 py-2 text-[11px] leading-relaxed text-amber-800 dark:text-amber-200">
-                        Muse Spark reads PDF, PNG, JPEG and WebP files. This format can be previewed by downloading it,
+                        The document review supports PDF, PNG, JPEG and WebP files. This format can be previewed by downloading it,
                         but it cannot be scanned.
                       </p>
                     ) : null}
@@ -435,7 +435,7 @@ export function SupplierDocumentInspector({
                       className="focus-brand mt-3 inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 text-[12px] font-semibold text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-ink-200 disabled:text-ink-500 dark:disabled:bg-white/10 dark:disabled:text-ink-400"
                     >
                       <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                      {scan.status === "error" ? "Try the scan again" : "Scan with Meta AI"}
+                      {scan.status === "error" ? "Try the check again" : "Review with AI"}
                     </button>
                     <p className="mt-2 font-code text-[10px] leading-relaxed tracking-[0.02em] text-ink-400">
                       SENT INLINE · STORE: FALSE · NO ELIGIBILITY EFFECT

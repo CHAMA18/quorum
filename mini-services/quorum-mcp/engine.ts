@@ -13,6 +13,7 @@ import { DEBARMENT_LIST } from "./debarment";
 import { TENDER_REF_RE } from "./marketplace";
 import { llmConfigChainFromEnv, llmConfigFromEnv, modelAttributionForRun, modelStatus, providerLabel, type LlmConfig } from "./model";
 import { callModel } from "./model-gateway";
+import { createEgpAdapter } from "./egp-adapter";
 export { llmConfigFromEnv, modelAttributionForRun, modelStatus, providerLabel };
 export type { LlmConfig, ModelStatus, RunModelAttribution } from "./model";
 export type { Finding } from "./store";
@@ -1594,7 +1595,7 @@ export interface EngineRefs {
   gates: Gate[];
   workspaceId(): string;
   save(): void;
-  raiseGate(g: Gate): void;
+  raiseGate(g: Gate): Gate;
   /* The live guards and the supplier register — read at flag time, so the
      settings on the Rules page govern the very next run. */
   guards(): EngineGuards;
@@ -1602,6 +1603,7 @@ export interface EngineRefs {
 }
 
 let refs: EngineRefs;
+const egpAdapter = createEgpAdapter();
 export function bindEngine(r: EngineRefs) {
   refs = r;
 }
@@ -2237,7 +2239,7 @@ export function statedBidValueLine(text: string): string | undefined {
 
 async function nodeGate(s: typeof ReviewState.State) {
   const t0 = performance.now();
-  const gateId = `gate_${Math.random().toString(36).slice(2, 8)}`;
+  const gateId = `gate_${shaOf(s.runId)}`;
   /* Gate inputs state only what the pack itself says. When the lead bidder
      or its value is absent from the documents the field is omitted — the UI
      renders "—" — rather than a fabricated placeholder like "bidder". */
@@ -2274,9 +2276,9 @@ async function nodeGate(s: typeof ReviewState.State) {
     status: "PENDING_GATE",
     durationMs: Math.round(performance.now() - t0),
   });
-  refs.raiseGate(gate);
-  progress(s.runId, `⏸ human gate raised (${gateId}) — filing blocked until a named human signs`);
-  return { gateId };
+  const persistedGate = refs.raiseGate(gate);
+  progress(s.runId, `⏸ human gate raised (${persistedGate.id}) — filing blocked until a named human signs`);
+  return { gateId: persistedGate.id };
 }
 
 function buildReviewGraph() {
@@ -2523,27 +2525,32 @@ async function nodeSeal(s: typeof FileState.State) {
 
 async function nodeTransmit(s: typeof FileState.State) {
   const gate = refs.gates.find((g) => g.id === s.gateId);
-  const submissionId = `SUB-${Date.now().toString(36).toUpperCase()}`;
-  const receipt = { submissionId, hash: s.hash, portal: "egp-portal (simulated)" };
-  await Bun.write(
-    resolveDataDir() + `submissions/${submissionId}.json`,
-    JSON.stringify({ gate, receipt }, null, 2)
-  );
+  if (!gate || !gate.approver || !gate.decidedAt) throw new Error("filing requires a gate with a recorded human approval");
+  const receipt = await egpAdapter.submit({
+    idempotencyKey: `quorum:filing:${gate.id}`,
+    gateId: gate.id,
+    tenderId: gate.tenderId,
+    bundleHash: s.hash,
+    approvedBy: gate.approver,
+    approvedAt: gate.decidedAt,
+  });
   appendLog({
     actor: "quorum-mcp",
     server: "quorum-mcp",
     tool: "file_gate_submission",
+    idempotencyKey: `filing:${gate.id}:receipt`,
     kind: "IRREVERSIBLE",
     runId: gate?.runId,
     inputs: { gateId: s.gateId, approver: gate?.approver },
     outputs: receipt,
     status: "OK",
-    durationMs: 3,
+    durationMs: 0,
   });
   appendLog({
     actor: gate?.approver ?? "named human",
     server: "quorum-mcp",
     tool: "gate_decision",
+    idempotencyKey: `filing:${gate.id}:decision-event`,
     kind: "GATE_DECISION",
     runId: gate?.runId,
     inputs: { gateId: s.gateId, decision: "APPROVE", approver: gate?.approver, note: gate?.note },

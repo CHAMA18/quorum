@@ -126,7 +126,7 @@ export function PeoplePanel({ data, refresh, notify, query, setQuery, now }: Pan
       await call("/api/team", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: dialog.person.id, role: dialog.role, reason: `Changed from the control room` }),
+        body: JSON.stringify({ userId: dialog.person.id, role: dialog.role, reason: "Changed in administration" }),
       });
       notify(`${dialog.person.name} is now ${ROLE_LABELS[dialog.role]}.`, "ok");
       setDialog(null);
@@ -168,7 +168,7 @@ export function PeoplePanel({ data, refresh, notify, query, setQuery, now }: Pan
       const body = await call("/api/team", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: person.id, revokeSessions: true, reason: "Revoked from the control room" }),
+        body: JSON.stringify({ userId: person.id, revokeSessions: true, reason: "Revoked in administration" }),
       });
       notify(`${fmtNum(Number(body.revokedSessions ?? 0))} session(s) revoked for ${person.name}.`, "ok");
       setDialog(null);
@@ -241,13 +241,13 @@ export function PeoplePanel({ data, refresh, notify, query, setQuery, now }: Pan
         eyebrow="People & authority"
         title={
           <>
-            Who holds <span className="text-brand-600">the pen.</span>
+            People, roles <span className="text-brand-600">and permissions.</span>
           </>
         }
         lede={
           <>
-            Workspace roles are enforced on every mutation, not by hiding a button. The committee roster behind a
-            gate is a separate register: a member still needs a seat before a signature counts.
+            Workspace roles determine which administrative actions each person can take. Committee membership is
+            managed separately, and only assigned members can approve committee decisions.
           </>
         }
         actions={
@@ -265,8 +265,8 @@ export function PeoplePanel({ data, refresh, notify, query, setQuery, now }: Pan
       <div className="panel grid grid-cols-2 divide-x divide-y divide-ink-100 overflow-hidden rounded-2xl sm:grid-cols-4 dark:divide-white/8">
         {[
           { label: "People", value: fmtNum(data.people.length), note: `${suspended} suspended` },
-          { label: "Live sessions", value: fmtNum(liveSessions), note: "verified on every request" },
-          { label: "Second factor", value: `${twoFactor}/${data.people.length}`, note: "authenticator enrolled" },
+          { label: "Active sign-ins", value: fmtNum(liveSessions), note: "checked on every request" },
+          { label: "Two-step sign-in", value: `${twoFactor}/${data.people.length}`, note: "authenticator app enabled" },
           { label: "Pending invites", value: fmtNum(pendingInvites.length), note: "single-use · 14 days" },
         ].map((stat) => (
           <div key={stat.label} className="px-4 py-3.5">
@@ -324,7 +324,7 @@ export function PeoplePanel({ data, refresh, notify, query, setQuery, now }: Pan
             <PanelHead
               eyebrow="The register"
               title="Workspace members"
-              description="Role is workspace authority. A committee seat and office are separate — the gate reads those."
+              description="Roles control workspace access. Committee membership and office are managed separately for approval decisions."
               action={<Chip tone="neutral">{fmtNum(filtered.length)} shown</Chip>}
             />
             <div className="flex flex-wrap items-center gap-2 border-b border-ink-100 px-5 py-3 dark:border-white/8">
@@ -487,7 +487,7 @@ export function PeoplePanel({ data, refresh, notify, query, setQuery, now }: Pan
                               ) : (
                                 <Button
                                   size="sm"
-                                  onClick={() => void changeStatus(person, "ACTIVE", "Access reinstated from the control room")}
+                                  onClick={() => void changeStatus(person, "ACTIVE", "Access reinstated in administration")}
                                   disabled={busy !== null}
                                 >
                                   {busy === "status" ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <ShieldCheck className="h-3 w-3" aria-hidden="true" />}
@@ -563,7 +563,7 @@ export function PeoplePanel({ data, refresh, notify, query, setQuery, now }: Pan
               action={canManage ? <Button size="sm" onClick={() => setDialog({ kind: "invite" })}><Plus className="h-3 w-3" aria-hidden="true" /> NEW</Button> : undefined}
             />
             {data.invites.length === 0 ? (
-              <Empty title="No invitation issued" body={canManage ? "Create one when a colleague joins the desk." : "Nothing to read here."} />
+              <Empty title="No invitations yet" body={canManage ? "Create an invitation when a colleague joins the workspace." : "Nothing to show here."} />
             ) : (
               <ul className="divide-y divide-ink-100 dark:divide-white/8">
                 {data.invites.slice(0, 8).map((invite) => (
@@ -760,7 +760,7 @@ export function PeoplePanel({ data, refresh, notify, query, setQuery, now }: Pan
         open={dialog?.kind === "invite"}
         onClose={() => setDialog(null)}
         eyebrow="New invitation"
-        title="Bring a colleague onto the desk"
+        title="Invite a colleague"
         footer={
           <>
             <Button onClick={() => setDialog(null)}>CANCEL</Button>

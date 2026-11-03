@@ -74,48 +74,48 @@ export async function GET(req: NextRequest) {
   const gov = governance as { confirmed?: boolean; signedOff?: { by: string; at: string; scope: string } | null; note?: string } | null;
   criteria.push({
     id: "governance-signed-off",
-    label: "Governance and control foundation signed off",
+    label: "Roles and approval rules confirmed",
     status: gov?.confirmed ? "PASS" : "PENDING",
     detail: gov?.signedOff
       ? `Signed off by ${gov.signedOff.by} at ${gov.signedOff.at.slice(0, 10)} — scope: ${gov.signedOff.scope}.`
-      : "The authority matrix, bands and duties are live, but the operational owner has not signed the configuration. Record the sign-off in Governance.",
+      : "Approval rules and responsibilities are available, but an administrator has not reviewed them. Open Roles & approvals and confirm the settings.",
   });
 
   /* 2 — role segregation enforced */
   const distinctRoles = roles.size;
   criteria.push({
     id: "role-segregation",
-    label: "Role segregation enforced",
+    label: "Separate roles assigned",
     status: distinctRoles >= 3 ? "PASS" : "PENDING",
     detail:
       distinctRoles >= 3
-        ? `${distinctRoles} distinct roles active; every mutation route re-checks can() server-side and the sidecar refuses unsealed writes (fail-closed).`
-        : `Only ${distinctRoles} distinct role(s) exist — segregation needs at least an preparing officer, an approver and an auditor before pilot traffic.`,
+        ? `${distinctRoles} user roles are active. Each role has separate responsibilities for preparing, approving and reviewing procurements.`
+        : `Only ${distinctRoles} user role(s) are active. The workspace needs separate preparer, approver and auditor roles before live use.`,
   });
 
   /* 3 — MFA for privileged users */
   criteria.push({
     id: "mfa-privilege",
-    label: "MFA enforced for privileged accounts",
+    label: "Two-step sign-in required for administrators",
     status: mfaPolicyOn && privilegedWithoutMfa === 0 ? "PASS" : privilegedWithoutMfa > 0 && mfaPolicyOn ? "FAIL" : "PENDING",
     detail: mfaPolicyOn
       ? privilegedWithoutMfa === 0
-        ? "The policy is on and every privileged account holds a second factor."
-        : `${privilegedWithoutMfa} privileged account(s) still lack a second factor while the policy is ON — they cannot sign gates until they enroll.`
-      : "The MFA-for-admins policy is OFF. Turn it on in Governance before pilot traffic.",
+        ? "Two-step sign-in is required and all administrator accounts have set it up."
+        : `${privilegedWithoutMfa} administrator account(s) must set up two-step sign-in before approving actions.`
+      : "Two-step sign-in is not required for administrator accounts. Turn it on in Roles & approvals before live use.",
   });
 
   /* 4 — audit trail tested and proven */
   const chain = logVerify as { ok?: boolean; checked?: number } | null;
   criteria.push({
     id: "audit-trail",
-    label: "Audit trail tested and proven",
+    label: "Activity log integrity verified",
     status: chain?.ok && (chain.checked ?? 0) > 0 ? "PASS" : "FAIL",
     detail: chain
       ? chain.ok
-        ? `Hash chain verified across ${chain.checked} entries — every link recomputes.`
-        : `THE CHAIN IS BROKEN at ${chain.checked} checked entries — investigate before any further use.`
-      : "The audit spine is unreachable — the platform must not launch without it.",
+        ? `The integrity check passed for ${chain.checked} activity records.`
+        : `The integrity check failed near record ${chain.checked}. Stop using the workspace and contact support.`
+      : "The activity log could not be checked. Contact support before using the workspace for live procurements.",
   });
 
   /* 5 — data imports validated */
@@ -124,11 +124,11 @@ export async function GET(req: NextRequest) {
   const importsOk = linkRows.length > 0 && linkRows.filter((l) => l.registry?.ok).length / linkRows.length >= 0.8;
   criteria.push({
     id: "imports-validated",
-    label: "Live data imports validated",
+    label: "External data sources checked",
     status: importsOk ? "PASS" : "PENDING",
     detail: linkRows.length
-      ? `${linkRows.filter((l) => l.registry?.ok).length}/${linkRows.length} registry handshakes hold real OCID proof (last checked ${linksFile?.updatedAt?.slice(0, 10) ?? "unknown"}). Low-confidence sources never masquerade as authoritative.`
-      : "No portal handshakes on record — run a connect pass and confirm the sources before pilot use.",
+      ? `${linkRows.filter((l) => l.registry?.ok).length} of ${linkRows.length} sources responded and confirmed their records (last checked ${linksFile?.updatedAt?.slice(0, 10) ?? "unknown"}). Unverified sources are identified in the workspace.`
+      : "No external sources have been checked yet. Connect and verify the sources before live use.",
   });
 
   /* 6 — evidence handling verified */
@@ -137,14 +137,14 @@ export async function GET(req: NextRequest) {
   const unreviewed = docsFile?.unreviewed ?? 0;
   criteria.push({
     id: "evidence-handling",
-    label: "Evidence handling verified",
+    label: "Tender document handling checked",
     status: docCount > 0 && unreviewed === 0 ? "PASS" : docCount > 0 ? "PENDING" : "PENDING",
     detail:
       docCount === 0
-        ? "The document register is empty — register documents (upload or stage) so hashes, custody and retention exist."
+        ? "No tender documents are on record yet. Add the required documents and confirm the retention period."
         : unreviewed === 0
-          ? `${docCount} documents registered with content hashes, provenance and retention; no extraction needs a human check.`
-          : `${unreviewed} document(s) still need a named reviewer for low-confidence extraction.`,
+          ? `${docCount} documents are on record with version history and retention details. No extracted information needs review.`
+          : `${unreviewed} document(s) contain details that need a manual check.`,
   });
 
   /* 7 — reporting and oversight complete */
@@ -152,11 +152,11 @@ export async function GET(req: NextRequest) {
   const oversightReady = Array.isArray(exceptionsFile?.exceptions) && !!committee;
   criteria.push({
     id: "oversight-reporting",
-    label: "Reporting and oversight complete",
+    label: "Compliance reports and reviews available",
     status: oversightReady ? "PASS" : "PENDING",
     detail: oversightReady
-      ? "The exceptions register, compliance summaries, analytics and the audit explorer are all answerable from live state."
-      : "The sidecar surfaces for oversight reporting are not all reachable — check the service health.",
+      ? "Compliance reports, exception requests and review records are available."
+      : "Some compliance reports or review records could not be loaded. Check system status or contact support.",
   });
 
   /* 8 — quality record (the honest lab numbers, not a promise) */
@@ -164,11 +164,11 @@ export async function GET(req: NextRequest) {
   const evalOk = !!evalFile?.eval?.original;
   criteria.push({
     id: "quality-record",
-    label: "Independent quality record exists",
+    label: "Review quality measured",
     status: evalOk ? "PASS" : "PENDING",
     detail: evalOk
-      ? `Eval lab: recall ${Math.round(evalFile?.eval?.original?.recallCovered ?? 0)}% (covered) / precision ${Math.round(evalFile?.eval?.original?.precision ?? 0)}% against pre-written labels; mutation detection ${Math.round(evalFile?.eval?.mutation?.overallDetectionRate ?? 0)}%.`
-      : "No eval report found — run bun eval.ts in the sidecar to produce the recall/precision/mutation record.",
+      ? `In prepared samples, the checks found ${Math.round(evalFile?.eval?.original?.recallCovered ?? 0)}% of expected issues, reviewers confirmed ${Math.round(evalFile?.eval?.original?.precision ?? 0)}% of flagged issues, and changed-file detection was ${Math.round(evalFile?.eval?.mutation?.overallDetectionRate ?? 0)}%.`
+      : "No review quality report is available yet. Ask an administrator to complete the scheduled quality check.",
   });
 
   /* 9 — human signoff */
@@ -176,9 +176,9 @@ export async function GET(req: NextRequest) {
   const signoffBy = getSetting("launch_signoff_by");
   criteria.push({
     id: "human-signoff",
-    label: "Named human signs the launch",
+    label: "Administrator approved workspace launch",
     status: signoff ? "PASS" : "PENDING",
-    detail: signoff ? `${signoffBy} signed the launch readiness at ${signoff.slice(0, 10)}.` : "The readiness gate needs a named human to sign — record it below once the eight criteria above hold.",
+    detail: signoff ? `${signoffBy} approved the workspace on ${signoff.slice(0, 10)}.` : "An administrator must review the checks above and confirm the workspace is ready.",
   });
 
   const failed = criteria.filter((c) => c.status === "FAIL");
@@ -210,7 +210,7 @@ export async function GET(req: NextRequest) {
       findingsRejected: disposed - accepted,
       dispositionCoverage: allFindings.length ? Math.round((disposed / allFindings.length) * 100) : null,
       auditChainEntries: chain?.checked ?? null,
-      note: "Every number is read from live state — the run log, the gates and the audit spine. Nothing is estimated here.",
+      note: "These totals come from recorded reviews, decisions and activity. No figures are estimated.",
     },
     eval: evalSummary?.eval ?? null,
   });
@@ -220,7 +220,7 @@ export async function POST(req: NextRequest) {
   const user = await getUserFromToken(req.cookies.get(SESSION_COOKIE)?.value).catch(() => null);
   if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   if (!can(user.role, "manage_rules")) {
-    return NextResponse.json({ error: "Recording the launch sign-off requires rule-management authority." }, { status: 403 });
+    return NextResponse.json({ error: "An administrator must approve workspace launch." }, { status: 403 });
   }
   const body = (await req.json().catch(() => ({}))) as { note?: string };
   const note = (body.note ?? "").trim().slice(0, 400);
@@ -234,7 +234,7 @@ export async function POST(req: NextRequest) {
     targetType: "ORGANIZATION",
     targetId: "launch-readiness",
     targetName: "Launch readiness",
-    detail: note ? `Launch sign-off recorded. ${note}` : "Launch sign-off recorded against the live readiness gate.",
+    detail: note ? `Workspace launch approved. ${note}` : "Workspace launch approved after review of the readiness checks.",
   });
   return NextResponse.json({ signedOff: true, by: user.name, at }, { status: 201 });
 }

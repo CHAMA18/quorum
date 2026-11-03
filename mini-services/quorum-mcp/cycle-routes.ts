@@ -3853,6 +3853,129 @@ export async function handleCycleRoutes(
       return json({ error: (err as Error).message }, 422);
     }
   }
+  const aiReviewInput = path.match(/^\/api\/tenders\/([A-Za-z0-9._-]+)\/matrix\/ai-review-input$/);
+  if (aiReviewInput && method === "GET") {
+    const tenderId = decodeURIComponent(aiReviewInput[1]);
+    const rawCycle = cycles().find((row) => row.tenderId === tenderId);
+    if (!rawCycle) return json({ error: "Select a tender with a workflow record before reviewing bids." }, 404);
+    const cycle = normalizeCycle(rawCycle);
+    const opening = cycle.opening;
+    if (!opening?.certifiedAt) {
+      return json({ error: "Certify the bid opening register before reviewing submitted bids." }, 409);
+    }
+    if (opening.reconciliation && !opening.reconciliation.matches) {
+      return json({ error: "Resolve the opening-register reconciliation before reviewing bids." }, 409);
+    }
+    const openingRows = Array.isArray(opening.rows) ? opening.rows : [];
+    const matrix = cycle.matrix;
+    if (!matrix) return json({ error: "Build the evaluation matrix from the published criteria before reviewing bids." }, 409);
+    const notice = (cycle.notices ?? []).find((row) => row.id === matrix.criteriaNoticeId && !!row.issuedAt);
+    if (!notice) return json({ error: "The matrix is not linked to an issued evaluation notice." }, 409);
+    const issuedCriteria = parseEvaluationCriteria(notice.md);
+    if (
+      !issuedCriteria.length ||
+      issuedCriteria.length !== matrix.criteria.length ||
+      issuedCriteria.some((criterion, index) => {
+        const scored = matrix.criteria[index];
+        return !scored || criterion.id !== scored.id || criterion.title !== scored.title || criterion.weight !== scored.weight ||
+          (criterion.evidence ?? "") !== (scored.evidence ?? "") || (criterion.scoringMethod ?? "") !== (scored.scoringMethod ?? "");
+      })
+    ) {
+      return json({ error: "The evaluation matrix no longer matches the published criteria. Rebuild it from the issued notice before reviewing bids." }, 409);
+    }
+
+    const openingNames = openingRows.map((row) => row.bidder.trim().toLowerCase()).sort();
+    const matrixNames = matrix.bids.map((row) => row.bidder.trim().toLowerCase()).sort();
+    if (
+      new Set(openingNames).size !== openingNames.length ||
+      new Set(matrixNames).size !== matrixNames.length ||
+      openingNames.length !== matrixNames.length ||
+      openingNames.some((name, index) => name !== matrixNames[index])
+    ) {
+      return json({ error: "The certified bidder register and evaluation matrix do not match. Resolve the discrepancy before using AI review." }, 409);
+    }
+
+    const admittedRows = openingRows.filter((row) => !row.late);
+    if (!admittedRows.length) return json({ error: "There are no admitted bids to review. Late bids remain unopened." }, 409);
+    const admittedNames = new Set(admittedRows.map((row) => row.bidder.trim().toLowerCase()));
+    let stagedDocuments: { bidder: string; citation: string; text: string }[] = [];
+    try {
+      const { pack } = await loadPack(tenderId);
+      const stagedNames = pack.bids.map((bid) => bid.bidder.trim().toLowerCase());
+      const openingNameSet = new Set(openingNames);
+      if (stagedNames.some((name) => !openingNameSet.has(name))) {
+        return json({ error: "The staged bid records include an unregistered bidder. Resolve the discrepancy before using AI review." }, 409);
+      }
+      stagedDocuments = pack.bids
+        .filter((bid) => admittedNames.has(bid.bidder.trim().toLowerCase()) && bid.text.trim())
+        .map((bid) => ({ bidder: bid.bidder, citation: bid.source, text: bid.text }));
+    } catch {
+      /* Supplier portal attachments can be the complete source for live bids. */
+    }
+    const tenderApplications = state.applications.filter((application) =>
+      (application.workspaceId ?? "demo") === workspaceId && application.tenderId === tenderId,
+    );
+    const applicationsById = new Map(tenderApplications.map((application) => [application.id, application]));
+    const applicationSubmissions: {
+      bidder: string;
+      organizationId: string;
+      coverNote: string;
+      documents: NonNullable<(typeof tenderApplications)[number]["bidDocuments"]>;
+    }[] = [];
+    for (const row of admittedRows) {
+      const linkedApplication = row.applicationId ? applicationsById.get(row.applicationId) : undefined;
+      const matchingApplications = row.applicationId
+        ? linkedApplication ? [linkedApplication] : []
+        : tenderApplications.filter((application) =>
+            application.status === "RECEIVED" && application.orgName.trim().toLowerCase() === row.bidder.trim().toLowerCase(),
+          );
+      if (row.applicationId && matchingApplications.length !== 1) {
+        return json({ error: `The supplier portal record for ${row.bidder} no longer matches the certified opening register.` }, 409);
+      }
+      if (matchingApplications.length > 1) {
+        return json({ error: `More than one active supplier portal submission matches ${row.bidder}. Resolve the tender record before AI review.` }, 409);
+      }
+      const application = matchingApplications[0];
+      if (!application) continue;
+      if (application.status !== "RECEIVED" || application.orgName.trim().toLowerCase() !== row.bidder.trim().toLowerCase()) {
+        return json({ error: `The supplier portal record for ${row.bidder} has changed since bid opening. Reconcile the tender record before AI review.` }, 409);
+      }
+      applicationSubmissions.push({
+        bidder: row.bidder,
+        organizationId: application.orgId,
+        coverNote: application.coverNote ?? "",
+        documents: application.bidDocuments ?? [],
+      });
+    }
+    const pipeline = pipelineRows().find((entry) => entry.ref === tenderId || entry.linkedTenderId === tenderId);
+
+    return json({
+      tenderId,
+      tenderTitle: pipeline?.title ?? tenderId,
+      systemReference: cycle.systemReference ?? pipeline?.systemReference ?? undefined,
+      notice: {
+        id: notice.id,
+        criteria: issuedCriteria,
+      },
+      matrix: {
+        id: matrix.id,
+        status: matrix.status,
+        criteriaNoticeId: matrix.criteriaNoticeId,
+        criteria: matrix.criteria,
+        technicalWeightPct: matrix.technicalWeightPct,
+        financialFormula: matrix.financialFormula,
+        evaluationCurrency: matrix.evaluationCurrency,
+        bids: matrix.bids,
+        sheets: matrix.sheets ?? [],
+        consensus: matrix.consensus ?? null,
+        med: matrix.med ?? null,
+        fxRates: matrix.fxRates ?? [],
+      },
+      documents: stagedDocuments.filter((bid) => admittedNames.has(bid.bidder.trim().toLowerCase())),
+      applicationSubmissions,
+      excludedLateBidders: openingRows.filter((row) => row.late).map((row) => row.bidder),
+    });
+  }
   const tenderGet = path.match(/^\/api\/tenders\/([A-Za-z0-9._-]+)$/);
   if (tenderGet && method === "GET") {
     const tenderId = decodeURIComponent(tenderGet[1]);

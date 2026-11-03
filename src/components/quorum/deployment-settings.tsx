@@ -125,7 +125,7 @@ export function DeploymentSettings({ onToast }: { onToast?: (message: string) =>
   if (!deployment && !failed) {
     return (
       <div role="status" className="mt-6 rounded-[12px] panel p-5 font-code text-[10px] tracking-[0.06em] text-ink-600">
-        SYNCING DEPLOYMENT TRUTH…
+        LOADING DEPLOYMENT STATUS…
       </div>
     );
   }
@@ -135,9 +135,9 @@ export function DeploymentSettings({ onToast }: { onToast?: (message: string) =>
       <div className="mt-6 flex items-start gap-3 rounded-[12px] border border-amber-300/70 bg-amber-50 p-5 text-amber-950 dark:border-amber-400/25 dark:bg-amber-400/[0.07] dark:text-amber-100">
         <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
         <div className="min-w-0">
-          <p className="font-code text-[10px] font-bold tracking-[0.06em]">DEPLOYMENT STATUS UNREACHABLE</p>
+          <p className="font-code text-[10px] font-bold tracking-[0.06em]">COULD NOT LOAD DEPLOYMENT STATUS</p>
           <p className="mt-1 text-[12px] leading-relaxed">
-            The sidecar did not answer. Treat the workspace as record-only until the status is verified.
+            The procurement service did not respond. Only saved records are available until its status can be checked.
           </p>
           <button
             type="button"
@@ -159,7 +159,7 @@ export function DeploymentSettings({ onToast }: { onToast?: (message: string) =>
         <p className="font-code text-[10px] font-semibold tracking-[0.08em] text-ink-600">DEPLOYMENT</p>
         <div className="mt-1.5 flex flex-wrap items-center gap-3">
           <h3 className="font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">
-            {recordOnly ? "Record-only" : "Connected"}
+            {recordOnly ? "Read-only" : "Connected"}
           </h3>
           <span
             className={cn(
@@ -169,13 +169,13 @@ export function DeploymentSettings({ onToast }: { onToast?: (message: string) =>
                 : "border-emerald-500/30 bg-emerald-500/[0.08] text-emerald-700 dark:text-emerald-300",
             )}
           >
-            {recordOnly ? "RECORD_ONLY" : "CONNECTED"}
+            {recordOnly ? "READ-ONLY" : "CONNECTED"}
           </span>
         </div>
         <p className="mt-2 text-[12.5px] leading-relaxed text-ink-500">
           {recordOnly
-            ? "Contracts and payment certification are refused by the sidecar. Evaluations, findings and award rehearsals remain available, and every export states that it is not a publication receipt."
-            : "A verified external publication receipt is on record. Contract and payment paths are open, subject to every statutory gate."}
+            ? "Contract and payment actions are unavailable. Tender evaluations and findings remain available, and reports clearly show that award notices have not been published."
+            : "A publication confirmation is on file. Contract and payment actions are available when required approvals are complete."}
         </p>
         <div className="mt-4 rounded-lg border border-ink-100 bg-paper px-3 py-2.5 dark:border-white/10 dark:bg-white/[0.03]">
           <p className="font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">PUBLICATION</p>
@@ -184,11 +184,11 @@ export function DeploymentSettings({ onToast }: { onToast?: (message: string) =>
           </p>
           {deployment.publication.receiptId ? (
             <p className="mt-1 font-code text-[10px] font-medium text-emerald-800 dark:text-emerald-300">
-              RECEIPT {deployment.publication.receiptId}
+              PUBLICATION CONFIRMATION {deployment.publication.receiptId}
             </p>
           ) : (
             <p className="mt-1 font-code text-[10px] font-medium text-amber-800 dark:text-amber-300">
-              NO EXTERNAL RECEIPT — SIMULATED
+              NO PUBLICATION CONFIRMATION — SIMULATED
             </p>
           )}
         </div>
@@ -197,7 +197,7 @@ export function DeploymentSettings({ onToast }: { onToast?: (message: string) =>
       <section className="rounded-[12px] panel p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="font-code text-[10px] font-semibold tracking-[0.08em] text-ink-600">FEATURE FLAGS</p>
+            <p className="font-code text-[10px] font-semibold tracking-[0.08em] text-ink-600">AVAILABLE FEATURES</p>
             <h3 className="mt-1.5 font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">
               What has actually shipped
             </h3>
@@ -212,7 +212,7 @@ export function DeploymentSettings({ onToast }: { onToast?: (message: string) =>
           </button>
         </div>
         <p className="mt-1 text-[12px] text-ink-500">
-          New workflows ship dark. Enabling a flag does not bypass a gate.
+          New features are off by default. Turning one on does not bypass required approval.
         </p>
         <ul className="mt-3 max-h-[360px] space-y-1.5 overflow-y-auto pr-1 [scrollbar-width:thin]">
           {flags.map((flag) => {
@@ -266,9 +266,9 @@ export function DeploymentSettings({ onToast }: { onToast?: (message: string) =>
       <section className="rounded-[12px] panel p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)] lg:col-span-2">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="font-code text-[10px] font-semibold tracking-[0.08em] text-ink-600">JURISDICTION CLOCK</p>
+            <p className="font-code text-[10px] font-semibold tracking-[0.08em] text-ink-600">PROCUREMENT CALENDAR</p>
             <h3 className="mt-1.5 font-display text-[15px] font-black tracking-[-0.01em] text-ink-950">
-              The calendar statutory periods run on
+              Procurement deadlines for
             </h3>
             <p className="mt-1 max-w-2xl text-[12.5px] leading-relaxed text-ink-500">
               Working days skip weekends and the selected country's published public holidays. Closing dates are read in its timezone. An addendum inside the notice window must extend the closing date.
@@ -299,7 +299,7 @@ export function DeploymentSettings({ onToast }: { onToast?: (message: string) =>
             <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
                 ["TIMEZONE", jurisdiction.timezone],
-                ["STANDSTILL", `${jurisdiction.standstillDays} WORKING DAYS`],
+                ["AWARD REVIEW PERIOD", `${jurisdiction.standstillDays} WORKING DAYS`],
                 ["ADDENDUM NOTICE", `${jurisdiction.addendumMinNoticeDays} WORKING DAYS`],
                 ["COMPLAINT REPLY", `${jurisdiction.complaintResponseDays} WORKING DAYS`],
               ].map(([label, value]) => (

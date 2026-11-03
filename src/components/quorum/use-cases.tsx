@@ -1,40 +1,32 @@
 "use client";
 
-import { Activity, Banknote, Globe2, Scale, Stethoscope, Users } from "lucide-react";
+import { Activity, Scale, Stethoscope } from "lucide-react";
 import { Reveal, SpecBar } from "@/components/quorum/reveal";
 import { Aurora, Spotlight, TiltCard } from "@/components/quorum/motion-kit";
 
 /**
- * The chosen theme — health & life sciences. One vertical, mastered:
- * the three checks every health commodity tender must survive, with the
- * remaining themes queued as the same workflow's next destinations.
+ * The product's initial focus: public health and medical supply tenders.
  */
 
 const CHECKS = [
   {
     icon: Stethoscope,
     no: "01",
-    title: "Specs against clinical need",
-    body: "Item specs checked against formularies, pharmacopoeia standards and regulator registrations — so the line item is what clinicians actually prescribe, not a supplier's rebrand of last year's catalogue.",
+    title: "Technical requirements and clinical suitability",
+    body: "Compare submitted specifications with the tender requirements and approved clinical references. Reviewers can trace each concern to its source.",
   },
   {
     icon: Activity,
     no: "02",
-    title: "Quantities against real consumption",
-    body: "Order sizes reconciled with consumption and stock levels at the facilities the goods are destined for — buying this year's caseload, not last year's budget line.",
+    title: "Quantities and demand",
+    body: "Review order quantities against available consumption and stock information for delivery facilities, then flag discrepancies for officer review.",
   },
   {
     icon: Scale,
     no: "03",
-    title: "Prices against other buyers",
-    body: "Unit prices benchmarked against the same commodities bought by other public buyers on the same OCDS portals — the outlier is visible before the award, not in an audit two years later.",
+    title: "Prices and market context",
+    body: "Compare quoted prices with recorded public awards and other approved reference data. Officers decide whether a variance needs further review.",
   },
-];
-
-const NEXT_THEMES = [
-  { icon: Banknote, label: "FINANCIAL SERVICES · VALUE FOR MONEY" },
-  { icon: Globe2, label: "DIGITAL ECONOMY · OPEN CONTRACTING" },
-  { icon: Users, label: "FUTURE OF WORK · INCLUSION & LOCAL ECONOMY" },
 ];
 
 export function UseCases() {
@@ -45,18 +37,18 @@ export function UseCases() {
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
             <Reveal>
-              <SpecBar index="04" label="The theme — health & life sciences" meta="Checked against clinical reality" />
+              <SpecBar index="04" label="Health procurement" meta="Evidence-led review checks" />
             </Reveal>
             <Reveal delay={0.06}>
               <h2 className="type-display mt-6 max-w-2xl text-[34px] text-ink-950 sm:text-[44px]">
-                Health commodity tenders. Checked against clinical reality.
+                Review checks for health commodity tenders.
               </h2>
             </Reveal>
           </div>
           <Reveal delay={0.12}>
             <p className="max-w-sm text-[15px] leading-relaxed text-ink-500">
-              Medicines, devices and commodities are the largest, most error-prone lines of public
-              health spending. One theme, mastered — depth beats breadth when the audit comes.
+              Medicines, devices and essential supplies require careful review across technical
+              requirements, supplier documents, demand and price.
             </p>
           </Reveal>
         </div>
@@ -89,23 +81,13 @@ export function UseCases() {
           ))}
         </div>
 
-        {/* The same workflow, queued for the next themes */}
+        {/* Keep the product scope clear and describe where the checks come from. */}
         <Reveal delay={0.1}>
-          <div className="mt-10 flex flex-col gap-4 rounded-[10px] border border-ink-100 bg-sand/60 px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-            <p className="font-code text-[10px] font-semibold tracking-[0.24em] text-ink-500">
-              ONE THEME SHIPS AT A TIME — THE SAME WORKFLOW, QUEUED NEXT
+          <div className="mt-10 rounded-[10px] border border-ink-100 bg-sand/60 px-5 py-4 sm:px-6">
+            <p className="text-[13.5px] leading-relaxed text-ink-600">
+              Review criteria can be configured to reflect the tender requirements, institutional
+              policies and jurisdictional rules that apply to each procurement.
             </p>
-            <ul className="flex flex-wrap gap-2.5" aria-label="Themes queued after health & life sciences">
-              {NEXT_THEMES.map((theme) => (
-                <li
-                  key={theme.label}
-                  className="inline-flex items-center gap-2 rounded-full border border-ink-100 bg-paper px-4 py-2 font-code text-[10px] font-semibold tracking-[0.12em] text-ink-600"
-                >
-                  <theme.icon className="h-3.5 w-3.5 text-brand-600" aria-hidden="true" />
-                  {theme.label}
-                </li>
-              ))}
-            </ul>
           </div>
         </Reveal>
       </div>

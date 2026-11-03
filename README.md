@@ -285,7 +285,7 @@ national e-GP portal remain outside the live product. See [Limitations](#limitat
 
 Invited teammates join a shared workspace via invite codes generated in Settings → Team Members (no email provider needed: an officer creates a code, the invitee pastes it during registration; codes expire after 14 days and can be revoked).
 
-**Named target offices and the timing benchmark** are in [`SUBMISSION/09-fit.md`](SUBMISSION/09-fit.md): Ministry of Health Procurement, KEMSA, the 47 county health units and PPRA (oversight) in Kenya, RPPA in Rwanda. The agent's measured per-pack time — 0.25–0.91 ms rule path, ~66 ms for the full review graph in template mode — is published with min–max spread in the eval report, while the **human baseline is deliberately not claimed** until a pilot measures it under the pre-registered protocol defined there. **Pilot intake is live:** the landing page's "Run a pilot tender" checklist posts to `POST /api/contact`; requests are stored in the workspace's own store — no email provider needed. The 3-minute demo script, including the gate's 422/403 refusal bridge, is [`SUBMISSION/DEMO.md`](SUBMISSION/DEMO.md).
+**Named target offices and the timing benchmark** are in [`SUBMISSION/09-fit.md`](SUBMISSION/09-fit.md): Ministry of Health Procurement, KEMSA, the 47 county health units and PPRA (oversight) in Kenya, RPPA in Rwanda. The agent's measured per-pack time — 0.25–0.91 ms rule path, ~66 ms for the full review graph in template mode — is published with min–max spread in the eval report, while the **human baseline is deliberately not claimed** until a pilot measures it under the pre-registered protocol defined there. **Pilot intake is live:** the landing page posts requests and optional notes to `POST /api/contact`; the request is stored in the workspace and emailed to the pilot inbox through Resend. Configure `RESEND_API_KEY` and `RESEND_FROM` in the web server environment. If email delivery is unavailable, the form reports the failure and retains the request in the workspace store. The 3-minute demo script, including the gate's 422/403 refusal bridge, is [`SUBMISSION/DEMO.md`](SUBMISSION/DEMO.md).
 
 ---
 
@@ -420,7 +420,7 @@ The standing rule: **the agent never holds the pen.** When the review graph fini
    - `403` — refused if the name isn't on the PRESENT committee roster (or the signed-in officer),
    - `409` — refused if fewer than `quorum_required` members are PRESENT; the response carries the live count,
    - `503` — fail-closed if the roster can't be read at all.
-3. On APPROVE only, `filing_graph` runs: sha-256 seal → submit to the e-GP portal → receipt written to `data/submissions/` → run flips to FILED.
+3. On APPROVE only, `filing_graph` runs: sha-256 seal → idempotent local simulation adapter → a receipt marked `SIMULATED` is written to `data/submissions/` → run flips to FILED. No national e-GP endpoint is called.
 4. On REJECT, the bundle returns to the agent for revision — and the ledger records who returned it.
 
 Full workflow detail (incl. supporting capabilities): [`SUBMISSION/03-solution.md`](SUBMISSION/03-solution.md), [`SUBMISSION/08-capabilities.md`](SUBMISSION/08-capabilities.md).
@@ -622,13 +622,15 @@ curl -s localhost:3031/mcp -X POST -H 'content-type: application/json' \
 
 - The configured model chain leads with **Muse Spark 1.3** on Meta Model API and can fall back to **Llama 3.2** (`llama3.2:3b`) through Ollama in-region. Hosted tender text is redacted; the fallback keeps the full pack on the desk. If neither endpoint answers, drafting uses a deterministic template and labels the report `source: "template"`.
 - Run-to-run variance and cost are measured for **both** paths (`SUBMISSION/10-cost-and-audit.md`): the deterministic rule path (findings identical across repeats for every staged pack; 0 tokens → 0 USD), the hosted Muse Spark path on the real KEMSA pack (22.8 s, 2 model drafts, 4 redactions, 439 prompt + 2,701 completion tokens), and the in-region Llama fallback (Ollama, `llama3.2:1b` on a 4 GB CPU-only box; 2026-10-27: 6 runs, 291–348 tokens/run, 6,975 ms median per model call, 0 USD marginal cost). `bun live-audit.ts` regenerates the fallback artifact from the append-only log; a hosted endpoint's cost is the published formula (tokens × price), never a guessed number.
-- **The gold labels are single-labeller** — one human, one pass, written before the engine ran; not independently double-labelled (stated verbatim in `data/eval/report.json`). The mitigations are structural, not cosmetic: labels were pre-registered, every post-hoc addition is flagged `postHoc` and reported separately, and mutation testing checks sensitivity independently of the labels. A second labeller on a 20% overlap sample with disagreement review is the first hire of the evaluation layer (`Future improvements`).
+- **The existing gold labels are single-labeller** — one human, one pass, written before the engine ran; not independently double-labelled (stated verbatim in `data/eval/report.json`). The mitigations are structural: labels were pre-registered, every post-hoc addition is flagged `postHoc` and reported separately, and mutation testing checks sensitivity independently of the labels. An independent second review is the next evaluation step; its output packet and scorer are prepared below.
+- An **independent second-review packet** is now generated at `mini-services/quorum-mcp/data/eval/independent-review/reviewer-pack.json`. It contains source packs and blank annotations, not the current labels or model findings. The comparison script reports rule-and-file agreement and quote validity after a second reviewer returns completed annotations. No independent-review metric is claimed until that review is completed.
 - With a small planner, the model-led plan could disable deep-value parsing on packs whose bid values demand it — one such run was logged as evidence, and the engine now applies a planner **safety floor** (parsing may be added, never removed while bid values are present), pinned by a dedicated test. That trade-off is documented rather than hidden.
-- The e-GP portal receipt is labeled `egp-portal (simulated)`: sealing and receipt creation are real; transmission to a national e-GP system is a stub until a live connector is built.
+- Filing uses an explicit adapter contract. The only shipped adapter is `local-e-gp-simulation`: it writes a deterministic, idempotent receipt marked `SIMULATED` and makes no national-portal network call. A live e-GP connector and sandbox credentials do not exist in this build.
 - Organization accounts open their session immediately at registration — there is no email-verification loop on the supplier door. That is deliberate: an organization's statutory verification (registration number, tax clearance) is the procurement desk's act on the supplier register, not a mail loop; the desk can suspend an organization (`SUSPENDED`), which blocks sign-in and new applications.
 - Beneficial-ownership / registry matching is exposed via the source-request queue as a pending source, not yet a live connector.
 - The live URLs and infrastructure are listed at the top of this README. Availability can change; an HTTP response alone does not prove that sign-in or an end-to-end procurement workflow is healthy.
-- The app uses a single-instance JSON store for the workspace and sidecar. This is suitable for the current demo, not concurrent multi-instance operation at institutional scale.
+- The app defaults to a single-writer JSON store; `DATABASE_URL` enables PostgreSQL snapshots and a durable job queue. Review jobs recover after worker restarts, use expiring leases, bounded retries and backoff, and persist completion before acknowledgment. Recovery replays a run from its beginning; it does not restore an internal LangGraph node checkpoint. Gate decisions are serialized and deduplicated, and simulated filing reuses its receipt on retry. This remains a single-writer deployment, not concurrent multi-instance operation at institutional scale.
+- Every authenticated sidecar request receives a trace ID that follows the review job into the hash-chained event log. `GET /api/observability` reports scoped run, queue, latency and error summaries; `GET /api/traces/:traceId` returns the event timeline for an individual request/run.
 - The evaluation labels have one human labeller. There is no measured human time baseline, completed design-partner pilot or production impact study yet.
 
 ---
@@ -637,8 +639,8 @@ curl -s localhost:3031/mcp -X POST -H 'content-type: application/json' \
 
 - **Live e-GP integrations** for notices, submissions and award publication; current transmission is simulated.
 - **Broader jurisdiction and registry integrations**, including beneficial-ownership and supplier-registry matches.
-- **Transactional production storage and background jobs** to replace the single-process JSON stores for multi-instance institutional use.
-- **Pilot and evaluation evidence:** work with procurement officers, measure a human baseline and add an independent second labeller to the held-out set.
+- **Node-level LangGraph checkpoints and multi-instance transactional storage** to resume at a completed node and operate multiple workers safely.
+- **Pilot and evaluation evidence:** obtain independent annotations from a second procurement reviewer, measure a human baseline and run a design-partner pilot.
 - **Records exports and analytics:** PDF/A export, quorum timing and repeat-approver analytics.
 - **Ownership transfer** with an atomic, audited handover.
 

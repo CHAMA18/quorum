@@ -128,13 +128,13 @@ export function SupplierOverview({
             </div>
             <p className="mt-2.5 max-w-[62ch] text-[13px] leading-relaxed text-ink-600 dark:text-ink-300">
               {profile.missing.length > 0
-                ? `Add these ${profile.missing.length} details so the procurement desk can verify your identity and match relevant opportunities.`
-                : "Your profile details are on record for verification and opportunity matching."}
+                ? `Add these ${profile.missing.length} details so the procurement team can verify your organization and match relevant opportunities.`
+                : "Your profile details are saved for organization checks and tender matching."}
             </p>
           </div>
           <div className="flex shrink-0 items-center justify-between gap-4 rounded-xl border border-ink-200/70 bg-paper/80 px-4 py-3 dark:border-white/10 dark:bg-white/[0.035] sm:min-w-[220px]">
             <div>
-              <p className="type-micro text-ink-600 dark:text-ink-300">ON RECORD</p>
+              <p className="type-micro text-ink-600 dark:text-ink-300">SAVED</p>
               <p className="mt-1 text-[13px] font-semibold text-ink-700 dark:text-ink-200">{profile.filled} of {profile.total} details</p>
             </div>
             <p className="type-num text-[36px] text-ink-950 dark:text-white">
@@ -146,7 +146,7 @@ export function SupplierOverview({
         <div className="mt-4">
           <div
             role="progressbar"
-            aria-label="Supplier profile details on record"
+            aria-label="Supplier profile details"
             aria-valuemin={0}
             aria-valuemax={profile.total}
             aria-valuenow={profile.filled}
@@ -158,7 +158,7 @@ export function SupplierOverview({
             />
           </div>
           <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11.5px] font-medium text-ink-600 dark:text-ink-300">
-            <span>{profile.filled} on record</span>
+            <span>{profile.filled} saved</span>
             <span>{profile.missing.length === 0 ? "No details outstanding" : `${profile.missing.length} to complete`}</span>
           </div>
         </div>
@@ -169,8 +169,8 @@ export function SupplierOverview({
               <h3 className="text-[13px] font-semibold text-ink-900 dark:text-white">Profile details to complete</h3>
               <p className="mt-0.5 max-w-[72ch] text-[12px] text-ink-600 dark:text-ink-300">
                 {profile.missing.length > 0
-                  ? "Choose an organization field. The bid documents you keep on record live under Documents."
-                  : "Every organization field is on record. Your bid documents live under Documents."}
+                  ? "Choose an organization detail. Your bid documents are stored under Documents."
+                  : "Your organization details are complete. Bid documents are stored under Documents."}
               </p>
             </div>
             {profile.missing.length > 0 ? (
@@ -208,7 +208,7 @@ export function SupplierOverview({
             </div>
           ) : (
             <p className="mt-3 flex items-center gap-2 text-[12.5px] font-semibold text-emerald-800 dark:text-emerald-300">
-              <CircleCheck className="h-4 w-4" aria-hidden="true" /> All requested profile details are on record.
+              <CircleCheck className="h-4 w-4" aria-hidden="true" /> Your supplier profile is complete.
             </p>
           )}
 
@@ -227,7 +227,7 @@ export function SupplierOverview({
 
         <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-ink-200/70 pt-3 text-[11.5px] leading-relaxed text-ink-500 dark:border-white/10 dark:text-ink-400">
           <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          <span>Registered {fmtDate(orgCreatedAt)} · submissions are attested as <span className="font-semibold text-brand-700 dark:text-brand-300">org:{orgName}</span>.</span>
+          <span>Registered {fmtDate(orgCreatedAt)} · submissions are recorded under {orgName}.</span>
         </div>
       </Panel>
 
@@ -238,7 +238,7 @@ export function SupplierOverview({
           <SpecBar
             index="01"
             label="Open opportunities"
-            meta={tenders === null ? "Reading the board…" : `${open.length} live · ${closed} closed`}
+            meta={tenders === null ? "Loading tenders…" : `${open.length} open · ${closed} closed`}
           />
 
           <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,140px)_minmax(0,1fr)] sm:items-center sm:gap-5">
@@ -293,13 +293,13 @@ export function SupplierOverview({
           </button>
         </Panel>
 
-        {/* Applications on record */}
+        {/* Applications */}
         <Panel labelledBy="supplier-applications-heading" className="p-4 sm:p-5">
-          <h2 id="supplier-applications-heading" className="sr-only">Applications on record</h2>
+          <h2 id="supplier-applications-heading" className="sr-only">Applications</h2>
           <SpecBar
             index="02"
-            label="Applications on record"
-            meta={applications === null ? "Reading the ledger…" : `${filed.length} filed`}
+            label="Applications"
+            meta={applications === null ? "Loading applications…" : `${filed.length} filed`}
           />
 
           <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,140px)_minmax(0,1fr)] sm:items-center sm:gap-5">
@@ -315,10 +315,10 @@ export function SupplierOverview({
             <div className="min-w-0">
               <p className="text-[12.5px] leading-relaxed text-ink-600 dark:text-ink-300">
                 {applications === null
-                  ? applicationsError ?? "Reading the applications ledger…"
+                  ? applicationsError ?? "Loading your applications…"
                   : filed.length === 0
                     ? "Your filed bids and their receipt times will appear here."
-                    : "Your submissions are recorded with your organization's attested identity."}
+                    : "Your submissions are recorded under your organization."}
               </p>
               <dl className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-ink-200/70 bg-paper-2/50 px-3 py-2 dark:border-white/10 dark:bg-white/[0.03]">
                 <dt className="text-[11px] font-medium text-ink-600 dark:text-ink-300">Latest filing</dt>
@@ -355,7 +355,7 @@ export function SupplierOverview({
         </div>
         <div className="flex flex-col gap-3 px-5 pb-4 pt-4 sm:flex-row sm:items-end sm:justify-between">
           <p className="max-w-[62ch] text-[12.5px] leading-relaxed text-ink-500">
-            Every bid you file, with its tender reference, attested identity and the desk&apos;s receipt time.
+            Every bid you submit, with its tender reference and submission time.
           </p>
           <div className="flex shrink-0 items-center gap-2">
             <button

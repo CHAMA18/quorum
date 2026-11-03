@@ -27,7 +27,7 @@ const TABS: ReadonlyArray<{
   target: string;
 }> = [
   { id: "supplier", label: "Supplier", seat: "the organizations' side", icon: Building2, target: "/org" },
-  { id: "quorum", label: "Quorum", seat: "the officer desk", icon: Landmark, target: "/#/login" },
+  { id: "quorum", label: "Quorum", seat: "Officer workspace", icon: Landmark, target: "/#/login" },
 ];
 
 export function MasterSwitcher({
@@ -69,7 +69,7 @@ export function MasterSwitcher({
             type="button"
             onClick={() => go(tab)}
             aria-current={isActive ? "page" : undefined}
-            title={isActive ? `${tab.label} — this desk is live` : `Switch to ${tab.seat}`}
+            title={isActive ? `${tab.label} — current workspace` : `Switch to ${tab.seat}`}
             className={cn(
               "relative min-h-11 rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-500/60",
               floating ? "px-3.5 py-2" : "px-3 py-1.5",

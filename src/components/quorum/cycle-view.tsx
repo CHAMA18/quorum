@@ -19,7 +19,7 @@
  * carries a dark variant, tokens do the rest.
  */
 
-import { cloneElement, isValidElement, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { cloneElement, isValidElement, useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactElement, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { createPortal } from "react-dom";
 import {
@@ -71,7 +71,7 @@ const scopeForMethodId = (methodId: string): "National" | "International" | unde
 const tenderReferenceLabel = (tender?: { systemReference?: string; source?: "sample" | "record" }) =>
   isSystemReference(tender?.systemReference)
     ? systemReferenceLabel(tender.systemReference)
-    : tender?.source === "sample" ? "BUILT-IN SAMPLE PACK" : "SYSTEM REFERENCE PENDING";
+    : tender?.source === "sample" ? "BUILT-IN SAMPLE TENDER" : "REFERENCE PENDING";
 const EASE = [0.22, 1, 0.36, 1] as const;
 
 /* The evaluation-criteria table is authored in the specification and carried
@@ -216,7 +216,7 @@ const OFFICE_LABELS: Record<string, string> = {
   OVERSIGHT: "Oversight / audit",
 };
 const OFFICE_BLURBS: Record<string, string> = {
-  PROCUREMENT_UNIT: "Runs the pack and keeps the file.",
+  PROCUREMENT_UNIT: "Manages the tender process and its records.",
   EVALUATION_COMMITTEE: "Scores the bids and certifies the matrix.",
   ACCOUNTING_OFFICER: "Signs the award and the contract.",
   OVERSIGHT: "Reads the record; never writes it.",
@@ -693,37 +693,37 @@ export type CycleStageTab = "solicitation" | "opening" | "evaluation" | "award" 
 export type CyclePageTab = CycleStageTab | "deadlines" | "complaints" | "analytics" | "reporting";
 
 export const CYCLE_STAGE_PAGES: { id: CycleStageTab; label: string }[] = [
-  { id: "solicitation", label: "Solicitation" },
-  { id: "opening", label: "Opening" },
-  { id: "evaluation", label: "Evaluation" },
-  { id: "award", label: "Award" },
-  { id: "standstill", label: "Standstill" },
-  { id: "contract", label: "Contract" },
-  { id: "closure", label: "Closure" },
+  { id: "solicitation", label: "Tender Notice" },
+  { id: "opening", label: "Bid Opening" },
+  { id: "evaluation", label: "Bid Evaluation" },
+  { id: "award", label: "Award Decision" },
+  { id: "standstill", label: "Award Review Period" },
+  { id: "contract", label: "Contract Management" },
+  { id: "closure", label: "Closeout" },
 ];
 
 const STAGE_TABS = CYCLE_STAGE_PAGES;
 
 const UTILITY_TABS: { id: CyclePageTab; label: string }[] = [
-  { id: "deadlines", label: "Deadlines" },
-  { id: "complaints", label: "Complaints" },
-  { id: "analytics", label: "Analytics" },
-  { id: "reporting", label: "Quarterly returns" },
+  { id: "deadlines", label: "Key Deadlines" },
+  { id: "complaints", label: "Complaints & Appeals" },
+  { id: "analytics", label: "Review Metrics" },
+  { id: "reporting", label: "Quarterly Reports" },
 ];
 
 export const CYCLE_PAGE_PAGES: { id: CyclePageTab; label: string; group?: string }[] = [
   ...CYCLE_STAGE_PAGES,
-  ...UTILITY_TABS.map((page) => ({ ...page, group: "DESK TOOLS" })),
+  ...UTILITY_TABS.map((page) => ({ ...page, group: "Other Records" })),
 ];
 
 const STAGE_INTROS: Record<CycleStageTab, string> = {
-  solicitation: "Prepare the tender pack, confirm its notice, and keep the planned procurement record together.",
-  opening: "Record receipt and public opening with a complete, certifiable bid register.",
-  evaluation: "Run the evaluation against the published criteria, record conflicts, and certify the matrix.",
-  award: "Resolve blockers and prepare the award report for the accountable officer’s decision.",
-  standstill: "Publish the award notice, track the review window, and clear it only when conditions are met.",
-  contract: "Manage execution, milestones, variations, and payments against the approved award.",
-  closure: "Record final acceptance and preserve the evidence that closes this procurement cycle.",
+  solicitation: "Prepare the tender notice, specifications and bidder communications before bids are due.",
+  opening: "Record when bids arrived, who submitted them and what was read at the public opening.",
+  evaluation: "Score bids against the published criteria and record conflicts, calculations and committee decisions.",
+  award: "Resolve review findings and prepare an award recommendation for the authorized officer.",
+  standstill: "Publish the award notice and track the required review period before signing the contract.",
+  contract: "Track contract delivery, milestones, changes and payments against the approved terms.",
+  closure: "Record final acceptance and keep the documents needed to close the procurement record.",
 };
 
 /* Every stage states what it must produce before it shows a control. The
@@ -731,102 +731,88 @@ const STAGE_INTROS: Record<CycleStageTab, string> = {
    yet — the record is missing, the obligation is not. */
 const STAGE_BRIEFS: Record<CycleStageTab, { label: string; lede: string; items: string[]; gate: string }> = {
   solicitation: {
-    label: "SOLICITATION · WHAT THIS PAGE MUST PRODUCE",
-    lede:
-      "The tender exists on paper before it exists in the market. Publication is the moment the rules become binding on everyone — so the notice, the specification and every answer issued before closing are built here, checked here, and signed by a named office here.",
+    label: "TENDER NOTICE",
+    lede: "Prepare the notice, specifications and bidder communications before bids are due. Keep all changes clear and available to every bidder.",
     items: [
-      "A notice carrying buyer, subject, method, budget ceiling, closing date, required documents and contact — the seven fields the publication gate refuses to pass without.",
-      "A specification or terms of reference whose mandatory requirements are written as SHALL clauses, so the review desk can pin and test them verbatim.",
-      "Every bidder question answered on the record; the answer reaches all bidders at once, never one privately.",
-      "Any addendum inside seven days of closing moves the closing date — otherwise the record is flagged as an unfair change.",
-      "A closing date the register of bids can be measured against; the notice's date is only the fallback.",
+      "Include the buyer, what is being purchased, procurement method, budget, closing date, required documents and contact details.",
+      "State mandatory requirements and evaluation criteria clearly in the published specifications.",
+      "Record each bidder's question and publish the answer for all bidders at the same time.",
+      "If an addendum is issued close to closing, extend the deadline as required by procurement rules.",
+      "Confirm the closing date before accepting or reviewing bids.",
     ],
-    gate:
-      "The machine drafts and checks. Publishing the notice, issuing an addendum and moving a closing date are gates: a named procurement-unit officer decides, and the decision is recorded with its inputs.",
+    gate: "Approval required: an authorized procurement officer reviews and approves the notice, each addendum and any change to the closing date before publication.",
   },
   opening: {
-    label: "OPENING · WHAT THIS PAGE MUST PRODUCE",
-    lede:
-      "Nothing in the cycle is more contestable than the opening. This page fixes the moment the clock stopped and preserves, bid by bid, the order in which sealed envelopes were opened and the price that was read out.",
+    label: "BID OPENING",
+    lede: "Record when bids arrived and what happened at the public opening. Keep the receipt time, bidder details and prices together in the official register.",
     items: [
-      "A closing date on record before the first bid is opened — the officer's entry wins, the notice's date is only the fallback.",
-      "Every bid as it was received, with the bidder and the exact time; the register is the tender's attendance list.",
-      "Late bids recorded as received and rejected unopened — the desk refuses to treat a late price as a competitive one.",
-      "The price read from each envelope as announced, so the record can be compared with what the bidder later signs.",
-      "A reconciliation against bids filed through the supplier portal, so no electronic submission disappears between systems.",
+      "Record the approved closing date before opening any bid.",
+      "List every bid with the bidder's name and the exact time it was received.",
+      "Record late bids and keep them unopened, in line with procurement rules.",
+      "Record each price as read aloud and retain the opening minutes.",
+      "Reconcile electronic submissions with the official bid register.",
     ],
-    gate:
-      "Certifying the register is a procurement-unit gate: the officer confirms the register matches the envelopes opened. The bid opening is never signed by the machine that transcribed it.",
+    gate: "Approval required: the procurement officer confirms that the register matches the bids opened. The approver is recorded by name.",
   },
   evaluation: {
-    label: "EVALUATION · WHAT THIS PAGE MUST PRODUCE",
-    lede:
-      "Evaluation is where a bid becomes a defensible recommendation. Every number on this page is traceable to a criterion published before closing, a sheet an evaluator signed, and a spread the committee reconciled in writing.",
+    label: "BID EVALUATION",
+    lede: "Compare bids using the criteria published in the notice. Record each evaluator's scores, conflict declarations and the committee's reasons for its recommendation.",
     items: [
-      "A conflict-of-interest declaration from every member recorded present — the certification gate refuses a partial set.",
-      "Criteria and weights summing to exactly 100, published with the notice; the validator refuses anything else.",
-      "An individual sheet per evaluator, the divergences across them, and the consensus minute that reconciles every spread.",
-      "The FX basis and the margin-of-error adjustment, written down before scoring, never after the winner is visible.",
-      "An abnormally-low-bid dossier with a justification clock of five working days for every bid it is opened against.",
+      "Collect a conflict-of-interest declaration from each committee member taking part.",
+      "Use the published criteria and weights, which must total 100 points.",
+      "Keep individual score sheets and record how the committee resolved differences.",
+      "Record exchange rates and any price adjustments before comparing bids.",
+      "Document questions and responses for bids that appear unusually low, including the response deadline.",
     ],
-    gate:
-      "Certifying the matrix is a committee gate that needs a quorum and a complete declaration set. ALB resolutions and score changes travel through the same gate — the desk cannot certify on the machine's say-so.",
+    gate: "Approval required: the evaluation committee reviews the final scores after every participating member has declared any conflict of interest.",
   },
   award: {
-    label: "AWARD · WHAT THIS PAGE MUST PRODUCE",
-    lede:
-      "The award is the desk's recommendation, never its decision. This page assembles the evidence an accounting officer is asked to stand behind: who won and why, what the method allows, who the supplier really is, and which findings were closed before the report existed.",
+    label: "AWARD DECISION",
+    lede: "Prepare an evidence-based award recommendation for the authorized officer. Make the selected bidder, evaluation results and reasons easy to verify.",
     items: [
-      "Every HIGH finding against the recommended bid disposed of by a named officer, optionally seconded — an open blocker has no award.",
-      "The procurement method on the file with its justification, and the approval reference wherever the law demands prior authority.",
-      "The supplier assurance check: ownership, registry, tax and sanctions status of the entity that would sign.",
-      "The award report composed from the certified matrix and the run's findings — the statutory document behind the recommendation.",
-      "A debrief for every unsuccessful bidder, drafted from their own record and issued at a gate.",
+      "Resolve every serious finding about the recommended bid and record who reviewed it.",
+      "Confirm the procurement method, its justification and any required prior approval.",
+      "Check the supplier's ownership, registration, tax and sanctions records.",
+      "Prepare the award report from the approved evaluation and supporting evidence.",
+      "Prepare a debrief for each unsuccessful bidder and have it approved before sending.",
     ],
-    gate:
-      "Drafting the report raises the accounting officer's gate. Nothing here publishes, notifies or awards until that signature exists — and a dissent recorded below travels with the file.",
+    gate: "Approval required: the accounting officer makes the award decision. The report is not published and bidders are not notified until approval; record any dissent with the decision.",
   },
   standstill: {
-    label: "STANDSTILL · WHAT THIS PAGE MUST PRODUCE",
-    lede:
-      "The standstill is the window in which a disappointed bidder can still change the outcome. It is measured in working days, it starts at publication, and while it runs nothing is signed and no money moves.",
+    label: "AWARD REVIEW PERIOD",
+    lede: "Track the required award review period after publishing the award notice. Sign the contract only after the period ends and any open complaint is resolved.",
     items: [
-      "A published award notice naming the winner, the price and the reasons — publication is what starts the clock, not the decision.",
-      "The review window counted in working days from publication, with the end date on the file rather than in someone's head.",
-      "Every complaint received inside the window marked as such; a live complaint holds the contract and the payment.",
-      "A lift only after the window has lapsed with no unresolved complaint — a lift is an accounting officer's decision, recorded.",
+      "Publish the award notice with the selected bidder, price and reasons for the decision.",
+      "Record the review period start and end dates in working days.",
+      "Log complaints received during the review period and track their status.",
+      "Record the accounting officer's approval before proceeding when the period ends and no complaint remains open.",
     ],
-    gate:
-      "Publishing the notice and lifting the standstill are both gates with a named signatory. The desk will not let the contract open while the review clock is still running.",
+    gate: "Approval required: an authorized officer approves publication and confirms when the review period has ended. Do not sign the contract while a complaint is unresolved.",
   },
   contract: {
-    label: "CONTRACT · WHAT THIS PAGE MUST PRODUCE",
-    lede:
-      "The award is a decision; the contract is an obligation. This page turns one into the other and then administers it: the signed instrument, the security that backs it, the milestones that measure it, and every shilling that leaves against it.",
+    label: "CONTRACT MANAGEMENT",
+    lede: "Track the signed contract from budget approval through delivery, changes and payment. Keep each milestone and supporting document in the procurement record.",
     items: [
-      "A contract pack prepared only after the award report is signed and the standstill has lapsed, committing money to a named budget line.",
-      "Execution with the performance security and insurance on the record — an unexecuted contract cannot be paid.",
-      "Supplier acceptance recorded by the supplier themselves, not typed on their behalf.",
-      "Milestones completed against evidence, and variations priced against the contract value; a variation above ten percent goes to the gate.",
-      "Payments certified on the three-way match of contract, invoice and goods receipt, inside the contract ceiling and after retention.",
-      "Performance securities received, held and verified by a named officer, with their validity dates watched.",
+      "Prepare the contract after approval of the award and completion of the review period; link it to an approved budget line.",
+      "Record the signed contract, required performance security and insurance before payment.",
+      "Record the supplier's acceptance directly from the supplier.",
+      "Verify each milestone and document contract changes; obtain approval when required by policy.",
+      "Match each payment to the contract, invoice and receipt, within the approved contract amount.",
+      "Track performance security documents, the responsible officer and expiry dates.",
     ],
-    gate:
-      "Execution and every payment are gates. The desk assembles the file and tests it against the contract value, the cumulative variation cap and the retention rule; a named accounting officer signs each one.",
+    gate: "Approval required: the accounting officer approves contract signing and each payment. Amounts are checked against the approved budget, contract limits and retention rules.",
   },
   closure: {
-    label: "CLOSURE · WHAT THIS PAGE MUST PRODUCE",
-    lede:
-      "Closure is not the absence of activity; it is a certificate, a defects period and a supplier record that outlives the file. This page is what an auditor reads when they ask whether the money bought what the tender promised.",
+    label: "PROCUREMENT CLOSEOUT",
+    lede: "Complete the procurement record after delivery. Document acceptance, outstanding defects and supplier performance for future tenders and audits.",
     items: [
-      "Final acceptance recorded against a certificate, never against a verbal handover.",
-      "The defects liability end date, so a failure discovered next year still has a route back to the supplier.",
-      "A performance rating carried into the supplier's register — the record that informs the next tender's assurance check.",
-      "A closure file that binds the notice, the register, the matrix, the award, the contract, the payments and the acceptance into one procurement file.",
-      "A retention decision on the money the desk has been holding since the first payment.",
+      "Record final acceptance against a signed certificate.",
+      "Record when the defects period ends and how a defect can be reported.",
+      "Add the supplier performance assessment to the supplier record.",
+      "Keep the notice, bid register, evaluation, award, contract, payments and acceptance together.",
+      "Record any final payment or retention decision.",
     ],
-    gate:
-      "Recording acceptance raises the completion gate. The cycle closes when a named officer signs it — and the closure file is then read-only evidence, not a working document.",
+    gate: "Approval required: an authorized officer confirms closeout. The completed procurement record remains available for review and cannot be silently changed.",
   },
 };
 
@@ -836,56 +822,50 @@ const STAGE_BRIEFS: Record<CycleStageTab, { label: string; lede: string; items: 
    Complaints is the bidder's remedy; Analytics is the read side of the log. */
 const DESK_TOOL_BRIEFS: Record<"deadlines" | "complaints" | "analytics" | "reporting", { label: string; lede: string; items: string[]; gate: string }> = {
   deadlines: {
-    label: "DEADLINES · WHAT THIS PAGE MUST PRODUCE",
-    lede:
-      "A deadline is not a diary entry; it is a consequence. Every item on this page is arithmetic over a record another page already holds — the closing date, the ALB clock, the standstill window, the milestone schedule, the complaint window. Nothing here is typed in a second time, so nothing here can quietly disagree with the file.",
+    label: "KEY DEADLINES",
+    lede: "See upcoming dates from the tender record, including bid closing, bidder responses, award review periods and contract milestones.",
     items: [
-      "The closing date as the record holds it — the officer's entry, with the notice's date only as fallback.",
-      "Abnormally-low-bid justification clocks, counted from the query and never from the bid.",
-      "Standstill ends counted in working days from publication, not from the decision that preceded it.",
-      "Milestone due dates as signed, so a slipping schedule shows up before a payment is certified against it.",
-      "Complaint windows, so an unanswered one is visible on the day it matters rather than at the audit.",
+      "The approved bid closing date, with the published notice date shown if no separate date was recorded.",
+      "Response deadlines for questions about unusually low bids.",
+      "The end of the award review period, counted in working days from publication.",
+      "Contract milestone dates so delays are visible before payment is approved.",
+      "Open complaint deadlines that need a response.",
     ],
-    gate:
-      "The desk will not let a clock be reset by editing a date here. An overdue item stays on this page until the underlying record moves through its own gate.",
+    gate: "Dates are taken from their source records. Update the underlying record to correct a date; overdue items remain visible until resolved.",
   },
   complaints: {
-    label: "COMPLAINTS · WHAT THIS PAGE MUST PRODUCE",
-    lede:
-      "A complaint is the bidder's only remedy, and the standstill is when they use it. This page preserves the grounds as filed, the response as issued, the escalation as requested and the independent review as decided — in that order, on one record, with the contract held while it is open.",
+    label: "COMPLAINTS & APPEALS",
+    lede: "Record each complaint as received, track the response and any independent review, and keep the contract on hold while a complaint is unresolved.",
     items: [
-      "The grounds as the complainant filed them, kept verbatim and never summarised into agreement.",
-      "A response drafted by the desk and issued only at a named officer's gate — not typed as if already decided.",
-      "An escalation that names the reason, with the contract and the payment held for as long as it is open.",
-      "An independent review recorded with its reviewer, outcome and note, so the file shows who decided and on what.",
-      "A closure that is an explicit act, never an expiry: a complaint does not go away because time passed.",
+      "Keep the complaint grounds in the complainant's own words.",
+      "Record the response and the officer who approved it before it is sent.",
+      "Record the reason for any appeal and keep the contract and payments on hold while it is open.",
+      "Record the independent review, reviewer, outcome and reasons.",
+      "Close a complaint only after an authorized reviewer records the outcome.",
     ],
-    gate:
-      "Responding and closing are gates. While a complaint is OPEN or ESCALATED the contract cannot be executed and no payment leaves the desk — the hold is the record, not a reminder.",
+    gate: "An authorized officer approves responses and closure. An open complaint keeps contract signing and payment on hold.",
   },
   analytics: {
-    label: "ANALYTICS · WHAT THIS PAGE MUST PRODUCE",
-    lede:
-      "This page is the read side of the append-only log: counts computed from records the desk already wrote, with no new instrumentation and no estimate standing in for a fact. A zero here is a zero the log supports, and a blank is a record that does not exist yet.",
+    label: "REVIEW METRICS",
+    lede: "These totals come from recorded tender activity. A blank means there is no recorded information yet; no figures are estimated.",
     items: [
-      "Headline counts an oversight meeting opens with: tenders in cycle, bids opened, matrices certified, contracts closed.",
-      "Where every dossier stands, counted at the stage its own record has reached — closed cycles sit at closure.",
-      "A watchlist of exceptions only: late bids, open ALB queries, unanswered complaints, running standstills.",
-      "Findings per tender, so a desk that is finding more than it used to is visible before the audit says so.",
+      "Tenders in progress, bids opened, evaluations completed and contracts closed.",
+      "The current stage and status of each tender.",
+      "Late bids, unanswered questions, open complaints and award review periods in progress.",
+      "The number of review findings for each tender.",
     ],
-    gate:
-      "Nothing on this page is a decision, and nothing on it can be edited. When a number looks wrong, the fix is on the page that owns the record — this view follows it on the next poll.",
+    gate: "This page summarizes activity and does not change tender records. Correct a figure in its source record; the summary updates automatically.",
   },
   reporting: {
-    label: "QUARTERLY RETURNS · WHAT THIS PAGE MUST PRODUCE",
-    lede: "Build the statutory return from approved contract variations and preference awards recorded in this workspace. Each period is a dated snapshot; the officer approves its digest before the external submission is recorded.",
+    label: "QUARTERLY REPORTS",
+    lede: "Prepare required quarterly procurement reports from approved contract changes and preference awards in this workspace.",
     items: [
-      "Approved variations and preference awards that fall inside the quarter, with a tender, date, amount and record reference.",
-      "The external submission reference and supporting evidence needed to trace the return to its destination.",
-      "A digest check at approval time, so changes to the underlying records refuse a stale return.",
-      "An accounting officer gate and a different preparer/approver before the report is marked submitted.",
+      "Approved contract changes and preference awards in the reporting period, with dates, amounts and tender references.",
+      "The submission reference and supporting documents for the external report.",
+      "A final check that the source records have not changed since the report was prepared.",
+      "Approval by an accounting officer who did not prepare the report.",
     ],
-    gate: "Quarterly returns are not marked submitted until the accounting officer approves the period and the staged record still matches its digest.",
+    gate: "The report is marked submitted only after an accounting officer approves it and the source records still match the prepared report.",
   },
 };
 
@@ -899,11 +879,11 @@ const CYCLE_PAGE_EMPTY_GUIDES: Partial<
   },
   evaluation: {
     title: "Evaluation file",
-    body: "Publish the criteria and exact 100-point weights with the notice, then establish the FX and margin-of-error basis before any evaluator scores.",
+    body: "Publish the scoring criteria and weights with the notice. Confirm the currency conversion and any agreed score adjustments before evaluation begins.",
     records: [
       "Conflict declarations from every present committee member",
-      "Issued notice criteria, sourced FX basis and pre-score MED record",
-      "Signed evaluator sheets, divergences, consensus minute and five-day ALB dossiers",
+      "Published criteria, currency conversion basis and score adjustments",
+      "Signed evaluator sheets, score differences, committee notes and low-bid explanation requests",
     ],
   },
   award: {
@@ -913,7 +893,7 @@ const CYCLE_PAGE_EMPTY_GUIDES: Partial<
   },
   standstill: {
     title: "Award notice and review window",
-    body: "Track notice publication, the review-window dates and any complaint that affects whether the contract can proceed.",
+    body: "Track when the award notice is published, the review-window dates and any complaint that affects whether the contract can proceed.",
     records: ["Published notice and destination", "Window start, end and current status", "Complaints and contract holds"],
   },
   contract: {
@@ -924,12 +904,12 @@ const CYCLE_PAGE_EMPTY_GUIDES: Partial<
   closure: {
     title: "Completion and close-out",
     body: "Preserve the final acceptance record and the evidence that shows how the procurement contract was completed.",
-    records: ["Acceptance certificate and defects period", "Performance rating and completion date", "Award, standstill and contract close-out checks"],
+    records: ["Acceptance certificate and defects period", "Performance rating and completion date", "Award notice, review period and contract closeout checks"],
   },
   complaints: {
     title: "Complaint and review record",
-    body: "Keep the original grounds, response, escalation and independent-review outcome visible alongside the standstill context.",
-    records: ["Complainant, grounds and receipt timestamp", "Response and approval-gate record", "Escalation, independent review and outcome"],
+    body: "Keep the original complaint, response, escalation and independent-review outcome together with the award review period.",
+    records: ["Complainant, grounds and date received", "Response and approval decision", "Escalation, independent review and outcome"],
   },
 };
 
@@ -983,7 +963,7 @@ function deriveStages(c: CycleDto | null): { stages: Stage[]; doneCount: number;
       label: "Solicitation",
       tab: "solicitation",
       done: !!c?.opening,
-      caption: c?.closingDate ? `closes ${fmtDate(c.closingDate)}` : "pack on the desk",
+      caption: c?.closingDate ? `closes ${fmtDate(c.closingDate)}` : "notice available",
     },
     {
       key: "opening",
@@ -991,7 +971,7 @@ function deriveStages(c: CycleDto | null): { stages: Stage[]; doneCount: number;
       tab: "opening",
       done: !!c?.opening?.certifiedAt,
       held: !!c?.opening && !c.opening.certifiedAt,
-      caption: c?.opening?.certifiedAt ? "register certified" : c?.opening ? "awaiting certification gate" : "public bid opening",
+      caption: c?.opening?.certifiedAt ? "register approved" : c?.opening ? "awaiting approval" : "public bid opening",
     },
     {
       key: "evaluation",
@@ -999,7 +979,7 @@ function deriveStages(c: CycleDto | null): { stages: Stage[]; doneCount: number;
       tab: "evaluation",
       done: !!c?.matrix?.certifiedBy,
       held: !!c?.matrix && !c.matrix.certifiedBy,
-      caption: c?.matrix?.certifiedBy ? "matrix certified" : c?.matrix ? "matrix in draft — at the gate" : "matrix · MED · COI",
+      caption: c?.matrix?.certifiedBy ? "matrix approved" : c?.matrix ? "matrix draft — awaiting approval" : "matrix and conflict declarations",
     },
     {
       key: "award",
@@ -1007,22 +987,22 @@ function deriveStages(c: CycleDto | null): { stages: Stage[]; doneCount: number;
       tab: "award",
       done: !!c?.awardReport?.signedAt,
       held: !!c?.awardReport && !c.awardReport.signedAt,
-      caption: c?.awardReport?.signedAt ? "report signed" : c?.awardReport ? "awaiting the gavel" : "report at the gate",
+      caption: c?.awardReport?.signedAt ? "report signed" : c?.awardReport ? "awaiting approval" : "award report needs approval",
     },
     {
       key: "standstill",
-      label: "Standstill",
+      label: "Award review period",
       tab: "standstill",
       done: !!c?.standstill && c.standstill.status !== "ACTIVE",
       held: c?.standstill?.status === "ACTIVE",
-      caption: c?.standstill?.status === "ACTIVE" ? `ends ${fmtDate(c.standstill.endsAt)}` : c?.standstill ? "lifted — clear" : "10 wd on publication",
+      caption: c?.standstill?.status === "ACTIVE" ? `ends ${fmtDate(c.standstill.endsAt)}` : c?.standstill ? "period ended" : "10 working days after publication",
     },
     {
       key: "contract",
       label: "Contract",
       tab: "contract",
       done: !!c?.contract?.completedAt,
-      caption: c?.contract?.completedAt ? "acceptance recorded" : c?.contract ? "active — milestones" : "pack · variations",
+      caption: c?.contract?.completedAt ? "acceptance recorded" : c?.contract ? "active — milestones" : "contract and changes",
     },
     {
       key: "closure",
@@ -1106,10 +1086,10 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   const enhancedChildren = enhanceControls(children);
   return (
     <div className="block min-w-0">
-      <span className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
-        {controlId ? <label htmlFor={controlId} className="eyebrow">{label}</label> : <span className="eyebrow">{label}</span>}
+      <span className="mb-1.5 flex min-w-0 flex-wrap items-start justify-between gap-x-2 gap-y-0.5">
+        {controlId ? <label htmlFor={controlId} className="eyebrow min-w-0 max-w-full whitespace-normal break-words">{label}</label> : <span className="eyebrow min-w-0 max-w-full whitespace-normal break-words">{label}</span>}
         {hint ? (
-          <span id={hintId} className="min-w-0 font-sans text-[11.5px] leading-[1.4] text-ink-600 dark:text-ink-400">{hint}</span>
+          <span id={hintId} className="min-w-0 max-w-full flex-[1_1_10rem] whitespace-normal break-words text-right font-sans text-[11.5px] leading-[1.4] text-ink-600 dark:text-ink-400">{hint}</span>
         ) : null}
       </span>
       {enhancedChildren}
@@ -1248,7 +1228,7 @@ function AssuranceCheckForm({
       <div className="grid gap-1.5 sm:grid-cols-2">
         <select className={inputCls} aria-label="Supplier evidence source" value={source} onChange={(e) => setSource(e.target.value)}>
           <option value="REGISTRY_LOOKUP">Registry lookup</option>
-          <option value="MANUAL_ATTESTATION">Manual attestation</option>
+          <option value="MANUAL_ATTESTATION">Manual declaration</option>
         </select>
         <select className={inputCls} aria-label="Supplier registry status" value={registryStatus} onChange={(e) => setRegistryStatus(e.target.value)}>
           <option value="REGISTERED">Registry: registered</option>
@@ -1502,9 +1482,9 @@ function Card({
       <>
         <section className={cn("@container panel flex min-w-0 flex-col overflow-hidden rounded-[12px]", className)}>
           <div className="flex flex-wrap items-start justify-between gap-3 px-5 pb-4 pt-[18px]">
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <h3 className="font-display text-[15px] font-bold tracking-[-0.015em] text-ink-950">{title}</h3>
-              {sub ? <p className="mt-1.5 max-w-[52ch] font-code text-[10px] leading-[1.6] tracking-[0.08em] text-ink-500 dark:text-ink-400">{sub}</p> : null}
+              {sub ? <p className="mt-1.5 w-full min-w-0 max-w-none whitespace-normal break-words font-code text-[10px] leading-[1.6] tracking-[0.08em] text-ink-500 dark:text-ink-400">{sub}</p> : null}
             </div>
             {right ? <div className="shrink-0">{right}</div> : null}
           </div>
@@ -1555,10 +1535,10 @@ function Card({
                       className="panel panel-lift flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-[12px] outline-none"
                     >
                       <header className="flex shrink-0 items-start justify-between gap-4 border-b border-ink-100 px-5 py-4 dark:border-white/[0.06] sm:px-7 sm:py-5">
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <p className="font-code text-[10px] font-bold tracking-[0.08em] text-brand-800 dark:text-brand-300">Tender cycle · guided workflow</p>
                           <h3 id={`cycle-workflow-${dialogId}`} className="mt-1 font-display text-[20px] font-black tracking-[-0.02em] text-ink-950 dark:text-white sm:text-[22px]">{title}</h3>
-                          {sub ? <p className="mt-1.5 max-w-[65ch] text-[11.5px] leading-relaxed text-ink-500 dark:text-ink-400">{sub}</p> : null}
+                          {sub ? <p className="mt-1.5 w-full min-w-0 max-w-none whitespace-normal break-words text-[11.5px] leading-relaxed text-ink-500 dark:text-ink-400">{sub}</p> : null}
                         </div>
                         <button
                           type="button"
@@ -1590,10 +1570,10 @@ function Card({
   return (
     <section className={cn("panel flex min-w-0 flex-col overflow-hidden rounded-[12px]", className)}>
       <div className="flex flex-wrap items-start justify-between gap-3 px-5 pb-4 pt-[18px]">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h3 className="font-display text-[15px] font-bold tracking-[-0.015em] text-ink-950">{title}</h3>
           {sub ? (
-            <p className="mt-1.5 max-w-[52ch] font-code text-[10px] leading-[1.6] tracking-[0.08em] text-ink-500 dark:text-ink-400">
+            <p className="mt-1.5 w-full min-w-0 max-w-none whitespace-normal break-words font-code text-[10px] leading-[1.6] tracking-[0.08em] text-ink-500 dark:text-ink-400">
               {sub}
             </p>
           ) : null}
@@ -1636,6 +1616,7 @@ function StageBrief({
   items,
   gate,
   span = false,
+  className,
 }: {
   label: string;
   lede: string;
@@ -1643,9 +1624,10 @@ function StageBrief({
   gate?: string;
   /* Inside a two-column stage grid, the brief reads across the full width. */
   span?: boolean;
+  className?: string;
 }) {
   return (
-    <section className={cn("panel overflow-hidden rounded-[12px] px-4 py-3.5 sm:px-5", span && "col-span-full")} aria-label={`${label} brief`}>
+    <section className={cn("panel overflow-hidden rounded-[12px] px-4 py-3.5 sm:px-5", span && "col-span-full", className)} aria-label={`${label} brief`}>
       <div className="flex items-start gap-3">
         <span className="mt-[3px] grid h-6 w-6 shrink-0 place-items-center rounded-full border border-brand-500/30 bg-brand-500/[0.08] text-brand-600 dark:text-brand-300">
           <Gavel className="h-3 w-3" aria-hidden="true" />
@@ -1837,7 +1819,7 @@ function TenderPicker({
       ref={boxRef}
       role="group"
       aria-roledescription="carousel"
-      aria-label="Working dossiers on the desk"
+      aria-label="Active tender records"
       className="relative w-full"
       onKeyDown={(e) => {
         /* The deck answers ← → when the dropdown is closed; when it is open
@@ -1902,7 +1884,7 @@ function TenderPicker({
           onClick={handleToggleClick}
           aria-haspopup="dialog"
           aria-expanded={open}
-          aria-label={`Tender: ${current ? `${displayReference(current)} — ${current.title}` : "select a tender"}. ${dossierStatus.label}. ${p.pct}% complete${currentCycle?.closingDate ? `. Closes ${fmtDate(currentCycle.closingDate)}; ${relDays(currentCycle.closingDate)}.` : ""} Open the dossier picker.`}
+              aria-label={`Tender: ${current ? `${displayReference(current)} — ${current.title}` : "select a tender"}. ${dossierStatus.label}. ${p.pct}% complete${currentCycle?.closingDate ? `. Closes ${fmtDate(currentCycle.closingDate)}; ${relDays(currentCycle.closingDate)}.` : ""} Open the tender list.`}
           className="min-w-0 w-full rounded-[8px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50 sm:w-auto sm:flex-1"
         >
           {/* One dossier = one slide. The key is the tender reference, so
@@ -1917,7 +1899,7 @@ function TenderPicker({
             <ProgressRing pct={p.pct} />
             <span className="min-w-0 flex-1">
               <span className="flex flex-wrap items-center gap-x-2 gap-y-1 eyebrow text-[10px] tracking-[0.12em]">
-                <span className="text-ink-400 dark:text-ink-500">Working dossier</span>
+                <span className="text-ink-400 dark:text-ink-500">Selected tender</span>
                 <Chip tone={dossierStatus.tone}>{dossierStatus.label}</Chip>
               </span>
               <span className="mt-1.5 flex min-w-0 items-baseline gap-2.5">
@@ -1925,7 +1907,7 @@ function TenderPicker({
                   {current ? displayReference(current) : "—"}
                 </span>
                 <span className="truncate text-[12px] leading-tight text-ink-500">
-                  {current?.title ?? "No tender staged on the desk yet"}
+                  {current?.title ?? "No tender selected"}
                 </span>
               </span>
               {/* One honest meta line, only from the record: the closing date
@@ -1959,7 +1941,7 @@ function TenderPicker({
               <button
                 type="button"
                 onClick={() => step(-1)}
-                aria-label={`Previous dossier (${displayReference(tenders[(at - 1 + count) % count])})`}
+                aria-label={`Previous tender (${displayReference(tenders[(at - 1 + count) % count])})`}
                 title="Previous tender"
                 className="focus-brand grid h-11 w-11 place-items-center rounded-lg border border-ink-200/70 text-ink-500 transition-colors hover:border-ink-400 hover:bg-ink-950/[0.03] hover:text-ink-900 active:scale-95 dark:border-white/10 dark:text-ink-400 dark:hover:border-white/25 dark:hover:bg-white/[0.05] dark:hover:text-white"
               >
@@ -1971,7 +1953,7 @@ function TenderPicker({
               <button
                 type="button"
                 onClick={() => step(1)}
-                aria-label={`Next dossier (${displayReference(tenders[(at + 1) % count])})`}
+                aria-label={`Next tender (${displayReference(tenders[(at + 1) % count])})`}
                 title="Next tender"
                 className="focus-brand grid h-11 w-11 place-items-center rounded-lg border border-ink-200/70 text-ink-500 transition-colors hover:border-ink-400 hover:bg-ink-950/[0.03] hover:text-ink-900 active:scale-95 dark:border-white/10 dark:text-ink-400 dark:hover:border-white/25 dark:hover:bg-white/[0.05] dark:hover:text-white"
               >
@@ -1980,7 +1962,7 @@ function TenderPicker({
             </span>
           ) : null}
           <span className="hidden text-[10.5px] font-medium text-ink-600 dark:text-ink-300 lg:block">
-            {tenders.length} tenders on desk
+            {tenders.length} tenders in this workspace
           </span>
           <button
             type="button"
@@ -2004,7 +1986,7 @@ function TenderPicker({
               key={t.ref}
               type="button"
               onClick={() => goTo(i)}
-              aria-label={`Dossier ${i + 1} of ${count}: ${displayReference(t)}`}
+              aria-label={`Tender ${i + 1} of ${count}: ${displayReference(t)}`}
               aria-current={i === at ? "true" : undefined}
               title={`${displayReference(t)} — ${t.title}`}
               className="focus-brand grid h-11 w-11 place-items-center rounded-full"
@@ -2027,8 +2009,8 @@ function TenderPicker({
           is showing now. The visual slide animation is silent by design. */}
       <span className="sr-only" aria-live="polite" aria-atomic="true">
         {count
-          ? `Dossier ${at + 1} of ${count}: ${current ? `${displayReference(current)} — ${current.title}` : "none selected"}. ${dossierStatus.label}. ${p.pct}% complete${currentCycle?.closingDate ? `. Closes ${fmtDate(currentCycle.closingDate)}; ${relDays(currentCycle.closingDate)}.` : ""}`
-          : "No tenders on the desk"}
+          ? `Tender ${at + 1} of ${count}: ${current ? `${displayReference(current)} — ${current.title}` : "none selected"}. ${dossierStatus.label}. ${p.pct}% complete${currentCycle?.closingDate ? `. Closes ${fmtDate(currentCycle.closingDate)}; ${relDays(currentCycle.closingDate)}.` : ""}`
+          : "No tenders available"}
       </span>
 
       <AnimatePresence>
@@ -2044,7 +2026,7 @@ function TenderPicker({
             className="panel panel-lift absolute left-0 right-0 z-40 mt-2 overflow-hidden rounded-[10px]"
           >
             <div className="flex items-center justify-between gap-3 border-b border-ink-100/80 px-4 py-2.5 dark:border-white/[0.06]">
-              <p className="eyebrow text-[10px] tracking-[0.1em]">Tenders on the desk</p>
+              <p className="eyebrow text-[10px] tracking-[0.1em]">Tenders in this workspace</p>
               <span className="text-[10.5px] font-medium tabular text-ink-600 dark:text-ink-300">
                 {filtered.length} / {tenders.length}
               </span>
@@ -2236,9 +2218,9 @@ function VitalStrip({ cycle }: { cycle: CycleDto | null }) {
       meta: leading !== null ? `Leading total ${leading}` : "No certified evaluation matrix",
     },
     {
-      label: "Standstill",
+      label: "Award review period",
       value: cycle?.standstill ? (standstillActive ? "Active" : "Lifted") : "—",
-      meta: cycle?.standstill ? `Ends ${fmtDate(cycle.standstill.endsAt)} · ${cycle.standstill.days} working days` : "Standstill not reached",
+      meta: cycle?.standstill ? `Ends ${fmtDate(cycle.standstill.endsAt)} · ${cycle.standstill.days} working days` : "Award review period not started",
       accent: standstillActive,
     },
     {
@@ -2323,6 +2305,7 @@ function TenderCompare({
   applications,
   current,
   onSelect,
+  onOpenEvaluation,
 }: {
   tenders: { ref: string; title: string; systemReference?: string; source?: "sample" | "record" }[];
   cycles: CycleDto[];
@@ -2330,15 +2313,21 @@ function TenderCompare({
   applications: PortalAppRow[];
   current: string;
   onSelect: (ref: string) => void;
+  onOpenEvaluation: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
+  const [compareTab, setCompareTab] = useState<"bidders" | "tenders">("bidders");
   const dialogId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const wasOpenRef = useRef(false);
+  const currentTender = tenders.find((tender) => tender.ref === current);
+  const currentCycle = cycles.find((cycle) => cycle.tenderId === current);
+  const currentMatrix = currentCycle?.matrix;
+  const bidderCount = currentMatrix?.bids.length || currentCycle?.opening?.rows.length || 0;
 
   useEffect(() => {
     if (!open) {
@@ -2373,7 +2362,27 @@ function TenderCompare({
   const start = () => {
     const others = tenders.filter((t) => t.ref !== current).map((t) => t.ref);
     setPicked([current, ...others].filter(Boolean).slice(0, 3));
+    setCompareTab("bidders");
     setOpen(true);
+  };
+
+  const handleComparisonTabKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const next = event.key === "Home"
+      ? "bidders"
+      : event.key === "End"
+        ? "tenders"
+        : compareTab === "bidders"
+          ? "tenders"
+          : "bidders";
+    setCompareTab(next);
+    document.getElementById(`${dialogId}-${next}-tab`)?.focus();
+  };
+
+  const openEvaluation = () => {
+    setOpen(false);
+    onOpenEvaluation();
   };
 
   const toggle = (r: string) =>
@@ -2472,7 +2481,7 @@ function TenderCompare({
             {r.complaints} {r.complaints === 1 ? "open complaint" : "open complaints"}
           </p>
           <p className="mt-0.5 font-code text-[10px] leading-snug tracking-[0.06em] text-ink-500 dark:text-ink-400">
-            {r.alb} ALB {r.alb === 1 ? "DOSSIER" : "DOSSIERS"}
+            {r.alb} LOW-BID {r.alb === 1 ? "REVIEW" : "REVIEWS"}
           </p>
         </>
       ),
@@ -2485,17 +2494,17 @@ function TenderCompare({
         ref={triggerRef}
         type="button"
         onClick={start}
-        disabled={tenders.length < 2}
+        disabled={tenders.length < 2 && bidderCount === 0}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={`${dialogId}-dialog`}
-        title={tenders.length < 2 ? "Stage at least two tenders to compare them" : "Compare the tenders on the desk"}
+        title={tenders.length < 2 && bidderCount === 0 ? "No bidders or additional tenders are available to compare" : "Compare bidders and tender records"}
         className="focus-brand inline-flex h-11 min-h-11 shrink-0 items-center justify-center gap-2 rounded-[10px] border border-ink-200/80 bg-[#fffdfb] px-3.5 font-code text-[10.5px] font-bold tracking-[0.08em] text-ink-800 shadow-[0_1px_2px_rgba(11,12,15,0.04)] transition-colors hover:border-brand-400 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.1] dark:bg-white/[0.04] dark:text-ink-200 dark:hover:border-brand-500/50 dark:hover:text-brand-300 sm:h-auto sm:self-stretch"
       >
         <Scale className="h-3.5 w-3.5" aria-hidden="true" />
-        Compare
+        Compare bidders
         <span className="rounded-full bg-ink-950 px-1.5 py-0.5 text-[10px] font-bold tracking-[0.04em] text-white dark:bg-white dark:text-ink-950">
-          {tenders.length}
+          {bidderCount}
         </span>
       </button>
 
@@ -2516,6 +2525,7 @@ function TenderCompare({
                 >
                   <motion.div
                     ref={dialogRef}
+                    id={`${dialogId}-dialog`}
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby={`${dialogId}-title`}
@@ -2530,33 +2540,178 @@ function TenderCompare({
                     <header className="flex shrink-0 items-start justify-between gap-4 border-b border-ink-100 px-5 py-4 dark:border-white/[0.06] sm:px-7 sm:py-5">
                       <div className="min-w-0">
                         <p className="font-code text-[10px] font-bold tracking-[0.1em] text-brand-800 dark:text-brand-300">
-                          Tender cycle · comparison
+                          Tender evaluation · bidder comparison
                         </p>
                         <h3
                           id={`${dialogId}-title`}
                           className="mt-1 font-display text-[20px] font-black tracking-[-0.02em] text-ink-950 dark:text-white sm:text-[22px]"
                         >
-                          Compare bidding tenders
+                          Compare bidders
                         </h3>
                         <p className="mt-1.5 max-w-[70ch] text-[11.5px] leading-relaxed text-ink-500 dark:text-ink-400">
-                          Closing, stage, bids and value side by side — read live from each tender&apos;s own cycle record. Pick up to four.
+                          Compare bidders against the evaluation criteria or review progress, dates and value across tenders.
                         </p>
                       </div>
                       <button
                         ref={closeRef}
                         type="button"
                         onClick={() => setOpen(false)}
-                        aria-label="Close tender comparison"
+                        aria-label="Close bidder comparison"
                         className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-lg text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-950 sm:w-10 dark:hover:bg-white/[0.06] dark:hover:text-white"
                       >
                         <X className="h-4 w-4" aria-hidden="true" />
                       </button>
                     </header>
 
+                    <div
+                      role="tablist"
+                      aria-label="Comparison views"
+                      onKeyDown={handleComparisonTabKeyDown}
+                      className="flex shrink-0 gap-1 border-b border-ink-100 px-5 dark:border-white/[0.06] sm:px-7"
+                    >
+                      <button
+                        type="button"
+                        id={`${dialogId}-bidders-tab`}
+                        role="tab"
+                        aria-selected={compareTab === "bidders"}
+                        aria-controls={`${dialogId}-bidders-panel`}
+                        tabIndex={compareTab === "bidders" ? 0 : -1}
+                        onClick={() => setCompareTab("bidders")}
+                        className={cn(
+                          "focus-brand min-h-12 border-b-2 px-3 font-code text-[10px] font-bold uppercase tracking-[0.06em] transition-colors",
+                          compareTab === "bidders"
+                            ? "border-brand-600 text-brand-800 dark:border-brand-400 dark:text-brand-300"
+                            : "border-transparent text-ink-500 hover:text-ink-900 dark:text-ink-400 dark:hover:text-white",
+                        )}
+                      >
+                        Bidder comparison
+                      </button>
+                      <button
+                        type="button"
+                        id={`${dialogId}-tenders-tab`}
+                        role="tab"
+                        aria-selected={compareTab === "tenders"}
+                        aria-controls={`${dialogId}-tenders-panel`}
+                        tabIndex={compareTab === "tenders" ? 0 : -1}
+                        onClick={() => setCompareTab("tenders")}
+                        className={cn(
+                          "focus-brand min-h-12 border-b-2 px-3 font-code text-[10px] font-bold uppercase tracking-[0.06em] transition-colors",
+                          compareTab === "tenders"
+                            ? "border-brand-600 text-brand-800 dark:border-brand-400 dark:text-brand-300"
+                            : "border-transparent text-ink-500 hover:text-ink-900 dark:text-ink-400 dark:hover:text-white",
+                        )}
+                      >
+                        Tender overview
+                      </button>
+                    </div>
+
                     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-                      {/* The desk's whole register, one tap each — the selection
-                          IS the comparison. */}
-                      <div className="border-b border-ink-100/80 px-5 py-3 dark:border-white/[0.06] sm:px-7">
+                      <div
+                        id={`${dialogId}-bidders-panel`}
+                        role="tabpanel"
+                        aria-labelledby={`${dialogId}-bidders-tab`}
+                        tabIndex={0}
+                        hidden={compareTab !== "bidders"}
+                      >
+                      <section aria-labelledby={`${dialogId}-bidders-title`} className="px-5 py-4 sm:px-7">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-code text-[10px] font-bold tracking-[0.1em] text-brand-800 dark:text-brand-300">COMPARISON BY BIDDER</p>
+                            <h4 id={`${dialogId}-bidders-title`} className="mt-1 font-display text-[16px] font-bold text-ink-950 dark:text-white">
+                              {currentTender?.title ?? "Selected tender"}
+                            </h4>
+                            <p className="mt-1 text-[11px] text-ink-500 dark:text-ink-400">
+                              {currentMatrix ? `${currentMatrix.bids.length} bidder${currentMatrix.bids.length === 1 ? "" : "s"} · ${currentMatrix.status === "CERTIFIED" ? "certified evaluation" : "draft evaluation"}` : `${bidderCount} bidder${bidderCount === 1 ? "" : "s"} on the opening register`}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={openEvaluation}
+                            title="Open the selected tender in Bid evaluation"
+                            className="focus-brand inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-ink-950 px-3.5 font-code text-[10.5px] font-bold tracking-[0.04em] text-white transition-colors hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-45 dark:bg-white dark:text-ink-950 dark:hover:bg-ink-100"
+                          >
+                            <Scale className="h-3.5 w-3.5" aria-hidden="true" />
+                            Open Bid evaluation
+                          </button>
+                        </div>
+                        <p className="mt-3 rounded-lg border border-brand-200/70 bg-brand-50/60 px-3 py-2 text-[10.5px] leading-relaxed text-ink-700 dark:border-brand-400/15 dark:bg-brand-400/[0.04] dark:text-ink-300">
+                          AI reviews that read the complete bidder submissions are started in Bid evaluation, where document sharing is disclosed and confirmed before Meta AI is called.
+                        </p>
+
+                        {currentMatrix?.bids.length ? (
+                          <div className="mt-3">
+                            <HorizontalScrollRegion label="Bidder comparison by recorded evaluation criterion">
+                              <table className="w-full min-w-[760px] border-collapse text-left text-[10.5px]">
+                                <thead>
+                                  <tr className="border-b border-ink-100 dark:border-white/[0.07]">
+                                    <th scope="col" className="sticky left-0 z-10 min-w-[150px] bg-[#fffdfb] px-3 py-2.5 font-code text-[9px] font-bold tracking-[0.06em] text-ink-600 dark:bg-[#12141a]">BIDDER</th>
+                                    {currentMatrix.criteria.map((criterion) => (
+                                      <th key={criterion.id} scope="col" className="min-w-[135px] px-3 py-2.5 align-top font-code text-[9px] font-bold tracking-[0.04em] text-ink-600">
+                                        {criterion.title} · {criterion.weight}%
+                                      </th>
+                                    ))}
+                                    <th scope="col" className="min-w-[90px] px-3 py-2.5 font-code text-[9px] font-bold tracking-[0.04em] text-ink-600">TECHNICAL</th>
+                                    <th scope="col" className="min-w-[90px] px-3 py-2.5 font-code text-[9px] font-bold tracking-[0.04em] text-ink-600">PRICE</th>
+                                    <th scope="col" className="min-w-[90px] px-3 py-2.5 font-code text-[9px] font-bold tracking-[0.04em] text-ink-600">COMBINED</th>
+                                    <th scope="col" className="min-w-[130px] px-3 py-2.5 font-code text-[9px] font-bold tracking-[0.04em] text-ink-600">RESPONSIVENESS</th>
+                                    <th scope="col" className="min-w-[130px] px-3 py-2.5 font-code text-[9px] font-bold tracking-[0.04em] text-ink-600">RECORDED OUTCOME</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {currentMatrix.bids.map((bid) => (
+                                    <tr key={bid.bidder} className="border-b border-ink-100/70 last:border-0 dark:border-white/[0.05]">
+                                      <th scope="row" className="sticky left-0 z-10 bg-[#fffdfb] px-3 py-3 align-top text-[11px] font-semibold text-ink-900 dark:bg-[#12141a] dark:text-white">
+                                        {bid.bidder}
+                                        {bid.late ? <span className="mt-1 block font-code text-[9px] font-bold text-brand-700 dark:text-brand-300">LATE BID</span> : null}
+                                      </th>
+                                      {currentMatrix.criteria.map((criterion) => {
+                                        const score = bid.technicalScores.find((entry) => entry.criterionId === criterion.id);
+                                        return (
+                                          <td key={criterion.id} className="px-3 py-3 align-top text-ink-700 dark:text-ink-300">
+                                            {score ? <>{score.score}<span className="text-ink-400">/100</span></> : <span className="text-ink-400">Not scored</span>}
+                                            {score?.note ? <p className="mt-1 max-w-[180px] leading-relaxed text-ink-500">{score.note}</p> : null}
+                                          </td>
+                                        );
+                                      })}
+                                      <td className="px-3 py-3 align-top font-semibold tabular text-ink-800 dark:text-ink-200">{bid.technicalTotal}</td>
+                                      <td className="px-3 py-3 align-top tabular text-ink-700 dark:text-ink-300">{bid.financial?.formulaScore ?? "—"}</td>
+                                      <td className="px-3 py-3 align-top font-semibold tabular text-ink-900 dark:text-white">{bid.total ?? "—"}</td>
+                                      <td className="px-3 py-3 align-top text-ink-700 dark:text-ink-300">{bid.responsiveness.replace(/_/g, " ")}</td>
+                                      <td className="px-3 py-3 align-top text-ink-700 dark:text-ink-300">{bid.verdict.replace(/_/g, " ")}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </HorizontalScrollRegion>
+                            <p className="mt-2 text-[10px] leading-relaxed text-ink-500 dark:text-ink-400">
+                              Scores and outcomes are shown as recorded in the {currentMatrix.status === "CERTIFIED" ? "certified" : "draft"} matrix. Missing scores remain unscored; they are not treated as zero.
+                            </p>
+                          </div>
+                        ) : currentCycle?.opening?.rows.length ? (
+                          <p className="mt-3 rounded-lg border border-ink-100 bg-paper px-3 py-3 text-[11px] leading-relaxed text-ink-600 dark:border-white/[0.07]">
+                            Bids are on the opening register. Build the evaluation matrix from the tender criteria to compare bidder scores.
+                          </p>
+                        ) : (
+                          <p className="mt-3 rounded-lg border border-dashed border-ink-200 px-3 py-4 text-[11px] leading-relaxed text-ink-500 dark:border-white/[0.1]">
+                            No bidders are recorded for this tender yet. The comparison will be available when bids and evaluation criteria are on file.
+                          </p>
+                        )}
+
+                      </section>
+                      </div>
+
+                      <div
+                        id={`${dialogId}-tenders-panel`}
+                        role="tabpanel"
+                        aria-labelledby={`${dialogId}-tenders-tab`}
+                        tabIndex={0}
+                        hidden={compareTab !== "tenders"}
+                      >
+                      <section aria-labelledby={`${dialogId}-tenders-title`} className="border-b border-ink-100/80 px-5 py-3 dark:border-white/[0.06] sm:px-7">
+                        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+                          <h4 id={`${dialogId}-tenders-title`} className="font-display text-[14px] font-bold text-ink-900 dark:text-white">Tender overview</h4>
+                          <p className="text-[10.5px] text-ink-500 dark:text-ink-400">Select up to four tender records</p>
+                        </div>
                         <div className="flex flex-wrap items-center gap-1.5">
                           {tenders.map((t) => {
                             const on = picked.includes(t.ref);
@@ -2586,14 +2741,14 @@ function TenderCompare({
                             );
                           })}
                           <span aria-live="polite" className="ml-auto text-[10.5px] font-semibold text-ink-600">
-                            {picked.length} of 4 selected
+                            {picked.length} selected
                           </span>
                         </div>
-                      </div>
+                      </section>
 
                       {rows.length === 0 ? (
                         <p className="px-5 py-12 text-center text-[12.5px] text-ink-500 sm:px-7">
-                          Pick at least one tender to compare.
+                          Select a tender above to compare its stage, dates, bids, value and open risks.
                         </p>
                       ) : (
                         <HorizontalScrollRegion label="Tender comparison table">
@@ -2618,7 +2773,7 @@ function TenderCompare({
                                       </span>
                                       {r.ref === current ? (
                                         <span className="rounded-full bg-ink-950 px-2 py-1 font-code text-[10px] font-bold tracking-[0.04em] text-white dark:bg-white dark:text-ink-950">
-                                          ON DESK
+                                          SELECTED
                                         </span>
                                       ) : null}
                                       {rows.length > 1 && earliest === r.closing ? (
@@ -2671,7 +2826,7 @@ function TenderCompare({
                                       }}
                                       className="focus-brand inline-flex min-h-11 items-center gap-1 font-code text-[10px] font-bold tracking-[0.06em] text-brand-800 transition-colors hover:text-brand-700 dark:text-brand-300 dark:hover:text-brand-200"
                                     >
-                                      OPEN DOSSIER
+                                      OPEN TENDER
                                       <ArrowRight className="h-2.5 w-2.5" aria-hidden="true" />
                                     </button>
                                   </td>
@@ -2681,12 +2836,12 @@ function TenderCompare({
                           </table>
                         </HorizontalScrollRegion>
                       )}
+                      </div>
                     </div>
 
                     <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-ink-100 px-5 py-3.5 dark:border-white/[0.06] sm:px-7">
                       <p className="max-w-[60ch] text-[11.5px] leading-relaxed text-ink-600">
-                        Every figure is stored on the tender&apos;s cycle record — closing date, opening register, portal
-                        applications, contract value. Nothing here is inferred.
+                        The bidder table uses the recorded evaluation matrix. The tender overview reads each selected cycle record; AI observations are advisory and never change the official evaluation.
                       </p>
                       <button
                         type="button"
@@ -2709,17 +2864,310 @@ function TenderCompare({
 
 /* ── the desk ───────────────────────────────────────────────────────────────── */
 
+type AiBidReviewResult = {
+  overview: string;
+  recommendation: { bidder: string | null; basis: string };
+  bidders: {
+    bidder: string;
+    recommendation: string;
+    criteria: {
+      criterionId: string;
+      alignment: "SUPPORTED" | "PARTIAL" | "NOT_EVIDENCED" | "UNCLEAR";
+      assessment: string;
+      evidence: { citation: string; quote: string }[];
+    }[];
+    committeeChecks: string[];
+  }[];
+  model: string;
+  evaluatedAt: string;
+  excludedLateBidders: string[];
+  documentCount: number;
+};
+
+function AiBidReview({
+  tenderId,
+  tenderTitle,
+  systemReference,
+  opening,
+  matrix,
+  canReviewBids,
+}: {
+  tenderId: string;
+  tenderTitle: string;
+  systemReference?: string;
+  opening?: OpeningDto;
+  matrix?: MatrixDto;
+  canReviewBids: boolean;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [consent, setConsent] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<AiBidReviewResult | null>(null);
+  const bidderRows = matrix?.bids ?? opening?.rows ?? [];
+  const admittedBidders = bidderRows.filter((bid) => !bid.late);
+  const matrixReady = Boolean(matrix?.criteria.length && matrix.criteriaNoticeId);
+  const openingCertified = Boolean(opening?.certifiedAt);
+  const openingReconciled = opening?.reconciliation?.matches !== false;
+  const openingReady = openingCertified && openingReconciled;
+  const ready = Boolean(canReviewBids && tenderId && openingReady && matrixReady && admittedBidders.length > 0);
+  const notice = !canReviewBids
+    ? "Your workspace role cannot read submitted evaluation documents."
+    : !openingCertified
+      ? "Certify the bid opening register before reviewing bidder submissions."
+      : !openingReconciled
+        ? "Resolve the opening-register reconciliation before reviewing bids."
+        : !matrixReady
+          ? "Build the evaluation matrix from the issued notice before reviewing bids."
+          : admittedBidders.length === 0
+            ? "There are no admitted bids to review. Late bids remain unopened."
+            : "Ready to assess every admitted bidder against the issued criteria.";
+
+  useEffect(() => {
+    setBusy(false);
+    setConsent(false);
+    setError("");
+    setResult(null);
+  }, [tenderId]);
+
+  async function runReview() {
+    if (!ready || !consent) return;
+    setBusy(true);
+    setError("");
+    setResult(null);
+    try {
+      const response = await fetch("/api/cycle/evaluate-bids", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ tenderId, confirmedDocumentSharing: consent }),
+      });
+      const data = await response.json().catch(() => ({})) as AiBidReviewResult & { error?: string };
+      if (!response.ok || !Array.isArray(data.bidders)) {
+        throw new Error(data.error ?? "Meta AI could not complete this tender review.");
+      }
+      setResult(data);
+    } catch (reviewError) {
+      setError(reviewError instanceof Error ? reviewError.message : "Meta AI could not complete this tender review.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const alignmentTone = (alignment: AiBidReviewResult["bidders"][number]["criteria"][number]["alignment"]): "ok" | "warn" | "muted" =>
+    alignment === "SUPPORTED" ? "ok" : alignment === "PARTIAL" ? "warn" : "muted";
+
+  return (
+    <Card
+      title="AI-assisted bid review"
+      sub="META AI · ISSUED CRITERIA · ALL ADMITTED BID DOCUMENTS"
+      workflow
+      busy={busy}
+      actionLabel="Review bidder submissions"
+      teaser={ready ? `${admittedBidders.length} admitted bidder${admittedBidders.length === 1 ? "" : "s"} · ${matrix?.criteria.length ?? 0} published criteria` : notice}
+    >
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(250px,0.8fr)]">
+        <div className="min-w-0 rounded-xl border border-ink-100 bg-paper p-3.5 dark:border-white/[0.07] dark:bg-white/[0.025]">
+          <p className="font-code text-[9.5px] font-bold tracking-[0.1em] text-ink-500">SELECTED TENDER</p>
+          <p className="mt-1 break-words text-[13px] font-semibold text-ink-950 dark:text-white">{tenderTitle}</p>
+          <p className="mt-1 font-code text-[10px] text-ink-500">{systemReference ?? tenderId}</p>
+          <p className="mt-2 text-[11px] leading-relaxed text-ink-600 dark:text-ink-400">
+            To review a different record, choose it from the tender selector at the top of this workflow.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { label: "Bid opening", value: openingCertified ? openingReconciled ? "Certified" : "Needs reconciliation" : "Not certified", done: openingReady },
+            { label: "Evaluation matrix", value: matrixReady ? `${matrix?.criteria.length} criteria` : "Not ready", done: matrixReady },
+            { label: "Admitted bidders", value: String(admittedBidders.length), done: admittedBidders.length > 0 },
+            { label: "Late bids", value: String(bidderRows.filter((bid) => bid.late).length), done: true },
+          ].map((step) => (
+            <div key={step.label} className="flex min-w-0 items-start gap-2 rounded-xl border border-ink-100 bg-white px-2.5 py-2 dark:border-white/[0.07] dark:bg-white/[0.025]">
+              <span className={cn("mt-0.5 grid size-4 shrink-0 place-items-center rounded-full", step.done ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-400/15 dark:text-emerald-300" : "bg-ink-100 text-ink-500 dark:bg-white/[0.08]")}>
+                {step.done ? <Check className="size-2.5" aria-hidden="true" /> : <span className="size-1 rounded-full bg-current" aria-hidden="true" />}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[10px] text-ink-500">{step.label}</span>
+                <span className="block break-words text-[11px] font-semibold text-ink-800 dark:text-ink-200">{step.value}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <section className="mt-3 rounded-xl border border-ink-100 bg-white p-3.5 dark:border-white/[0.07] dark:bg-white/[0.02]" aria-labelledby="ai-review-bidders-title">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h4 id="ai-review-bidders-title" className="text-[11.5px] font-semibold text-ink-900 dark:text-white">Bidders in this review</h4>
+          <p className="text-[10px] text-ink-500">Every admitted bidder is assessed against every issued criterion.</p>
+        </div>
+        {bidderRows.length ? (
+          <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
+            {bidderRows.map((bid) => (
+              <li key={bid.bidder} className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-ink-100 bg-paper/70 px-2.5 py-2 dark:border-white/[0.06] dark:bg-white/[0.02]">
+                <span className="min-w-0 break-words text-[11px] font-medium text-ink-800 dark:text-ink-200">{bid.bidder}</span>
+                <Chip tone={bid.late ? "warn" : "muted"}>{bid.late ? "LATE · EXCLUDED" : "ADMITTED"}</Chip>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-1.5 text-[10.5px] leading-relaxed text-ink-600 dark:text-ink-400">Bidder names will appear here after bids are recorded in the opening register.</p>
+        )}
+      </section>
+
+      <section className="mt-3 rounded-xl border border-ink-100 bg-white p-3.5 dark:border-white/[0.07] dark:bg-white/[0.02]" aria-labelledby="ai-review-criteria-title">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h4 id="ai-review-criteria-title" className="text-[11.5px] font-semibold text-ink-900 dark:text-white">Issued evaluation matrix</h4>
+          <p className="text-[10px] text-ink-500">Criteria and weights are taken from the issued notice.</p>
+        </div>
+        {matrix?.criteria.length ? (
+          <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
+            {matrix.criteria.map((criterion) => (
+              <li key={criterion.id} className="min-w-0 rounded-lg border border-ink-100 bg-paper/70 px-2.5 py-2 dark:border-white/[0.06] dark:bg-white/[0.02]">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="min-w-0 break-words text-[11px] font-semibold text-ink-800 dark:text-ink-200">{criterion.title}</p>
+                  <span className="shrink-0 font-code text-[10px] font-bold text-ink-600 dark:text-ink-300">{criterion.weight}%</span>
+                </div>
+                {criterion.evidence ? <p className="mt-1 break-words text-[10px] leading-relaxed text-ink-600 dark:text-ink-400">Evidence: {criterion.evidence}</p> : null}
+                {criterion.scoringMethod ? <p className="mt-1 break-words text-[10px] leading-relaxed text-ink-600 dark:text-ink-400">Scoring: {criterion.scoringMethod}</p> : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-1.5 text-[10.5px] leading-relaxed text-ink-600 dark:text-ink-400">Published criteria will appear here after the evaluation matrix is built from an issued notice.</p>
+        )}
+      </section>
+
+      <div className="mt-3 rounded-xl border border-brand-200/70 bg-brand-50/60 p-3 dark:border-brand-400/15 dark:bg-brand-400/[0.04]">
+        <p className="text-[11px] font-semibold text-ink-800 dark:text-ink-200">Before you run the review</p>
+        <p className="mt-1 text-[10.5px] leading-relaxed text-ink-600 dark:text-ink-400">
+          Meta AI will receive admitted bidders&apos; staged bid files, portal cover notes and readable attachments, the issued criteria, and recorded evaluation entries. If any submitted file cannot be read in full, the review stops instead of skipping it. Late bid documents are excluded. The review is advisory and will not write scores or change tender records.
+        </p>
+        <label className="mt-2.5 flex cursor-pointer items-start gap-2.5 text-[11px] leading-relaxed text-ink-700 dark:text-ink-300">
+          <input
+            type="checkbox"
+            checked={consent}
+            onChange={(event) => setConsent(event.target.checked)}
+            disabled={!canReviewBids}
+            className="mt-0.5 size-4 shrink-0 accent-brand-600"
+          />
+          <span>I am authorised to send these tender documents to Meta AI for a read-only assessment.</span>
+        </label>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <p className={cn("text-[10.5px] leading-relaxed", ready ? "text-emerald-800 dark:text-emerald-300" : "text-amber-800 dark:text-amber-300")} role="status">
+          {notice}
+        </p>
+        <button
+          type="button"
+          onClick={() => void runReview()}
+          disabled={!ready || !consent || busy}
+          aria-busy={busy}
+          className="focus-brand inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-ink-950 px-4 text-[11px] font-bold text-white transition-colors hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-45 dark:bg-white dark:text-ink-950 dark:hover:bg-ink-100"
+        >
+          {busy ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <Scale className="size-3.5" aria-hidden="true" />}
+          {busy ? "Reviewing all bids…" : result ? "Run the review again" : "Generate AI assessment"}
+        </button>
+      </div>
+
+      {busy ? (
+        <p className="mt-3 rounded-lg border border-ink-100 bg-paper px-3 py-3 text-[11px] leading-relaxed text-ink-600 dark:border-white/[0.07] dark:text-ink-300" role="status" aria-live="polite">
+          Reading the selected tender&apos;s submitted information and comparing every admitted bidder against the issued matrix. Your records remain unchanged.
+        </p>
+      ) : null}
+      {error ? <p role="alert" className="mt-3 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2.5 text-[11px] leading-relaxed text-brand-900 dark:border-brand-400/20 dark:bg-brand-400/[0.05] dark:text-brand-200">{error}</p> : null}
+
+      {result ? (
+        <div className="mt-4 space-y-3" aria-live="polite">
+          <section className="rounded-xl border border-brand-200 bg-white p-4 dark:border-brand-400/20 dark:bg-white/[0.025]">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <p className="font-code text-[9.5px] font-bold tracking-[0.1em] text-brand-700 dark:text-brand-300">META AI RECOMMENDATION · FOR COMMITTEE CONSIDERATION</p>
+                <h4 className="mt-1 text-[15px] font-bold text-ink-950 dark:text-white">
+                  {result.recommendation.bidder ?? "No clear recommendation from the available evidence"}
+                </h4>
+              </div>
+              <Chip tone="muted">ADVISORY ONLY</Chip>
+            </div>
+            <p className="mt-2 break-words text-[11.5px] leading-relaxed text-ink-700 dark:text-ink-300">{result.recommendation.basis}</p>
+            <p className="mt-2 break-words border-t border-ink-100 pt-2 text-[11px] leading-relaxed text-ink-600 dark:border-white/[0.07] dark:text-ink-400">{result.overview}</p>
+          </section>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-ink-500">
+            <span className="min-w-0 break-words">{result.bidders.length} bidders · {result.documentCount} source documents · {result.model}</span>
+            <span>Generated {new Date(result.evaluatedAt).toLocaleString()}</span>
+          </div>
+
+          {result.excludedLateBidders.length ? (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[10.5px] leading-relaxed text-amber-900 dark:border-amber-500/20 dark:bg-amber-500/[0.05] dark:text-amber-200">
+              Late bids excluded from this AI review: {result.excludedLateBidders.join(", ")}.
+            </p>
+          ) : null}
+
+          <div className="grid gap-3 xl:grid-cols-2">
+            {result.bidders.map((bidder) => (
+              <article key={bidder.bidder} className="min-w-0 rounded-xl border border-ink-100 bg-white p-3.5 dark:border-white/[0.07] dark:bg-white/[0.02]">
+                <header className="border-b border-ink-100 pb-2.5 dark:border-white/[0.07]">
+                  <p className="break-words text-[13px] font-bold text-ink-950 dark:text-white">{bidder.bidder}</p>
+                  <p className="mt-1 break-words text-[11px] leading-relaxed text-ink-700 dark:text-ink-300">{bidder.recommendation}</p>
+                </header>
+                <ul className="mt-2.5 space-y-2">
+                  {bidder.criteria.map((assessment) => {
+                    const criterion = matrix?.criteria.find((entry) => entry.id === assessment.criterionId);
+                    return (
+                      <li key={assessment.criterionId} className="rounded-lg border border-ink-100 bg-paper/70 p-2.5 dark:border-white/[0.06] dark:bg-white/[0.02]">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <p className="min-w-0 break-words text-[10.5px] font-semibold text-ink-800 dark:text-ink-200">
+                            {criterion?.title ?? assessment.criterionId}{criterion ? ` · ${criterion.weight}%` : ""}
+                          </p>
+                          <Chip tone={alignmentTone(assessment.alignment)}>{assessment.alignment.replace(/_/g, " ")}</Chip>
+                        </div>
+                        <p className="mt-1.5 text-[10.5px] leading-relaxed text-ink-700 dark:text-ink-300">{assessment.assessment}</p>
+                        {assessment.evidence.length ? (
+                          <ul className="mt-2 space-y-1.5">
+                            {assessment.evidence.map((item, index) => (
+                              <li key={`${item.citation}-${index}`} className="border-l-2 border-brand-300 pl-2.5">
+                                <blockquote className="break-words text-[10px] leading-relaxed text-ink-700 dark:text-ink-300">“{item.quote}”</blockquote>
+                                <p className="mt-0.5 break-words font-code text-[9px] text-ink-500">{item.citation}</p>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : <p className="mt-1.5 text-[10px] text-ink-500">No source quotation returned for this criterion.</p>}
+                      </li>
+                    );
+                  })}
+                </ul>
+                {bidder.committeeChecks.length ? (
+                  <div className="mt-2.5 rounded-lg border border-amber-200/70 bg-amber-50/60 p-2.5 dark:border-amber-500/15 dark:bg-amber-500/[0.04]">
+                    <p className="font-code text-[9px] font-bold tracking-[0.08em] text-amber-900 dark:text-amber-200">CHECK WITH THE COMMITTEE</p>
+                    <ul className="mt-1 space-y-1">
+                      {bidder.committeeChecks.map((check, index) => <li key={`${index}-${check}`} className="break-words text-[10px] leading-relaxed text-amber-900 dark:text-amber-100">{check}</li>)}
+                    </ul>
+                  </div>
+                ) : null}
+              </article>
+            ))}
+          </div>
+          <p className="rounded-lg border border-ink-100 bg-paper px-3 py-2.5 text-[10px] leading-relaxed text-ink-600 dark:border-white/[0.07] dark:text-ink-400">
+            The AI assessment does not score, rank, determine responsiveness, or award the tender. Verify each cited source. The evaluation committee records its scores and the authorized officer makes the award decision.
+          </p>
+        </div>
+      ) : null}
+    </Card>
+  );
+}
+
 export function CycleView({
   onToast,
   canDeleteDocuments = false,
   selectedPage = "solicitation",
   onPageChange,
+  canReviewBids = false,
 }: {
   user?: unknown;
   onToast: (m: string) => void;
   canDeleteDocuments?: boolean;
   selectedPage?: CyclePageTab;
   onPageChange?: (page: CyclePageTab) => void;
+  canReviewBids?: boolean;
 }) {
   const [tenders, setTenders] = useState<{ ref: string; title: string; systemReference?: string; source?: "sample" | "record" }[]>([]);
   const [ref, setRef] = useState("");
@@ -2841,8 +3289,8 @@ export function CycleView({
       }
       for (const cycle of cycleRows) rememberReference(cycle.tenderId, cycle.systemReference);
       for (const run of runRows) rememberReference(run.tenderId, run.reference);
-      /* Live tenders the desk has seen (runs + cycles) join the curated packs —
-         a manually staged probe tender is as real to the cycle as a sample. */
+      /* Include every pipeline, sample, cycle and review tender in the picker,
+         so the evaluation stage can open any tender record the workspace has. */
       const seen = new Set<string>();
       const list: { ref: string; title: string; systemReference?: string; source?: "sample" | "record" }[] = [];
       const push = (ref: string, title?: string, source?: "sample" | "record") => {
@@ -2851,6 +3299,9 @@ export function CycleView({
         const systemReference = systemReferences.get(ref) ?? (isSystemReference(ref) ? ref : undefined);
         list.push({ ref, title: title || "Tender record", ...(systemReference ? { systemReference } : {}), ...(source ? { source } : {}) });
       };
+      for (const entry of pipelineRows) {
+        push(entry.linkedTenderId || entry.ref, entry.title, "record");
+      }
       for (const s of samples) push(s.ref, s.title, "sample");
       for (const cyc of cycleRows) push(cyc.tenderId, undefined, "record");
       for (const r of runRows) push(r.tenderId, undefined, "record");
@@ -2939,16 +3390,15 @@ export function CycleView({
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        onToast((data.error ?? `THE CYCLE SERVICE REFUSED (HTTP ${res.status})`).toUpperCase());
+        onToast("Could not save this change. Check the required information and try again.");
         return false;
       }
-      onToast(okMsg.toUpperCase());
+      onToast(okMsg);
       await pull();
       return true;
     } catch {
-      onToast("THE CYCLE SERVICE DID NOT ANSWER — quorum-mcp UNREACHABLE");
+      onToast("Connection interrupted. Check your connection and try again.");
       return false;
     } finally {
       setBusy(false);
@@ -3132,21 +3582,21 @@ export function CycleView({
         evaluationCurrency: d.noticeEvaluationCurrency || (cycle?.methodCurrency ?? "ZMW"),
         procurementScope: selectedNoticeScope,
       },
-      "NOTICE DRAFTED — THE MANDATORY-FIELD CHECK DECIDES WHETHER IT CAN PUBLISH",
+      "Notice drafted. Complete the required fields and evaluation criteria before requesting publication approval.",
     ).then((ok) => ok && refreshCycle());
 
   const publishTenderNotice = (id: string) =>
     act(
       `/api/tenders/${ref}/notices/${id}/publish`,
       {},
-      "PUBLICATION GATE RAISED — THE PROCUREMENT UNIT SIGNS THE NOTICE",
+      "Notice submitted to the procurement unit for publication approval.",
     ).then((ok) => ok && refreshCycle());
 
   const draftSpecDoc = () =>
     act(
       `/api/tenders/${ref}/specs/draft`,
       { brief: d.specBrief },
-      "SPECIFICATION DRAFTED FROM THE BRIEF — SHALL CLAUSES ARE NOW PINNABLE",
+      "Specification drafted from your brief. Review the requirements before using it in the tender notice.",
     ).then((ok) => ok && refreshCycle());
 
   const logClarification = () =>
@@ -3165,7 +3615,7 @@ export function CycleView({
 
       <Card
         title="Tender notice"
-        sub="DRAFTED AND FIELD-CHECKED HERE — PUBLICATION IS A PROCUREMENT UNIT GATE"
+        sub="Prepare and review the notice here, then request publication approval from the procurement unit."
         right={
           currentNotice ? (
             currentNotice.issuedAt ? (
@@ -3173,7 +3623,7 @@ export function CycleView({
             ) : noticeMissing.length || !noticeCriteriaValid ? (
               <Chip tone="warn">{noticeMissing.length + (noticeCriteriaTableValid ? 0 : 1)} REQUIREMENT{noticeMissing.length + (noticeCriteriaTableValid ? 0 : 1) === 1 ? "" : "S"} MISSING</Chip>
             ) : (
-              <Chip tone="brand">READY FOR THE GATE</Chip>
+              <Chip tone="brand">READY TO REQUEST APPROVAL</Chip>
             )
           ) : (
             <Chip tone="muted">NO DRAFT</Chip>
@@ -3188,12 +3638,12 @@ export function CycleView({
                 Identify the buyer, what is being purchased, and the method used for this tender.
               </p>
             </div>
-            <Field label="SYSTEM REFERENCE" hint="Quorum-assigned ID; source-pack keys stay internal.">
+            <Field label="TENDER REFERENCE" hint="Assigned automatically to help identify this tender.">
               <input
                 id="notice-reference"
                 className={cn(inputCls, "cursor-default font-code tracking-[0.04em]")}
                 value={currentSystemReference || noticeAutoRef}
-                placeholder={noticeRefLoading ? "Assigning reference…" : "Issued when record is created"}
+                placeholder={noticeRefLoading ? "Assigning reference…" : "Assigned when the tender is created"}
                 readOnly
                 aria-readonly="true"
               />
@@ -3295,7 +3745,7 @@ export function CycleView({
                 <option value="International">International</option>
               </select>
             </Field>
-            <Field label="FX BASIS — SOURCE AND OBSERVATION DATE" hint="State the source and date/method the issued document requires bidders and evaluators to use.">
+            <Field label="CURRENCY CONVERSION BASIS" hint="State the exchange-rate source and date bidders and evaluators must use.">
               <input id="notice-fx-basis" className={inputCls} placeholder="Bank of Zambia published rate, dated YYYY-MM-DD" value={d.noticeFxBasis ?? ""} onChange={(e) => set("noticeFxBasis", e.target.value)} />
             </Field>
             <div className="rounded-xl border border-ink-100 bg-paper/60 px-3 py-2.5 text-[11px] leading-relaxed text-ink-600 dark:border-white/[0.07] dark:bg-white/[0.025] dark:text-ink-400">
@@ -3498,7 +3948,7 @@ export function CycleView({
                 onClick={() => void publishTenderNotice(currentNotice.id)}
                 disabled={busy || noticeMissing.length > 0 || !noticeCriteriaValid}
               >
-                <Stamp className="h-3.5 w-3.5" aria-hidden="true" /> Publish (procurement unit gate)
+                <Stamp className="h-3.5 w-3.5" aria-hidden="true" /> Request publication approval
               </Btn>
             ) : null}
             {currentNotice?.issuedAt ? (
@@ -3509,14 +3959,14 @@ export function CycleView({
             ) : null}
             {currentNotice?.gateId && !currentNotice.issuedAt ? (
               <span className="font-code text-[10px] leading-relaxed tracking-[0.08em] text-brand-700 dark:text-brand-300">
-                GATE {currentNotice.gateId} AWAITING A NAMED OFFICER
+                Approval request {currentNotice.gateId} is awaiting an authorized officer
               </span>
             ) : null}
           </div>
 
           {currentNotice ? (
             <div className="rounded-xl border border-ink-100 bg-paper px-3 py-2.5 dark:border-white/[0.08]">
-              <p className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-500 dark:text-ink-400">MANDATORY FIELDS · {currentNotice.fieldCheck.filter((f) => f.present).length} OF {currentNotice.fieldCheck.length}</p>
+              <p className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-500 dark:text-ink-400">REQUIRED FIELDS · {currentNotice.fieldCheck.filter((f) => f.present).length} OF {currentNotice.fieldCheck.length}</p>
               <ul className="mt-2 flex flex-wrap gap-1.5">
                 {currentNotice.fieldCheck.map((f) => (
                   <li
@@ -3557,7 +4007,7 @@ export function CycleView({
             </div>
           ) : (
             <p className="text-[11.5px] leading-relaxed text-ink-400">
-              No notice is on record for {currentReferenceLabel}. The draft is refused at the gate, not here — every mandatory field is checked the moment it is drafted.
+              No notice has been saved for {currentReferenceLabel}. Complete the required fields above before drafting one.
             </p>
           )}
         </div>
@@ -3565,8 +4015,8 @@ export function CycleView({
 
       <Card
         title="Specification / terms of reference"
-        sub="MANDATORY REQUIREMENTS AS SHALL CLAUSES — THE REVIEW DESK PINS THEM VERBATIM"
-        right={currentSpec ? <Chip tone={currentSpec.source === "llm" ? "brand" : "muted"}>{currentSpec.source === "llm" ? currentSpec.model ?? "MODEL" : "TEMPLATE"}</Chip> : undefined}
+        sub="Document the required outcomes, quantities and performance standards for bidders."
+        right={currentSpec ? <Chip tone={currentSpec.source === "llm" ? "brand" : "muted"}>{currentSpec.source === "llm" ? "AI DRAFT" : "TEMPLATE"}</Chip> : undefined}
       >
         <div className="grid gap-3">
           <Field label="BRIEF — THE NEED, THE OUTCOME, THE QUANTITIES" hint="one paragraph is enough to start">
@@ -3579,7 +4029,7 @@ export function CycleView({
           </Field>
           <div className="flex flex-wrap items-center gap-2">
             <Btn onClick={() => void draftSpecDoc()} disabled={busy || !ref || !(d.specBrief ?? "").trim()}>
-              <FileText className="h-3.5 w-3.5" aria-hidden="true" /> {currentSpec ? "Draft a fresh version" : "Draft the specification"}
+              <FileText className="h-3.5 w-3.5" aria-hidden="true" /> {currentSpec ? "Draft a fresh version" : "Save Specification"}
             </Btn>
               <span className="font-code text-[10px] leading-relaxed tracking-[0.08em] text-ink-500 dark:text-ink-400">
               {currentSpec ? `${cycle?.specs.length} VERSION${(cycle?.specs.length ?? 0) === 1 ? "" : "S"} · LATEST ${fmtDate(currentSpec.createdAt)}` : "NO SPECIFICATION ON RECORD"}
@@ -3591,7 +4041,7 @@ export function CycleView({
             </pre>
           ) : (
             <p className="text-[11.5px] leading-relaxed text-ink-400">
-              A specification is the document every technical finding is measured against. Draft it before the notice publishes: a requirement the pack never states cannot be enforced against a bid.
+              The specification defines how bids will be assessed. Prepare it before publishing the notice so every bidder has the same requirements.
             </p>
           )}
         </div>
@@ -3602,7 +4052,7 @@ export function CycleView({
         sub="AUTHOR THE SCORING BASIS BEFORE THE NOTICE IS ISSUED"
         right={
           evaluationLocked ? (
-            <Chip tone="muted">{notices.some((notice) => !!notice.issuedAt) ? "ISSUED · LOCKED" : "GATE · LOCKED"}</Chip>
+            <Chip tone="muted">{notices.some((notice) => !!notice.issuedAt) ? "ISSUED · LOCKED" : "AWAITING APPROVAL · LOCKED"}</Chip>
           ) : activeEvaluationCriteria.length === 0 ? (
             <Chip tone="warn">NO CRITERIA</Chip>
           ) : evaluationValid ? (
@@ -3620,7 +4070,7 @@ export function CycleView({
           <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{criteriaAnnouncement}</p>
           <div className="rounded-xl border border-ink-100 bg-paper/70 p-3 dark:border-white/[0.08] dark:bg-white/[0.025]">
             <p className="text-[12px] font-semibold text-ink-800 dark:text-ink-800">
-              The issued solicitation becomes the committee’s scoring contract.
+              The published notice sets the rules every bid must be evaluated against.
             </p>
             <p className="mt-1 text-[11.5px] leading-relaxed text-ink-600 dark:text-ink-400">
               For every criterion, disclose the evidence or subcriteria, the scoring method and its relative weight. Bidders see the same basis before they submit; the evaluation matrix will use the published criteria and weights exactly.
@@ -3635,7 +4085,7 @@ export function CycleView({
               <p className="text-[11.5px] font-semibold text-amber-900 dark:text-amber-200">
                 {notices.some((notice) => !!notice.issuedAt)
                   ? "This notice has been issued. Its evaluation basis is fixed for every bidder."
-                  : "A publication gate is checking this notice. Withdraw that gate before editing its criteria."}
+                  : "This notice has been submitted for publication approval. Withdraw the request before changing its evaluation criteria."}
               </p>
               {currentNotice?.issuedAt ? (
                 <p className="mt-1 text-[11px] leading-relaxed text-amber-900/80 dark:text-amber-100/80">
@@ -3980,23 +4430,23 @@ export function CycleView({
         sub="EVERY ANSWER GOES TO EVERY BIDDER — AN ADDENDUM INSIDE 7 DAYS MUST MOVE THE CLOSING"
         right={cycle?.addenda.some((a) => a.closingExtensionRequired) ? <Chip tone="warn">CLOSING EXTENSION OWED</Chip> : undefined}
       >
-        <div className="flex flex-wrap items-end gap-1.5">
+        <div className="grid min-w-0 grid-cols-1 items-end gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto]">
           <Field label="BIDDER'S QUESTION">
-            <input className={inputCls} placeholder="What a bidder asked, in their words" value={d.clarQuestion ?? ""} onChange={(e) => set("clarQuestion", e.target.value)} />
+            <textarea className={cn(inputCls, "h-20 resize-y break-words py-2 leading-relaxed")} rows={2} wrap="soft" placeholder="What a bidder asked, in their words" value={d.clarQuestion ?? ""} onChange={(e) => set("clarQuestion", e.target.value)} />
           </Field>
           <Field label="ASKED BY">
-            <input className={cn(inputCls, "w-40")} placeholder="Bidder name" value={d.clarBy ?? ""} onChange={(e) => set("clarBy", e.target.value)} />
+            <input className={inputCls} placeholder="Bidder name" value={d.clarBy ?? ""} onChange={(e) => set("clarBy", e.target.value)} />
           </Field>
-          <Btn variant="ghost" onClick={() => void logClarification()} disabled={busy || !ref || !(d.clarQuestion ?? "").trim()}>
+          <Btn className="w-full md:w-auto" variant="ghost" onClick={() => void logClarification()} disabled={busy || !ref || !(d.clarQuestion ?? "").trim()}>
             <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Log
           </Btn>
         </div>
         <ul className="mt-3 space-y-1.5">
           {cycle?.clarifications.slice(0, 6).map((c) => (
-            <li key={c.id} className="rounded-lg border border-ink-100 bg-paper px-2.5 py-2 text-[12px] dark:border-white/[0.07]">
-              <span className="font-semibold text-ink-800">{c.askedBy}:</span> <span className="text-ink-600">{c.question}</span>
+            <li key={c.id} className="min-w-0 break-words rounded-lg border border-ink-100 bg-paper px-2.5 py-2 text-[12px] dark:border-white/[0.07]">
+              <span className="font-semibold text-ink-800">{c.askedBy}:</span> <span className="min-w-0 break-words text-ink-600">{c.question}</span>
               {c.answer ? (
-                <span className="mt-1 block text-emerald-800 dark:text-emerald-300">A: {c.answer}</span>
+                <span className="mt-1 block min-w-0 break-words text-emerald-800 dark:text-emerald-300">A: {c.answer}</span>
               ) : (
                 <div className="mt-1 flex gap-1.5">
                   <input className={inputCls} aria-label={`Buyer response to clarification from ${c.askedBy}`} placeholder="Answer on behalf of the buyer — sent to every bidder" value={d[`ans-${c.id}`] ?? ""} onChange={(e) => set(`ans-${c.id}`, e.target.value)} />
@@ -4013,14 +4463,15 @@ export function CycleView({
           ))}
           {!cycle?.clarifications.length ? <li className="py-2 text-[11.5px] text-ink-400">No clarifications logged on this tender yet.</li> : null}
         </ul>
-        <div className="mt-3 flex flex-wrap items-end gap-1.5 border-t border-ink-100 pt-3 dark:border-white/[0.06]">
+        <div className="mt-3 grid min-w-0 grid-cols-1 items-end gap-3 border-t border-ink-100 pt-3 dark:border-white/[0.06] md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto]">
           <Field label="ADDENDUM SUMMARY">
             <input className={inputCls} placeholder="What changes for every bidder" value={d.addSummary ?? ""} onChange={(e) => set("addSummary", e.target.value)} />
           </Field>
           <Field label="EXTEND CLOSING TO" hint="inside 7 days it is required">
-            <input className={cn(inputCls, "w-40")} type="date" value={d.addExt ?? ""} onChange={(e) => set("addExt", e.target.value)} />
+            <input className={inputCls} type="date" value={d.addExt ?? ""} onChange={(e) => set("addExt", e.target.value)} />
           </Field>
           <Btn
+            className="w-full md:w-auto"
             variant="ghost"
             onClick={() => act(`/api/tenders/${ref}/addenda`, { summary: d.addSummary, extendsClosingTo: d.addExt || undefined }, "ADDENDUM ISSUED").then((ok) => ok && refreshCycle())}
             disabled={busy || !ref || !(d.addSummary ?? "").trim()}
@@ -4031,7 +4482,7 @@ export function CycleView({
         {cycle?.addenda.length ? (
           <ul className="mt-2 space-y-1">
             {cycle.addenda.map((a) => (
-              <li key={a.id} className="text-[11.5px] text-ink-500">
+              <li key={a.id} className="min-w-0 break-words text-[11.5px] text-ink-500">
                 Addendum {a.number}: {a.summary} {a.extendsClosingTo ? ` · closing moved to ${fmtDate(a.extendsClosingTo)}` : ""}{" "}
                 {a.closingExtensionRequired ? <Chip tone="warn">CLOSING EXTENSION REQUIRED</Chip> : null}
               </li>
@@ -4054,7 +4505,7 @@ export function CycleView({
       <StageBrief {...DESK_TOOL_BRIEFS.deadlines} />
       <Card
       title="Upcoming deadlines"
-      sub="CLOSINGS · ALB RESPONSES · STANDSTILLS · MILESTONES · COMPLAINTS — DERIVED, NEVER STORED TWICE"
+        sub="BID CLOSINGS · LOW-BID RESPONSES · AWARD REVIEW PERIODS · CONTRACT MILESTONES · COMPLAINTS"
       right={
         deadlines.length ? (
           <span className="text-[10px] font-semibold text-ink-600">
@@ -4085,8 +4536,8 @@ export function CycleView({
       {deadlines.length === 0 ? (
         <div className="rounded-xl border border-dashed border-ink-200 px-4 py-8 text-center">
           <CalendarClock className="mx-auto h-5 w-5 text-ink-400" aria-hidden="true" />
-          <p className="mt-2 text-[12.5px] text-ink-500">No live deadlines on the desk.</p>
-          <p className="mt-1 text-[11px] text-ink-400">Closings, standstill ends and milestones surface here the moment the cycle creates them.</p>
+          <p className="mt-2 text-[12.5px] text-ink-500">No upcoming deadlines.</p>
+          <p className="mt-1 text-[11px] text-ink-400">Tender closing dates, award review periods and contract milestones appear here when recorded.</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -4134,11 +4585,11 @@ export function CycleView({
         <ul className="grid gap-2 sm:grid-cols-2">
           {[
             { k: "CLOSING", v: "The closing date on the cycle record; the notice's date is used only while that entry is empty." },
-            { k: "ALB RESPONSE", v: "Five working days from the query. An open dossier blocks the bid from being recommended." },
-            { k: "STANDSTILL", v: "Counted in working days from publication — the clock starts when the market can see the notice." },
+            { k: "LOW-BID RESPONSE", v: "The bidder has five working days to respond. The bid cannot be recommended while its review is open." },
+            { k: "AWARD REVIEW PERIOD", v: "Counted in working days from publication — the period starts when bidders can see the notice." },
             { k: "MILESTONE", v: "The due date the contract was signed against, so slipping shows before a payment is certified." },
-            { k: "COMPLAINT", v: "The window inside which the desk acknowledges and answers; an open complaint holds the contract." },
-            { k: "OVERDUE", v: "Never dismissed by time alone — the item stays here until its record moves through its own gate." },
+            { k: "COMPLAINT", v: "The time allowed to acknowledge and answer. An open complaint puts the contract on hold." },
+            { k: "OVERDUE", v: "An overdue item stays visible until the responsible person resolves it." },
           ].map((row) => (
             <li key={row.k} className="rounded-xl border border-ink-100 bg-paper px-3 py-2.5 dark:border-white/[0.08]">
               <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">{row.k}</p>
@@ -4162,12 +4613,12 @@ export function CycleView({
           .filter((r) => r.bidder.trim() && r.receivedAt)
           .map((r) => ({ bidder: r.bidder, receivedAt: new Date(r.receivedAt).toISOString(), priceRead: r.priceRead || undefined })),
       },
-      "OPENING REGISTER RECORDED — CERTIFICATION GATE RAISED",
+      "Bid opening recorded and submitted for certification.",
     ).then((ok) => ok && refreshCycle());
 
   const OpeningTab = (
     <div className="grid gap-4 lg:grid-cols-2">
-      <StageBrief span {...STAGE_BRIEFS.opening} />
+      {cycle ? <StageBrief span {...STAGE_BRIEFS.opening} /> : null}
       <Card
         title="Closing date on record"
         sub="THE OFFICER'S ENTRY WINS; THE NOTICE'S DATE IS THE FALLBACK"
@@ -4177,7 +4628,7 @@ export function CycleView({
         teaser={
           cycle?.closingDate
             ? `Closing ${fmtDate(cycle.closingDate)} · ${relDays(cycle.closingDate).toUpperCase()} · every bid is judged against this moment, so the officer's entry is the record, not the notice.`
-            : "No closing date on record — the notice's date is only a fallback, and nothing can be opened against a moment the desk does not hold."
+            : "No closing date has been set. The notice date is shown as a fallback, but bids cannot be opened until an authorized officer confirms the closing date."
         }
       >
         <div className="flex items-end gap-2">
@@ -4195,7 +4646,7 @@ export function CycleView({
 
       <Card
         title="Record the public bid opening"
-        sub="LATE BIDS ARE REJECTED UNOPENED — THE REGISTER GOES TO THE PROCUREMENT UNIT'S GATE"
+        sub="Late bids remain unopened. The procurement unit reviews and certifies the bid register."
         workflow
         busy={busy}
         actionLabel="Record bid opening"
@@ -4210,7 +4661,7 @@ export function CycleView({
             <div className="flex flex-wrap items-center gap-2">
               <Chip tone="ok">REGISTER CERTIFIED{cycle.opening.certifiedBy ? ` · ${cycle.opening.certifiedBy}` : ""}</Chip>
               {cycle.opening.certifiedAt ? <span className="text-[10.5px] leading-relaxed text-ink-600">Certified {fmtDateTime(cycle.opening.certifiedAt)}</span> : null}
-              {cycle.opening.gateId ? <span className="text-[10.5px] leading-relaxed text-ink-600">Gate {cycle.opening.gateId}</span> : null}
+              {cycle.opening.gateId ? <span className="text-[10.5px] leading-relaxed text-ink-600">Approval request {cycle.opening.gateId}</span> : null}
             </div>
             <HorizontalScrollRegion label="Certified bid opening register" className="rounded-lg border border-ink-100">
               <table className="w-full min-w-[480px] text-[12px]">
@@ -4249,7 +4700,7 @@ export function CycleView({
               >
                 {cycle.opening.reconciliation.matches ? "RECONCILED" : "RECONCILIATION FAILED"} — {cycle.opening.reconciliation.note}
                 <span className="mt-1 block text-[10.5px] leading-relaxed text-ink-600">
-                  {cycle.opening.reconciliation.sealed} SEALED · {cycle.opening.reconciliation.manual} MANUAL ·{" "}
+                  {cycle.opening.reconciliation.sealed} SUBMITTED · {cycle.opening.reconciliation.manual} ENTERED MANUALLY ·{" "}
                   {cycle.opening.reconciliation.withdrawn} WITHDRAWN · {cycle.opening.reconciliation.amended} AMENDED
                 </span>
               </div>
@@ -4324,7 +4775,7 @@ export function CycleView({
             </div>
             {cycle?.opening && !cycle.opening.certifiedAt ? (
               <p className="text-[11.5px] leading-relaxed text-brand-800 dark:text-brand-300">
-                Register {cycle.opening.id} is awaiting certification{cycle.opening.gateId ? ` · Gate ${cycle.opening.gateId}` : ""}
+                Register {cycle.opening.id} is awaiting certification{cycle.opening.gateId ? ` · Approval request ${cycle.opening.gateId}` : ""}
               </p>
             ) : null}
           </div>
@@ -4348,7 +4799,7 @@ export function CycleView({
           }
           return (
             <div className="space-y-2">
-              <Chip tone="ok">{apps.length} ELECTRONIC {apps.length === 1 ? "APPLICATION" : "APPLICATIONS"} ON RECORD</Chip>
+              <Chip tone="ok">{apps.length} {apps.length === 1 ? "APPLICATION" : "APPLICATIONS"} ON RECORD</Chip>
               <HorizontalScrollRegion label="Supplier applications register" className="rounded-lg border border-ink-100">
                 <table className="w-full min-w-[620px] text-[12px]">
                   <thead>
@@ -4366,7 +4817,7 @@ export function CycleView({
                         <td className="px-2.5 py-1.5 font-semibold text-ink-900">{a.orgName}</td>
                         <td className="px-2.5 py-1.5 text-ink-500">
                           {a.sealed ? (
-                            <span className="font-code text-[10px] font-bold tracking-[0.06em] text-brand-800 dark:text-brand-300">SEALED</span>
+                            <span className="font-code text-[10px] font-bold tracking-[0.06em] text-brand-800 dark:text-brand-300">SUBMITTED</span>
                           ) : (
                             <>
                               {a.currency ? `${a.currency} ` : ""}
@@ -4523,7 +4974,7 @@ export function CycleView({
       if (!trimmed) continue;
       const match = trimmed.match(/^([A-Za-z]{3})\s*=\s*([\d.]+)\s*\|\s*(.+?)\s*\|\s*(\d{4}-\d{2}-\d{2})$/);
       if (!match) {
-        onToast("FX LINES READ: BASE = RATE | SOURCE | YYYY-MM-DD — ONE PER FOREIGN CURRENCY");
+        onToast("Enter one exchange rate per foreign currency: currency, rate, source and date.");
         return;
       }
       rates.push({ base: match[1].toUpperCase(), rate: Number(match[2]), source: match[3].trim(), asOf: match[4] });
@@ -4531,7 +4982,7 @@ export function CycleView({
     void act(
       `/api/tenders/${ref}/matrix/fx`,
       { evaluationCurrency: (d.evalCurrency ?? cycle?.matrix?.evaluationCurrency ?? "ZMW").toUpperCase(), rates },
-      "EVALUATED-PRICE BASIS SAVED",
+      "Currency conversion details saved.",
     ).then((ok) => ok && refreshCycle());
   };
 
@@ -4569,7 +5020,7 @@ export function CycleView({
         evidenceRef: d[`fin-${key}-evidence`] || "",
       };
     });
-    void act(`/api/tenders/${ref}/matrix/financial-adjustments`, { rows }, "FINANCIAL ADJUSTMENTS STAGED — PROCUREMENT UNIT CERTIFICATION GATE RAISED").then((ok) => ok && refreshCycle());
+    void act(`/api/tenders/${ref}/matrix/financial-adjustments`, { rows }, "Price adjustments submitted for procurement unit certification.").then((ok) => ok && refreshCycle());
   };
 
   const saveScores = (bidder: string) =>
@@ -4587,12 +5038,12 @@ export function CycleView({
     for (const line of (d.medAdj ?? "").split("\n").map((value) => value.trim()).filter(Boolean)) {
       const m = line.match(/^(.+?)\s*\|\s*(C-\d+)\s*=\s*([\d.]+)$/);
       if (!m) {
-        onToast("MED LINES READ: BIDDER | C-01 = SCORE — REMOVE OR CORRECT THE INVALID LINE");
+        onToast("Enter one score adjustment per line as: bidder | criterion ID = score.");
         return;
       }
       const score = Number(m[3]);
       if (!Number.isFinite(score) || score < 0 || score > 100) {
-        onToast("MED SCORE ADJUSTMENTS MUST BE BETWEEN 0 AND 100");
+        onToast("Score adjustments must be between 0 and 100.");
         return;
       }
       adjustments[`${m[1].trim()}|${m[2]}`] = score;
@@ -4600,18 +5051,18 @@ export function CycleView({
     return act(
       `/api/tenders/${ref}/matrix/med`,
       { attendees: (d.medAttendees ?? "").split(",").map((s) => s.trim()).filter(Boolean), adjustments, notes: d.medNotes },
-      "MED SESSION RECORDED",
+      "Committee score adjustments recorded.",
     ).then((ok) => ok && refreshCycle());
   };
 
   const certifyMatrix = () =>
-    act(`/api/tenders/${ref}/matrix/certify`, {}, "CERTIFICATION GATE RAISED — EVALUATION COMMITTEE SIGNS").then((ok) => ok && refreshCycle());
+    act(`/api/tenders/${ref}/matrix/certify`, {}, "Evaluation submitted for committee approval.").then((ok) => ok && refreshCycle());
 
   const openAlbDossier = () => {
     const bidder = d.albBidder ?? "";
     const basis = (d.albBasis ?? "").trim();
     if (!bidder || basis.length < 12) {
-      onToast("SELECT A BIDDER AND RECORD THE PRICING EVIDENCE FOR THE FIVE-DAY CLARIFICATION");
+      onToast("Select a bidder and explain why the price needs clarification.");
       return;
     }
     const finding = cycle?.findings?.find((item) =>
@@ -4621,11 +5072,11 @@ export function CycleView({
     void act(
       `/api/tenders/${ref}/alb`,
       { bidder, basis, ...(finding ? { findingId: finding.id } : {}) },
-      "FIVE-WORKING-DAY ALB DOSSIER OPENED — BIDDER JUSTIFICATION REQUESTED",
+      "Explanation requested from the bidder. The response is due in five working days.",
     ).then((ok) => ok && refreshCycle());
   };
 
-  /* Same rule the sidecar enforces on signing: every PRESENT member must have a COI record. */
+  /* Every participating member must have a conflict-of-interest declaration. */
   const outstandingCoi = cycle
     ? presentMembers.filter((m) => !cycle.coi.some((x) => x.member.toLowerCase() === m.name.toLowerCase()))
     : [];
@@ -4730,7 +5181,7 @@ export function CycleView({
     <div className="grid gap-4">
       <StageBrief {...STAGE_BRIEFS.evaluation} />
 
-      <Card title="Conflict-of-interest declarations" sub="EVERY PRESENT MEMBER DECLARES BEFORE THE MATRIX IS CERTIFIED — THE GATE ENFORCES IT" workflow busy={busy} actionLabel="Manage declarations" teaser={`${count(cycle.coi.length, "declaration")} for ${count(presentMembers.length, "present member")} · ${count(cycle.coi.filter((c) => c.recused).length, "recusal")} · ${cycle.coi.length >= presentMembers.length && presentMembers.length > 0 ? "the certification gate has a complete set" : "the gate will refuse a partial set"}`}>
+      <Card title="Conflict-of-interest declarations" sub="EVERY PRESENT MEMBER MUST DECLARE BEFORE THE COMMITTEE APPROVES THE EVALUATION" workflow busy={busy} actionLabel="Manage declarations" teaser={`${count(cycle.coi.length, "declaration")} for ${count(presentMembers.length, "present member")} · ${count(cycle.coi.filter((c) => c.recused).length, "recusal")} · ${cycle.coi.length >= presentMembers.length && presentMembers.length > 0 ? "all present members have declared" : "some present members still need to declare"}`}>
         {presentMembers.length === 0 ? (
           <div className="rounded-xl border border-dashed border-ink-200 px-4 py-6 text-center">
             <p className="text-[12px] font-semibold text-ink-700">No present committee members on record</p>
@@ -4803,7 +5254,7 @@ export function CycleView({
         <Card title={`Evaluation matrix ${cycle.matrix.id}`} sub={`${cycle.matrix.status} · TECHNICAL ${cycle.matrix.technicalWeightPct}/FINANCIAL ${100 - cycle.matrix.technicalWeightPct}${cycle.matrix.certifiedBy ? ` · CERTIFIED BY ${cycle.matrix.certifiedBy.toUpperCase()}` : ""}`} workflow busy={busy} actionLabel="Open evaluation matrix">
           {!scoreBasisReady && cycle.matrix.status === "DRAFT" ? (
             <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2 text-[10.5px] leading-relaxed text-amber-900 dark:border-amber-500/20 dark:bg-amber-500/[0.04] dark:text-amber-200">
-              Scoring is locked until the evaluation currency and required FX quotes are recorded and the committee records its pre-score MED basis.
+                Scoring is locked until the evaluation currency, exchange rates and any committee score adjustments are recorded.
             </div>
           ) : null}
           <HorizontalScrollRegion label="Evaluation scoring matrix">
@@ -4858,7 +5309,7 @@ export function CycleView({
                       ) : null}
                       {b.financial?.fxError ? (
                         <p className="mt-0.5 max-w-[220px] text-[11px] leading-snug text-brand-800 dark:text-brand-300">
-                          NO FX — {b.financial.fxError}
+                          Currency conversion unavailable — {b.financial.fxError}
                         </p>
                       ) : null}
                     </td>
@@ -4882,22 +5333,22 @@ export function CycleView({
           {cycle.matrix.status === "DRAFT" ? (
             <div className="mt-3 grid gap-3 border-t border-ink-100 pt-3 lg:grid-cols-2">
               <div className="space-y-2">
-                <Field label="MARGIN-OF-ERROR SESSION ATTENDEES (COMMA-SEPARATED)">
+                <Field label="COMMITTEE MEMBERS PRESENT FOR SCORE ADJUSTMENTS">
                   <input className={inputCls} value={d.medAttendees ?? ""} onChange={(e) => set("medAttendees", e.target.value)} placeholder={members.map((m) => m.name).join(", ")} disabled={scoringStarted} />
                 </Field>
-                <Field label="MARGIN-OF-ERROR ADJUSTMENTS — ONE PER LINE: BIDDER | C-01 = 85">
-                  <textarea className={cn(inputCls, "h-16 py-2")} value={d.medAdj ?? ""} onChange={(e) => set("medAdj", e.target.value)} disabled={scoringStarted} />
+                <Field label="SCORE ADJUSTMENTS — ONE PER LINE: BIDDER | CRITERION ID = SCORE">
+                  <textarea className={cn(inputCls, "h-16 py-2")} value={d.medAdj ?? ""} onChange={(e) => set("medAdj", e.target.value)} placeholder="Example: Supplier A | C-01 = 85" disabled={scoringStarted} />
                 </Field>
-                <Field label="MARGIN-OF-ERROR BASIS — ADJUSTMENT OR WHY NONE IS REQUIRED">
-                  <textarea className={cn(inputCls, "h-16 py-2")} value={d.medNotes ?? ""} onChange={(e) => set("medNotes", e.target.value)} placeholder="Record the margin-of-error basis before any scores are entered…" disabled={scoringStarted} />
+                <Field label="REASON FOR SCORE ADJUSTMENTS">
+                  <textarea className={cn(inputCls, "h-16 py-2")} value={d.medNotes ?? ""} onChange={(e) => set("medNotes", e.target.value)} placeholder="Explain each adjustment or why no adjustment is needed." disabled={scoringStarted} />
                 </Field>
                 <Btn variant="ghost" onClick={recordMed} disabled={busy || scoringStarted || (d.medNotes ?? "").trim().length < 12}>
-                  <FileSignature className="h-3.5 w-3.5" aria-hidden="true" /> Record pre-score margin-of-error basis
+                  <FileSignature className="h-3.5 w-3.5" aria-hidden="true" /> Save score adjustments
                 </Btn>
-                {scoringStarted ? <p className="text-[10.5px] leading-snug text-amber-700 dark:text-amber-300">The FX and MED basis was locked when scoring began.</p> : null}
+                {scoringStarted ? <p className="text-[10.5px] leading-snug text-amber-700 dark:text-amber-300">The currency conversion and score adjustments were locked when scoring began.</p> : null}
                 {cycle.matrix.med ? (
                   <div className="rounded-lg border border-ink-100 bg-white/70 px-2.5 py-2 text-[10.5px] leading-relaxed dark:border-white/[0.07] dark:bg-white/[0.025]">
-                    <p className="font-semibold text-ink-800">MED recorded · {fmtDateTime(cycle.matrix.med.recordedAt)}</p>
+                    <p className="font-semibold text-ink-800">Score adjustments saved · {fmtDateTime(cycle.matrix.med.recordedAt)}</p>
                     <p className="mt-1 text-ink-500">{cycle.matrix.med.notes || "No basis note on the legacy record."}</p>
                     {Object.entries(cycle.matrix.med.adjustments ?? {}).length ? (
                       <ul className="mt-1 space-y-0.5 font-code text-[10px] leading-relaxed text-ink-600">
@@ -4916,12 +5367,12 @@ export function CycleView({
                 ) : null}
                 {openAlbDossiers.length ? (
                   <p className="text-[12px] text-amber-800 dark:text-amber-300">
-                    <span className="font-semibold">Resolve open ALB dossiers before certification:</span>{" "}
+                    <span className="font-semibold">Complete these low-bid reviews before evaluation approval:</span>{" "}
                     {openAlbDossiers.map((dossier) => dossier.bidder).join(", ")}
                   </p>
                 ) : null}
                 <Btn onClick={certifyMatrix} disabled={busy || outstandingCoi.length > 0 || openAlbDossiers.length > 0}>
-                  <Stamp className="h-3.5 w-3.5" aria-hidden="true" /> Certify the matrix (gate)
+                  <Stamp className="h-3.5 w-3.5" aria-hidden="true" /> Submit evaluation for approval
                 </Btn>
               </div>
             </div>
@@ -4953,7 +5404,7 @@ export function CycleView({
             ) : (
               <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/60 px-3 py-3 dark:border-amber-500/25 dark:bg-amber-500/[0.04]">
                 <p className="text-[11.5px] font-semibold text-amber-900 dark:text-amber-200">No valid criteria table found in an issued notice.</p>
-                <p className="mt-1 text-[10.5px] leading-relaxed text-amber-800 dark:text-amber-300">In Solicitation, draft a specification with evaluation criteria, draft or redraft the notice, and publish it through the procurement-unit gate. The weights must total exactly 100 before scoring begins.</p>
+                <p className="mt-1 text-[10.5px] leading-relaxed text-amber-800 dark:text-amber-300">In Tender notice, add evaluation criteria, save the notice and request publication approval from the procurement unit. The weights must total 100 before scoring begins.</p>
               </div>
             )}
             <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
@@ -4968,10 +5419,20 @@ export function CycleView({
         </Card>
       )}
 
+      <AiBidReview
+        key={cycle.tenderId}
+        tenderId={cycle.tenderId}
+        tenderTitle={tenders.find((tender) => tender.ref === cycle.tenderId)?.title ?? pipelineForCurrent?.title ?? cycle.tenderId}
+        systemReference={currentSystemReference || undefined}
+        opening={cycle.opening}
+        matrix={cycle.matrix}
+        canReviewBids={canReviewBids}
+      />
+
       {cycle.matrix ? (
         <Card
           title="Evaluation integrity"
-          sub="EACH EVALUATOR SCORES THEIR OWN SHEET · THE COMMITTEE RECORDS THE CONSENSUS · THE MATRIX FOLLOWS IT · FOREIGN PRICES ARE SCORED ON A SOURCED FX BASIS"
+          sub="Each evaluator records their own scores. The committee documents its decision, and foreign prices use verified exchange rates."
           workflow
           busy={busy}
           actionLabel="Manage evaluation integrity"
@@ -5066,9 +5527,9 @@ export function CycleView({
           )}>
             {scoreBasisReady
               ? scoringStarted
-                ? "Pre-score FX and MED basis locked; scores and signed sheets are now being collected."
-                : "FX and MED basis recorded. The committee may now begin scoring."
-              : cycle.matrix.scoringBasisBlockReason ?? "Record the currency basis, sourced FX quotes where needed, and the MED adjustment or reason for none before scoring."}
+                ? "Currency conversion and score adjustments are locked. Evaluators can now submit their scores."
+                : "Currency conversion and score adjustments are recorded. The committee may now begin scoring."
+              : cycle.matrix.scoringBasisBlockReason ?? "Record the evaluation currency, verified exchange rates and score adjustments before scoring."}
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
@@ -5076,7 +5537,7 @@ export function CycleView({
               <p className="font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">PER-EVALUATOR SHEETS</p>
               {assignedEvaluators.length === 0 ? (
                 <p className="text-[11.5px] text-amber-700 dark:text-amber-300">
-                  No PRESENT member holds the evaluation-committee office — the certification gate refuses a panel that is not constituted.
+                No committee members are marked present. Record attendance before starting the evaluation.
                 </p>
               ) : (
                 <ul className="space-y-1.5">
@@ -5222,7 +5683,7 @@ export function CycleView({
           </div>
 
           <div className="mt-4 space-y-2 border-t border-ink-100 pt-3">
-            <p className="font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">EVALUATED-PRICE BASIS</p>
+            <p className="font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">EVALUATION CURRENCY AND EXCHANGE RATES</p>
             <div className="grid gap-1.5 sm:grid-cols-[140px_1fr]">
               <input
                 className={inputCls}
@@ -5247,7 +5708,7 @@ export function CycleView({
             <div className="flex flex-wrap items-center gap-2">
               {cycle.matrix.status === "DRAFT" ? (
                 <Btn variant="ghost" onClick={saveFx} disabled={busy || scoringStarted}>
-                  <Check className="h-3.5 w-3.5" aria-hidden="true" /> Save the FX basis
+                  <Check className="h-3.5 w-3.5" aria-hidden="true" /> Save currency details
                 </Btn>
               ) : null}
               {(cycle.matrix.fxRates ?? []).map((rate) => (
@@ -5257,40 +5718,40 @@ export function CycleView({
               ))}
             </div>
             <p className="text-[10.5px] leading-snug text-ink-400">
-              One line per foreign currency: BASE = RATE | SOURCE | YYYY-MM-DD. The financial formula scores the converted amount; the gate refuses a missing, unsourced or stale quote.
+              Enter one line per foreign currency: currency = rate | source | date (YYYY-MM-DD). Bids are compared in the selected evaluation currency using these published rates.
             </p>
-            {!scoreBasisReady ? <p className="text-[10.5px] leading-snug text-amber-700 dark:text-amber-300">Record the evaluated-price basis and pre-score MED session before any evaluator enters scores.</p> : null}
+            {!scoreBasisReady ? <p className="text-[10.5px] leading-snug text-amber-700 dark:text-amber-300">Set the evaluation currency, record exchange rates when needed, and explain any score adjustments before evaluators begin.</p> : null}
           </div>
         </Card>
       ) : null}
 
       <Card
-        title="Abnormally low bids"
-        sub="OPEN A CITED FIVE-WORKING-DAY JUSTIFICATION DOSSIER — EACH RESOLUTION NEEDS THE EVALUATION COMMITTEE GATE"
-        right={cycle.alb.some((a) => !a.resolution) ? <Chip tone="warn">{cycle.alb.filter((a) => !a.resolution).length} OPEN</Chip> : <Chip tone={cycle.alb.length ? "ok" : "muted"}>{cycle.alb.length ? "ALL RESOLVED" : "NO DOSSIERS"}</Chip>}
+        title="Review unusually low bids"
+        sub="Request an explanation from the supplier, then submit the outcome to the evaluation committee for approval."
+        right={cycle.alb.some((a) => !a.resolution) ? <Chip tone="warn">{cycle.alb.filter((a) => !a.resolution).length} OPEN</Chip> : <Chip tone={cycle.alb.length ? "ok" : "muted"}>{cycle.alb.length ? "ALL RESOLVED" : "NO OPEN REVIEWS"}</Chip>}
       >
         <div className="grid gap-3 rounded-xl border border-ink-100 bg-paper p-3 dark:border-white/[0.07]">
           <div className="grid gap-2 sm:grid-cols-[minmax(180px,0.8fr)_minmax(260px,1.5fr)_auto] sm:items-end">
-            <Field label="BIDDER — ON THIS MATRIX">
+            <Field label="SUPPLIER">
               <select className={inputCls} value={d.albBidder ?? ""} onChange={(e) => set("albBidder", e.target.value)}>
                 <option value="">Select a bidder</option>
                 {(cycle.matrix?.bids ?? []).map((bid) => <option key={bid.bidder} value={bid.bidder}>{bid.bidder}</option>)}
               </select>
             </Field>
-            <Field label="PRICE EVIDENCE — WHY JUSTIFICATION IS REQUIRED">
-              <input className={inputCls} value={d.albBasis ?? ""} onChange={(e) => set("albBasis", e.target.value)} maxLength={800} placeholder="e.g. price is materially below comparable bids for the same scope" />
+            <Field label="WHY THE PRICE NEEDS CLARIFICATION">
+              <input className={inputCls} value={d.albBasis ?? ""} onChange={(e) => set("albBasis", e.target.value)} maxLength={800} placeholder="For example, the price is far below comparable bids for the same work." />
             </Field>
             <Btn onClick={openAlbDossier} disabled={busy || cycle.matrix?.status === "CERTIFIED" || !d.albBidder || (d.albBasis ?? "").trim().length < 12 || cycle.alb.some((a) => a.bidder.toLowerCase() === (d.albBidder ?? "").toLowerCase() && !a.resolution)}>
-              <CircleAlert className="h-3.5 w-3.5" aria-hidden="true" /> Open five-day dossier
+              <CircleAlert className="h-3.5 w-3.5" aria-hidden="true" /> Request explanation
             </Btn>
           </div>
-          {cycle.matrix?.status === "CERTIFIED" ? <p className="text-[10.5px] text-ink-400">ALB dossiers must be opened and resolved before the evaluation matrix is certified.</p> : null}
+          {cycle.matrix?.status === "CERTIFIED" ? <p className="text-[10.5px] text-ink-400">Low-bid reviews must be resolved before the evaluation is approved.</p> : null}
           {d.albBidder ? (() => {
             const bid = (cycle.matrix?.bids ?? []).find((row) => row.bidder === d.albBidder);
             const signals = bid?.priceSignals ?? [];
             return signals.length ? (
               <div className="rounded-lg border border-ink-100 bg-white px-2.5 py-2 dark:border-white/[0.07] dark:bg-white/[0.025]">
-                <p className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">PRICE SCHEDULE SIGNALS · HUMAN REVIEW REQUIRED</p>
+                <p className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">PRICE COMPARISON · REVIEW REQUIRED</p>
                 <ul className="mt-1 space-y-0.5">
                   {signals.slice(0, 4).map((signal, index) => (
                     <li key={`${signal.item}-${index}`} className="text-[10.5px] leading-relaxed text-ink-600">
@@ -5300,7 +5761,7 @@ export function CycleView({
                 </ul>
               </div>
             ) : (
-              <p className="text-[10.5px] leading-relaxed text-ink-400">No same-item price comparison is available for this bid; cite the file evidence in the reason field above.</p>
+              <p className="text-[10.5px] leading-relaxed text-ink-400">No comparable item prices are available. Explain the concern in the reason field above.</p>
             );
           })() : null}
         </div>
@@ -5313,14 +5774,14 @@ export function CycleView({
                     <p className="text-[13px] font-semibold text-ink-900">{a.bidder}</p>
                     <p className="text-[11px] leading-relaxed text-ink-600">Opened {a.openedAt ? fmtDate(a.openedAt) : "—"} · Response due {fmtDate(a.responseDueAt)} · {relDays(a.responseDueAt)}</p>
                   </div>
-                  {a.resolution ? <Chip tone={a.resolution.outcome === "JUSTIFIED" ? "ok" : "warn"}>{a.resolution.outcome}</Chip> : <Chip tone="warn">OPEN</Chip>}
+                  {a.resolution ? <Chip tone={a.resolution.outcome === "JUSTIFIED" ? "ok" : "warn"}>{a.resolution.outcome === "JUSTIFIED" ? "EXPLANATION ACCEPTED" : a.resolution.outcome === "REJECTED" ? "PRICE NOT SUPPORTED" : "BID WITHDRAWN"}</Chip> : <Chip tone="warn">OPEN</Chip>}
                 </div>
                 {a.openingBasis ? <p className="mt-1.5 text-[11px] leading-relaxed text-ink-600">Basis: {a.openingBasis}</p> : null}
                 {a.response ? (
                   <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50/60 p-2.5 text-[11px] dark:border-emerald-500/20 dark:bg-emerald-500/[0.04]">
                     <p className="font-semibold text-emerald-900 dark:text-emerald-200">Bidder response received {fmtDateTime(a.response.receivedAt)} · {a.response.submittedByOrg}</p>
                     <p className="mt-1 whitespace-pre-wrap text-ink-700">{a.response.text}</p>
-                    <p className="mt-1 text-[10.5px] leading-relaxed text-ink-600">Evidence {a.response.evidenceRef} · Receipt {a.response.receiptHash?.slice(0, 16) ?? "—"}</p>
+                    <p className="mt-1 text-[10.5px] leading-relaxed text-ink-600">Supporting document: {a.response.evidenceRef} · Submission verification code: {a.response.receiptHash?.slice(0, 16) ?? "—"}</p>
                   </div>
                 ) : a.noResponseRecordedAt ? (
                   <p className="mt-2 text-[11px] text-amber-800 dark:text-amber-300">No bidder response recorded after the deadline on {fmtDateTime(a.noResponseRecordedAt)} by {a.noResponseRecordedBy}.</p>
@@ -5332,21 +5793,21 @@ export function CycleView({
                     {!a.response && !a.noResponseRecordedAt && new Date(a.responseDueAt).getTime() < Date.now() ? (
                       <Btn
                         variant="ghost"
-                        onClick={() => act(`/api/tenders/${ref}/alb/${a.id}/no-response`, {}, "ALB NON-RESPONSE RECORDED").then((ok) => ok && refreshCycle())}
+                      onClick={() => act(`/api/tenders/${ref}/alb/${a.id}/no-response`, {}, "No response recorded after the deadline.").then((ok) => ok && refreshCycle())}
                         disabled={busy}
                       >
                         Record no response after deadline
                       </Btn>
                     ) : null}
-                    <Field label="OUTCOME">
+                      <Field label="COMMITTEE DECISION">
                       <select className={inputCls} value={d[`alb-${a.id}-outcome`] ?? "JUSTIFIED"} onChange={(e) => set(`alb-${a.id}-outcome`, e.target.value)}>
-                        <option value="JUSTIFIED" disabled={!a.response}>Justified — the price is sustainable and explained</option>
-                        <option value="REJECTED">Rejected — the price is not sustainable, the bid falls away</option>
-                        <option value="WITHDRAWN">Withdrawn — the bidder stood down</option>
+                        <option value="JUSTIFIED" disabled={!a.response}>Accept the explanation — price is supported</option>
+                        <option value="REJECTED">Reject the explanation — price is not supported</option>
+                        <option value="WITHDRAWN">Bidder withdrew the offer</option>
                       </select>
                     </Field>
-                    <Field label="NOTE — THE REASONS ON THE FILE">
-                      <input className={cn(inputCls, "w-64")} placeholder="What the bidder showed, and what the committee accepted" value={d[`alb-${a.id}-note`] ?? ""} onChange={(e) => set(`alb-${a.id}-note`, e.target.value)} />
+                    <Field label="DECISION REASON">
+                      <input className={cn(inputCls, "w-64")} placeholder="Summarize the evidence and explain the committee's decision." value={d[`alb-${a.id}-note`] ?? ""} onChange={(e) => set(`alb-${a.id}-note`, e.target.value)} />
                     </Field>
                     <Btn
                       variant="ghost"
@@ -5354,21 +5815,21 @@ export function CycleView({
                         act(
                           `/api/tenders/${ref}/alb/${a.id}/resolve`,
                           { outcome: d[`alb-${a.id}-outcome`] || "JUSTIFIED", note: d[`alb-${a.id}-note`] },
-                          "ALB RESOLUTION GATE RAISED — THE COMMITTEE SIGNS",
+                          "Decision submitted to the evaluation committee for approval.",
                         ).then((ok) => ok && refreshCycle())
                       }
                       disabled={busy || !ref || (!a.response && !a.noResponseRecordedAt) || !(d[`alb-${a.id}-note`] ?? "").trim()}
                     >
-                      Resolve (gate)
+                      Submit for committee approval
                     </Btn>
                   </div>
                 )}
               </li>
             ))}
           </ul>
-        ) : <p className="mt-3 text-[11px] leading-relaxed text-ink-400">No justification dossiers are open. Each new dossier records the pricing evidence and starts its five-working-day response clock.</p>}
+        ) : <p className="mt-3 text-[11px] leading-relaxed text-ink-400">No low-bid reviews are open. A new request records the concern and gives the supplier five working days to respond.</p>}
         <p className="mt-2 text-[11px] leading-relaxed text-ink-400">
-          A resolution takes effect when the evaluation committee signs it — the dossier stays open until the gate is decided, and an under-valued bid may not be recommended while its dossier is open.
+          The committee's decision takes effect after approval. A bid cannot be recommended while its review is open.
         </p>
       </Card>
 
@@ -5382,7 +5843,7 @@ export function CycleView({
 
   /* ── Tab: award (G6/G7) ──────────────────────────────────────────────────── */
 
-  const draftAwardReport = () => act(`/api/tenders/${ref}/award-report`, {}, "AWARD REPORT DRAFTED — ACCOUNTING OFFICER GATE RAISED").then((ok) => ok && refreshCycle());
+  const draftAwardReport = () => act(`/api/tenders/${ref}/award-report`, {}, "Award report drafted and submitted for accounting officer approval.").then((ok) => ok && refreshCycle());
   const recordMethod = () =>
     act(
       `/api/tenders/${ref}/method`,
@@ -5424,10 +5885,10 @@ export function CycleView({
   const publishNotice = () => act(
     `/api/tenders/${ref}/award-notice/publish`,
     { dispatchEvidenceRef: d.awardDispatchRef },
-    "AWARD DISPATCH AND PUBLICATION GATE RAISED",
+    "Award notice submitted for publication approval.",
   ).then((ok) => ok && refreshCycle());
   const draftDebrief = (bidder: string) => act(`/api/tenders/${ref}/debrief`, { bidder }, "DEBRIEF DRAFTED").then((ok) => ok && refreshCycle());
-  const issueDebrief = (id: string) => act(`/api/tenders/${ref}/debrief/${id}/issue`, {}, "ISSUING GATE RAISED").then((ok) => ok && refreshCycle());
+  const issueDebrief = (id: string) => act(`/api/tenders/${ref}/debrief/${id}/issue`, {}, "Debrief submitted for approval.").then((ok) => ok && refreshCycle());
 
   const AwardTab = cycle ? (
     <div className="grid gap-4">
@@ -5435,21 +5896,21 @@ export function CycleView({
 
       <div className="grid gap-4 lg:grid-cols-2">
       <Card
-        title="Award blockers"
-        sub="A HIGH FINDING AGAINST THE RECOMMENDED BID IS OPEN UNTIL A NAMED DISPOSITION CLOSES IT"
+        title="Outstanding award findings"
+        sub="Resolve each serious finding about the recommended bid before submitting the award report."
         workflow
         busy={busy}
-        actionLabel="Dispose of award findings"
+        actionLabel="Review award findings"
         teaser={
           (cycle.blockers ?? []).length > 0
-            ? `${count((cycle.blockers ?? []).length, "open blocker")} — the award report gate will refuse until each one has a named disposition.`
+            ? `${count((cycle.blockers ?? []).length, "open finding")} — each one needs a recorded decision before the award report can be submitted.`
             : `${(cycle.findings ?? []).filter((f) => f.disposition).length} of ${count((cycle.findings ?? []).length, "finding")} disposed · nothing blocking the recommendation.`
         }
       >
         {(cycle.blockers ?? []).length > 0 ? (
           <div className="mb-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-[11.5px] text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
             <p className="font-code text-[10px] font-semibold tracking-[0.06em]">
-              The gate will refuse this report until all {(cycle.blockers ?? []).length} blocker{(cycle.blockers ?? []).length === 1 ? "" : "s"} are resolved.
+              Resolve these findings before submitting the award report:
             </p>
             <ul className="mt-1 list-disc space-y-1 pl-4">
               {(cycle.blockers ?? []).map((blocker, i) => (
@@ -5518,21 +5979,21 @@ export function CycleView({
         )}
         {blockerFindings.length > 0 ? (
           <p className="mt-3 text-[11px] text-amber-700 dark:text-amber-300">
-            The award signature is refused while {blockerFindings.length} HIGH finding{blockerFindings.length === 1 ? " is" : "s are"} undispositioned.
+            The award report cannot be approved while {blockerFindings.length} serious finding{blockerFindings.length === 1 ? " remains" : "s remain"} unresolved.
           </p>
         ) : null}
       </Card>
 
       <Card
         title="Procurement method"
-        sub="THE LEGAL ROUTE — A NON-OPEN CHOICE NEEDS A JUSTIFICATION AND THE ACCOUNTING OFFICER'S METHOD GATE"
+        sub="Some procurement methods require a written justification and accounting officer approval."
         workflow
         busy={busy}
         actionLabel="Record the procurement method"
         teaser={
           cycle.method?.methodId
-            ? `${cycle.method.name ?? cycle.method.methodId}${cycle.method.approvalRef ? ` · authority ${cycle.method.approvalRef}` : " · no approval reference"}${cycle.method.ok ? " · clears the value band" : ` · ${cycle.method.block ?? "blocked"}`}`
-            : "No method on the file — the award report cannot be signed until the legal route is chosen and justified."
+            ? `${cycle.method.name ?? "Selected procurement method"}${cycle.method.approvalRef ? ` · approval reference ${cycle.method.approvalRef}` : " · no approval reference"}${cycle.method.ok ? " · meets the value limit" : ` · ${cycle.method.block ?? "review required"}`}`
+            : "Select a procurement method and record any required justification before submitting the award report."
         }
       >
         {cycle.method?.methodId ? (
@@ -5544,7 +6005,7 @@ export function CycleView({
                   APPROVED {fmtDate(cycle.methodApprovedAt)} · {cycle.methodApprovedBy?.toUpperCase() ?? "—"}
                 </Chip>
               ) : cycle.methodId && !isDefaultBiddingMethod(cycle.methodId) ? (
-                <Chip tone="brand">METHOD GATE PENDING</Chip>
+                <Chip tone="brand">AWAITING METHOD APPROVAL</Chip>
               ) : null}
               {cycle.method.approvalRef ? <Chip tone="muted">{cycle.method.approvalRef}</Chip> : null}
             </div>
@@ -5735,7 +6196,7 @@ export function CycleView({
         {cycle.awardReport ? (
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              {cycle.awardReport.signedAt ? <Chip tone="ok">SIGNED BY {cycle.awardReport.signedBy?.toUpperCase()}</Chip> : <Chip tone="brand">AWAITING SIGNATURE GATE</Chip>}
+              {cycle.awardReport.signedAt ? <Chip tone="ok">SIGNED BY {cycle.awardReport.signedBy?.toUpperCase()}</Chip> : <Chip tone="brand">AWAITING ACCOUNTING OFFICER APPROVAL</Chip>}
               {cycle.awardReport.recommendation ? <Chip tone="muted">{cycle.awardReport.recommendation.toUpperCase()}</Chip> : null}
             </div>
             <p className="break-all font-mono text-[10px] leading-relaxed text-ink-600">SHA-256 · {cycle.awardReport.sha}</p>
@@ -5751,7 +6212,7 @@ export function CycleView({
           </Btn>
         )}
         <p className="mt-3 text-[11.5px] leading-relaxed text-ink-400">
-          The report composes from the certified matrix and the run's findings. The accounting officer signs at the gate; publication follows.
+          This report uses the approved evaluation matrix and review findings. An accounting officer must approve it before publication.
         </p>
       </Card>
 
@@ -5774,7 +6235,7 @@ export function CycleView({
             {cycle.debriefs.map((l) => (
               <li key={l.id} className="flex items-center justify-between gap-3 rounded-xl border border-ink-100 bg-paper px-3 py-2.5">
                 <span className="text-[13px] font-semibold text-ink-900">{l.bidder}</span>
-                {l.status === "ISSUED" ? <Chip tone="ok">ISSUED</Chip> : <Btn variant="ghost" onClick={() => issueDebrief(l.id)} disabled={busy}>Issue (gate)</Btn>}
+                {l.status === "ISSUED" ? <Chip tone="ok">SENT</Chip> : <Btn variant="ghost" onClick={() => issueDebrief(l.id)} disabled={busy}>Submit for approval</Btn>}
               </li>
             ))}
           </ul>
@@ -5796,19 +6257,19 @@ export function CycleView({
     <div className="grid gap-4 lg:grid-cols-2">
       <StageBrief span {...STAGE_BRIEFS.standstill} />
       <Card
-        title="Award notice and standstill"
-        sub="PUBLICATION OPENS THE STATUTORY REVIEW WINDOW"
+        title="Award notice and review period"
+        sub="Publication starts the required review period for bidders."
         workflow
         busy={busy}
         actionLabel="Manage notice"
         teaser={
-          `${cycle.awardNotice?.publishedAt ? `Published ${fmtDate(cycle.awardNotice.publishedAt)} on ${cycle.awardNotice.portal}` : "Not yet published — the review clock has not started"} · standstill ${cycle.standstill ? `${cycle.standstill.status.toLowerCase()} · ${count(cycle.standstill.days, "working day", "working days")}` : "not opened"}`
+          `${cycle.awardNotice?.publishedAt ? `Published ${fmtDate(cycle.awardNotice.publishedAt)} on ${cycle.awardNotice.portal}` : "Not yet published — the review period has not started"} · review period ${cycle.standstill ? `${cycle.standstill.status === "ACTIVE" ? "in progress" : "complete"} · ${count(cycle.standstill.days, "working day", "working days")}` : "not started"}`
         }
       >
         {cycle.standstill ? (
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              <Chip tone={cycle.standstill.status === "ACTIVE" ? "brand" : "muted"}>STANDSTILL {cycle.standstill.status}</Chip>
+              <Chip tone={cycle.standstill.status === "ACTIVE" ? "brand" : "muted"}>REVIEW PERIOD {cycle.standstill.status === "ACTIVE" ? "IN PROGRESS" : "COMPLETE"}</Chip>
               <span className="font-code text-[10px] tracking-[0.12em] text-ink-500">
                 ENDS {fmtDate(cycle.standstill.endsAt)} · {cycle.standstill.days} WORKING DAYS
               </span>
@@ -5821,25 +6282,25 @@ export function CycleView({
             {cycle.standstill.status === "ACTIVE" ? (
               <Btn
                 variant="ghost"
-                onClick={() => act(`/api/tenders/${ref}/standstill/lift`, {}, "STANDSTILL LAPSE APPROVAL GATE RAISED").then((ok) => ok && refreshCycle())}
+                onClick={() => act(`/api/tenders/${ref}/standstill/lift`, {}, "Review period completion submitted for approval.").then((ok) => ok && refreshCycle())}
                 disabled={busy || new Date(cycle.standstill.endsAt).getTime() > Date.now() || cycle.complaints.some((c) => c.status === "OPEN" || c.status === "ESCALATED")}
               >
-                <Check className="h-3.5 w-3.5" aria-hidden="true" /> Mark elapsed (approval gate)
+                <Check className="h-3.5 w-3.5" aria-hidden="true" /> Submit period completion for approval
               </Btn>
             ) : (
-              <p className="text-[11.5px] leading-relaxed text-ink-500">The review window is recorded as elapsed. Contract signing still checks the statutory end time and open complaints.</p>
+              <p className="text-[11.5px] leading-relaxed text-ink-500">The review period is complete. Contract signing still checks the required end time and any open complaints.</p>
             )}
           </div>
         ) : cycle.awardNotice?.publishedAt ? (
           <div className="space-y-3">
             <Chip tone="ok">AWARD NOTICE PUBLISHED · {cycle.awardNotice.portal}</Chip>
             <p className="text-[11.5px] leading-relaxed text-ink-500">Dispatch recorded {fmtDateTime(cycle.awardNotice.dispatchedAt)} to {(cycle.awardNotice.dispatchedTo ?? []).length} bidders. Evidence: {cycle.awardNotice.dispatchEvidenceRef ?? "—"}.</p>
-            {cycle.awardNotice.standstillExemptReason ? <p className="text-[11.5px] text-ink-500">No standstill applies: {cycle.awardNotice.standstillExemptReason}</p> : null}
+            {cycle.awardNotice.standstillExemptReason ? <p className="text-[11.5px] text-ink-500">No award review period applies: {cycle.awardNotice.standstillExemptReason}</p> : null}
           </div>
         ) : cycle.awardNotice ? (
           <div className="space-y-3">
-            <Chip tone="brand">NOTICE DRAFTED · PUBLICATION GATE PENDING</Chip>
-            <p className="text-[11.5px] leading-relaxed text-ink-500">Award report signed. The notice must be sent to every bidder; the dispatch evidence is staged for the accounting officer gate.</p>
+            <Chip tone="brand">NOTICE DRAFTED · AWAITING APPROVAL</Chip>
+            <p className="text-[11.5px] leading-relaxed text-ink-500">The award report is signed. The notice must be sent to every bidder, and the accounting officer must approve the delivery record.</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -5857,14 +6318,14 @@ export function CycleView({
         )}
       </Card>
 
-      <Card title="Review window" sub="THE CLOCK AND COMPLAINTS THAT HOLD THE CONTRACT" workflow busy={busy} actionLabel="Review standstill status" teaser={
+      <Card title="Award review period" sub="Track the required period and complaints before the contract can proceed." workflow busy={busy} actionLabel="Review period status" teaser={
         cycle.standstill
           ? `Ends ${fmtDate(cycle.standstill.endsAt)} · ${
               cycle.complaints.filter((c) => c.status === "OPEN" || c.status === "ESCALATED").length === 0
-                ? "no live complaint — the lift is clean"
+                ? "no open complaint — the contract may proceed once the period ends"
                 : `${count(cycle.complaints.filter((c) => c.status === "OPEN" || c.status === "ESCALATED").length, "live complaint")} holding the contract and the payment`
             }`
-          : "Not started — the window opens when the award notice is published, not when the decision is signed."
+          : "Not started — the review period begins when the award notice is published."
       }>
         {cycle.standstill ? (
           <div className="space-y-3">
@@ -5880,8 +6341,8 @@ export function CycleView({
             </div>
             <p className="text-[11.5px] leading-relaxed text-ink-500">
               {cycle.standstill.status === "ACTIVE"
-                ? "Keep the contract on hold while the review window is active or any complaint remains unresolved."
-                : "The standstill is lifted. Keep the notice and complaint record with the award file."}
+                ? "Keep the contract on hold while the review period is active or any complaint remains unresolved."
+                : "The review period is complete. Keep the notice and complaint record with the award decision."}
             </p>
             {cycle.complaints.some((complaint) => complaint.status === "OPEN" || complaint.status === "ESCALATED") ? (
               <Chip tone="warn">OPEN COMPLAINT · CONTRACT REMAINS ON HOLD</Chip>
@@ -5889,8 +6350,8 @@ export function CycleView({
           </div>
         ) : (
           <div className="rounded-xl border border-dashed border-ink-200 px-4 py-7 text-center dark:border-white/[0.12]">
-            <p className="text-[12px] font-semibold text-ink-700">Standstill has not started</p>
-            <p className="mt-1.5 text-[11px] leading-relaxed text-ink-400">Publish the signed award notice to begin the review window.</p>
+            <p className="text-[12px] font-semibold text-ink-700">Award review period has not started</p>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-ink-400">Publish the signed award notice to begin the review period.</p>
           </div>
         )}
       </Card>
@@ -5906,7 +6367,7 @@ export function CycleView({
         budgetLineId: d.budgetLine || budgetLines[0]?.id,
         retentionPct: d.retentionPct ? Number(d.retentionPct) : undefined,
       },
-      "CONTRACT PACK PREPARED — ACCOUNTING OFFICER GATE RAISED",
+      "Contract documents prepared and submitted for accounting officer approval.",
     ).then((ok) => ok && refreshCycle());
   const createBudgetLine = () =>
     act(
@@ -5917,7 +6378,7 @@ export function CycleView({
         currency: d.budCurrency || "ZMW",
         approved: Number(d.budApproved),
       },
-      "BUDGET LINE ON THE REGISTER",
+      "Budget line saved.",
     ).then((ok) => ok && refreshCycle());
   const executeContract = () =>
     act(
@@ -5935,7 +6396,7 @@ export function CycleView({
           validUntil: d.insValid,
         },
       },
-      "CONTRACT EXECUTION GATE RAISED",
+      "Contract submitted for signing approval.",
     ).then((ok) => ok && refreshCycle());
   const addMilestone = () =>
     act(`/api/tenders/${ref}/contract/milestones`, { title: d.milTitle, dueDate: d.milDue || undefined }, "MILESTONE ADDED").then(
@@ -5947,7 +6408,7 @@ export function CycleView({
       valueDelta: Number(d.varDelta),
       legalAdviceRef: d.varAdvice,
       approvalReference: d.varApproval,
-    }, "VARIATION APPROVAL GATE RAISED").then(
+    }, "Contract change submitted for approval.").then(
       (ok) => ok && (setD((p) => ({ ...p, varDesc: "", varDelta: "", varAdvice: "", varApproval: "" })), refreshCycle()),
     );
   const addPayment = () =>
@@ -5961,7 +6422,7 @@ export function CycleView({
         goodsReceiptId: d.payGrn,
         withholding: d.payWithholding ? Number(d.payWithholding) : undefined,
       },
-      "PAYMENT CERTIFICATION GATE RAISED",
+      "Payment submitted for approval.",
     ).then((ok) => ok && (setD((p) => ({ ...p, payDesc: "", payAmount: "" })), refreshCycle()));
 
   const ContractTab = cycle ? (
@@ -5970,11 +6431,11 @@ export function CycleView({
         <StageBrief span {...STAGE_BRIEFS.contract} />
         <Card
           title={`Contract — ${cycle.contract.supplier}`}
-          sub={`${cycle.contract.currency ?? ""} ${fmtMoney(cycle.contract.value)} · ${cycle.contract.completedAt ? "COMPLETED" : cycle.contract.status ?? "LEGACY_UNEXECUTED"}`}
+          sub={`${cycle.contract.currency ?? ""} ${fmtMoney(cycle.contract.value)} · ${cycle.contract.completedAt ? "Completed" : cycle.contract.status === "EXECUTED" ? "Signed" : cycle.contract.status === "COMPLETED" ? "Completed" : cycle.contract.status ?? "Not signed"}`}
           workflow
           busy={busy}
           actionLabel="Manage contract"
-          teaser={`${cycle.contract.executedAt ? `Executed ${fmtDate(cycle.contract.executedAt)}` : "Not executed"} · security ${cycle.contract.security ? `${fmtMoney(cycle.contract.security.amount)} with ${cycle.contract.security.issuer}` : "not on record"} · retention ${cycle.contract.retentionPct !== undefined ? `${cycle.contract.retentionPct}%` : "not set"} · ${count((cycle.contract.payments ?? []).length, "payment")} certified`}
+          teaser={`${cycle.contract.executedAt ? `Signed ${fmtDate(cycle.contract.executedAt)}` : "Not signed"} · performance guarantee ${cycle.contract.security ? `${fmtMoney(cycle.contract.security.amount)} with ${cycle.contract.security.issuer}` : "not recorded"} · retention ${cycle.contract.retentionPct !== undefined ? `${cycle.contract.retentionPct}%` : "not set"} · ${count((cycle.contract.payments ?? []).length, "payment")} approved`}
         >
           {(() => {
             const liveComplaints = cycle.complaints.filter((c) => c.status === "OPEN" || c.status === "ESCALATED");
@@ -5986,17 +6447,17 @@ export function CycleView({
             ) : null;
           })()}
           <ul className="space-y-1.5 text-[12.5px] text-ink-600">
-            <li>Status: <span className="font-semibold text-ink-900">{cycle.contract.status ?? "LEGACY_UNEXECUTED — cannot pay"}</span>{cycle.contract.executedAt ? ` · executed ${fmtDate(cycle.contract.executedAt)}` : ""}</li>
+            <li>Status: <span className="font-semibold text-ink-900">{cycle.contract.status === "EXECUTED" ? "Signed" : cycle.contract.status === "COMPLETED" ? "Completed" : cycle.contract.status ?? "Not signed — payments unavailable"}</span>{cycle.contract.executedAt ? ` · signed ${fmtDate(cycle.contract.executedAt)}` : ""}</li>
             <li>Supplier acceptance: {cycle.contract.supplierAcceptedAt ? `${fmtDate(cycle.contract.supplierAcceptedAt)} · ${cycle.contract.supplierSignatory ?? "—"}` : <span className="font-semibold text-amber-700 dark:text-amber-300">not recorded</span>}</li>
             <li>
-              Performance security:{" "}
+              Performance guarantee:{" "}
               {cycle.contract.security || (cycle.contract.performanceSecurity?.length ?? 0) > 0 ? (
                 <>
                   {cycle.contract.security
                     ? `${fmtMoney(cycle.contract.security.amount)} · declared at execution · valid to ${fmtDate(cycle.contract.security.validUntil)}`
-                    : "none declared at execution"}
+                    : "none recorded when the contract was signed"}
                   {cycle.contract.performanceSecurity?.length
-                    ? ` · ${cycle.contract.performanceSecurity.length} instrument${cycle.contract.performanceSecurity.length === 1 ? "" : "s"} on the register`
+                    ? ` · ${cycle.contract.performanceSecurity.length} guarantee${cycle.contract.performanceSecurity.length === 1 ? "" : "s"} recorded`
                     : ""}
                 </>
               ) : (
@@ -6004,28 +6465,28 @@ export function CycleView({
               )}
             </li>
             <li>Insurance: {cycle.contract.insurance ? `${cycle.contract.insurance.policyNo} · valid to ${fmtDate(cycle.contract.insurance.validUntil)}` : <span className="font-semibold text-amber-700 dark:text-amber-300">none</span>}</li>
-            <li>Retention: {cycle.contract.retentionPct ?? 0}% · warranty {cycle.contract.warrantyDays ?? 0} days · variation cap 25% cumulative.</li>
-            <li>Payments certify at a named gate, inside the contract value and the three-way match.</li>
+            <li>Retention: {cycle.contract.retentionPct ?? 0}% held from payments · warranty {cycle.contract.warrantyDays ?? 0} days · contract changes capped at 25% cumulatively.</li>
+            <li>Each payment must match an approved invoice, completed milestone and delivery receipt, and stay within the contract value.</li>
           </ul>
           {cycle.contract.status !== "EXECUTED" && cycle.contract.status !== "COMPLETED" && !cycle.contract.completedAt ? (
             <div className="mt-3 space-y-2 rounded-xl border border-dashed border-ink-200 p-3">
-              <p className="font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">Execution · supplier acceptance, bond, and insurance</p>
+              <p className="font-code text-[10px] font-semibold tracking-[0.06em] text-ink-600">Contract signing · supplier acceptance, performance guarantee and insurance</p>
               <div className="grid gap-1.5 sm:grid-cols-3">
-                <input className={inputCls} aria-label="Performance security amount" type="number" placeholder="Security amount" value={d.secAmount ?? ""} onChange={(e) => set("secAmount", e.target.value)} />
-                <input className={inputCls} aria-label="Performance security issuer" placeholder="Security issuer" value={d.secIssuer ?? ""} onChange={(e) => set("secIssuer", e.target.value)} />
-                <input className={inputCls} aria-label="Performance security valid until" type="date" value={d.secValid ?? ""} onChange={(e) => set("secValid", e.target.value)} />
+                <input className={inputCls} aria-label="Performance guarantee amount" type="number" placeholder="Guarantee amount" value={d.secAmount ?? ""} onChange={(e) => set("secAmount", e.target.value)} />
+                <input className={inputCls} aria-label="Performance guarantee issuer" placeholder="Guarantee issuer" value={d.secIssuer ?? ""} onChange={(e) => set("secIssuer", e.target.value)} />
+                <input className={inputCls} aria-label="Performance guarantee valid until" type="date" value={d.secValid ?? ""} onChange={(e) => set("secValid", e.target.value)} />
                 <input className={inputCls} aria-label="Insurance policy number" placeholder="Insurance policy no." value={d.insPolicy ?? ""} onChange={(e) => set("insPolicy", e.target.value)} />
                 <input className={inputCls} aria-label="Insurer name" placeholder="Insurer" value={d.insIssuer ?? ""} onChange={(e) => set("insIssuer", e.target.value)} />
                 <input className={inputCls} aria-label="Insurance valid until" type="date" value={d.insValid ?? ""} onChange={(e) => set("insValid", e.target.value)} />
               </div>
               <Btn variant="ghost" onClick={executeContract} disabled={busy || !d.secAmount || !d.secIssuer || !d.secValid || !d.insPolicy || !d.insIssuer || !d.insValid}>
-                <Stamp className="h-3.5 w-3.5" aria-hidden="true" /> Execute the contract (gate)
+                <Stamp className="h-3.5 w-3.5" aria-hidden="true" /> Submit contract for signing approval
               </Btn>
             </div>
           ) : null}
         </Card>
 
-        <Card title="Milestones" sub={`${cycle.contract.milestones.length} ON THE SCHEDULE`} workflow busy={busy} actionLabel="Manage milestones" teaser={`${count(cycle.contract.milestones.filter((m) => m.status === "DONE").length, "milestone")} complete of ${count(cycle.contract.milestones.length, "milestone")} · payments are certified against a completed milestone, never against a promise`}>
+        <Card title="Delivery milestones" sub={`${cycle.contract.milestones.length} IN THE SCHEDULE`} workflow busy={busy} actionLabel="Manage milestones" teaser={`${count(cycle.contract.milestones.filter((m) => m.status === "DONE").length, "milestone")} complete of ${count(cycle.contract.milestones.length, "milestone")} · payments require a completed milestone`}>
           <ul className="space-y-1.5">
             {cycle.contract.milestones.map((m) => (
               <li key={m.id} className="flex items-center justify-between gap-2 rounded-lg bg-paper px-2.5 py-2 text-[12.5px]">
@@ -6053,7 +6514,7 @@ export function CycleView({
           </div>
         </Card>
 
-        <Card title="Variations" sub="PRIOR APPROVAL + ATTORNEY-GENERAL ADVICE · 25% CUMULATIVE INCREASE CAP" workflow busy={busy} actionLabel="Manage variations" teaser={`${count(cycle.contract.variations.length, "variation")} · cumulative approved increase is subject to the statutory 25% cap · every variation goes to the approval gate`}>
+        <Card title="Contract changes" sub="PRIOR APPROVAL AND ATTORNEY-GENERAL ADVICE REQUIRED · 25% CUMULATIVE INCREASE LIMIT" workflow busy={busy} actionLabel="Manage contract changes" teaser={`${count(cycle.contract.variations.length, "change")} · the total approved increase cannot exceed the statutory 25% limit · every change needs approval`}>
           <ul className="space-y-1.5">
             {cycle.contract.variations.map((v) => (
               <li key={v.id} className="flex items-center justify-between gap-2 rounded-lg bg-paper px-2.5 py-2 text-[12.5px]">
@@ -6065,7 +6526,7 @@ export function CycleView({
                     {v.cumulativePct !== undefined ? ` · cumulative ${v.cumulativePct}% / 25%` : ""}
                   </span>
                 </span>
-                {v.status === "APPROVED" ? <Chip tone="ok">APPROVED</Chip> : v.status === "REJECTED" ? <Chip tone="muted">REJECTED</Chip> : <Chip tone="warn">AT GATE</Chip>}
+                {v.status === "APPROVED" ? <Chip tone="ok">APPROVED</Chip> : v.status === "REJECTED" ? <Chip tone="muted">REJECTED</Chip> : <Chip tone="warn">AWAITING APPROVAL</Chip>}
               </li>
             ))}
             {cycle.contract.variations.length === 0 ? <li className="py-3 text-center text-[12px] text-ink-400">No variations.</li> : null}
@@ -6086,7 +6547,7 @@ export function CycleView({
 
         <Card
           title="Payments"
-          sub="THREE-WAY MATCH · RETENTION · CAP — CERTIFY BEFORE IT LEAVES THE DESK"
+          sub="Match each invoice to a completed milestone and delivery receipt before requesting payment approval."
           workflow
           busy={busy}
           actionLabel="Manage payments"
@@ -6104,16 +6565,16 @@ export function CycleView({
                       {p.net !== undefined ? ` · net ${fmtMoney(p.net)}` : ""}
                     </span>
                   </span>
-                  {p.status === "CERTIFIED" || p.certifiedAt ? <Chip tone="ok">CERTIFIED</Chip> : <Chip tone="warn">AT GATE</Chip>}
+                  {p.status === "CERTIFIED" || p.certifiedAt ? <Chip tone="ok">APPROVED</Chip> : <Chip tone="warn">AWAITING APPROVAL</Chip>}
                 </div>
                 <p className="text-[10px] leading-relaxed text-ink-600">
                   {p.invoiceId ? `Invoice ${p.invoiceId} · ` : ""}
                   {p.milestoneId ? `Milestone ${p.milestoneId} · ` : ""}
-                  {p.goodsReceiptId ? `GRN ${p.goodsReceiptId}` : ""}
+                  {p.goodsReceiptId ? `Delivery receipt ${p.goodsReceiptId}` : ""}
                 </p>
               </li>
             ))}
-            {cycle.contract.payments.length === 0 ? <li className="py-3 text-center text-[12px] text-ink-400">No payments raised.</li> : null}
+            {cycle.contract.payments.length === 0 ? <li className="py-3 text-center text-[12px] text-ink-400">No payment requests yet.</li> : null}
           </ul>
           {cycle.contract.payments.length > 0 ? (
             <p className="mt-2 text-[10px] leading-relaxed text-ink-600">
@@ -6134,14 +6595,14 @@ export function CycleView({
                 </option>
               ))}
             </select>
-            <input className={inputCls} aria-label="Goods receipt note number" placeholder="Goods receipt (GRN)" value={d.payGrn ?? ""} onChange={(e) => set("payGrn", e.target.value)} />
+            <input className={inputCls} aria-label="Delivery receipt number" placeholder="Delivery receipt number" value={d.payGrn ?? ""} onChange={(e) => set("payGrn", e.target.value)} />
             <input className={inputCls} aria-label="Payment withholding amount" type="number" placeholder="Withholding" value={d.payWithholding ?? ""} onChange={(e) => set("payWithholding", e.target.value)} />
             <Btn
               variant="ghost"
               onClick={addPayment}
               disabled={busy || !d.payDesc || !d.payAmount || !d.payInvoice || !d.payMilestone || !d.payGrn}
             >
-              <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Raise payment
+              <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Request payment approval
             </Btn>
           </div>
         </Card>
@@ -6278,15 +6739,15 @@ export function CycleView({
       <div className="grid gap-4 lg:grid-cols-2">
         <StageBrief
           span
-          label="CONTRACT · NOTHING IS OBLIGATED YET"
-          lede="No contract is on the register for this tender. Before one can exist, three things must be true: the award report is signed, the standstill window has lapsed without a live complaint, and the money is committed against an approved budget line."
+          label="CONTRACT · NOT YET PREPARED"
+          lede="A contract can be prepared after the award report is signed, the review period ends without an open complaint and an approved budget line can cover the contract value."
           items={[
             "A signed award report — the contract cannot be prepared from an unsigned recommendation.",
-            "A lapsed standstill: the review window is the bidder's remedy and it runs before signature, not after.",
+            "The award review period has ended. This gives bidders time to raise a complaint before the contract is signed.",
             "An approved budget line with enough free balance to carry the whole contract value; the commitment is booked the moment the pack exists.",
             "A retention percentage decided up front, so every later payment is tested against it rather than negotiated case by case.",
           ]}
-          gate="Preparing the pack raises the accounting officer's gate. The desk will not create an obligation a named officer has not signed."
+          gate="Approval required: the accounting officer must approve the contract documents before the workspace records a legal commitment."
         />
         <Card title="Budget line" sub="AN AWARD COMMITS MONEY AGAINST A LINE — NO COMMITMENT, NO CONTRACT" workflow busy={busy} actionLabel="Manage budget">
           <ul className="space-y-1.5">
@@ -6319,7 +6780,7 @@ export function CycleView({
           </div>
         </Card>
 
-        <Card title="Prepare the contract pack" sub="OPENS AFTER THE AWARD REPORT IS SIGNED AND THE STANDSTILL HAS LAPSED" workflow busy={busy} actionLabel="Prepare contract pack">
+        <Card title="Prepare contract documents" sub="AVAILABLE AFTER THE AWARD REPORT IS SIGNED AND THE REVIEW PERIOD ENDS" workflow busy={busy} actionLabel="Prepare contract documents">
           <div className="mb-3 grid gap-1.5 sm:grid-cols-2">
             <select className={inputCls} aria-label="Budget line for contract commitment" value={d.budgetLine ?? budgetLines[0]?.id ?? ""} onChange={(e) => set("budgetLine", e.target.value)}>
               <option value="">Select a budget line…</option>
@@ -6332,7 +6793,7 @@ export function CycleView({
             <input className={inputCls} aria-label="Contract retention percentage" type="number" placeholder="Retention %" value={d.retentionPct ?? ""} onChange={(e) => set("retentionPct", e.target.value)} />
           </div>
           <Btn onClick={preparePack} disabled={busy || !ref || !cycle.awardReport?.signedAt || !budgetLines.length || !(d.budgetLine || budgetLines[0]?.id)}>
-            <FileSignature className="h-3.5 w-3.5" aria-hidden="true" /> Prepare the contract pack
+            <FileSignature className="h-3.5 w-3.5" aria-hidden="true" /> Prepare contract documents
           </Btn>
           {!cycle.awardReport?.signedAt ? <p className="mt-3 text-[11.5px] text-ink-400">The award report must be signed first.</p> : null}
           {!budgetLines.length ? <p className="mt-3 text-[11.5px] text-amber-700 dark:text-amber-300">Create a budget line first — the award must commit money.</p> : null}
@@ -6356,7 +6817,7 @@ export function CycleView({
         teaser={
           cycle.contract?.completedAt
             ? `Accepted ${fmtDate(cycle.contract.completedAt)}${cycle.contract.completion ? ` · defects liability to ${fmtDate(cycle.contract.completion.defectsLiabilityEndsAt)} · rated ${cycle.contract.completion.performanceRating}/5` : ""}`
-            : "No acceptance certificate on record — the contract is still open and the supplier's register still shows it as live."
+            : "No final acceptance has been recorded. The contract remains open until an authorized officer approves completion."
         }
       >
         {cycle.contract?.completedAt ? (
@@ -6380,7 +6841,7 @@ export function CycleView({
         ) : cycle.contract ? (
           <div className="space-y-3">
             <p className="text-[12px] leading-relaxed text-ink-500">
-              Record acceptance after the contract work is complete. The action creates an approval gate; it does not close the cycle until that gate is approved.
+              Record acceptance after the contract work is complete. An authorized officer must approve it before the procurement can be closed.
             </p>
             <div className="grid gap-1.5 sm:grid-cols-3">
               <input className={inputCls} aria-label="Acceptance certificate number" placeholder="Certificate no." value={d.completeCert ?? ""} onChange={(e) => set("completeCert", e.target.value)} />
@@ -6404,7 +6865,7 @@ export function CycleView({
                     performanceRating: Number(d.completeRating),
                     note: d.completeNote,
                   },
-                  "COMPLETION GATE RAISED",
+                  "Final acceptance submitted for approval.",
                 ).then((ok) => ok && refreshCycle())
               }
               disabled={busy || !d.completeCert || !d.completeDefects || !d.completeRating}
@@ -6415,7 +6876,7 @@ export function CycleView({
         ) : (
           <div className="rounded-xl border border-dashed border-ink-200 px-4 py-8 text-center dark:border-white/[0.12]">
             <p className="text-[12px] font-semibold text-ink-700">Contract not ready for closure</p>
-            <p className="mt-1.5 text-[11px] leading-relaxed text-ink-400">Complete award, standstill, and contract setup before recording final acceptance.</p>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-ink-400">Complete the award, review period and contract setup before recording final acceptance.</p>
           </div>
         )}
       </Card>
@@ -6427,8 +6888,8 @@ export function CycleView({
             {cycle.awardReport?.signedAt ? <Chip tone="ok">ON FILE</Chip> : <Chip tone="warn">PENDING</Chip>}
           </li>
           <li className="flex items-center justify-between gap-3 rounded-lg bg-paper px-3 py-2.5">
-            <span>Standstill</span>
-            {cycle.standstill?.status === "LIFTED" ? <Chip tone="ok">LIFTED</Chip> : cycle.standstill ? <Chip tone="warn">{cycle.standstill.status}</Chip> : <Chip tone="muted">NOT STARTED</Chip>}
+            <span>Award review period</span>
+            {cycle.standstill?.status === "LIFTED" ? <Chip tone="ok">COMPLETE</Chip> : cycle.standstill ? <Chip tone="warn">IN PROGRESS</Chip> : <Chip tone="muted">NOT STARTED</Chip>}
           </li>
           <li className="flex items-center justify-between gap-3 rounded-lg bg-paper px-3 py-2.5">
             <span>Contract acceptance</span>
@@ -6453,13 +6914,13 @@ export function CycleView({
       <StageBrief span {...DESK_TOOL_BRIEFS.complaints} />
       <Card
         title="Log a complaint"
-        sub="STANDSTILL-WINDOW COMPLAINTS ARE MARKED AS SUCH"
+        sub="Complaints filed during the award review period are highlighted."
         workflow
         busy={busy}
         actionLabel="Log a complaint"
         teaser={`${count(cycle.complaints.length, "complaint")} on this tender · ${
           cycle.complaints.filter((c) => c.status === "OPEN" || c.status === "ESCALATED").length
-        } still live · the grounds are recorded as filed, and the answer is issued at a gate, never typed as decided`}
+        } still open · the complaint is preserved as filed, and each response must be approved before it is sent`}
       >
         <div className="grid gap-2">
           <div className="grid gap-2 sm:grid-cols-2">
@@ -6469,7 +6930,7 @@ export function CycleView({
           <textarea className={cn(inputCls, "h-20 py-2")} aria-label="Complaint grounds as filed" placeholder="Grounds" value={d.cmpBody ?? ""} onChange={(e) => set("cmpBody", e.target.value)} />
           <Btn
             onClick={() =>
-              act(`/api/tenders/${ref}/complaints`, { complainant: d.cmpWho, subject: d.cmpWhat, body: d.cmpBody }, "COMPLAINT LOGGED").then(
+              act(`/api/tenders/${ref}/complaints`, { complainant: d.cmpWho, subject: d.cmpWhat, body: d.cmpBody }, "Complaint recorded.").then(
                 (ok) => ok && (setD((p) => ({ ...p, cmpWho: "", cmpWhat: "", cmpBody: "" })), refreshCycle()),
               )
             }
@@ -6482,14 +6943,14 @@ export function CycleView({
 
       <Card
         title="Complaints on this tender"
-        sub="RESPONSES ARE DRAFTED, SIGNED AT A GATE, THEN ISSUE"
+        sub="Responses require officer approval before they are sent."
         workflow
         busy={busy}
         actionLabel="Manage complaint responses"
         teaser={
           cycle.complaints.length === 0
-            ? "No complaint on record. A filed complaint keeps its grounds verbatim, holds the contract while open, and closes only by an explicit act."
-            : `${cycle.complaints.filter((c) => c.status === "OPEN").length} open · ${cycle.complaints.filter((c) => c.status === "ESCALATED").length} escalated · ${cycle.complaints.filter((c) => c.duringStandstill).length} filed inside the standstill window`
+            ? "No complaints recorded. An open complaint pauses contract signing and payment until an authorized reviewer resolves it."
+            : `${cycle.complaints.filter((c) => c.status === "OPEN").length} open · ${cycle.complaints.filter((c) => c.status === "ESCALATED").length} under independent review · ${cycle.complaints.filter((c) => c.duringStandstill).length} filed during the award review period`
         }
       >
         <dl className="mb-4 grid grid-cols-2 gap-px overflow-hidden rounded-[10px] border border-ink-100 bg-ink-100/70 dark:border-white/[0.07] dark:bg-white/[0.07] lg:grid-cols-4">
@@ -6516,7 +6977,7 @@ export function CycleView({
           <div className="rounded-xl border border-dashed border-ink-200 px-4 py-8 text-center">
             <Scale className="mx-auto h-5 w-5 text-ink-400" aria-hidden="true" />
             <p className="mt-2 text-[12.5px] text-ink-500">None on record.</p>
-            <p className="mt-1 text-[11px] text-ink-400">Bidder complaints land here — standstill-window ones are flagged for priority.</p>
+            <p className="mt-1 text-[11px] text-ink-400">Complaints from bidders appear here. Those filed during the award review period are highlighted.</p>
           </div>
         ) : (
           <ul className="space-y-2">
@@ -6528,7 +6989,7 @@ export function CycleView({
                     <p className="truncate text-[11.5px] text-ink-500">{c.subject}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
-                    {c.duringStandstill ? <Chip tone="brand">STANDSTILL</Chip> : null}
+                    {c.duringStandstill ? <Chip tone="brand">AWARD REVIEW PERIOD</Chip> : null}
                     <Chip tone={c.status === "ANSWERED" ? "ok" : c.status === "OPEN" || c.status === "ESCALATED" ? "warn" : "muted"}>
                       {c.status.replace(/_/g, " ")}
                     </Chip>
@@ -6550,7 +7011,7 @@ export function CycleView({
                       <span className="text-[10px] text-ink-600">{c.response.by} · {fmtDateTime(c.response.at)}</span>
                     </div>
                     <p className="mt-1.5 whitespace-pre-wrap break-words text-[11.5px] leading-relaxed text-ink-700 dark:text-ink-200">{c.response.md}</p>
-                    {c.response.gateId ? <p className="mt-1.5 text-[10px] text-ink-600">Approval gate · {c.response.gateId}</p> : null}
+                    {c.response.gateId ? <p className="mt-1.5 text-[10px] text-ink-600">Approval request · {c.response.gateId}</p> : null}
                   </div>
                 ) : null}
                 {c.escalationReason ? (
@@ -6578,11 +7039,11 @@ export function CycleView({
                       <Btn
                         variant="ghost"
                         onClick={() =>
-                          act(`/api/tenders/${ref}/complaints/${c.id}/respond`, { response: d[`cresp-${c.id}`] }, "RESPONSE GATE RAISED").then((ok) => ok && refreshCycle())
+                          act(`/api/tenders/${ref}/complaints/${c.id}/respond`, { response: d[`cresp-${c.id}`] }, "Complaint response submitted for approval.").then((ok) => ok && refreshCycle())
                         }
                         disabled={busy || !d[`cresp-${c.id}`]}
                       >
-                        Respond (gate)
+                        Submit response for approval
                       </Btn>
                     </div>
                     <div className="flex gap-1.5">
@@ -6590,7 +7051,7 @@ export function CycleView({
                       <Btn
                         variant="ghost"
                         onClick={() =>
-                          act(`/api/tenders/${ref}/complaints/${c.id}/escalate`, { reason: d[`cesc-${c.id}`] }, "COMPLAINT ESCALATED — CONTRACT STAYS SUSPENDED").then((ok) => ok && refreshCycle())
+                          act(`/api/tenders/${ref}/complaints/${c.id}/escalate`, { reason: d[`cesc-${c.id}`] }, "Independent review requested. Contract actions remain paused.").then((ok) => ok && refreshCycle())
                         }
                         disabled={busy || !d[`cesc-${c.id}`]}
                       >
@@ -6658,7 +7119,7 @@ export function CycleView({
   const selectedReportPeriod = quarterlyPeriods.find((period) => `${period.year}-Q${period.quarter}` === reportPeriodKey);
   const QuarterlyReportsTab = (
     <div className="grid gap-4">
-      <StageBrief {...DESK_TOOL_BRIEFS.reporting} />
+      {cycle ? <StageBrief {...DESK_TOOL_BRIEFS.reporting} /> : null}
       <Card title="Variation and preference returns" sub="QUARTERLY SNAPSHOT · ACCOUNTING OFFICER APPROVAL REQUIRED">
         {!quarterlyPeriods.length ? (
           <div className="rounded-xl border border-dashed border-ink-200 px-4 py-7 text-center text-[12px] text-ink-500 dark:border-white/10">Quarterly reporting periods are loading.</div>
@@ -6703,7 +7164,7 @@ export function CycleView({
 
             {selectedReportPeriod?.status === "PENDING_GATE" && selectedReportPeriod.report ? (
               <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.05] p-3 text-[11.5px] text-amber-900 dark:text-amber-200">
-                Awaiting accounting officer approval · gate {selectedReportPeriod.report.gateId ?? "pending"} · submission reference {selectedReportPeriod.report.submissionReference}.
+                Awaiting accounting officer approval · request {selectedReportPeriod.report.gateId ?? "pending"} · submission reference {selectedReportPeriod.report.submissionReference}.
               </div>
             ) : null}
             {selectedReportPeriod?.status === "SUBMITTED" && selectedReportPeriod.report ? (
@@ -6743,9 +7204,9 @@ export function CycleView({
 
   const AnalyticsTab = (
     <div className="grid gap-4">
-      <StageBrief {...DESK_TOOL_BRIEFS.analytics} />
+      {cycle ? <StageBrief {...DESK_TOOL_BRIEFS.analytics} /> : null}
       <Card
-        title="Desk analytics"
+        title="Tender cycle analytics"
         sub="READ-SIDE ONLY — COMPUTED FROM THE APPEND-ONLY LOGS, ZERO NEW INSTRUMENTATION"
         right={
           analytics ? (
@@ -6775,7 +7236,7 @@ export function CycleView({
                 [
                   { k: "tendersInCycle", label: "Tenders in cycle", hint: "RECORDS OPEN ON THE DESK" },
                   { k: "bidsOpened", label: "Bids opened", hint: "REGISTERED AT PUBLIC OPENING" },
-                  { k: "certifiedMatrices", label: "Matrices certified", hint: "EVALUATION SIGNED AT A GATE" },
+                  { k: "certifiedMatrices", label: "Evaluations approved", hint: "APPROVED BY THE EVALUATION COMMITTEE" },
                   { k: "contractsClosed", label: "Contracts closed", hint: "ACCEPTANCE RECORDED", accent: true },
                 ] as { k: string; label: string; hint?: string; accent?: boolean }[]
               ).map((m) => (
@@ -6800,7 +7261,7 @@ export function CycleView({
             {cycles.length ? (
               <div className="rounded-[10px] border border-ink-100 px-4 pb-3 pt-3.5 dark:border-white/[0.07]">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="eyebrow text-[10px] tracking-[0.08em]">Where the desk stands</p>
+                  <p className="eyebrow text-[10px] tracking-[0.08em]">Tender progress</p>
                   <span className="text-[10px] font-semibold text-ink-600">
                     {cycles.length} CYCLE {cycles.length === 1 ? "RECORD" : "RECORDS"} ON FILE
                   </span>
@@ -6847,7 +7308,7 @@ export function CycleView({
                 { count: Number(analytics.lateBids ?? 0), label: "late bids rejected unopened", tab: "opening", tabLabel: "OPENING" },
                 { count: Number(analytics.albOpen ?? 0), label: "abnormally-low-bid queries open", tab: "evaluation", tabLabel: "EVALUATION" },
                 { count: Number(analytics.openComplaints ?? 0), label: "complaints awaiting a response", tab: "complaints", tabLabel: "COMPLAINTS" },
-                { count: Number(analytics.standstillsActive ?? 0), label: "standstill clocks running", tab: "standstill", tabLabel: "STANDSTILL" },
+                { count: Number(analytics.standstillsActive ?? 0), label: "award review periods in progress", tab: "standstill", tabLabel: "AWARD REVIEW" },
               ];
               const raised = watches.filter((w) => w.count > 0);
               return (
@@ -6885,7 +7346,7 @@ export function CycleView({
                     </ul>
                   ) : (
                     <p className="mt-1.5 text-[12px] text-ink-600 dark:text-ink-300">
-                      No late bids, no open queries, no unanswered complaints, no running standstills — the desk is clean.
+                      No late bids, unanswered questions, open complaints or award review periods need attention.
                     </p>
                   )}
                 </div>
@@ -6927,11 +7388,11 @@ export function CycleView({
           title="STORED TENDER DOCUMENTS"
         />
       </Card>
-      <Card title="Consolidated procurement file" sub="ONE BUNDLE FOR THE AUDITORS — EVERY ARTIFACT, HASH AND SIGNATURE, WITH THE LOG-CHAIN VERDICT">
+      <Card title="Procurement record export" sub="DOWNLOAD THE TENDER RECORD, SUPPORTING DOCUMENTS, APPROVALS AND ACTIVITY HISTORY">
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink-100 bg-paper px-4 py-3.5">
           <div className="min-w-0">
             <p className="text-[12.5px] font-semibold text-ink-900">{ref ? currentReferenceLabel : "Select a tender"}</p>
-            <p className="text-[11px] text-ink-400">Composes live from the append-only log — the auditors' single entry point.</p>
+            <p className="text-[11px] text-ink-400">A current export of the tender record and its activity history.</p>
           </div>
           <a
             href={`/api/procurement-file/${encodeURIComponent(ref)}${SVC}`}
@@ -6965,8 +7426,8 @@ export function CycleView({
     <section id="mc-cycle" aria-labelledby="mc-cycle-h" className="scroll-mt-24">
       <p className="sr-only" role="status" aria-atomic="true">
         {activeStage
-          ? `Tender Cycle, stage ${stageIndex + 1} of ${STAGE_TABS.length}: ${activeStage.label}.${activeStageRecord?.held ? " Awaiting a human decision." : activeStageRecord?.state === "done" ? " Complete." : ""}`
-          : `Tender Cycle desk tool: ${UTILITY_TABS.find((item) => item.id === tab)?.label ?? "selected"}.`}
+                ? `Tender workflow, step ${stageIndex + 1} of ${STAGE_TABS.length}: ${activeStage.label}.${activeStageRecord?.held ? " Awaiting approval." : activeStageRecord?.state === "done" ? " Complete." : ""}`
+          : `Tender workflow: ${UTILITY_TABS.find((item) => item.id === tab)?.label ?? "selected"}.`}
       </p>
       <motion.div
         initial={{ opacity: 0, y: 24 }}
@@ -6985,16 +7446,16 @@ export function CycleView({
             <div className="min-w-0">
               <p className="flex items-center gap-2 eyebrow">
                 <Workflow className="h-3 w-3 text-brand-600 dark:text-brand-400" aria-hidden="true" />
-                Command / Cycle control
+                Procurement / Tender workflow
               </p>
               <h2
                 id="mc-cycle-h"
                 className="mt-2.5 font-display text-[27px] font-black leading-none tracking-[-0.032em] text-ink-950"
               >
-                Tender Cycle<span className="text-brand-600 dark:text-brand-400">.</span>
+                Tender workflow<span className="text-brand-600 dark:text-brand-400">.</span>
               </h2>
               <p className="mt-2 max-w-[62ch] text-[12.5px] leading-relaxed text-ink-500">
-                One desk, the whole cycle — every irreversible step stops at a named human gate.
+                Manage each step from publishing the notice to closing the contract. Decisions requiring approval are assigned to authorized officers and recorded.
               </p>
             </div>
           </div>
@@ -7010,6 +7471,7 @@ export function CycleView({
               applications={portalApps}
               current={ref}
               onSelect={setRef}
+              onOpenEvaluation={() => selectTab("evaluation")}
             />
           </div>
         </header>
@@ -7040,7 +7502,7 @@ export function CycleView({
                     {activeStageRecord.state === "done"
                       ? "COMPLETE"
                       : activeStageRecord.held
-                        ? "AT HUMAN GATE"
+                        ? "AWAITING APPROVAL"
                         : activeStageRecord.state === "current"
                           ? "CURRENT STAGE"
                           : "UPCOMING"}
@@ -7048,7 +7510,7 @@ export function CycleView({
                 </header>
               ) : (
                 <header className="mb-5 border-b border-ink-200/70 pb-4 dark:border-white/[0.08]">
-                  <p className="font-code text-[10.5px] font-bold tracking-[0.12em] text-brand-600 dark:text-brand-300">TENDER CYCLE · DESK TOOLS</p>
+                  <p className="font-code text-[10.5px] font-bold tracking-[0.12em] text-brand-600 dark:text-brand-300">TENDER CYCLE · WORKSPACE TOOLS</p>
                   <h3 className="mt-1 font-display text-[20px] font-bold tracking-[-0.025em] text-ink-950 dark:text-white">
                     {UTILITY_TABS.find((item) => item.id === tab)?.label}
                   </h3>
@@ -7068,9 +7530,9 @@ export function CycleView({
               {tab !== "solicitation" && tab !== "deadlines" && !cycle && emptyGuide ? (
                 <>
                 {activeStage ? (
-                  <StageBrief {...STAGE_BRIEFS[activeStage.id]} />
+                  <StageBrief className="mt-4" {...STAGE_BRIEFS[activeStage.id]} />
                 ) : deskToolBrief ? (
-                  <StageBrief {...deskToolBrief} />
+                  <StageBrief className="mt-4" {...deskToolBrief} />
                 ) : null}
                 <section
                   className={cn("panel overflow-hidden rounded-[12px]", activeStage && "mt-4")}
@@ -7153,7 +7615,7 @@ export function CycleView({
                               ? "Draft the tender notice before publishing."
                               : noticeMissing.length > 0 || !noticeCriteriaValid
                                 ? "Complete the notice's mandatory fields and evaluation criteria before publishing."
-                                : "Publish the notice to registered suppliers — the procurement unit signs the gate."
+                                : "Publish the notice to registered suppliers after the procurement unit approves it."
                         }
                         className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg bg-brand-600 px-4 text-[12px] font-semibold text-white shadow-[0_8px_18px_-12px_rgba(217,38,22,0.8)] transition-colors hover:bg-brand-500 disabled:cursor-not-allowed disabled:opacity-50"
                       >

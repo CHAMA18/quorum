@@ -117,17 +117,16 @@ export function OrganizationsPanel({ data, refresh, notify, query, setQuery, now
     <div className="space-y-6">
       <SectionHead
         index="03"
-        eyebrow="The supplier door"
+        eyebrow="Supplier management"
         title={
           <>
-            The other side <span className="text-brand-600">of the desk.</span>
+            Supplier organizations
           </>
         }
         lede={
           <>
-            Organizations hold their own identity space and their own cookie. Suspending one deletes its live sessions
-            and blocks new applications — and a suspended supplier always keeps one lawful way back: an appeal, decided
-            by a named reviewer.
+            Manage supplier accounts, bidding access and appeals. Suspending an organization ends active sessions and
+            prevents new submissions. Suspended suppliers can appeal, and an assigned reviewer records the decision.
           </>
         }
         actions={
@@ -150,7 +149,7 @@ export function OrganizationsPanel({ data, refresh, notify, query, setQuery, now
           {
             label: "Suspended",
             value: fmtNum(data.organizations.filter((org) => org.status === "SUSPENDED").length),
-            note: "door closed, sessions gone",
+            note: "cannot sign in or submit bids",
           },
           { label: "Open appeals", value: fmtNum(openAppeals.length), note: "awaiting a named decision" },
         ].map((stat) => (
@@ -168,7 +167,7 @@ export function OrganizationsPanel({ data, refresh, notify, query, setQuery, now
             <PanelHead
               eyebrow="Register"
               title="Supplier organizations"
-              description="The profile the supplier door collects is the one the procurement desk asks bidders to hold."
+              description="Review the organization details suppliers use to access tenders and submit bids."
               action={<Chip tone="neutral">{fmtNum(filtered.length)} shown</Chip>}
             />
             <div className="flex flex-wrap items-center gap-2 border-b border-ink-100 px-5 py-3 dark:border-white/8">
@@ -425,7 +424,7 @@ export function OrganizationsPanel({ data, refresh, notify, query, setQuery, now
               variant="brand"
               disabled={busy !== null}
               onClick={() => {
-                if (dialog?.kind === "reinstate") void updateOrg(dialog.org, "ACTIVE", "Reinstated from the control room");
+                if (dialog?.kind === "reinstate") void updateOrg(dialog.org, "ACTIVE", "Reinstated in administration");
               }}
             >
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />}

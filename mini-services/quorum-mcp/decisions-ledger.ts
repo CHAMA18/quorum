@@ -24,6 +24,8 @@ export interface DecisionRecord {
   gateStatus: string;
   signatureKeyId: string | null;
   payloadHash: string | null;
+  /** Stable replay key for a single gate/actor/decision act. */
+  idempotencyKey?: string;
   prevHash: string;
   hash: string;
 }
@@ -37,6 +39,7 @@ export interface DecisionInput {
   gateStatus: string;
   signatureKeyId?: string | null;
   payloadHash?: string | null;
+  idempotencyKey?: string;
 }
 
 function canonical(record: Omit<DecisionRecord, "hash">): string {
@@ -52,6 +55,7 @@ function canonical(record: Omit<DecisionRecord, "hash">): string {
     record.gateStatus,
     record.signatureKeyId ?? "",
     record.payloadHash ?? "",
+    ...(record.idempotencyKey ? [record.idempotencyKey] : []),
     record.prevHash,
   ].join("|");
 }
@@ -74,6 +78,18 @@ export function readLedger(path: string): DecisionRecord[] {
 /** Append one decision. The caller has already verified and signed it. */
 export function appendDecision(path: string, input: DecisionInput): DecisionRecord {
   const rows = readLedger(path);
+  if (input.idempotencyKey) {
+    const previous = rows.find((row) => row.idempotencyKey === input.idempotencyKey);
+    if (previous) {
+      const sameAct = previous.gateId === input.gateId &&
+        previous.tenderId === input.tenderId &&
+        previous.workspaceId === input.workspaceId &&
+        previous.actor === input.actor &&
+        previous.decision === input.decision;
+      if (!sameAct) throw new Error("decision idempotency key was already used for a different act");
+      return previous;
+    }
+  }
   const prev = rows.length ? rows[rows.length - 1].hash : "genesis";
   const base: Omit<DecisionRecord, "hash"> = {
     seq: rows.length + 1,
@@ -87,6 +103,7 @@ export function appendDecision(path: string, input: DecisionInput): DecisionReco
     gateStatus: input.gateStatus,
     signatureKeyId: input.signatureKeyId ?? null,
     payloadHash: input.payloadHash ?? null,
+    ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
     prevHash: prev,
   };
   const record: DecisionRecord = { ...base, hash: hashDecision(base) };

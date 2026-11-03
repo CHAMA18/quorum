@@ -128,11 +128,24 @@ const VERDICT_TONE: Record<ComplianceSummary["verdict"], string> = {
   HARD_FAIL: "border-brand-500/40 bg-brand-500/[0.06] text-brand-700 dark:text-brand-300",
 };
 
+const VERDICT_LABEL: Record<ComplianceSummary["verdict"], string> = {
+  CLEAR: "No issues found",
+  FINDINGS: "Review needed",
+  HARD_FAIL: "Approval blocked",
+};
+
 const EXCEPTION_TONE: Record<ExceptionRow["status"], string> = {
   PENDING_GATE: "border-amber-500/40 bg-amber-500/[0.06] text-amber-700",
   APPROVED: "border-emerald-500/30 bg-emerald-500/[0.06] text-emerald-700",
   REFUSED: "border-brand-500/40 bg-brand-500/[0.06] text-brand-700",
   WITHDRAWN: "border-ink-200 bg-[#fffdfb] text-ink-500 dark:border-white/10 dark:bg-white/[0.03]",
+};
+
+const EXCEPTION_STATUS_LABEL: Record<ExceptionRow["status"], string> = {
+  PENDING_GATE: "Awaiting approval",
+  APPROVED: "Approved",
+  REFUSED: "Declined",
+  WITHDRAWN: "Withdrawn",
 };
 
 const card = "rounded-[12px] panel overflow-hidden";
@@ -172,7 +185,7 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
         setSelected((prev) => prev ?? ids[0]?.id ?? null);
       }
     } catch {
-      setLoadError("The compliance service did not answer. The desk still runs — try the refresh control in a moment.");
+      setLoadError("Compliance checks could not be loaded. Refresh the page and try again.");
     }
   }, []);
 
@@ -216,7 +229,7 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
       });
       const data = (await res.json()) as { error?: string; gateId?: string };
       if (!res.ok) throw new Error(data.error ?? "refused");
-      onToast(`Exception raised — gate ${data.gateId} waits on the accounting officer.`);
+      onToast("Exception request submitted for approval.");
       setShowRaise(false);
       setForm({ kind: "SINGLE_SOURCE", title: "", justification: "", evidence: "", tenderId: "" });
       await load();
@@ -237,7 +250,7 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data.error ?? "refused");
-      onToast("Extraction confirmed by a named reviewer — the work item clears.");
+      onToast("Document details reviewed and confirmed.");
       await load();
     } catch (err) {
       onToast(err instanceof Error ? err.message : "The review was refused.");
@@ -248,24 +261,24 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
 
   const reviewQueue = useMemo(() => docs.filter((d) => d.extractionConfidence && d.extractionConfidence.level !== "HIGH" && !d.extractionConfidence.reviewedBy), [docs]);
   const stats = [
-    { label: "RULES IN PACK", value: String(pack?.rules.length ?? "—"), note: `${pack?.hardFailRules.length ?? "—"} hard-fail conditions` },
-    { label: "HARD FAILS LIVE", value: String(summary?.hardFails.length ?? "—"), note: selected ? `on ${selected}` : "no tender selected" },
-    { label: "EXCEPTIONS", value: String(exceptions.length), note: `${exceptions.filter((x) => x.status === "PENDING_GATE").length} at the gate` },
-    { label: "OCR REVIEW QUEUE", value: String(reviewQueue.length), note: "low-confidence extractions awaiting a human" },
+    { label: "RULES APPLIED", value: String(pack?.rules.length ?? "—"), note: `${pack?.hardFailRules.length ?? "—"} can block approval` },
+    { label: "BLOCKING ISSUES", value: String(summary?.hardFails.length ?? "—"), note: selected ? `for tender ${systemReferenceLabel(selected)}` : "select a tender to review" },
+    { label: "EXCEPTION REQUESTS", value: String(exceptions.length), note: `${exceptions.filter((x) => x.status === "PENDING_GATE").length} awaiting approval` },
+    { label: "DOCUMENTS TO REVIEW", value: String(reviewQueue.length), note: "details need a manual check" },
   ];
 
   return (
     <div>
-      <SpecBar index="CMP" label="Workspace" meta="Compliance" />
+      <SpecBar index="CMP" label="Administration" meta="Compliance checks" />
       <div className="mt-6 flex flex-wrap items-end justify-between gap-5">
         <div className="min-w-0">
           <h1 className="type-display text-[30px] text-ink-950 sm:text-[38px]">
-            Compliance
+            Compliance checks
             <span className="text-brand-600">.</span>
           </h1>
           <p className="type-lede mt-3 text-ink-600">
-            The platform evaluates every dossier against a stated rule set. Hard-fail conditions are never warnings;
-            findings are evidence-linked; exceptions ride a gate — the register is the record, not an email thread.
+            Review each tender against the applicable procurement rules. See which requirements are met, which issues
+            need attention and whether an exception request is awaiting an authorized decision.
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2 pb-1.5">
@@ -275,7 +288,7 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
             className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 font-code text-[10.5px] font-bold tracking-[0.06em] text-ink-700 transition-colors hover:border-ink-950"
           >
             <RefreshCw className="h-3 w-3" aria-hidden="true" />
-            REFRESH
+            Refresh
           </button>
           {canRun && (
             <button
@@ -284,13 +297,13 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
               className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg bg-ink-950 px-3 font-code text-[10.5px] font-bold tracking-[0.06em] text-white transition-colors hover:bg-ink-800"
             >
               <FileWarning className="h-3 w-3" aria-hidden="true" />
-              {showRaise ? "CLOSE" : "RAISE EXCEPTION"}
+              {showRaise ? "Cancel" : "Request an exception"}
             </button>
           )}
         </div>
       </div>
 
-      <section className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Compliance summary">
+      <section className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Compliance check summary">
         {stats.map((stat) => (
           <div key={stat.label} className="rounded-xl border border-ink-200/80 bg-white px-4 py-3.5">
             <p className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-500">{stat.label}</p>
@@ -308,10 +321,10 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
       )}
 
       {showRaise && canRun && (
-        <form onSubmit={raiseException} className={`${card} mt-4 space-y-3 px-5 py-4`} aria-label="Raise a procurement exception">
+        <form onSubmit={raiseException} className={`${card} mt-4 space-y-3 px-5 py-4`} aria-label="Request a procurement exception">
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block text-[12px] font-semibold text-ink-700">
-              Kind
+              Exception type
               <select
                 value={form.kind}
                 onChange={(e) => setForm((f) => ({ ...f, kind: e.target.value }))}
@@ -323,7 +336,7 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
               </select>
             </label>
             <label className="block text-[12px] font-semibold text-ink-700">
-              Tender record (optional)
+              Related tender (optional)
               <select
                 value={form.tenderId}
                 onChange={(e) => setForm((f) => ({ ...f, tenderId: e.target.value }))}
@@ -337,14 +350,14 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
             </label>
           </div>
           <label className="block text-[12px] font-semibold text-ink-700">
-            Title
+            Summary
             <input
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
               required
               minLength={4}
               maxLength={160}
-              placeholder="What is being departed from the standard route?"
+              placeholder="Describe the decision or requirement that needs an exception"
               className="focus-brand mt-1 block min-h-11 w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[13px] text-ink-900 placeholder:text-ink-400"
             />
           </label>
@@ -360,18 +373,17 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
             />
           </label>
           <label className="block text-[12px] font-semibold text-ink-700">
-            Evidence references (comma-separated: document keys, file names, gate ids)
+            Supporting documents or reference numbers (separate with commas)
             <input
               value={form.evidence}
               onChange={(e) => setForm((f) => ({ ...f, evidence: e.target.value }))}
               required
-              placeholder="01-tender-notice.md, gate_abc123"
+              placeholder="Tender notice, market assessment, approval reference"
               className="focus-brand mt-1 block min-h-11 w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-[13px] text-ink-900 placeholder:text-ink-400"
             />
           </label>
           <p className="text-[11.5px] leading-relaxed text-ink-500">
-            Raising an exception raises a GATE for the accounting officer — your request cannot approve itself, and the
-            officer who requests never signs.
+            An authorized officer reviews the request. The person who submits it cannot approve it.
           </p>
           <button
             type="submit"
@@ -379,7 +391,7 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
             className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-lg bg-brand-600 px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
           >
             {busy === "raise" ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <FileWarning className="h-3.5 w-3.5" aria-hidden="true" />}
-            Raise and send to the gate
+            Submit for approval
           </button>
         </form>
       )}
@@ -390,7 +402,7 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
           <section className={card} aria-labelledby="cmp-tender">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-100 px-5 py-4">
               <p id="cmp-tender" className="font-code text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-600">
-                Tender compliance summary
+                Compliance check for this tender
               </p>
               <select
                 value={selected ?? ""}
@@ -408,10 +420,10 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
               <div className="px-5 py-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className={cn("inline-flex min-h-7 items-center rounded-full border px-3 font-code text-[10px] font-bold tracking-[0.08em]", VERDICT_TONE[summary.verdict])}>
-                    {summary.verdict.replace("_", " · ")}
+                    {VERDICT_LABEL[summary.verdict]}
                   </span>
                   <span className="text-[10.5px] font-medium text-ink-600">
-                    PACK {summary.pack.id.toUpperCase()} · {summary.lines.length} RULE LINE(S)
+                    RULESET {summary.pack.id.toUpperCase()} · {summary.lines.length} REQUIREMENTS
                   </span>
                 </div>
                 <p className="mt-2 text-[12px] leading-relaxed text-ink-600">{summary.note}</p>
@@ -431,14 +443,14 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
                       <li key={line.rule} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
                         <div className="min-w-0">
                           <p className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-800">
-                            {line.rule}{line.hardFail && <span className="ml-1.5 text-brand-600">HARD-FAIL</span>}
+                            {line.rule}{line.hardFail && <span className="ml-1.5 text-brand-600">BLOCKS APPROVAL</span>}
                           </p>
                           <p className="mt-0.5 line-clamp-1 text-[11.5px] text-ink-500">{line.latestEvidence}</p>
                         </div>
                         <div className="flex shrink-0 items-center gap-3 text-[10px] font-medium text-ink-600">
                           <span>×{line.count}</span>
-                          <span>SEV {line.severity.slice(0, 3)}</span>
-                          <span>{line.reviewed > 0 ? `${line.accepted}✓ ${line.rejected}✗` : "AWAITING HUMAN"}</span>
+                          <span>{line.severity}</span>
+                          <span>{line.reviewed > 0 ? `${line.accepted} accepted · ${line.rejected} declined` : "Awaiting review"}</span>
                         </div>
                       </li>
                     ))}
@@ -459,7 +471,7 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
                 Reading the live record for {selected}…
               </div>
             )}
-            {!selected && <p className="px-5 py-6 text-[12px] text-ink-500">No tender cycle is on record yet — summaries appear once a cycle exists.</p>}
+            {!selected && <p className="px-5 py-6 text-[12px] text-ink-500">No tender review is recorded yet. Results appear here after a review is created.</p>}
           </section>
 
           {/* Rule pack */}
@@ -467,7 +479,7 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
             <section className={card} aria-labelledby="cmp-pack">
               <div className="border-b border-ink-100 px-5 py-4">
                 <p id="cmp-pack" className="font-code text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-600">
-                  Rule pack — {pack.name}
+                  Compliance rules — {pack.name}
                 </p>
                 <p className="mt-1.5 text-[11.5px] leading-relaxed text-ink-500">{pack.description}</p>
               </div>
@@ -477,18 +489,18 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-900">{rule.id}</span>
                       <span className={cn("inline-flex min-h-6 items-center rounded-full border px-2 font-code text-[10px] font-bold tracking-[0.06em]", rule.status === "MANDATORY" ? "border-ink-300 text-ink-700 dark:border-white/20 dark:text-ink-200" : "border-ink-200 text-ink-500")}>
-                        {rule.status}
+                        {rule.status === "MANDATORY" ? "REQUIRED" : "GUIDANCE"}
                       </span>
                       {pack.hardFailRules.some((h) => rule.id === h || rule.id.startsWith(`${h}:`)) && (
                         <span className="inline-flex min-h-6 items-center rounded-full border border-brand-500/40 bg-brand-500/[0.06] px-2 font-code text-[10px] font-bold tracking-[0.06em] text-brand-800">
-                          HARD-FAIL
+                          BLOCKS APPROVAL
                         </span>
                       )}
                       <span className="text-[10px] font-medium text-ink-600">{rule.severity}</span>
                     </div>
                     <p className="mt-1 text-[12px] leading-relaxed text-ink-700">{rule.riskCategory} · {rule.legalReference}</p>
                     <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink-600"><span className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">EXCEPTION · </span>{rule.exceptionLogic}</p>
-                    <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink-600"><span className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">SIGN-OFF · </span>{rule.signOffOwner}</p>
+                    <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink-600"><span className="font-code text-[10px] font-bold tracking-[0.06em] text-ink-600">APPROVAL BY · </span>{rule.signOffOwner}</p>
                   </li>
                 ))}
               </ul>
@@ -513,14 +525,14 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
               </p>
             </div>
             {exceptions.length === 0 ? (
-              <p className="px-5 py-6 text-[12px] leading-relaxed text-ink-500">No exceptions on record. Departures from the standard route live here — with evidence, and never without a signature.</p>
+              <p className="px-5 py-6 text-[12px] leading-relaxed text-ink-500">No exception requests have been submitted.</p>
             ) : (
               <ul className="divide-y divide-ink-100">
                 {exceptions.slice(0, 12).map((exc) => (
                   <li key={exc.id} className="px-5 py-3.5">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={cn("inline-flex min-h-6 items-center rounded-full border px-2 font-code text-[10px] font-bold tracking-[0.06em]", EXCEPTION_TONE[exc.status])}>
-                        {exc.status.replace("_", " ")}
+                        {EXCEPTION_STATUS_LABEL[exc.status]}
                       </span>
                       <span className="text-[10px] font-medium text-ink-600">{KIND_LABEL[exc.kind] ?? exc.kind}{isSystemReference(exc.systemReference) ? ` · ${exc.systemReference}` : ""}</span>
                     </div>
@@ -539,20 +551,20 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
           <section className={card} aria-labelledby="cmp-ocr">
             <div className="border-b border-ink-100 px-5 py-4">
               <p id="cmp-ocr" className="font-code text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-600">
-                Document review queue — person in the loop
+                Documents awaiting review
               </p>
             </div>
             {reviewQueue.length === 0 ? (
               <p className="flex items-start gap-2 px-5 py-6 text-[12px] leading-relaxed text-ink-500">
                 <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" aria-hidden="true" />
-                Nothing waiting — every registered document's extraction is either high-confidence or reviewed by a named human.
+                No documents need review. Extracted details are either clear or have already been checked.
               </p>
             ) : (
               <ul className="divide-y divide-ink-100">
                 {reviewQueue.slice(0, 8).map((doc) => (
                   <li key={doc.id} className="px-5 py-3.5">
                     <p className="truncate font-code text-[10px] font-bold tracking-[0.06em] text-ink-900">{doc.title}</p>
-                    <p className="mt-0.5 text-[11px] leading-relaxed text-ink-500">{doc.extractionConfidence?.reason ?? "low-confidence extraction"} · sha {doc.sha256.slice(0, 10)}…</p>
+                    <p className="mt-0.5 text-[11px] leading-relaxed text-ink-500">{doc.extractionConfidence?.reason ?? "Some details could not be read clearly"}</p>
                     {canRun && (
                       <button
                         type="button"
@@ -561,7 +573,7 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
                         className="focus-brand mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 font-code text-[10px] font-bold tracking-[0.06em] text-ink-800 transition-colors hover:border-ink-950 disabled:opacity-50"
                       >
                         {busy === `doc-${doc.id}` ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <ScrollText className="h-3 w-3" aria-hidden="true" />}
-                        CONFIRM EXTRACTION
+                        Confirm details
                       </button>
                     )}
                   </li>
@@ -572,9 +584,7 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
 
           {docs.length > 0 && (
             <p className="px-1 text-[11px] leading-relaxed text-ink-500">
-              {docs.length} document(s) registered with content hashes, provenance, custody lines and retention schedules
-              ({docs.filter((d) => d.retention.status === "ARCHIVED").length} archived). A document cannot be silently
-              replaced — a changed hash is a version, and the previous hash stays on the record.
+              {docs.length} documents are on record, including {docs.filter((d) => d.retention.status === "ARCHIVED").length} archived. Updated files are kept as new versions so the previous record remains available.
             </p>
           )}
         </div>

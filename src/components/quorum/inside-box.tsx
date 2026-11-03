@@ -7,51 +7,51 @@ import { Aurora, Spotlight } from "@/components/quorum/motion-kit";
 
 const DOES = [
   {
-    lead: "Reads the whole tender.",
-    body: "Notices, line items and awards straight from OCDS portals — no scraping, no re-keying.",
+    lead: "Organizes the tender record.",
+    body: "Review published notices, bid documents and supporting records together in one place.",
   },
   {
-    lead: "Runs tools that do real work.",
-    body: "Document checklists, bidder verification, price comparison — logged MCP tools, not read-only wrappers.",
+    lead: "Applies consistent review checks.",
+    body: "Check required documents, supplier eligibility, technical requirements, quantities and prices against the stated criteria.",
   },
   {
-    lead: "Borrows what is proven.",
-    body: "Community and official MCP servers where they beat hand-rolled code — and says so in the log.",
+    lead: "Uses traceable references.",
+    body: "Keep source details alongside each finding so reviewers can inspect the evidence before acting.",
   },
   {
-    lead: "Runs on open weights.",
-    body: "Procurement data often cannot leave the country. Open-weights models by default; frontier alongside if you allow it.",
+    lead: "Supports institutional controls.",
+    body: "Deployment and data-location requirements can be scoped with your institution.",
   },
   {
-    lead: "Logs every action.",
-    body: "Inputs, outputs, timestamps — and a named human gate on every irreversible step.",
+    lead: "Records review actions.",
+    body: "Retain findings, officer dispositions, approvals and timestamps in the audit history.",
   },
   {
-    lead: "Stops before the award.",
-    body: "The file is prepared; the decision stays with the committee. Always.",
+    lead: "Leaves the award to officials.",
+    body: "Quorum prepares the review record; authorised committee members make the decision.",
   },
 ];
 
 const GETS = [
   {
-    lead: "A sourced report",
-    body: "findings with citations down to the page — ready for the committee pack.",
+    lead: "A sourced review report",
+    body: "findings with references to the relevant document, page or record.",
   },
   {
-    lead: "A flag register,",
-    body: "missing documents, lapsed registrations, price outliers — each with its evidence attached.",
+    lead: "An exception register",
+    body: "missing documents, lapsed registrations and price variances for officers to review.",
   },
   {
-    lead: "A full audit log",
-    body: "every tool call with inputs, outputs and timestamps. Exportable for auditors and oversight bodies.",
+    lead: "A review history",
+    body: "actions, findings, decisions and timestamps for authorised auditors and oversight teams.",
   },
   {
-    lead: "A one-page architecture brief,",
-    body: "which tools run, which models, and exactly where your data lives.",
+    lead: "A deployment overview",
+    body: "the processing, integration and data-location arrangements agreed with your institution.",
   },
   {
-    lead: "An eval harness",
-    body: "eight-plus test tasks with pass and fail results — trust the run before you scale it.",
+    lead: "A committee-ready record",
+    body: "the criteria applied, evidence reviewed and decisions recorded for the procurement file.",
   },
 ];
 
@@ -69,18 +69,18 @@ export function InsideRun() {
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
             <Reveal>
-              <SpecBar index="06" label="Inside the run" meta="Same standard, every tender" />
+              <SpecBar index="06" label="Review outputs" meta="Evidence · findings · decisions" />
             </Reveal>
             <Reveal delay={0.06}>
               <h2 className="type-display mt-6 max-w-2xl text-[34px] text-ink-950 sm:text-[44px]">
-                Every run, the same standard. By default.
+                Keep the review and its evidence together.
               </h2>
             </Reveal>
           </div>
           <Reveal delay={0.12}>
             <p className="flex max-w-sm items-start gap-2.5 rounded-[10px] border border-brand-200 bg-brand-50 px-4 py-3.5 text-[13.5px] font-semibold leading-snug text-brand-800">
               <ShieldCheck className="mt-0.5 h-4.5 w-4.5 shrink-0 text-brand-600" aria-hidden="true" />
-              Nothing below is an enterprise upsell — it ships in every run.
+              Source traceability and committee approval are part of the review workflow.
             </p>
           </Reveal>
         </div>

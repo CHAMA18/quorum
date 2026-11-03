@@ -56,6 +56,15 @@ type Readiness = {
   };
 };
 
+type WorkflowObservability = {
+  traces: { traceId: string; startedAt: string; latestAt: string; events: number; errors: number; runIds: string[] }[];
+  operations: { operation: string; calls: number; errors: number; p50Ms: number | null; p95Ms: number | null; latestAt: string | null }[];
+  runs: { total: number; running: number; failed: number; awaitingGate: number };
+  queue: { PENDING: number; RUNNING: number; DONE: number; FAILED: number; exhausted: number };
+  storage: string;
+  traceStore: string;
+};
+
 const SPINE_FLAGS: { key: keyof Spine; label: string; note: string; danger: boolean }[] = [
   { key: "logWriteFailing", label: "Log write", note: "the append path itself", danger: true },
   { key: "stateSaveFailing", label: "State save", note: "register persistence", danger: true },
@@ -82,6 +91,8 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
   const [readiness, setReadiness] = useState<Readiness | null>(null);
   const [readinessError, setReadinessError] = useState<string | null>(null);
   const [loadingReadiness, setLoadingReadiness] = useState(false);
+  const [workflow, setWorkflow] = useState<WorkflowObservability | null>(null);
+  const [workflowError, setWorkflowError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const loadReadiness = useCallback(async () => {
@@ -89,7 +100,7 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
     try {
       const res = await fetch("/api/readiness", { cache: "no-store" });
       const body = (await res.json().catch(() => ({}))) as Readiness & { error?: string };
-      if (!res.ok) throw new Error(body.error ?? "The readiness gate could not be read.");
+      if (!res.ok) throw new Error(body.error ?? "Workspace readiness checks could not be loaded.");
       setReadiness(body);
       setReadinessError(null);
     } catch (err) {
@@ -100,8 +111,30 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
   }, []);
 
   useEffect(() => {
-    void loadReadiness();
+    const initial = window.setTimeout(() => { void loadReadiness(); }, 0);
+    return () => window.clearTimeout(initial);
   }, [loadReadiness]);
+
+  const loadWorkflow = useCallback(async () => {
+    try {
+      const res = await fetch("/api/observability?XTransformPort=3031", { cache: "no-store" });
+      const body = (await res.json().catch(() => ({}))) as WorkflowObservability & { error?: string };
+      if (!res.ok) throw new Error(body.error ?? "Run and queue metrics could not be loaded.");
+      setWorkflow(body);
+      setWorkflowError(null);
+    } catch (err) {
+      setWorkflowError((err as Error).message);
+    }
+  }, []);
+
+  useEffect(() => {
+    const initial = window.setTimeout(() => { void loadWorkflow(); }, 0);
+    const timer = setInterval(() => { void loadWorkflow(); }, 15_000);
+    return () => {
+      window.clearTimeout(initial);
+      clearInterval(timer);
+    };
+  }, [loadWorkflow]);
 
   const runAccessReview = async () => {
     setBusy("review");
@@ -124,11 +157,11 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
       const res = await fetch("/api/readiness", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ note: "Signed from the control room against the live readiness gate." }),
+        body: JSON.stringify({ note: "Signed in administration against the current readiness check." }),
       });
       const body = (await res.json().catch(() => ({}))) as { by?: string; error?: string };
       if (!res.ok) throw new Error(body.error ?? "The sign-off was refused.");
-      notify(`Launch signed by ${body.by ?? actor.name}. The gate now carries a name.`, "ok");
+      notify(`Workspace readiness confirmed by ${body.by ?? actor.name}.`, "ok");
       await loadReadiness();
     } catch (err) {
       notify((err as Error).message, "error");
@@ -160,8 +193,8 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
         }
         lede={
           <>
-            Runtime health, the model chain that actually answered, the committee&apos;s standing quorum, the readiness
-            gate and the defensive counters. Every value below is read from the running system — none is a stored label.
+            Current service health, AI drafting settings, committee attendance, workspace readiness and system
+            protections. These values are read from the running service.
           </>
         }
         actions={
@@ -172,8 +205,8 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
                 RECORD ACCESS REVIEW
               </Button>
             )}
-            <Button size="sm" onClick={() => void refresh()}>
-              <Activity className="h-3 w-3" aria-hidden="true" /> RE-CHECK RUNTIME
+            <Button size="sm" onClick={() => { void refresh(); void loadWorkflow(); }}>
+              <Activity className="h-3 w-3" aria-hidden="true" /> REFRESH STATUS
             </Button>
           </>
         }
@@ -181,18 +214,18 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <ReadoutCard
-          label="Agent runtime"
+          label="Review service"
           tone={data.desk.online ? "emerald" : "red"}
           pulse={data.desk.online}
           value={data.desk.online ? "ONLINE" : "OFFLINE"}
           note={
             data.desk.online
-              ? `v${health?.version ?? "?"} · up ${uptime(health?.uptimeSec ?? 0)} · fs-mcp ${health?.fsMcp?.status ?? "not declared"} (${health?.fsMcp?.tools ?? 0} tools)`
-              : data.desk.error ?? "The sidecar did not answer."
+              ? `Version ${health?.version ?? "?"} · available ${uptime(health?.uptimeSec ?? 0)} · document access ${health?.fsMcp?.status === "connected" ? "connected" : health?.fsMcp?.status ?? "not reported"}`
+              : data.desk.error ?? "The review service did not respond."
           }
         />
         <ReadoutCard
-          label="Model chain"
+          label="Drafting support"
           tone={model?.configured ? "emerald" : "amber"}
           value={model?.configured ? (model.model ?? "configured") : "TEMPLATE ONLY"}
           note={
@@ -202,51 +235,125 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
           }
         />
         <ReadoutCard
-          label="Agent authority"
+          label="Automated review access"
           tone={health?.agent?.mode === "enabled" ? "amber" : health?.agent?.mode === "read-only" ? "sky" : "neutral"}
           value={(health?.agent?.mode ?? "unknown").replace(/-/g, " ").toUpperCase()}
-          note={`workspace-scoped write access · storage ${health?.agent?.storage ?? "not declared"}`}
+          note={`Access limited to this workspace · storage ${health?.agent?.storage ?? "not reported"}`}
         />
         <ReadoutCard
-          label="Standing quorum"
+          label="Committee attendance"
           tone={quorumMet ? "emerald" : "amber"}
           pulse={!quorumMet}
           value={`${committee.present}/${committee.required}`}
-          note={`${committee.seats} seats · ${quorumMet ? "the gavel can be used" : "no approval can pass"}`}
+          note={`${committee.seats} committee seats · ${quorumMet ? "enough members are present to approve" : "more members must attend before approval"}`}
         />
       </div>
+
+      <Panel>
+        <PanelHead
+          eyebrow="Workflow operations"
+          title="Run health and trace history"
+          description="Follow review requests from the authenticated gateway through the durable worker and audit events."
+          icon={<Gauge className="h-4 w-4 text-ink-400" aria-hidden="true" />}
+          action={workflow ? <Chip tone={workflow.queue.exhausted ? "red" : "emerald"}>{workflow.storage.toUpperCase()} · REFRESHES EVERY 15S</Chip> : <Chip tone="neutral">LOADING</Chip>}
+        />
+        {workflowError && !workflow ? (
+          <p role="status" className="px-5 py-4 text-[11px] text-ink-500">Workflow metrics are unavailable: {workflowError}</p>
+        ) : workflow ? (
+          <div className="space-y-4 px-5 py-4">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-8">
+              {[
+                ["RUNS", workflow.runs.total, "neutral"],
+                ["IN PROGRESS", workflow.runs.running, workflow.runs.running ? "sky" : "neutral"],
+                ["AWAITING APPROVAL", workflow.runs.awaitingGate, workflow.runs.awaitingGate ? "amber" : "neutral"],
+                ["FAILED RUNS", workflow.runs.failed, workflow.runs.failed ? "red" : "emerald"],
+                ["QUEUED", workflow.queue.PENDING, workflow.queue.PENDING ? "sky" : "neutral"],
+                ["WORKING", workflow.queue.RUNNING, workflow.queue.RUNNING ? "sky" : "neutral"],
+                ["COMPLETED JOBS", workflow.queue.DONE, "emerald"],
+                ["RETRIES EXHAUSTED", workflow.queue.exhausted, workflow.queue.exhausted ? "red" : "emerald"],
+              ].map(([label, value, tone]) => (
+                <div key={String(label)} className="rounded-xl border border-ink-100 bg-paper-2/50 px-3 py-2 dark:border-white/8 dark:bg-white/[0.02]">
+                  <p className="font-code text-[9px] font-bold uppercase tracking-[0.08em] text-ink-600">{label}</p>
+                  <p className="mt-1 type-num text-[19px] text-ink-950">{fmtNum(Number(value))}</p>
+                  <Chip tone={tone as Tone}>{String(label) === "RETRIES EXHAUSTED" && Number(value) ? "NEEDS ATTENTION" : "RECORDED"}</Chip>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-2">
+              <div className="min-w-0">
+                <p className="font-code text-[10px] font-bold uppercase tracking-[0.08em] text-ink-600">Recent request traces</p>
+                {workflow.traces.length ? (
+                  <ul className="mt-2 divide-y divide-ink-100 rounded-xl border border-ink-100 dark:divide-white/8 dark:border-white/10">
+                    {workflow.traces.slice(0, 6).map((trace) => (
+                      <li key={trace.traceId} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
+                        <code className="min-w-0 flex-1 truncate text-[10px] text-ink-700" title={trace.traceId}>{trace.traceId}</code>
+                        <span className="font-code text-[9px] text-ink-500">{trace.events} events · {trace.errors} errors · {fmtAgo(trace.latestAt, now)}</span>
+                        <a
+                          href={`/api/traces/${encodeURIComponent(trace.traceId)}?XTransformPort=3031`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="focus-brand rounded px-1.5 py-1 font-code text-[9px] font-bold uppercase text-brand-700 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-500/10"
+                        >
+                          OPEN TRACE
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                ) : <p className="mt-2 rounded-xl border border-dashed border-ink-200 px-3 py-4 text-[10.5px] text-ink-500 dark:border-white/10">No correlated request traces have been recorded yet.</p>}
+              </div>
+              <div className="min-w-0">
+                <p className="font-code text-[10px] font-bold uppercase tracking-[0.08em] text-ink-600">Operation latency</p>
+                {workflow.operations.length ? (
+                  <ul className="mt-2 divide-y divide-ink-100 rounded-xl border border-ink-100 dark:divide-white/8 dark:border-white/10">
+                    {workflow.operations.slice(0, 6).map((operation) => (
+                      <li key={operation.operation} className="flex items-center gap-3 px-3 py-2">
+                        <span className="min-w-0 flex-1 truncate text-[10.5px] text-ink-800">{operation.operation}</span>
+                        <span className="shrink-0 font-code text-[9px] text-ink-500">p50 {operation.p50Ms ?? "—"} ms · p95 {operation.p95Ms ?? "—"} ms</span>
+                        <Chip tone={operation.errors ? "red" : "emerald"}>{operation.errors} errors</Chip>
+                      </li>
+                    ))}
+                  </ul>
+                ) : <p className="mt-2 rounded-xl border border-dashed border-ink-200 px-3 py-4 text-[10.5px] text-ink-500 dark:border-white/10">No operation timings have been recorded yet.</p>}
+              </div>
+            </div>
+            <p className="text-[10px] text-ink-500">Trace store: {workflow.traceStore}. Review recovery replays a failed run from its start and reuses its pending gate; it does not restore an internal graph node.</p>
+            {workflowError && <p role="status" className="text-[10px] text-amber-700 dark:text-amber-300">Latest refresh failed: {workflowError}</p>}
+          </div>
+        ) : <p className="px-5 py-4 text-[11px] text-ink-500">Loading workflow metrics…</p>}
+      </Panel>
 
       <div className="grid gap-5 xl:grid-cols-12">
         <div className="space-y-5 xl:col-span-8">
           <Panel>
             <PanelHead
-              eyebrow="The chain of answer"
-              title="Model attribution"
-              description="The primary, the fallback and the residency rules — plus what actually answered last, read from the audit log rather than the environment."
+              eyebrow="AI drafting settings"
+              title="Drafting providers"
+              description="Review the primary and backup providers, where requests are processed and the source of the latest generated draft."
               action={<Chip tone={model?.configured ? "emerald" : "amber"} dot>{model?.configured ? "CONFIGURED" : "NOT CONFIGURED"}</Chip>}
               icon={<Cpu className="h-4 w-4 text-ink-400" aria-hidden="true" />}
             />
             <div className="grid gap-4 px-5 py-4 sm:grid-cols-2">
               <Field label="PRIMARY" value={model?.model ?? "—"} note={`${model?.providerLabel ?? "—"} · ${hostOf(model?.endpoint ?? null)}`} />
               <Field
-                label="FALLBACK"
+                label="BACKUP PROVIDER"
                 value={model?.fallback?.model ?? "none"}
                 note={model?.fallback ? `${model.fallback.providerLabel} · ${hostOf(model.fallback.endpoint)}` : "no secondary model is wired — a primary failure degrades to templates"}
               />
               <Field label="MODE" value={(model?.mode ?? "—").toUpperCase()} note={model?.configuredBy ? `configured by ${model.configuredBy}` : "configured from the environment"} />
               <Field
-                label="RESIDENCY"
+                label="DATA PROCESSING LOCATION"
                 value={(model?.residency?.residency ?? "not declared").toUpperCase()}
                 note={
                   model?.residency
                     ? model.residency.redactOn
                       ? "redaction on for outbound prompts"
-                      : "redaction off — review before external calls"
-                    : "the running build publishes no residency rule — treat outbound prompts as unclassified"
+                      : "Sensitive details are not removed before requests are sent. Review this setting before enabling AI drafting."
+                    : "No data processing location is reported. Confirm where requests are handled before enabling AI drafting."
                 }
               />
               <div className="sm:col-span-2 rounded-xl border border-ink-200/80 bg-paper-2/50 px-3.5 py-3 dark:border-white/10 dark:bg-white/[0.02]">
-                <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Last actual answer</p>
+                <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Latest AI-generated response</p>
                 {model?.lastCall ? (
                   <>
                     <p className="mt-1 text-[12px] font-semibold text-ink-900">
@@ -263,8 +370,7 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
                   </>
                 ) : (
                   <p className="mt-1 text-[11px] text-ink-500">
-                    No model call has been recorded. Drafts on this desk are template-generated; the chain is honest
-                    about it.
+                    No AI-generated response has been recorded. Drafts currently use clearly labelled templates.
                   </p>
                 )}
               </div>
@@ -272,16 +378,16 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
             <div className="border-t border-ink-100 px-5 py-3 dark:border-white/8">
               <p className="text-[10px] leading-relaxed text-ink-400">
                 A model that fails is not retried into a different vendor silently. The fallback is declared, the
-                template path always exists, and whichever path produced a draft is written into the audit spine.
+                template path always exists, and the source used for a draft is recorded in the audit log.
               </p>
             </div>
           </Panel>
 
           <Panel>
             <PanelHead
-              eyebrow="Readiness gate"
-              title="Nine criteria, computed live"
-              description="Nothing here is a checklist someone once signed. Each line is recomputed from the running system every time this panel is opened."
+              eyebrow="Workspace readiness"
+              title="Nine live readiness checks"
+              description="Each requirement is checked against the running system whenever this page opens."
               icon={<Rocket className="h-4 w-4 text-ink-400" aria-hidden="true" />}
               action={
                 <>
@@ -292,7 +398,7 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
                   {actor.canManageRules && readiness?.verdict === "READY" && (
                     <Button size="sm" variant="brand" onClick={() => void signLaunch()} disabled={busy !== null}>
                       {busy === "launch" ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Rocket className="h-3 w-3" aria-hidden="true" />}
-                      SIGN LAUNCH
+                      CONFIRM READINESS
                     </Button>
                   )}
                 </>
@@ -304,7 +410,7 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
               </div>
             ) : readinessError && !readiness ? (
               <div className="px-5 py-6">
-                <p className="text-[11.5px] text-ink-500">The readiness gate could not be read: {readinessError}</p>
+                <p className="text-[11.5px] text-ink-500">Workspace readiness checks could not be loaded: {readinessError}</p>
               </div>
             ) : readiness ? (
               <>
@@ -314,7 +420,7 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
                     max={readiness.criteria.length}
                     tone={readiness.verdict === "READY" ? "emerald" : readiness.summary.fail > 0 ? "red" : "amber"}
                     label={`${readiness.summary.pass}/${readiness.criteria.length}`}
-                    sub="PASSING"
+                    sub="MET"
                   />
                   <div className="min-w-0 flex-1">
                     <p
@@ -330,14 +436,14 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
                       {readiness.verdict === "READY" ? "READY" : "NOT READY"}
                     </p>
                     <p className="mt-0.5 text-[10.5px] leading-relaxed text-ink-500">
-                      {readiness.summary.pass} pass · {readiness.summary.pending} pending · {readiness.summary.fail} fail.
-                      A failing criterion is not a warning; it is a stop.
+                      {readiness.summary.pass} met · {readiness.summary.pending} pending · {readiness.summary.fail} failed.
+                      Resolve every failed requirement before launch.
                     </p>
                     <div className="mt-2 flex flex-wrap gap-3 text-[10px] font-semibold text-ink-600">
-                      <span>{readiness.pilotMetrics.runsFiled}/{readiness.pilotMetrics.runsLaunched} runs filed</span>
-                      <span>{readiness.pilotMetrics.findingsDisposed}/{readiness.pilotMetrics.findingsRaised} findings disposed</span>
-                      <span>{readiness.pilotMetrics.humanOverrides} human override{readiness.pilotMetrics.humanOverrides === 1 ? "" : "s"}</span>
-                      <span>{readiness.pilotMetrics.auditChainEntries ?? "—"} sealed rows</span>
+                      <span>{readiness.pilotMetrics.runsFiled}/{readiness.pilotMetrics.runsLaunched} reviews filed</span>
+                      <span>{readiness.pilotMetrics.findingsDisposed}/{readiness.pilotMetrics.findingsRaised} findings resolved</span>
+                      <span>{readiness.pilotMetrics.humanOverrides} manual change{readiness.pilotMetrics.humanOverrides === 1 ? "" : "s"}</span>
+                      <span>{readiness.pilotMetrics.auditChainEntries ?? "—"} verified audit entries</span>
                     </div>
                   </div>
                 </div>
@@ -382,7 +488,7 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
           <Panel>
             <PanelHead
               eyebrow="Posture"
-              title="Governance"
+              title="Access controls"
               icon={<ShieldCheck className="h-4 w-4 text-ink-400" aria-hidden="true" />}
             />
             <dl className="divide-y divide-ink-100 dark:divide-white/8">
@@ -393,25 +499,25 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
                 note={posture?.connector ? (posture.connector.active ? "active" : "inactive") : "no external connector bound"}
               />
               <Row
-                label="Sittings"
+                label="Meetings"
                 value={posture ? fmtNum(posture.sittings) : "—"}
-                note={posture ? (posture.sittingQuorumFlag ? "a sitting is open — quorum flag raised" : "no sitting flag") : "the runtime did not publish its sitting count"}
+                note={posture ? (posture.sittingQuorumFlag ? "a committee meeting is open" : "no open committee meeting") : "meeting status not reported"}
               />
               <Row
-                label="Gate seal key"
+                label="Approval signing key"
                 value={posture?.gateKey.keyId ?? "—"}
-                note={posture?.gateKey ? `source ${posture.gateKey.source}` : "no seal key published"}
+                note={posture?.gateKey ? `source ${posture.gateKey.source}` : "No signing key reported."}
               />
-              <Row label="Decisions" value={fmtNum(spine?.decisions ?? 0)} note={`${fmtNum(spine?.forwardedKeys ?? 0)} forwarded gateway keys`} />
+              <Row label="Decisions" value={fmtNum(spine?.decisions ?? 0)} note={`${fmtNum(spine?.forwardedKeys ?? 0)} verified application requests`} />
             </dl>
           </Panel>
 
           <Panel>
             <PanelHead
-              eyebrow="The committee"
-              title="Standing quorum"
+              eyebrow="Committee"
+              title="Member attendance"
               icon={<Users className="h-4 w-4 text-ink-400" aria-hidden="true" />}
-              action={<Chip tone={quorumMet ? "emerald" : "amber"} dot>{quorumMet ? "QUORATE" : "SHORT"}</Chip>}
+              action={<Chip tone={quorumMet ? "emerald" : "amber"} dot>{quorumMet ? "REQUIREMENT MET" : "MORE MEMBERS NEEDED"}</Chip>}
             />
             <div className="px-5 py-3.5">
               <div className="flex items-baseline justify-between gap-2">
@@ -420,7 +526,7 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
                   <span className="text-[14px] text-ink-400"> / {committee.required}</span>
                 </p>
                 <p className="font-code text-[10px] font-bold uppercase tracking-[0.08em] text-ink-600">
-                  {committee.seats} SEATS
+                  {committee.seats} MEMBERS
                 </p>
               </div>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-ink-100 dark:bg-white/10">
@@ -442,22 +548,22 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
                 ))}
                 {committee.members.length === 0 && (
                   <li className="text-[10.5px] text-ink-400">
-                    The roll is empty. No gate can pass until the committee is seated.
+                    No committee members are assigned. Approvals remain unavailable until members are added.
                   </li>
                 )}
               </ul>
             </div>
             <div className="border-t border-ink-100 px-5 py-2.5 dark:border-white/8">
               <a href="/#/committee" className="focus-brand inline-flex min-h-11 items-center rounded-lg px-2 font-code text-[10px] font-bold uppercase tracking-[0.06em] text-brand-800 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-500/10">
-                SEAT THE COMMITTEE IN THE WORKSPACE →
+                MANAGE COMMITTEE MEMBERS →
               </a>
             </div>
           </Panel>
 
           <Panel>
             <PanelHead
-              eyebrow="Defensive counters"
-              title="Spine self-checks"
+              eyebrow="System protections"
+              title="Audit and safety checks"
               icon={<Database className="h-4 w-4 text-ink-400" aria-hidden="true" />}
             />
             {spine ? (
@@ -487,14 +593,14 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
                 <li className="flex items-center gap-2.5 px-5 py-2">
                   <Lock className="h-3.5 w-3.5 shrink-0 text-ink-400" aria-hidden="true" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-medium text-ink-800">Sealed chain</p>
-                    <p className="text-[10px] leading-relaxed text-ink-600">Entries bound by hash</p>
+                    <p className="text-[11px] font-medium text-ink-800">Verified activity history</p>
+                    <p className="text-[10px] leading-relaxed text-ink-600">Entries checked for changes</p>
                   </div>
                   <span className="font-code text-[10px] font-bold tabular text-ink-700">{fmtNum(spine.logChainEntries)}</span>
                 </li>
               </ul>
             ) : (
-              <Empty title="Health unavailable" body="The sidecar did not return its self-checks. Nothing is assumed to be clear." />
+              <Empty title="System checks unavailable" body="The review service did not return its safety checks. Their status cannot be confirmed." />
             )}
           </Panel>
         </div>
@@ -502,14 +608,14 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
 
       <Panel>
         <PanelHead
-          eyebrow="The instrument list"
-          title="Tool inventory"
-          description="Every capability the agent can call, as the runtime declares it. Irreversible tools always route through a human gate."
+          eyebrow="Review service"
+          title="Available review actions"
+          description="Actions available to the review service. Any action that changes a tender or approval requires an authorized person."
           icon={<Boxes className="h-4 w-4 text-ink-400" aria-hidden="true" />}
           action={
             <div className="flex items-center gap-1.5">
-              <Chip tone="neutral">{fmtNum(tools.length)} tools</Chip>
-              <Chip tone="amber">{fmtNum(irreversible)} irreversible</Chip>
+              <Chip tone="neutral">{fmtNum(tools.length)} actions</Chip>
+              <Chip tone="amber">{fmtNum(irreversible)} require approval</Chip>
             </div>
           }
         />
@@ -517,15 +623,15 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Filter the tool inventory…"
-            aria-label="Filter tools"
+            placeholder="Search available actions…"
+            aria-label="Search available review actions"
             className={cn(inputCls, "w-full max-w-sm")}
           />
         </div>
         {filteredTools.length === 0 ? (
           <Empty
-            title="No tool matches"
-            body={tools.length === 0 ? "The sidecar returned no tool list — check that the runtime is up." : "Clear the filter to see the full inventory."}
+            title="No actions found"
+            body={tools.length === 0 ? "The review service did not return its available actions. Check service status." : "Clear the search to view all available actions."}
           />
         ) : (
           <ul className="grid divide-y divide-ink-100 sm:grid-cols-2 sm:divide-y-0 dark:divide-white/8">
@@ -540,7 +646,7 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
                 <div className="min-w-0 flex-1">
                   <p className="flex flex-wrap items-center gap-1.5">
                     <span className="font-code text-[10px] font-semibold tracking-[0.03em] text-ink-900">{tool.name}</span>
-                    {tool.irreversible && <Chip tone="amber">GATED</Chip>}
+                    {tool.irreversible && <Chip tone="amber">APPROVAL REQUIRED</Chip>}
                     {tool.kind && <span className="font-code text-[10px] uppercase tracking-[0.05em] text-ink-600">{tool.kind}</span>}
                   </p>
                   {tool.description && <p className="mt-0.5 line-clamp-2 text-[10px] leading-relaxed text-ink-500">{tool.description}</p>}
@@ -555,32 +661,32 @@ export function SystemPanel({ data, query, setQuery, now, refresh, notify }: Pan
         <div className="rounded-2xl border border-ink-200/80 bg-paper-2/60 px-5 py-4 dark:border-white/10 dark:bg-white/[0.02]">
           <div className="flex items-center gap-2">
             <KeyRound className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
-            <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Sealed at the edge</p>
+            <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Requests are verified</p>
           </div>
           <p className="mt-2 text-[10.5px] leading-relaxed text-ink-500">
-            The web layer signs every mutation it forwards with an HMAC over method, path, actor and timestamp. The
-            sidecar refuses anything unsealed, so an approving identity cannot be typed by the caller.
+            The application verifies each request before passing it to the review service. The approver's identity
+            comes from the signed-in account and cannot be entered as someone else.
           </p>
         </div>
         <div className="rounded-2xl border border-ink-200/80 bg-paper-2/60 px-5 py-4 dark:border-white/10 dark:bg-white/[0.02]">
           <div className="flex items-center gap-2">
             <Radio className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
-            <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Graph boundary</p>
+            <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Review workflows</p>
           </div>
           <p className="mt-2 text-[10.5px] leading-relaxed text-ink-500">
             {(health?.graphs ?? []).length > 0
-              ? `Compiled graphs: ${(health?.graphs ?? []).join(", ")}. The edge from review to filing exists only after a signed gate.`
-              : "No graphs compiled — the runtime has not declared its workflows."}
+              ? `Available workflows: ${(health?.graphs ?? []).join(", ")}. A completed tender review is submitted only after an authorized officer approves it.`
+              : "No review workflows were reported by the service."}
           </p>
         </div>
         <div className="rounded-2xl border border-ink-200/80 bg-paper-2/60 px-5 py-4 dark:border-white/10 dark:bg-white/[0.02]">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
-            <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Fail-closed</p>
+            <p className="font-code text-[10px] font-bold uppercase tracking-[0.1em] text-ink-600">Safe failure behavior</p>
           </div>
           <p className="mt-2 text-[10.5px] leading-relaxed text-ink-500">
-            If the roster, the log or the seal cannot be read, the gate refuses. Nothing falls open on error — the
-            worst case here is a stopped file, never an unsigned one.
+            If the committee roster or saved activity history cannot be checked, the service blocks the approval.
+            Work pauses until the required information is available.
           </p>
         </div>
       </div>

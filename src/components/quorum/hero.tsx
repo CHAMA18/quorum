@@ -8,21 +8,21 @@ import {
   useSpring,
   useTransform,
 } from "framer-motion";
-import { ArrowDown, ArrowRight, ArrowUpRight, CircleDot, Landmark, PenLine, Sparkles } from "lucide-react";
+import { ArrowDown, ArrowRight, CircleDot, Landmark, PenLine } from "lucide-react";
 import { AgentRun } from "@/components/quorum/agent-run";
 import { HeroFilm } from "@/components/quorum/hero-film";
 import { SpecBar } from "@/components/quorum/reveal";
-import { CountUp, Magnetic } from "@/components/quorum/motion-kit";
+import { Magnetic } from "@/components/quorum/motion-kit";
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
 /* The counted contract — four numbers the product is held to. Not marketing:
    the workspace dashboard reports exactly these figures back to officers. */
-const CONTRACT: { to: number; suffix?: string; label: string; meta: string }[] = [
-  { to: 3, label: "checks on every bid", meta: "SPECS · BIDDERS · PRICES" },
-  { to: 100, suffix: "%", label: "of findings cited to a source", meta: "OR IT DOESN'T COUNT" },
-  { to: 22, label: "datasets read live", meta: "ACROSS 9 PORTALS" },
-  { to: 1, label: "human gate before any award", meta: "A NAMED APPROVER SIGNS" },
+const CONTRACT: { value: string; label: string; meta: string }[] = [
+  { value: "03", label: "review dimensions", meta: "REQUIREMENTS · SUPPLIERS · PRICES" },
+  { value: "CITED", label: "findings linked to evidence", meta: "DOCUMENT · PAGE · RECORD" },
+  { value: "NAMED", label: "approver for every decision", meta: "AUTHORISED COMMITTEE MEMBER" },
+  { value: "RECORDED", label: "actions retained in the audit history", meta: "REVIEW · DISPOSITION · TIME" },
 ];
 
 /* The portals the agent actually reads — the same 9 countries, 22 datasets
@@ -136,8 +136,8 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
         >
           <SpecBar
             index="00"
-            label="Agentic tender review · public health procurement"
-            meta="MCP sidecar · every tool call logged"
+            label="Tender review workspace · public health procurement"
+            meta="Source-linked findings · accountable approvals"
           />
         </motion.div>
 
@@ -148,30 +148,24 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
                 editorial italic serif, underlined by a stroke that draws in. */}
             <h1
               className="type-display type-display-xl text-ink-950"
-              aria-label="Do in one review run what takes a committee weeks of reading."
+              aria-label="One complete tender review. Every finding traceable."
             >
               <span aria-hidden="true">
-                <MaskedWord delay={0.06}>Do</MaskedWord>{" "}
-                <MaskedWord delay={0.12}>in</MaskedWord>{" "}
+                <MaskedWord delay={0.06}>One</MaskedWord>{" "}
+                <MaskedWord delay={0.12}>complete</MaskedWord>{" "}
                 <span className="relative inline-block sm:whitespace-nowrap">
                   <MaskedWord
                     delay={0.18}
                     className="font-editorial text-[1.04em] font-normal tracking-normal text-brand-500 dark:text-brand-400"
                   >
-                    one
+                    tender
                   </MaskedWord>{" "}
                   <MaskedWord
                     delay={0.24}
                     className="font-editorial text-[1.04em] font-normal tracking-normal text-brand-500 dark:text-brand-400"
                   >
-                    review
+                    review.
                   </MaskedWord>{" "}
-                  <MaskedWord
-                    delay={0.3}
-                    className="font-editorial text-[1.04em] font-normal tracking-normal text-brand-500 dark:text-brand-400"
-                  >
-                    run
-                  </MaskedWord>
                   <svg
                     viewBox="0 0 300 10"
                     className="absolute -bottom-[0.14em] left-0 h-[0.1em] w-full overflow-visible"
@@ -190,13 +184,9 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
                     />
                   </svg>
                 </span>{" "}
-                <MaskedWord delay={0.38}>what</MaskedWord>{" "}
-                <MaskedWord delay={0.44}>takes</MaskedWord>{" "}
-                <MaskedWord delay={0.5}>a</MaskedWord>{" "}
-                <MaskedWord delay={0.56}>committee</MaskedWord>{" "}
-                <MaskedWord delay={0.62}>weeks</MaskedWord>{" "}
-                <MaskedWord delay={0.68}>of</MaskedWord>{" "}
-                <MaskedWord delay={0.74}>reading.</MaskedWord>
+                <MaskedWord delay={0.38}>Every</MaskedWord>{" "}
+                <MaskedWord delay={0.44}>finding</MaskedWord>{" "}
+                <MaskedWord delay={0.5}>traceable.</MaskedWord>
               </span>
             </h1>
 
@@ -206,9 +196,9 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
               transition={reduce ? { duration: 0 } : { duration: 0.7, delay: 0.55, ease: EASE }}
               className="type-lede mt-6 max-w-[54ch] text-ink-600 dark:text-ink-400"
             >
-              Quorum compares specs with clinical need, quantities with real consumption and prices
-              with other buyers. Every finding is cited;{" "}
-              <span className="font-semibold text-ink-900 dark:text-ink-100">the committee decides.</span>
+              Quorum brings tender requirements, supplier documents and price checks into one
+              review record. Officers verify the evidence;{" "}
+              <span className="font-semibold text-ink-900 dark:text-ink-100">the committee makes the award decision.</span>
             </motion.p>
 
             {/* Put the next step directly after the product promise; the
@@ -230,7 +220,7 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
                     aria-hidden="true"
                     className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/22 to-transparent transition-transform duration-700 group-hover:translate-x-full"
                   />
-                  <span className="relative">Start your first run</span>
+                  <span className="relative">Create your workspace</span>
                   <span
                     aria-hidden="true"
                     className="relative grid h-9 w-9 place-items-center rounded-full bg-white/18 transition-transform duration-300 group-hover:translate-x-0.5"
@@ -258,7 +248,7 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
               className="type-micro mt-4 flex items-center gap-2.5 text-ink-500"
             >
               <CircleDot className="h-3 w-3 text-brand-500" aria-hidden="true" />
-              Pilot tier — free for your first three tenders
+              Start with up to three tender reviews at no cost
             </motion.p>
 
             {/* Institutional standing */}
@@ -272,35 +262,7 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
                 <span className="grid h-6 w-6 place-items-center rounded-full bg-brand-500/12">
                   <Landmark className="h-3.5 w-3.5" aria-hidden="true" />
                 </span>
-                Built for ministries, medical stores &amp; oversight bodies
-              </span>
-            </motion.div>
-
-            {/* Hackathon + model attribution — a judge should see, before any
-                sign-in, that this is a Meta build and which models carry it. */}
-            <motion.div
-              initial={reduce ? false : { opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={reduce ? { duration: 0 } : { duration: 0.7, delay: 0.66, ease: EASE }}
-              className="mt-3 flex flex-wrap items-center gap-2"
-            >
-              <a
-                href="https://d1n7mv5t5hn4xe.cloudfront.net"
-                className="focus-brand group inline-flex min-h-11 items-center gap-2 rounded-full border border-ink-200 bg-white/70 px-3.5 py-1.5 text-[12px] font-semibold text-ink-800 transition-colors hover:border-brand-300 hover:text-brand-700 dark:border-white/12 dark:bg-white/[0.04] dark:text-ink-800"
-              >
-                <Sparkles className="h-3.5 w-3.5 text-brand-600" aria-hidden="true" />
-                Meta Global AI Developer Hackathon 2026 · Indie track
-                <ArrowUpRight
-                  className="h-3.5 w-3.5 text-ink-400 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-                  aria-hidden="true"
-                />
-              </a>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-200/70 bg-paper/60 px-3.5 py-1.5 font-code text-[10.5px] font-medium tracking-[0.08em] text-ink-500 dark:border-white/10 dark:text-ink-400">
-                MUSE SPARK 1.3
-                <span className="text-ink-300" aria-hidden="true">·</span>
-                LLAMA 3.2 IN-REGION
-                <span className="text-ink-300" aria-hidden="true">·</span>
-                SAM 3.1
+                Designed for ministries, medical stores and oversight bodies
               </span>
             </motion.div>
 
@@ -322,10 +284,10 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
                     <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-brand-500" />
                     <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-500" />
                   </span>
-                  Live run · quorum-mcp audit log
+                  Recent review activity
                 </span>
                 <span className="type-micro hidden text-right text-ink-400 sm:block">
-                  Every claim cited — or it doesn&apos;t count
+                  Findings linked to their source
                 </span>
               </div>
 
@@ -351,13 +313,13 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
               <div className="mt-3.5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[10px] border border-ink-200/70 border-l-2 border-l-brand-500 bg-white/70 px-4 py-3 backdrop-blur dark:border-white/10 dark:bg-white/[0.03]">
                 <span className="inline-flex items-center gap-2 text-[13px] font-semibold text-ink-900">
                   <PenLine className="h-4 w-4 text-brand-600" aria-hidden="true" />
-                  Human gate
+                  Committee approval
                 </span>
                 <span className="text-[13px] text-ink-500">
-                  the run stops before the award — a named approver signs
+                  Quorum prepares the review; an authorised official records the decision.
                 </span>
                 <span className="ml-auto type-micro hidden text-brand-700 sm:block dark:text-brand-300">
-                  Armed
+                  Approval required
                 </span>
               </div>
             </div>
@@ -374,8 +336,8 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
         >
           <SpecBar
             index="01"
-            label="The contract this product is held to"
-            meta="Reported back in every workspace run"
+            label="Safeguards in every review"
+            meta="Evidence · authorised approvals · audit history"
           />
           <dl className="mt-6 grid grid-cols-1 gap-px overflow-hidden rounded-[10px] border border-ink-200/70 bg-ink-200/60 sm:grid-cols-2 lg:grid-cols-4 dark:border-white/10 dark:bg-white/10">
             {CONTRACT.map((s, i) => (
@@ -386,11 +348,8 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
                 <span className="type-micro order-1 text-ink-400">
                   {String(i + 1).padStart(2, "0")} · {s.meta}
                 </span>
-                <dd className="type-num order-2 text-[42px] text-ink-950 lg:text-[46px]">
-                  <CountUp to={s.to} />
-                  {s.suffix ? (
-                    <span className="text-brand-500 dark:text-brand-400">{s.suffix}</span>
-                  ) : null}
+                <dd className="type-num order-2 text-[34px] text-ink-950 sm:text-[38px] lg:text-[40px]">
+                  {s.value}
                 </dd>
                 <dt className="order-3 text-[13px] leading-snug text-ink-500">{s.label}</dt>
               </div>
@@ -404,12 +363,12 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
           fixed collar, so the strip reads as provenance rather than filler. */}
       <div
         className="group relative flex items-center border-t border-ink-200/70 bg-paper/70 dark:border-white/10"
-        aria-label="Portal sources the agent reads"
+          aria-label="Public procurement data sources"
       >
         <span className="relative z-10 hidden shrink-0 items-center gap-2.5 bg-paper pl-4 pr-5 sm:flex sm:pl-6 lg:pl-8">
           <span className="type-micro flex items-center gap-2 text-ink-500">
             <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-brand-500" aria-hidden="true" />
-            Sourced live
+            Public sources
           </span>
           <span className="h-3.5 w-px bg-ink-200 dark:bg-white/12" aria-hidden="true" />
         </span>
@@ -424,7 +383,7 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
             ))}
           </div>
         </div>
-        <p className="sr-only">Sourced live from 22 datasets across 9 national and county portals.</p>
+        <p className="sr-only">Examples of public procurement sources across Africa.</p>
       </div>
     </section>
   );

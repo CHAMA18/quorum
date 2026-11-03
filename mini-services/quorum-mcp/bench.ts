@@ -77,8 +77,9 @@ bindEngine({
   save() {
     /* no-op — the benchmark never writes state.json */
   },
-  raiseGate() {
+  raiseGate(g) {
     /* no-op — gates are counted, not filed */
+    return g;
   },
   guards: () => LIVE_GUARDS,
   registry: () => LIVE_REGISTRY,

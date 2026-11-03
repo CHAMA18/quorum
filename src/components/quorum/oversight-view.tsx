@@ -294,9 +294,9 @@ export function OversightView({
         note: `${organizations.filter((o) => o.status === "SUSPENDED").length} suspended`,
       },
       {
-        label: "GOVERNANCE EVENTS",
+        label: "ADMINISTRATION CHANGES",
         value: String(orgs?.events.length ?? 0),
-        note: "Recent changes on this desk",
+        note: "Recent changes to roles and access",
       },
     ];
   }, [team, orgs]);
@@ -506,8 +506,8 @@ export function OversightView({
               Oversight<span className="text-brand-600">.</span>
             </h1>
             <p className="type-lede mt-3 text-ink-600">
-              Who holds workspace authority and which organizations may use the desk. The
-              console is scoped by role: owners and admins hold the writable surface, auditors read it.
+              Manage who can use the workspace and which supplier organizations may submit bids. Owners and
+              administrators can make changes; auditors have read-only access.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -565,8 +565,8 @@ export function OversightView({
                       Workspace members
                     </h2>
                     <p className="mt-1 text-[11.5px] leading-relaxed text-ink-500">
-                      A role is workspace authority. The committee roster is separate: a member still needs a seat and
-                      an office before a gate accepts their signature.
+                      Workspace roles control general access. Committee membership and office are assigned separately
+                      and checked before a member can approve a committee decision.
                     </p>
                   </div>
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-paper px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">
@@ -578,7 +578,7 @@ export function OversightView({
                 {loading && !team ? (
                   <div className="flex items-center gap-2 px-5 py-8 text-[12px] text-ink-500">
                     <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                    Reading workspace authority…
+                    Loading member access…
                   </div>
                 ) : (
                   <ul className="divide-y divide-ink-100">

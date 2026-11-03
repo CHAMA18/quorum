@@ -22,7 +22,7 @@ import {
 import { AuthFilm } from "@/components/quorum/auth-film";
 import { QuorumLogo } from "@/components/quorum/logo";
 import { MasterSwitcher } from "@/components/quorum/master-switcher";
-import { RegisterShowcase } from "@/components/quorum/org/register-showcase";
+import { StoryShowcase } from "@/components/quorum/story-showcase";
 import { SearchSelect, type SelectOption } from "@/components/quorum/org/search-select";
 import { COUNTRIES, SUGGESTED_COUNTRIES, findCountry, type Country } from "@/lib/countries";
 import { LEGAL_FORM_GROUPS, LEGAL_FORM_OTHER } from "@/lib/legal-forms";
@@ -482,7 +482,7 @@ function RegisterWizard({
               </div>
               <p className="rounded-xl border border-ink-100 bg-sand px-3.5 py-2.5 text-[12px] leading-relaxed text-ink-600 dark:border-white/10 dark:bg-night-2 dark:text-ink-400">
                 These are the statutory fields public procurement asks bidders to hold. They are optional here — but a
-                complete profile is what the desk sees when your first application lands on the supplier register.
+                a complete profile helps the procurement team review your first application.
               </p>
             </>
           ) : null}
@@ -506,7 +506,7 @@ function RegisterWizard({
               <Field label="What the organization supplies (optional)">
                 <textarea
                   className={cn(inputCls, "h-20 resize-none py-2.5")}
-                  placeholder="Two or three sentences the desk can rely on."
+                  placeholder="Briefly describe the goods or services your organization provides."
                   value={form.description}
                   onChange={(e) => set("description", e.target.value)}
                 />
@@ -595,7 +595,7 @@ function RegisterWizard({
 
               <div className="overflow-hidden rounded-xl border border-ink-100 dark:border-white/10">
                 <p className="border-b border-ink-100 bg-sand px-3.5 py-2 font-code text-[10px] font-semibold tracking-[0.08em] text-ink-600 dark:border-white/10 dark:bg-night-2 dark:text-ink-300">
-                  REVIEW — WHAT THE DESK WILL SEE
+                  REVIEW — ORGANIZATION DETAILS
                 </p>
                 <dl className="divide-y divide-ink-50 dark:divide-ink-900">
                   {review.map((r) => (
@@ -675,16 +675,15 @@ function OnTheRegister({ orgName, onEnter }: { orgName: string; onEnter: () => v
         transition={{ type: "spring", stiffness: 240, damping: 16, delay: 0.18 }}
         className="mx-auto inline-block rounded-lg border-[3px] border-brand-600 px-6 py-3 shadow-[0_20px_50px_rgba(217,38,22,0.28)]"
       >
-        <p className="type-display text-[19px] tracking-[0.1em] text-brand-600 sm:text-[22px]">ON THE REGISTER</p>
+        <p className="type-display text-[19px] tracking-[0.1em] text-brand-600 sm:text-[22px]">PROFILE CREATED</p>
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.34, ease: EASE }}>
         <h2 className="type-display mt-7 text-[24px] text-ink-950 dark:text-white">
-          {orgName} <span className="text-brand-600">is on the record.</span>
+          Your supplier account is ready.
         </h2>
         <p className="mx-auto mt-2.5 max-w-sm text-[13.5px] leading-relaxed text-ink-600 dark:text-ink-300">
-          The organization profile is live and this session is open. Enter the console when you&apos;re ready to review
-          open tenders and manage applications under this organization&apos;s verified identity.
+          Your profile is saved. Open the supplier portal to find tenders and manage your applications.
         </p>
 
         <button
@@ -693,7 +692,7 @@ function OnTheRegister({ orgName, onEnter }: { orgName: string; onEnter: () => v
           onClick={enter}
           className="focus-brand group mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink-950 px-7 text-[15px] font-semibold text-white transition-all hover:bg-brand-600"
         >
-          Enter the console
+          Open supplier portal
           <ArrowRight className="h-4.5 w-4.5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
         </button>
       </motion.div>
@@ -994,12 +993,12 @@ function SignIn({ onDone }: { onDone: () => void }) {
             <div className="rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-3 text-[12.5px] leading-relaxed text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-200">
               {appealRef ? (
                 <p>
-                  Appeal <strong className="font-code tracking-[0.12em]">{appealRef}</strong> is on the governance log. The
-                  procurement desk will review it and reinstate the account if the suspension is lifted.
+                  Appeal <strong className="font-code tracking-[0.12em]">{appealRef}</strong> has been recorded. The
+                  procurement team will review it and restore access if the suspension is lifted.
                 </p>
               ) : !appealOpen ? (
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p>A suspension blocks the portal. You can ask the desk to review it.</p>
+                  <p>Your account is suspended, so you cannot use the supplier portal. You can request a review.</p>
                   <button
                     type="button"
                     onClick={() => {
@@ -1089,9 +1088,7 @@ function SignIn({ onDone }: { onDone: () => void }) {
             <p className="font-code text-[10px] tracking-[0.05em] text-ink-600 dark:text-ink-300">ONE-TIME CODE · 15 MIN</p>
           </div>
           <p className="text-[13px] leading-relaxed text-ink-500 dark:text-ink-400">
-            The desk issues a one-time reset code straight to this screen — supplier accounts carry no outbound
-            mail, so nothing is sent to spam and nothing depends on an inbox. The code works once and expires in
-            fifteen minutes.
+            A one-time reset code will appear here. It will not be sent by email, and it expires after fifteen minutes.
           </p>
           <Field label="Organization email" error={resetFieldErrors.email}>
             <input autoFocus className={inputCls} type="email" autoComplete="email" placeholder="bids@organization.example" value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} />
@@ -1370,18 +1367,16 @@ export function OrgAuthScreen() {
         <div className="relative max-w-xl space-y-6">
           <QuorumLogo variant="light" />
           <h1 className="type-display text-[42px] text-white">
-            The supplier side
+            Your procurement workspace
             <br />
-            of the desk<span className="text-brand-500">.</span>
+            <span className="text-brand-500">.</span>
           </h1>
           <p className="text-[15.5px] leading-relaxed text-ink-300">
-            Officers review and award on the desk. This door is yours: build your organization&apos;s profile once,
-            watch the opportunities board, and file applications that carry your organization&apos;s verified identity
-            into the procurement record.
+            Create your organization profile, find open tenders, and submit bids through one secure supplier portal.
           </p>
           {/* The value story rotates — one fact at a time, pausing when the
               visitor reads it. Every slide states something the portal does. */}
-          <RegisterShowcase />
+              <StoryShowcase />
         </div>
 
       </div>
@@ -1391,7 +1386,7 @@ export function OrgAuthScreen() {
         {/* pt-5 — the portal switcher now lives in the card, so the mobile header needs no clearance */}
         <div className="flex items-center justify-end px-5 pb-4 pt-5 lg:hidden">
           <Link href="/" className="focus-brand inline-flex min-h-11 items-center rounded-lg px-2 font-code text-[10px] font-semibold tracking-[0.12em] text-ink-600 hover:text-ink-900 dark:text-ink-300 dark:hover:text-white">
-            OFFICER DESK →
+            OFFICER WORKSPACE →
           </Link>
         </div>
 
@@ -1405,19 +1400,14 @@ export function OrgAuthScreen() {
               <div className="relative">
                 <p className="font-code text-[10px] font-semibold tracking-[0.12em] text-brand-300">SUPPLIER PORTAL</p>
                 <h2 className="type-display mt-2 text-[22px] text-white">
-                  The supplier side of the desk<span className="text-brand-500">.</span>
+                  Your procurement workspace<span className="text-brand-500">.</span>
                 </h2>
                 {/* The same rotation, compact — the door tells its story on
                     small screens too, with the same facts and controls. */}
                 <div className="mt-3.5">
-                  <RegisterShowcase compact />
+                  <StoryShowcase compact />
                 </div>
               </div>
-            </div>
-
-            {/* Portal tag — the Quorum / Supplier switcher sits inside the card, above the brand. */}
-            <div className="mb-5 hidden items-center justify-end lg:flex">
-              <span className="font-code text-[10px] font-semibold tracking-[0.1em] text-brand-700 dark:text-brand-400">SUPPLIER PORTAL · /ORG</span>
             </div>
 
             {registeredName ? (
@@ -1496,7 +1486,7 @@ export function OrgAuthScreen() {
                               ORGANIZATION ONBOARDING
                             </p>
                             <h2 className="mt-1 text-[17px] font-bold text-ink-950 dark:text-white">
-                              Put your organization on the record.
+                              Create your supplier account.
                             </h2>
                             <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-500 dark:text-ink-400">
                               Create a verified profile in four clear steps: legal identity, statutory details,
