@@ -1,7 +1,7 @@
 {
   "version": 1,
   "historyId": "810b9b56-bd0e-4499-9c82-1483bef02f01",
-  "currentRevision": "c752dca8-f02e-43d1-8b58-c6246a516b14",
+  "currentRevision": "ce0b3fae-c3a9-4285-8f0b-d2863d279a84",
   "pendingChanges": false,
   "files": {
     "AGENTS.md": {
@@ -25,8 +25,8 @@
       "content": "/Users/chunguchama/.cache/hyperframes/history/810b9b56-bd0e-4499-9c82-1483bef02f01/blobs/12/12721d7e3c689c526ba57a996875d1fcd2d866ac420cf03600a9d2192d1a9b44"
     },
     "compositions/seal.html": {
-      "hash": "73aeff04a7d719add977c55ac9510b1b7d0c0de185eca064d63ebae6db7fac8d",
-      "content": "/Users/chunguchama/.cache/hyperframes/history/810b9b56-bd0e-4499-9c82-1483bef02f01/blobs/73/73aeff04a7d719add977c55ac9510b1b7d0c0de185eca064d63ebae6db7fac8d"
+      "hash": "7d208a7a5f77581b052eb0fbc14acc0307a9e74238f0a3310bdf0cb80e77198d",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/810b9b56-bd0e-4499-9c82-1483bef02f01/blobs/7d/7d208a7a5f77581b052eb0fbc14acc0307a9e74238f0a3310bdf0cb80e77198d"
     },
     "compositions/server.html": {
       "hash": "e7408511a119028f656b2d985446ca2433c29c8249f150a8d08ce0a54e81d931",
@@ -41,8 +41,8 @@
       "content": "/Users/chunguchama/.cache/hyperframes/history/810b9b56-bd0e-4499-9c82-1483bef02f01/blobs/35/35a6d4ea79ebe911f0d81705f7aace5d8ff0316b745b0311d56af50c9c237cb7"
     },
     "index.html": {
-      "hash": "0216334bba9044bec04c4e8c4e9e640ac02a6ffc7fb7c2f49e35e960aba27c38",
-      "content": "/Users/chunguchama/.cache/hyperframes/history/810b9b56-bd0e-4499-9c82-1483bef02f01/blobs/02/0216334bba9044bec04c4e8c4e9e640ac02a6ffc7fb7c2f49e35e960aba27c38"
+      "hash": "992d507f226e596b88779f3607b0cd5555f0829754f32095bd73fb920a669073",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/810b9b56-bd0e-4499-9c82-1483bef02f01/blobs/99/992d507f226e596b88779f3607b0cd5555f0829754f32095bd73fb920a669073"
     },
     "meta.json": {
       "hash": "6083fca601257363f9225065a26c05933fccf80ad5272f75a4d36bf03d93ed10",
@@ -75,6 +75,22 @@
     "assets/gsap.min.js": {
       "hash": "c174bfce53a729418d57a8ad8625e7247c793a22fef8e2851e3cfa3de9cd8280",
       "content": "/Users/chunguchama/.cache/hyperframes/history/810b9b56-bd0e-4499-9c82-1483bef02f01/blobs/c1/c174bfce53a729418d57a8ad8625e7247c793a22fef8e2851e3cfa3de9cd8280"
+    },
+    "assets/plate/city.mp4": {
+      "hash": "8aaf4fb34f6d14c280bc51ec032ac9a559fd2637f40c966d77dd06b0adb15590",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/810b9b56-bd0e-4499-9c82-1483bef02f01/blobs/8a/8aaf4fb34f6d14c280bc51ec032ac9a559fd2637f40c966d77dd06b0adb15590"
+    },
+    "assets/plate/clinic.mp4": {
+      "hash": "cb3cf5adcef834b07db0980544595c55c067d07c457ba393970e282252d4a069",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/810b9b56-bd0e-4499-9c82-1483bef02f01/blobs/cb/cb3cf5adcef834b07db0980544595c55c067d07c457ba393970e282252d4a069"
+    },
+    "assets/plate/port.mp4": {
+      "hash": "667cebe06c06e1eebddb0c72c9d80f87262cb5e4ed4bbd7cc245a6cfad507721",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/810b9b56-bd0e-4499-9c82-1483bef02f01/blobs/66/667cebe06c06e1eebddb0c72c9d80f87262cb5e4ed4bbd7cc245a6cfad507721"
+    },
+    "assets/plate/warehouse.mp4": {
+      "hash": "d8b1815a7249f1a7a1c5c5bc05595f1e303ee123a65b2cb10fe8f64754ecfa4f",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/810b9b56-bd0e-4499-9c82-1483bef02f01/blobs/d8/d8b1815a7249f1a7a1c5c5bc05595f1e303ee123a65b2cb10fe8f64754ecfa4f"
     }
   },
   "revisions": {
@@ -238,6 +254,52 @@
         "index.html": {
           "before": "/Users/chunguchama/.cache/hyperframes/history/810b9b56-bd0e-4499-9c82-1483bef02f01/blobs/2c/2c8c330101ad49e7e681db8959ab0554ed8df6b6e115a43f491db88d35488314",
           "after": "/Users/chunguchama/.cache/hyperframes/history/810b9b56-bd0e-4499-9c82-1483bef02f01/blobs/02/0216334bba9044bec04c4e8c4e9e640ac02a6ffc7fb7c2f49e35e960aba27c38"
+        }
+      }
+    },
+    "3a420de4-1410-457a-b0ab-565a24321931": {
+      "actor": {
+        "kind": "outside",
+        "name": "Outside"
+      },
+      "label": "Changed outside the app",
+      "startedAt": 1793720914312,
+      "endedAt": 1793720914336,
+      "files": {
+        "assets/plate/city.mp4": {
+          "before": null,
+          "after": "/Users/chunguchama/.cache/hyperframes/history/810b9b56-bd0e-4499-9c82-1483bef02f01/blobs/8a/8aaf4fb34f6d14c280bc51ec032ac9a559fd2637f40c966d77dd06b0adb15590"
+        },
+        "assets/plate/clinic.mp4": {
+          "before": null,
+          "after": "/Users/chunguchama/.cache/hyperframes/history/810b9b56-bd0e-4499-9c82-1483bef02f01/blobs/cb/cb3cf5adcef834b07db0980544595c55c067d07c457ba393970e282252d4a069"
+        },
+        "assets/plate/port.mp4": {
+          "before": null,
+          "after": "/Users/chunguchama/.cache/hyperframes/history/810b9b56-bd0e-4499-9c82-1483bef02f01/blobs/66/667cebe06c06e1eebddb0c72c9d80f87262cb5e4ed4bbd7cc245a6cfad507721"
+        },
+        "assets/plate/warehouse.mp4": {
+          "before": null,
+          "after": "/Users/chunguchama/.cache/hyperframes/history/810b9b56-bd0e-4499-9c82-1483bef02f01/blobs/d8/d8b1815a7249f1a7a1c5c5bc05595f1e303ee123a65b2cb10fe8f64754ecfa4f"
+        }
+      }
+    },
+    "ce0b3fae-c3a9-4285-8f0b-d2863d279a84": {
+      "actor": {
+        "kind": "outside",
+        "name": "Outside"
+      },
+      "label": "Changed outside the app",
+      "startedAt": 1793720959478,
+      "endedAt": 1793720959496,
+      "files": {
+        "compositions/seal.html": {
+          "before": "/Users/chunguchama/.cache/hyperframes/history/810b9b56-bd0e-4499-9c82-1483bef02f01/blobs/73/73aeff04a7d719add977c55ac9510b1b7d0c0de185eca064d63ebae6db7fac8d",
+          "after": "/Users/chunguchama/.cache/hyperframes/history/810b9b56-bd0e-4499-9c82-1483bef02f01/blobs/7d/7d208a7a5f77581b052eb0fbc14acc0307a9e74238f0a3310bdf0cb80e77198d"
+        },
+        "index.html": {
+          "before": "/Users/chunguchama/.cache/hyperframes/history/810b9b56-bd0e-4499-9c82-1483bef02f01/blobs/02/0216334bba9044bec04c4e8c4e9e640ac02a6ffc7fb7c2f49e35e960aba27c38",
+          "after": "/Users/chunguchama/.cache/hyperframes/history/810b9b56-bd0e-4499-9c82-1483bef02f01/blobs/99/992d507f226e596b88779f3607b0cd5555f0829754f32095bd73fb920a669073"
         }
       }
     }
