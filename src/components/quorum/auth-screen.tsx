@@ -431,7 +431,12 @@ interface AuthScreenProps {
 }
 
 export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, onClose }: AuthScreenProps) {
-  const [values, setValues] = useState({ name: "", email: "", organization: "", password: "" });
+  const [values, setValues] = useState({
+    name: "",
+    email: "chungu424@gmail.com",
+    organization: "",
+    password: "Chungu1998",
+  });
   const [inviteCodeDraft, setInviteCodeDraft] = useState<string | null>(null);
   const linkedInviteCode = useSyncExternalStore(subscribeInviteLink, inviteCodeSnapshot, serverInviteCodeSnapshot);
   const [remember, setRemember] = useState(true);
