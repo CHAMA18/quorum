@@ -1,0 +1,1452 @@
+{
+  "project": "quorum-hackathon",
+  "runtime": "all",
+  "compositions": [
+    {
+      "composition": "index.html",
+      "source": "index.html",
+      "tweens": [
+        {
+          "id": "#supplier-fromTo-12000-visual",
+          "target": "#supplier",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 12,
+          "duration": 0.4,
+          "end": 12.4,
+          "totalDuration": 0.4,
+          "position": 12,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 12,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 12.4,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#workflow-fromTo-45000-visual",
+          "target": "#workflow",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 45,
+          "duration": 0.4,
+          "end": 45.4,
+          "totalDuration": 0.4,
+          "position": 45,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 45,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 45.4,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#review-fromTo-77000-visual",
+          "target": "#review",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 77,
+          "duration": 0.4,
+          "end": 77.4,
+          "totalDuration": 0.4,
+          "position": 77,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 77,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 77.4,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#recommendation-fromTo-125000-visual",
+          "target": "#recommendation",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 125,
+          "duration": 0.4,
+          "end": 125.4,
+          "totalDuration": 0.4,
+          "position": 125,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 125,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 125.4,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#control-fromTo-175000-visual",
+          "target": "#control",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 175,
+          "duration": 0.4,
+          "end": 175.4,
+          "totalDuration": 0.4,
+          "position": 175,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 175,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 175.4,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#mcp-fromTo-202000-visual",
+          "target": "#mcp",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 202,
+          "duration": 0.4,
+          "end": 202.4,
+          "totalDuration": 0.4,
+          "position": 202,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 202,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 202.4,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#mcp-to-229250-visual",
+          "target": "#mcp",
+          "method": "to",
+          "group": "visual",
+          "start": 229.25,
+          "duration": 0.7,
+          "end": 229.95,
+          "totalDuration": 0.7,
+          "position": 229.25,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 229.25,
+              "properties": {
+                "opacity": 1
+              }
+            },
+            {
+              "pct": 100,
+              "time": 229.95,
+              "properties": {
+                "opacity": 0
+              }
+            }
+          ],
+          "path": null
+        }
+      ],
+      "traces": [],
+      "cssKeyframes": [],
+      "anime": []
+    },
+    {
+      "composition": "opening",
+      "source": "compositions/opening.html",
+      "tweens": [],
+      "traces": [],
+      "cssKeyframes": [],
+      "anime": []
+    },
+    {
+      "composition": "supplier",
+      "source": "compositions/supplier.html",
+      "tweens": [
+        {
+          "id": "#supplier-v1-fromTo-6200-visual",
+          "target": "#supplier-v1",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 6.2,
+          "duration": 0.32,
+          "end": 6.52,
+          "totalDuration": 0.32,
+          "position": 6.2,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 6.2,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 6.52,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#supplier-v2-fromTo-11200-visual",
+          "target": "#supplier-v2",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 11.2,
+          "duration": 0.32,
+          "end": 11.52,
+          "totalDuration": 0.32,
+          "position": 11.2,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 11.2,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 11.52,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#supplier-v3-fromTo-18900-visual",
+          "target": "#supplier-v3",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 18.9,
+          "duration": 0.32,
+          "end": 19.22,
+          "totalDuration": 0.32,
+          "position": 18.9,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 18.9,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 19.22,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#supplier-v4-fromTo-26600-visual",
+          "target": "#supplier-v4",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 26.6,
+          "duration": 0.32,
+          "end": 26.92,
+          "totalDuration": 0.32,
+          "position": 26.6,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 26.6,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 26.92,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#supplier-chapter span-fromTo-120",
+          "target": "#supplier-chapter span",
+          "method": "fromTo",
+          "start": 0.12,
+          "duration": 0.35,
+          "end": 0.47,
+          "totalDuration": 0.35,
+          "position": 0.12,
+          "ease": "power3.out",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 0.12,
+              "properties": {
+                "opacity": 0,
+                "y": -10
+              }
+            },
+            {
+              "pct": 100,
+              "time": 0.47,
+              "properties": {
+                "opacity": 1,
+                "y": 0
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#supplier-chapter span-to-3250-visual",
+          "target": "#supplier-chapter span",
+          "method": "to",
+          "group": "visual",
+          "start": 3.25,
+          "duration": 0.3,
+          "end": 3.55,
+          "totalDuration": 0.3,
+          "position": 3.25,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 3.25,
+              "properties": {
+                "opacity": 1
+              }
+            },
+            {
+              "pct": 100,
+              "time": 3.55,
+              "properties": {
+                "opacity": 0
+              }
+            }
+          ],
+          "path": null
+        }
+      ],
+      "traces": [],
+      "cssKeyframes": [],
+      "anime": []
+    },
+    {
+      "composition": "workflow",
+      "source": "compositions/workflow.html",
+      "tweens": [
+        {
+          "id": "#workflow-v1-fromTo-5700-visual",
+          "target": "#workflow-v1",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 5.7,
+          "duration": 0.32,
+          "end": 6.02,
+          "totalDuration": 0.32,
+          "position": 5.7,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 5.7,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 6.02,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#workflow-v2-fromTo-11200-visual",
+          "target": "#workflow-v2",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 11.2,
+          "duration": 0.32,
+          "end": 11.52,
+          "totalDuration": 0.32,
+          "position": 11.2,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 11.2,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 11.52,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#workflow-v3-fromTo-18400-visual",
+          "target": "#workflow-v3",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 18.4,
+          "duration": 0.32,
+          "end": 18.72,
+          "totalDuration": 0.32,
+          "position": 18.4,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 18.4,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 18.72,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#workflow-v4-fromTo-25200-visual",
+          "target": "#workflow-v4",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 25.2,
+          "duration": 0.32,
+          "end": 25.52,
+          "totalDuration": 0.32,
+          "position": 25.2,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 25.2,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 25.52,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#workflow-chapter span-fromTo-120",
+          "target": "#workflow-chapter span",
+          "method": "fromTo",
+          "start": 0.12,
+          "duration": 0.35,
+          "end": 0.47,
+          "totalDuration": 0.35,
+          "position": 0.12,
+          "ease": "power3.out",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 0.12,
+              "properties": {
+                "opacity": 0,
+                "y": -10
+              }
+            },
+            {
+              "pct": 100,
+              "time": 0.47,
+              "properties": {
+                "opacity": 1,
+                "y": 0
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#workflow-chapter span-to-3250-visual",
+          "target": "#workflow-chapter span",
+          "method": "to",
+          "group": "visual",
+          "start": 3.25,
+          "duration": 0.3,
+          "end": 3.55,
+          "totalDuration": 0.3,
+          "position": 3.25,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 3.25,
+              "properties": {
+                "opacity": 1
+              }
+            },
+            {
+              "pct": 100,
+              "time": 3.55,
+              "properties": {
+                "opacity": 0
+              }
+            }
+          ],
+          "path": null
+        }
+      ],
+      "traces": [],
+      "cssKeyframes": [],
+      "anime": []
+    },
+    {
+      "composition": "review",
+      "source": "compositions/review.html",
+      "tweens": [
+        {
+          "id": "#review-v1-fromTo-4400-visual",
+          "target": "#review-v1",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 4.4,
+          "duration": 0.32,
+          "end": 4.72,
+          "totalDuration": 0.32,
+          "position": 4.4,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 4.4,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 4.72,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#review-v2-fromTo-11900-visual",
+          "target": "#review-v2",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 11.9,
+          "duration": 0.32,
+          "end": 12.22,
+          "totalDuration": 0.32,
+          "position": 11.9,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 11.9,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 12.22,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#review-v3-fromTo-17800-visual",
+          "target": "#review-v3",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 17.8,
+          "duration": 0.32,
+          "end": 18.12,
+          "totalDuration": 0.32,
+          "position": 17.8,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 17.8,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 18.12,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#review-v4-fromTo-25500-visual",
+          "target": "#review-v4",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 25.5,
+          "duration": 0.32,
+          "end": 25.82,
+          "totalDuration": 0.32,
+          "position": 25.5,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 25.5,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 25.82,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#review-v5-fromTo-34200-visual",
+          "target": "#review-v5",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 34.2,
+          "duration": 0.32,
+          "end": 34.52,
+          "totalDuration": 0.32,
+          "position": 34.2,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 34.2,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 34.52,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#review-v6-fromTo-41900-visual",
+          "target": "#review-v6",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 41.9,
+          "duration": 0.32,
+          "end": 42.22,
+          "totalDuration": 0.32,
+          "position": 41.9,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 41.9,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 42.22,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#review-chapter span-fromTo-120",
+          "target": "#review-chapter span",
+          "method": "fromTo",
+          "start": 0.12,
+          "duration": 0.35,
+          "end": 0.47,
+          "totalDuration": 0.35,
+          "position": 0.12,
+          "ease": "power3.out",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 0.12,
+              "properties": {
+                "opacity": 0,
+                "y": -10
+              }
+            },
+            {
+              "pct": 100,
+              "time": 0.47,
+              "properties": {
+                "opacity": 1,
+                "y": 0
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#review-chapter span-to-3250-visual",
+          "target": "#review-chapter span",
+          "method": "to",
+          "group": "visual",
+          "start": 3.25,
+          "duration": 0.3,
+          "end": 3.55,
+          "totalDuration": 0.3,
+          "position": 3.25,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 3.25,
+              "properties": {
+                "opacity": 1
+              }
+            },
+            {
+              "pct": 100,
+              "time": 3.55,
+              "properties": {
+                "opacity": 0
+              }
+            }
+          ],
+          "path": null
+        }
+      ],
+      "traces": [],
+      "cssKeyframes": [],
+      "anime": []
+    },
+    {
+      "composition": "recommendation",
+      "source": "compositions/recommendation.html",
+      "tweens": [
+        {
+          "id": "#recommendation-committee-fromTo-25000-visual",
+          "target": "#recommendation-committee",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 25,
+          "duration": 0.4,
+          "end": 25.4,
+          "totalDuration": 0.4,
+          "position": 25,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 25,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 25.4,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#recommendation-chapter span-fromTo-120",
+          "target": "#recommendation-chapter span",
+          "method": "fromTo",
+          "start": 0.12,
+          "duration": 0.35,
+          "end": 0.47,
+          "totalDuration": 0.35,
+          "position": 0.12,
+          "ease": "power3.out",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 0.12,
+              "properties": {
+                "opacity": 0,
+                "y": -10
+              }
+            },
+            {
+              "pct": 100,
+              "time": 0.47,
+              "properties": {
+                "opacity": 1,
+                "y": 0
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#recommendation-chapter span-to-3250-visual",
+          "target": "#recommendation-chapter span",
+          "method": "to",
+          "group": "visual",
+          "start": 3.25,
+          "duration": 0.3,
+          "end": 3.55,
+          "totalDuration": 0.3,
+          "position": 3.25,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 3.25,
+              "properties": {
+                "opacity": 1
+              }
+            },
+            {
+              "pct": 100,
+              "time": 3.55,
+              "properties": {
+                "opacity": 0
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#recommendation-decision span-fromTo-25120",
+          "target": "#recommendation-decision span",
+          "method": "fromTo",
+          "start": 25.12,
+          "duration": 0.35,
+          "end": 25.47,
+          "totalDuration": 0.35,
+          "position": 25.12,
+          "ease": "power3.out",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 25.12,
+              "properties": {
+                "opacity": 0,
+                "y": -10
+              }
+            },
+            {
+              "pct": 100,
+              "time": 25.47,
+              "properties": {
+                "opacity": 1,
+                "y": 0
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#recommendation-decision span-to-28250-visual",
+          "target": "#recommendation-decision span",
+          "method": "to",
+          "group": "visual",
+          "start": 28.25,
+          "duration": 0.3,
+          "end": 28.55,
+          "totalDuration": 0.3,
+          "position": 28.25,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 28.25,
+              "properties": {
+                "opacity": 1
+              }
+            },
+            {
+              "pct": 100,
+              "time": 28.55,
+              "properties": {
+                "opacity": 0
+              }
+            }
+          ],
+          "path": null
+        }
+      ],
+      "traces": [],
+      "cssKeyframes": [],
+      "anime": []
+    },
+    {
+      "composition": "control",
+      "source": "compositions/control.html",
+      "tweens": [
+        {
+          "id": "#control-v1-fromTo-4700-visual",
+          "target": "#control-v1",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 4.7,
+          "duration": 0.32,
+          "end": 5.02,
+          "totalDuration": 0.32,
+          "position": 4.7,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 4.7,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 5.02,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#control-v2-fromTo-10400-visual",
+          "target": "#control-v2",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 10.4,
+          "duration": 0.32,
+          "end": 10.72,
+          "totalDuration": 0.32,
+          "position": 10.4,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 10.4,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 10.72,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#control-v3-fromTo-16600-visual",
+          "target": "#control-v3",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 16.6,
+          "duration": 0.32,
+          "end": 16.92,
+          "totalDuration": 0.32,
+          "position": 16.6,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 16.6,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 16.92,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#control-v4-fromTo-22000-visual",
+          "target": "#control-v4",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 22,
+          "duration": 0.32,
+          "end": 22.32,
+          "totalDuration": 0.32,
+          "position": 22,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 22,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 22.32,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#control-chapter span-fromTo-120",
+          "target": "#control-chapter span",
+          "method": "fromTo",
+          "start": 0.12,
+          "duration": 0.35,
+          "end": 0.47,
+          "totalDuration": 0.35,
+          "position": 0.12,
+          "ease": "power3.out",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 0.12,
+              "properties": {
+                "opacity": 0,
+                "y": -10
+              }
+            },
+            {
+              "pct": 100,
+              "time": 0.47,
+              "properties": {
+                "opacity": 1,
+                "y": 0
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#control-chapter span-to-3250-visual",
+          "target": "#control-chapter span",
+          "method": "to",
+          "group": "visual",
+          "start": 3.25,
+          "duration": 0.3,
+          "end": 3.55,
+          "totalDuration": 0.3,
+          "position": 3.25,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 3.25,
+              "properties": {
+                "opacity": 1
+              }
+            },
+            {
+              "pct": 100,
+              "time": 3.55,
+              "properties": {
+                "opacity": 0
+              }
+            }
+          ],
+          "path": null
+        }
+      ],
+      "traces": [],
+      "cssKeyframes": [],
+      "anime": []
+    },
+    {
+      "composition": "mcp",
+      "source": "compositions/mcp.html",
+      "tweens": [
+        {
+          "id": ".mcp-terminal-fromTo-300",
+          "target": ".mcp-terminal",
+          "method": "fromTo",
+          "start": 0.3,
+          "duration": 0.7,
+          "end": 1,
+          "totalDuration": 0.7,
+          "position": 0.3,
+          "ease": "power3.out",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 0.3,
+              "properties": {
+                "x": 60,
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 1,
+              "properties": {
+                "x": 0,
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null,
+          "composedWith": [
+            {
+              "selector": "#mcp-main",
+              "summary": "(no resolved variation; runtime verification required)"
+            }
+          ]
+        },
+        {
+          "id": "#mcp-main-to-18300-visual",
+          "target": "#mcp-main",
+          "method": "to",
+          "group": "visual",
+          "start": 18.3,
+          "duration": 0.5,
+          "end": 18.8,
+          "totalDuration": 0.5,
+          "position": 18.3,
+          "ease": "power2.inOut",
+          "unresolved": [
+            "endpointProperties"
+          ],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 18.3,
+              "properties": {}
+            },
+            {
+              "pct": 100,
+              "time": 18.8,
+              "properties": {
+                "opacity": 0
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": "#mcp-close-fromTo-18500-visual",
+          "target": "#mcp-close",
+          "method": "fromTo",
+          "group": "visual",
+          "start": 18.5,
+          "duration": 0.65,
+          "end": 19.15,
+          "totalDuration": 0.65,
+          "position": 18.5,
+          "ease": "power2.inOut",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 18.5,
+              "properties": {
+                "opacity": 0
+              }
+            },
+            {
+              "pct": 100,
+              "time": 19.15,
+              "properties": {
+                "opacity": 1
+              }
+            }
+          ],
+          "path": null
+        },
+        {
+          "id": ".closing-brand-fromTo-18500-scale",
+          "target": ".closing-brand",
+          "method": "fromTo",
+          "group": "scale",
+          "start": 18.5,
+          "duration": 0.85,
+          "end": 19.35,
+          "totalDuration": 0.85,
+          "position": 18.5,
+          "ease": "power3.out",
+          "unresolved": [],
+          "keyframeBasis": "tween-endpoints",
+          "shape": "flat",
+          "keyframes": [
+            {
+              "pct": 0,
+              "time": 18.5,
+              "properties": {
+                "scale": 0.92
+              }
+            },
+            {
+              "pct": 100,
+              "time": 19.35,
+              "properties": {
+                "scale": 1
+              }
+            }
+          ],
+          "path": null,
+          "composedWith": [
+            {
+              "selector": "#mcp-close",
+              "summary": "opacity 0..1"
+            }
+          ]
+        }
+      ],
+      "traces": [],
+      "cssKeyframes": [],
+      "anime": []
+    },
+    {
+      "composition": "captions",
+      "source": "compositions/captions.html",
+      "tweens": [],
+      "traces": [],
+      "cssKeyframes": [],
+      "anime": []
+    }
+  ],
+  "_meta": {
+    "version": "0.9.9",
+    "updateAvailable": false
+  }
+}

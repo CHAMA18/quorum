@@ -1,0 +1,2006 @@
+{
+  "text": " So here's information. So the AI proceeded to also submit information. It says that the supplied accepts a loan presents the strongest documented fit for the committee consideration due to its valid legal signal. And so in short, it then evaluates both sides, presents committee, I mean, it then submits information to the committee to then take action. So one thing to note is, This isn't meant to make auto actually taking action. It's just meant to present who is the best bidder to actually take on a project. And then based off of information that it will give you as a committee, you then proceed to then select. So under this section, you then take that information that has been shared to then award a contract. So you then as a committee, So as a committee, you have the ability to then set up what we call the full committee that has to make up their own decision. So as you can see, I am here. And then this is a panel of the committee. So we can add any other person to the committee to then constitute the quorum. Who then makes the final decision in terms of who to award a particular contract. So each person has to have the verdict signed and then the one that has got the The one who has the most favor out of everybody's",
+  "segments": [
+    {
+      "id": 0,
+      "seek": 0,
+      "start": 0.0,
+      "end": 9.36,
+      "text": " So here's information. So the AI proceeded to also submit information. It says that the supplied",
+      "tokens": [
+        50363,
+        1406,
+        994,
+        338,
+        1321,
+        13,
+        1406,
+        262,
+        9552,
+        18814,
+        284,
+        635,
+        9199,
+        1321,
+        13,
+        632,
+        1139,
+        326,
+        262,
+        14275,
+        50811
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.20208403643439798,
+      "compression_ratio": 1.7746478873239437,
+      "no_speech_prob": 0.10230112075805664,
+      "words": [
+        {
+          "word": " So",
+          "start": 0.0,
+          "end": 1.04,
+          "probability": 0.59716796875
+        },
+        {
+          "word": " here's",
+          "start": 1.04,
+          "end": 1.32,
+          "probability": 0.85107421875
+        },
+        {
+          "word": " information.",
+          "start": 1.32,
+          "end": 1.8,
+          "probability": 0.88232421875
+        },
+        {
+          "word": " So",
+          "start": 3.8,
+          "end": 3.8,
+          "probability": 0.8642578125
+        },
+        {
+          "word": " the",
+          "start": 3.8,
+          "end": 4.08,
+          "probability": 0.92822265625
+        },
+        {
+          "word": " AI",
+          "start": 4.08,
+          "end": 4.64,
+          "probability": 0.96435546875
+        },
+        {
+          "word": " proceeded",
+          "start": 4.64,
+          "end": 5.2,
+          "probability": 0.95703125
+        },
+        {
+          "word": " to",
+          "start": 5.2,
+          "end": 5.52,
+          "probability": 0.998046875
+        },
+        {
+          "word": " also",
+          "start": 5.52,
+          "end": 5.88,
+          "probability": 0.9931640625
+        },
+        {
+          "word": " submit",
+          "start": 5.88,
+          "end": 6.42,
+          "probability": 0.9921875
+        },
+        {
+          "word": " information.",
+          "start": 6.42,
+          "end": 6.86,
+          "probability": 0.99609375
+        },
+        {
+          "word": " It",
+          "start": 7.1,
+          "end": 7.1,
+          "probability": 0.994140625
+        },
+        {
+          "word": " says",
+          "start": 7.1,
+          "end": 7.28,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " that",
+          "start": 7.28,
+          "end": 8.2,
+          "probability": 0.97119140625
+        },
+        {
+          "word": " the",
+          "start": 8.2,
+          "end": 8.6,
+          "probability": 0.93603515625
+        },
+        {
+          "word": " supplied",
+          "start": 8.6,
+          "end": 9.36,
+          "probability": 0.7578125
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "seek": 0,
+      "start": 9.36,
+      "end": 16.88,
+      "text": " accepts a loan presents the strongest documented fit for the committee consideration due to its",
+      "tokens": [
+        50811,
+        18178,
+        257,
+        8063,
+        10969,
+        262,
+        12841,
+        12395,
+        4197,
+        329,
+        262,
+        5583,
+        9110,
+        2233,
+        284,
+        663,
+        51206
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.20208403643439798,
+      "compression_ratio": 1.7746478873239437,
+      "no_speech_prob": 0.10230112075805664,
+      "words": [
+        {
+          "word": " accepts",
+          "start": 9.36,
+          "end": 10.26,
+          "probability": 0.91748046875
+        },
+        {
+          "word": " a",
+          "start": 10.26,
+          "end": 10.56,
+          "probability": 0.654296875
+        },
+        {
+          "word": " loan",
+          "start": 10.56,
+          "end": 11.04,
+          "probability": 0.98876953125
+        },
+        {
+          "word": " presents",
+          "start": 11.04,
+          "end": 12.9,
+          "probability": 0.471435546875
+        },
+        {
+          "word": " the",
+          "start": 12.9,
+          "end": 13.18,
+          "probability": 0.9951171875
+        },
+        {
+          "word": " strongest",
+          "start": 13.18,
+          "end": 13.52,
+          "probability": 0.994140625
+        },
+        {
+          "word": " documented",
+          "start": 13.52,
+          "end": 14.06,
+          "probability": 0.9912109375
+        },
+        {
+          "word": " fit",
+          "start": 14.06,
+          "end": 14.54,
+          "probability": 0.97607421875
+        },
+        {
+          "word": " for",
+          "start": 14.54,
+          "end": 15.34,
+          "probability": 0.98291015625
+        },
+        {
+          "word": " the",
+          "start": 15.34,
+          "end": 15.68,
+          "probability": 0.98779296875
+        },
+        {
+          "word": " committee",
+          "start": 15.68,
+          "end": 15.86,
+          "probability": 0.2052001953125
+        },
+        {
+          "word": " consideration",
+          "start": 15.86,
+          "end": 16.3,
+          "probability": 0.7802734375
+        },
+        {
+          "word": " due",
+          "start": 16.3,
+          "end": 16.58,
+          "probability": 0.97021484375
+        },
+        {
+          "word": " to",
+          "start": 16.58,
+          "end": 16.74,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " its",
+          "start": 16.74,
+          "end": 16.88,
+          "probability": 0.9072265625
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "seek": 0,
+      "start": 16.88,
+      "end": 25.32,
+      "text": " valid legal signal. And so in short, it then evaluates both sides, presents committee, I mean,",
+      "tokens": [
+        51206,
+        4938,
+        2742,
+        6737,
+        13,
+        843,
+        523,
+        287,
+        1790,
+        11,
+        340,
+        788,
+        47850,
+        1111,
+        5389,
+        11,
+        10969,
+        5583,
+        11,
+        314,
+        1612,
+        11,
+        51629
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.20208403643439798,
+      "compression_ratio": 1.7746478873239437,
+      "no_speech_prob": 0.10230112075805664,
+      "words": [
+        {
+          "word": " valid",
+          "start": 16.88,
+          "end": 17.34,
+          "probability": 0.9873046875
+        },
+        {
+          "word": " legal",
+          "start": 17.34,
+          "end": 18.06,
+          "probability": 0.96875
+        },
+        {
+          "word": " signal.",
+          "start": 18.06,
+          "end": 18.8,
+          "probability": 0.97509765625
+        },
+        {
+          "word": " And",
+          "start": 19.14,
+          "end": 19.14,
+          "probability": 0.822265625
+        },
+        {
+          "word": " so",
+          "start": 19.14,
+          "end": 19.68,
+          "probability": 0.9833984375
+        },
+        {
+          "word": " in",
+          "start": 19.68,
+          "end": 19.8,
+          "probability": 0.888671875
+        },
+        {
+          "word": " short,",
+          "start": 19.8,
+          "end": 20.1,
+          "probability": 0.99853515625
+        },
+        {
+          "word": " it",
+          "start": 21.32,
+          "end": 21.32,
+          "probability": 0.99267578125
+        },
+        {
+          "word": " then",
+          "start": 21.32,
+          "end": 21.58,
+          "probability": 0.84521484375
+        },
+        {
+          "word": " evaluates",
+          "start": 21.58,
+          "end": 22.04,
+          "probability": 0.986328125
+        },
+        {
+          "word": " both",
+          "start": 22.04,
+          "end": 22.68,
+          "probability": 0.99560546875
+        },
+        {
+          "word": " sides,",
+          "start": 22.68,
+          "end": 23.26,
+          "probability": 0.998046875
+        },
+        {
+          "word": " presents",
+          "start": 24.24,
+          "end": 24.24,
+          "probability": 0.90625
+        },
+        {
+          "word": " committee,",
+          "start": 24.24,
+          "end": 24.86,
+          "probability": 0.8427734375
+        },
+        {
+          "word": " I",
+          "start": 25.18,
+          "end": 25.2,
+          "probability": 0.93701171875
+        },
+        {
+          "word": " mean,",
+          "start": 25.2,
+          "end": 25.32,
+          "probability": 0.99951171875
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "seek": 0,
+      "start": 25.54,
+      "end": 29.82,
+      "text": " it then submits information to the committee to then take action. So one thing to note is,",
+      "tokens": [
+        51629,
+        340,
+        788,
+        850,
+        24883,
+        1321,
+        284,
+        262,
+        5583,
+        284,
+        788,
+        1011,
+        2223,
+        13,
+        1406,
+        530,
+        1517,
+        284,
+        3465,
+        318,
+        11,
+        51851
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.20208403643439798,
+      "compression_ratio": 1.7746478873239437,
+      "no_speech_prob": 0.10230112075805664,
+      "words": [
+        {
+          "word": " it",
+          "start": 25.54,
+          "end": 25.58,
+          "probability": 0.8740234375
+        },
+        {
+          "word": " then",
+          "start": 25.58,
+          "end": 25.72,
+          "probability": 0.90087890625
+        },
+        {
+          "word": " submits",
+          "start": 25.72,
+          "end": 25.98,
+          "probability": 0.9619140625
+        },
+        {
+          "word": " information",
+          "start": 25.98,
+          "end": 26.38,
+          "probability": 0.9921875
+        },
+        {
+          "word": " to",
+          "start": 26.38,
+          "end": 26.76,
+          "probability": 0.99560546875
+        },
+        {
+          "word": " the",
+          "start": 26.76,
+          "end": 26.94,
+          "probability": 0.88916015625
+        },
+        {
+          "word": " committee",
+          "start": 26.94,
+          "end": 27.32,
+          "probability": 0.95703125
+        },
+        {
+          "word": " to",
+          "start": 27.32,
+          "end": 27.94,
+          "probability": 0.8271484375
+        },
+        {
+          "word": " then",
+          "start": 27.94,
+          "end": 28.14,
+          "probability": 0.958984375
+        },
+        {
+          "word": " take",
+          "start": 28.14,
+          "end": 28.28,
+          "probability": 0.99462890625
+        },
+        {
+          "word": " action.",
+          "start": 28.28,
+          "end": 28.56,
+          "probability": 0.8544921875
+        },
+        {
+          "word": " So",
+          "start": 28.8,
+          "end": 28.84,
+          "probability": 0.98583984375
+        },
+        {
+          "word": " one",
+          "start": 28.84,
+          "end": 29.02,
+          "probability": 0.97998046875
+        },
+        {
+          "word": " thing",
+          "start": 29.02,
+          "end": 29.16,
+          "probability": 0.9990234375
+        },
+        {
+          "word": " to",
+          "start": 29.16,
+          "end": 29.34,
+          "probability": 0.9990234375
+        },
+        {
+          "word": " note",
+          "start": 29.34,
+          "end": 29.54,
+          "probability": 0.65673828125
+        },
+        {
+          "word": " is,",
+          "start": 29.54,
+          "end": 29.82,
+          "probability": 0.99609375
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "seek": 2982,
+      "start": 29.82,
+      "end": 35.04,
+      "text": " This isn't meant to make auto actually taking action.",
+      "tokens": [
+        50363,
+        770,
+        2125,
+        470,
+        4001,
+        284,
+        787,
+        8295,
+        1682,
+        2263,
+        2223,
+        13,
+        50613
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.24453690587257854,
+      "compression_ratio": 1.8217821782178218,
+      "no_speech_prob": 0.45460548996925354,
+      "words": [
+        {
+          "word": " This",
+          "start": 29.82,
+          "end": 30.54,
+          "probability": 0.460693359375
+        },
+        {
+          "word": " isn't",
+          "start": 30.54,
+          "end": 30.86,
+          "probability": 0.8955078125
+        },
+        {
+          "word": " meant",
+          "start": 30.86,
+          "end": 31.64,
+          "probability": 0.91845703125
+        },
+        {
+          "word": " to",
+          "start": 31.64,
+          "end": 31.72,
+          "probability": 0.990234375
+        },
+        {
+          "word": " make",
+          "start": 31.72,
+          "end": 32.36,
+          "probability": 0.95068359375
+        },
+        {
+          "word": " auto",
+          "start": 32.36,
+          "end": 34.18,
+          "probability": 0.1822509765625
+        },
+        {
+          "word": " actually",
+          "start": 34.18,
+          "end": 34.38,
+          "probability": 0.285400390625
+        },
+        {
+          "word": " taking",
+          "start": 34.38,
+          "end": 34.58,
+          "probability": 0.4638671875
+        },
+        {
+          "word": " action.",
+          "start": 34.58,
+          "end": 35.04,
+          "probability": 0.95556640625
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "seek": 2982,
+      "start": 35.2,
+      "end": 39.88,
+      "text": " It's just meant to present who is the best bidder",
+      "tokens": [
+        50633,
+        632,
+        338,
+        655,
+        4001,
+        284,
+        1944,
+        508,
+        318,
+        262,
+        1266,
+        44848,
+        50875
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.24453690587257854,
+      "compression_ratio": 1.8217821782178218,
+      "no_speech_prob": 0.45460548996925354,
+      "words": [
+        {
+          "word": " It's",
+          "start": 35.2,
+          "end": 35.36,
+          "probability": 0.9443359375
+        },
+        {
+          "word": " just",
+          "start": 35.36,
+          "end": 35.42,
+          "probability": 0.93408203125
+        },
+        {
+          "word": " meant",
+          "start": 35.42,
+          "end": 35.64,
+          "probability": 0.98974609375
+        },
+        {
+          "word": " to",
+          "start": 35.64,
+          "end": 35.92,
+          "probability": 0.9990234375
+        },
+        {
+          "word": " present",
+          "start": 35.92,
+          "end": 36.56,
+          "probability": 0.9912109375
+        },
+        {
+          "word": " who",
+          "start": 36.56,
+          "end": 38.28,
+          "probability": 0.966796875
+        },
+        {
+          "word": " is",
+          "start": 38.28,
+          "end": 38.5,
+          "probability": 0.9931640625
+        },
+        {
+          "word": " the",
+          "start": 38.5,
+          "end": 38.68,
+          "probability": 0.9931640625
+        },
+        {
+          "word": " best",
+          "start": 38.68,
+          "end": 39.08,
+          "probability": 0.99560546875
+        },
+        {
+          "word": " bidder",
+          "start": 39.08,
+          "end": 39.88,
+          "probability": 0.7900390625
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "seek": 2982,
+      "start": 39.88,
+      "end": 41.5,
+      "text": " to actually take on a project.",
+      "tokens": [
+        50875,
+        284,
+        1682,
+        1011,
+        319,
+        257,
+        1628,
+        13,
+        50985
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.24453690587257854,
+      "compression_ratio": 1.8217821782178218,
+      "no_speech_prob": 0.45460548996925354,
+      "words": [
+        {
+          "word": " to",
+          "start": 39.88,
+          "end": 40.18,
+          "probability": 0.953125
+        },
+        {
+          "word": " actually",
+          "start": 40.18,
+          "end": 40.46,
+          "probability": 0.994140625
+        },
+        {
+          "word": " take",
+          "start": 40.46,
+          "end": 40.7,
+          "probability": 0.9951171875
+        },
+        {
+          "word": " on",
+          "start": 40.7,
+          "end": 41.04,
+          "probability": 0.99365234375
+        },
+        {
+          "word": " a",
+          "start": 41.04,
+          "end": 41.2,
+          "probability": 0.99072265625
+        },
+        {
+          "word": " project.",
+          "start": 41.2,
+          "end": 41.5,
+          "probability": 0.9970703125
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "seek": 2982,
+      "start": 42.3,
+      "end": 43.2,
+      "text": " And then based off of information",
+      "tokens": [
+        50985,
+        843,
+        788,
+        1912,
+        572,
+        286,
+        1321,
+        51039
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.24453690587257854,
+      "compression_ratio": 1.8217821782178218,
+      "no_speech_prob": 0.45460548996925354,
+      "words": [
+        {
+          "word": " And",
+          "start": 42.3,
+          "end": 42.32,
+          "probability": 0.93359375
+        },
+        {
+          "word": " then",
+          "start": 42.32,
+          "end": 42.46,
+          "probability": 0.99169921875
+        },
+        {
+          "word": " based",
+          "start": 42.46,
+          "end": 42.62,
+          "probability": 0.8916015625
+        },
+        {
+          "word": " off",
+          "start": 42.62,
+          "end": 42.84,
+          "probability": 0.9453125
+        },
+        {
+          "word": " of",
+          "start": 42.84,
+          "end": 42.94,
+          "probability": 0.94482421875
+        },
+        {
+          "word": " information",
+          "start": 42.94,
+          "end": 43.2,
+          "probability": 0.9345703125
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "seek": 2982,
+      "start": 43.2,
+      "end": 45.66,
+      "text": " that it will give you as a committee,",
+      "tokens": [
+        51039,
+        326,
+        340,
+        481,
+        1577,
+        345,
+        355,
+        257,
+        5583,
+        11,
+        51161
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.24453690587257854,
+      "compression_ratio": 1.8217821782178218,
+      "no_speech_prob": 0.45460548996925354,
+      "words": [
+        {
+          "word": " that",
+          "start": 43.2,
+          "end": 43.8,
+          "probability": 0.97802734375
+        },
+        {
+          "word": " it",
+          "start": 43.8,
+          "end": 43.98,
+          "probability": 0.69580078125
+        },
+        {
+          "word": " will",
+          "start": 43.98,
+          "end": 44.22,
+          "probability": 0.986328125
+        },
+        {
+          "word": " give",
+          "start": 44.22,
+          "end": 44.84,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " you",
+          "start": 44.84,
+          "end": 45.12,
+          "probability": 0.99755859375
+        },
+        {
+          "word": " as",
+          "start": 45.12,
+          "end": 45.22,
+          "probability": 0.98046875
+        },
+        {
+          "word": " a",
+          "start": 45.22,
+          "end": 45.38,
+          "probability": 0.99169921875
+        },
+        {
+          "word": " committee,",
+          "start": 45.38,
+          "end": 45.66,
+          "probability": 0.87548828125
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "seek": 2982,
+      "start": 45.78,
+      "end": 47.3,
+      "text": " you then proceed to then select.",
+      "tokens": [
+        51161,
+        345,
+        788,
+        5120,
+        284,
+        788,
+        2922,
+        13,
+        51271
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.24453690587257854,
+      "compression_ratio": 1.8217821782178218,
+      "no_speech_prob": 0.45460548996925354,
+      "words": [
+        {
+          "word": " you",
+          "start": 45.78,
+          "end": 45.88,
+          "probability": 0.99609375
+        },
+        {
+          "word": " then",
+          "start": 45.88,
+          "end": 46.06,
+          "probability": 0.9931640625
+        },
+        {
+          "word": " proceed",
+          "start": 46.06,
+          "end": 46.32,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " to",
+          "start": 46.32,
+          "end": 46.54,
+          "probability": 0.99755859375
+        },
+        {
+          "word": " then",
+          "start": 46.54,
+          "end": 46.8,
+          "probability": 0.94677734375
+        },
+        {
+          "word": " select.",
+          "start": 46.8,
+          "end": 47.3,
+          "probability": 0.99560546875
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "seek": 2982,
+      "start": 48.08,
+      "end": 50.7,
+      "text": " So under this section, you then take that information",
+      "tokens": [
+        51271,
+        1406,
+        739,
+        428,
+        2665,
+        11,
+        345,
+        788,
+        1011,
+        326,
+        1321,
+        51415
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.24453690587257854,
+      "compression_ratio": 1.8217821782178218,
+      "no_speech_prob": 0.45460548996925354,
+      "words": [
+        {
+          "word": " So",
+          "start": 48.08,
+          "end": 48.12,
+          "probability": 0.9833984375
+        },
+        {
+          "word": " under",
+          "start": 48.12,
+          "end": 48.28,
+          "probability": 0.9228515625
+        },
+        {
+          "word": " this",
+          "start": 48.28,
+          "end": 48.46,
+          "probability": 0.947265625
+        },
+        {
+          "word": " section,",
+          "start": 48.46,
+          "end": 48.8,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " you",
+          "start": 49.02,
+          "end": 49.12,
+          "probability": 0.99560546875
+        },
+        {
+          "word": " then",
+          "start": 49.12,
+          "end": 49.4,
+          "probability": 0.99072265625
+        },
+        {
+          "word": " take",
+          "start": 49.4,
+          "end": 50.3,
+          "probability": 0.990234375
+        },
+        {
+          "word": " that",
+          "start": 50.3,
+          "end": 50.44,
+          "probability": 0.5673828125
+        },
+        {
+          "word": " information",
+          "start": 50.44,
+          "end": 50.7,
+          "probability": 0.9892578125
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "seek": 2982,
+      "start": 50.7,
+      "end": 53.86,
+      "text": " that has been shared to then award a contract.",
+      "tokens": [
+        51415,
+        326,
+        468,
+        587,
+        4888,
+        284,
+        788,
+        5764,
+        257,
+        2775,
+        13,
+        51601
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.24453690587257854,
+      "compression_ratio": 1.8217821782178218,
+      "no_speech_prob": 0.45460548996925354,
+      "words": [
+        {
+          "word": " that",
+          "start": 50.7,
+          "end": 50.88,
+          "probability": 0.98095703125
+        },
+        {
+          "word": " has",
+          "start": 50.88,
+          "end": 51.02,
+          "probability": 0.9853515625
+        },
+        {
+          "word": " been",
+          "start": 51.02,
+          "end": 51.16,
+          "probability": 0.99951171875
+        },
+        {
+          "word": " shared",
+          "start": 51.16,
+          "end": 51.5,
+          "probability": 0.99365234375
+        },
+        {
+          "word": " to",
+          "start": 51.5,
+          "end": 51.7,
+          "probability": 0.90283203125
+        },
+        {
+          "word": " then",
+          "start": 51.7,
+          "end": 52.3,
+          "probability": 0.98486328125
+        },
+        {
+          "word": " award",
+          "start": 52.3,
+          "end": 52.94,
+          "probability": 0.74462890625
+        },
+        {
+          "word": " a",
+          "start": 52.94,
+          "end": 53.44,
+          "probability": 0.95751953125
+        },
+        {
+          "word": " contract.",
+          "start": 53.44,
+          "end": 53.86,
+          "probability": 0.9990234375
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "seek": 2982,
+      "start": 55.04,
+      "end": 57.3,
+      "text": " So you then as a committee,",
+      "tokens": [
+        51601,
+        1406,
+        345,
+        788,
+        355,
+        257,
+        5583,
+        11,
+        51753
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.24453690587257854,
+      "compression_ratio": 1.8217821782178218,
+      "no_speech_prob": 0.45460548996925354,
+      "words": [
+        {
+          "word": " So",
+          "start": 55.04,
+          "end": 55.04,
+          "probability": 0.96923828125
+        },
+        {
+          "word": " you",
+          "start": 55.04,
+          "end": 56.02,
+          "probability": 0.88134765625
+        },
+        {
+          "word": " then",
+          "start": 56.02,
+          "end": 56.36,
+          "probability": 0.98681640625
+        },
+        {
+          "word": " as",
+          "start": 56.36,
+          "end": 56.66,
+          "probability": 0.77490234375
+        },
+        {
+          "word": " a",
+          "start": 56.66,
+          "end": 56.8,
+          "probability": 0.99609375
+        },
+        {
+          "word": " committee,",
+          "start": 56.8,
+          "end": 57.3,
+          "probability": 0.95654296875
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "seek": 5730,
+      "start": 58.66,
+      "end": 70.58,
+      "text": " So as a committee, you have the ability to then set up what we call the full committee that has to make up their own decision.",
+      "tokens": [
+        50363,
+        1406,
+        355,
+        257,
+        5583,
+        11,
+        345,
+        423,
+        262,
+        2694,
+        284,
+        788,
+        900,
+        510,
+        644,
+        356,
+        869,
+        262,
+        1336,
+        5583,
+        326,
+        468,
+        284,
+        787,
+        510,
+        511,
+        898,
+        2551,
+        13,
+        51013
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.18013094830256637,
+      "compression_ratio": 1.722488038277512,
+      "no_speech_prob": 0.4751111567020416,
+      "words": [
+        {
+          "word": " So",
+          "start": 58.66,
+          "end": 59.2,
+          "probability": 0.2130126953125
+        },
+        {
+          "word": " as",
+          "start": 59.2,
+          "end": 59.54,
+          "probability": 0.603515625
+        },
+        {
+          "word": " a",
+          "start": 59.54,
+          "end": 59.68,
+          "probability": 0.95654296875
+        },
+        {
+          "word": " committee,",
+          "start": 59.68,
+          "end": 60.04,
+          "probability": 0.9248046875
+        },
+        {
+          "word": " you",
+          "start": 60.3,
+          "end": 60.3,
+          "probability": 0.978515625
+        },
+        {
+          "word": " have",
+          "start": 60.3,
+          "end": 60.56,
+          "probability": 0.56689453125
+        },
+        {
+          "word": " the",
+          "start": 60.56,
+          "end": 60.7,
+          "probability": 0.98828125
+        },
+        {
+          "word": " ability",
+          "start": 60.7,
+          "end": 61.16,
+          "probability": 0.998046875
+        },
+        {
+          "word": " to",
+          "start": 61.16,
+          "end": 61.96,
+          "probability": 0.97509765625
+        },
+        {
+          "word": " then",
+          "start": 61.96,
+          "end": 62.4,
+          "probability": 0.93310546875
+        },
+        {
+          "word": " set",
+          "start": 62.4,
+          "end": 64.22,
+          "probability": 0.8701171875
+        },
+        {
+          "word": " up",
+          "start": 64.22,
+          "end": 64.68,
+          "probability": 0.998046875
+        },
+        {
+          "word": " what",
+          "start": 64.68,
+          "end": 64.86,
+          "probability": 0.9697265625
+        },
+        {
+          "word": " we",
+          "start": 64.86,
+          "end": 65.04,
+          "probability": 0.99609375
+        },
+        {
+          "word": " call",
+          "start": 65.04,
+          "end": 65.62,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " the",
+          "start": 65.62,
+          "end": 66.44,
+          "probability": 0.96533203125
+        },
+        {
+          "word": " full",
+          "start": 66.44,
+          "end": 66.96,
+          "probability": 0.92822265625
+        },
+        {
+          "word": " committee",
+          "start": 66.96,
+          "end": 67.3,
+          "probability": 0.97998046875
+        },
+        {
+          "word": " that",
+          "start": 67.3,
+          "end": 68.54,
+          "probability": 0.6357421875
+        },
+        {
+          "word": " has",
+          "start": 68.54,
+          "end": 68.76,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " to",
+          "start": 68.76,
+          "end": 69.0,
+          "probability": 0.9990234375
+        },
+        {
+          "word": " make",
+          "start": 69.0,
+          "end": 69.38,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " up",
+          "start": 69.38,
+          "end": 69.58,
+          "probability": 0.99609375
+        },
+        {
+          "word": " their",
+          "start": 69.58,
+          "end": 69.76,
+          "probability": 0.9765625
+        },
+        {
+          "word": " own",
+          "start": 69.76,
+          "end": 70.02,
+          "probability": 0.994140625
+        },
+        {
+          "word": " decision.",
+          "start": 70.02,
+          "end": 70.58,
+          "probability": 0.98828125
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "seek": 5730,
+      "start": 71.62,
+      "end": 73.82,
+      "text": " So as you can see, I am here.",
+      "tokens": [
+        51013,
+        1406,
+        355,
+        345,
+        460,
+        766,
+        11,
+        314,
+        716,
+        994,
+        13,
+        51163
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.18013094830256637,
+      "compression_ratio": 1.722488038277512,
+      "no_speech_prob": 0.4751111567020416,
+      "words": [
+        {
+          "word": " So",
+          "start": 71.62,
+          "end": 71.62,
+          "probability": 0.95068359375
+        },
+        {
+          "word": " as",
+          "start": 71.62,
+          "end": 71.92,
+          "probability": 0.859375
+        },
+        {
+          "word": " you",
+          "start": 71.92,
+          "end": 72.38,
+          "probability": 0.48828125
+        },
+        {
+          "word": " can",
+          "start": 72.38,
+          "end": 72.58,
+          "probability": 0.9990234375
+        },
+        {
+          "word": " see,",
+          "start": 72.58,
+          "end": 72.84,
+          "probability": 0.9990234375
+        },
+        {
+          "word": " I",
+          "start": 73.06,
+          "end": 73.2,
+          "probability": 0.99267578125
+        },
+        {
+          "word": " am",
+          "start": 73.2,
+          "end": 73.3,
+          "probability": 0.9892578125
+        },
+        {
+          "word": " here.",
+          "start": 73.3,
+          "end": 73.82,
+          "probability": 0.99853515625
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "seek": 5730,
+      "start": 74.16,
+      "end": 75.92,
+      "text": " And then this is a panel of the committee.",
+      "tokens": [
+        51163,
+        843,
+        788,
+        428,
+        318,
+        257,
+        6103,
+        286,
+        262,
+        5583,
+        13,
+        51263
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.18013094830256637,
+      "compression_ratio": 1.722488038277512,
+      "no_speech_prob": 0.4751111567020416,
+      "words": [
+        {
+          "word": " And",
+          "start": 74.16,
+          "end": 74.22,
+          "probability": 0.95654296875
+        },
+        {
+          "word": " then",
+          "start": 74.22,
+          "end": 74.44,
+          "probability": 0.96142578125
+        },
+        {
+          "word": " this",
+          "start": 74.44,
+          "end": 74.76,
+          "probability": 0.9697265625
+        },
+        {
+          "word": " is",
+          "start": 74.76,
+          "end": 74.92,
+          "probability": 0.998046875
+        },
+        {
+          "word": " a",
+          "start": 74.92,
+          "end": 75.02,
+          "probability": 0.92431640625
+        },
+        {
+          "word": " panel",
+          "start": 75.02,
+          "end": 75.18,
+          "probability": 0.9853515625
+        },
+        {
+          "word": " of",
+          "start": 75.18,
+          "end": 75.46,
+          "probability": 0.99755859375
+        },
+        {
+          "word": " the",
+          "start": 75.46,
+          "end": 75.58,
+          "probability": 0.99755859375
+        },
+        {
+          "word": " committee.",
+          "start": 75.58,
+          "end": 75.92,
+          "probability": 0.97509765625
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "seek": 5730,
+      "start": 76.12,
+      "end": 81.78,
+      "text": " So we can add any other person to the committee to then constitute the quorum.",
+      "tokens": [
+        51263,
+        1406,
+        356,
+        460,
+        751,
+        597,
+        584,
+        1048,
+        284,
+        262,
+        5583,
+        284,
+        788,
+        15613,
+        262,
+        627,
+        19220,
+        13,
+        51563
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.18013094830256637,
+      "compression_ratio": 1.722488038277512,
+      "no_speech_prob": 0.4751111567020416,
+      "words": [
+        {
+          "word": " So",
+          "start": 76.12,
+          "end": 76.3,
+          "probability": 0.98828125
+        },
+        {
+          "word": " we",
+          "start": 76.3,
+          "end": 76.44,
+          "probability": 0.75830078125
+        },
+        {
+          "word": " can",
+          "start": 76.44,
+          "end": 76.6,
+          "probability": 0.99951171875
+        },
+        {
+          "word": " add",
+          "start": 76.6,
+          "end": 76.86,
+          "probability": 0.998046875
+        },
+        {
+          "word": " any",
+          "start": 76.86,
+          "end": 77.08,
+          "probability": 0.99462890625
+        },
+        {
+          "word": " other",
+          "start": 77.08,
+          "end": 77.32,
+          "probability": 0.9853515625
+        },
+        {
+          "word": " person",
+          "start": 77.32,
+          "end": 77.66,
+          "probability": 0.99853515625
+        },
+        {
+          "word": " to",
+          "start": 77.66,
+          "end": 78.6,
+          "probability": 0.97802734375
+        },
+        {
+          "word": " the",
+          "start": 78.6,
+          "end": 79.1,
+          "probability": 0.85791015625
+        },
+        {
+          "word": " committee",
+          "start": 79.1,
+          "end": 79.48,
+          "probability": 0.98095703125
+        },
+        {
+          "word": " to",
+          "start": 79.48,
+          "end": 80.18,
+          "probability": 0.87939453125
+        },
+        {
+          "word": " then",
+          "start": 80.18,
+          "end": 80.36,
+          "probability": 0.95361328125
+        },
+        {
+          "word": " constitute",
+          "start": 80.36,
+          "end": 80.7,
+          "probability": 0.984375
+        },
+        {
+          "word": " the",
+          "start": 80.7,
+          "end": 80.98,
+          "probability": 0.96484375
+        },
+        {
+          "word": " quorum.",
+          "start": 80.98,
+          "end": 81.78,
+          "probability": 0.64453125
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "seek": 5730,
+      "start": 81.86,
+      "end": 86.8,
+      "text": " Who then makes the final decision in terms of who to award a particular contract.",
+      "tokens": [
+        51563,
+        5338,
+        788,
+        1838,
+        262,
+        2457,
+        2551,
+        287,
+        2846,
+        286,
+        508,
+        284,
+        5764,
+        257,
+        1948,
+        2775,
+        13,
+        51813
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.18013094830256637,
+      "compression_ratio": 1.722488038277512,
+      "no_speech_prob": 0.4751111567020416,
+      "words": [
+        {
+          "word": " Who",
+          "start": 81.86,
+          "end": 82.22,
+          "probability": 0.402099609375
+        },
+        {
+          "word": " then",
+          "start": 82.22,
+          "end": 82.38,
+          "probability": 0.94970703125
+        },
+        {
+          "word": " makes",
+          "start": 82.38,
+          "end": 82.72,
+          "probability": 0.9931640625
+        },
+        {
+          "word": " the",
+          "start": 82.72,
+          "end": 83.74,
+          "probability": 0.96337890625
+        },
+        {
+          "word": " final",
+          "start": 83.74,
+          "end": 84.04,
+          "probability": 0.974609375
+        },
+        {
+          "word": " decision",
+          "start": 84.04,
+          "end": 84.54,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " in",
+          "start": 84.54,
+          "end": 84.78,
+          "probability": 0.990234375
+        },
+        {
+          "word": " terms",
+          "start": 84.78,
+          "end": 84.96,
+          "probability": 0.99951171875
+        },
+        {
+          "word": " of",
+          "start": 84.96,
+          "end": 85.2,
+          "probability": 0.998046875
+        },
+        {
+          "word": " who",
+          "start": 85.2,
+          "end": 85.42,
+          "probability": 0.98779296875
+        },
+        {
+          "word": " to",
+          "start": 85.42,
+          "end": 85.68,
+          "probability": 0.87353515625
+        },
+        {
+          "word": " award",
+          "start": 85.68,
+          "end": 85.84,
+          "probability": 0.587890625
+        },
+        {
+          "word": " a",
+          "start": 85.84,
+          "end": 86.2,
+          "probability": 0.943359375
+        },
+        {
+          "word": " particular",
+          "start": 86.2,
+          "end": 86.46,
+          "probability": 0.99755859375
+        },
+        {
+          "word": " contract.",
+          "start": 86.46,
+          "end": 86.8,
+          "probability": 0.99267578125
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "seek": 8680,
+      "start": 86.8,
+      "end": 91.56,
+      "text": " So each person has to have the verdict signed and then the one that has got the",
+      "tokens": [
+        50363,
+        1406,
+        1123,
+        1048,
+        468,
+        284,
+        423,
+        262,
+        15593,
+        4488,
+        290,
+        788,
+        262,
+        530,
+        326,
+        468,
+        1392,
+        262,
+        50601
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.27685387929280597,
+      "compression_ratio": 1.316326530612245,
+      "no_speech_prob": 0.15303774178028107,
+      "words": [
+        {
+          "word": " So",
+          "start": 86.8,
+          "end": 87.16,
+          "probability": 0.61572265625
+        },
+        {
+          "word": " each",
+          "start": 87.16,
+          "end": 87.4,
+          "probability": 0.822265625
+        },
+        {
+          "word": " person",
+          "start": 87.4,
+          "end": 87.7,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " has",
+          "start": 87.7,
+          "end": 87.98,
+          "probability": 0.97265625
+        },
+        {
+          "word": " to",
+          "start": 87.98,
+          "end": 88.12,
+          "probability": 0.99169921875
+        },
+        {
+          "word": " have",
+          "start": 88.12,
+          "end": 88.76,
+          "probability": 0.99072265625
+        },
+        {
+          "word": " the",
+          "start": 88.76,
+          "end": 89.44,
+          "probability": 0.68994140625
+        },
+        {
+          "word": " verdict",
+          "start": 89.44,
+          "end": 89.62,
+          "probability": 0.56884765625
+        },
+        {
+          "word": " signed",
+          "start": 89.62,
+          "end": 89.94,
+          "probability": 0.98681640625
+        },
+        {
+          "word": " and",
+          "start": 89.94,
+          "end": 90.48,
+          "probability": 0.607421875
+        },
+        {
+          "word": " then",
+          "start": 90.48,
+          "end": 90.64,
+          "probability": 0.9091796875
+        },
+        {
+          "word": " the",
+          "start": 90.64,
+          "end": 90.72,
+          "probability": 0.9765625
+        },
+        {
+          "word": " one",
+          "start": 90.72,
+          "end": 90.94,
+          "probability": 0.98876953125
+        },
+        {
+          "word": " that",
+          "start": 90.94,
+          "end": 91.06,
+          "probability": 0.693359375
+        },
+        {
+          "word": " has",
+          "start": 91.06,
+          "end": 91.22,
+          "probability": 0.8408203125
+        },
+        {
+          "word": " got",
+          "start": 91.22,
+          "end": 91.46,
+          "probability": 0.859375
+        },
+        {
+          "word": " the",
+          "start": 91.46,
+          "end": 91.69999999999999,
+          "probability": 0.92431640625
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "seek": 8680,
+      "start": 92.72,
+      "end": 94.98,
+      "text": " The one who has the most favor out of everybody's",
+      "tokens": [
+        50645,
+        383,
+        530,
+        508,
+        468,
+        262,
+        749,
+        2661,
+        503,
+        286,
+        7288,
+        338,
+        50765
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.27685387929280597,
+      "compression_ratio": 1.316326530612245,
+      "no_speech_prob": 0.15303774178028107,
+      "words": [
+        {
+          "word": " The",
+          "start": 92.72,
+          "end": 92.96,
+          "probability": 0.1346435546875
+        },
+        {
+          "word": " one",
+          "start": 92.96,
+          "end": 93.12,
+          "probability": 0.99755859375
+        },
+        {
+          "word": " who",
+          "start": 93.12,
+          "end": 93.26,
+          "probability": 0.9912109375
+        },
+        {
+          "word": " has",
+          "start": 93.26,
+          "end": 93.38,
+          "probability": 0.73095703125
+        },
+        {
+          "word": " the",
+          "start": 93.38,
+          "end": 93.48,
+          "probability": 0.986328125
+        },
+        {
+          "word": " most",
+          "start": 93.48,
+          "end": 93.66,
+          "probability": 0.99951171875
+        },
+        {
+          "word": " favor",
+          "start": 93.66,
+          "end": 93.9,
+          "probability": 0.8525390625
+        },
+        {
+          "word": " out",
+          "start": 93.9,
+          "end": 94.18,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " of",
+          "start": 94.18,
+          "end": 94.38,
+          "probability": 0.998046875
+        },
+        {
+          "word": " everybody's",
+          "start": 94.38,
+          "end": 94.98,
+          "probability": 0.9521484375
+        }
+      ]
+    }
+  ],
+  "source_offset_seconds": 198
+}

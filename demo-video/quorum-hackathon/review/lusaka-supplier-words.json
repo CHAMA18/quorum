@@ -1,0 +1,681 @@
+{
+  "sha256": "5aafac4563a80c4e620a139dad417f22fa09043e78bdb0e5f3abb879a3b8f737",
+  "text": " We start on the supplier side. The portal keeps the required documents together, so it's clear what needs to be submitted. Here I'm opening a tax registration certificate and running the AI document check. Our Meta-powered tool reads the document and checks it against the requested requirement. The findings appear beside the original file, making the details easy to compare. That gives the reviewer a useful starting point. It doesn't certify the document or decide whether the supplier qualifies.",
+  "segments": [
+    {
+      "id": 0,
+      "seek": 0,
+      "start": 0.0,
+      "end": 6.44,
+      "text": " We start on the supplier side. The portal keeps the required documents together, so it's clear what needs to be submitted.",
+      "tokens": [
+        50363,
+        775,
+        923,
+        319,
+        262,
+        22693,
+        1735,
+        13,
+        383,
+        17898,
+        7622,
+        262,
+        2672,
+        4963,
+        1978,
+        11,
+        523,
+        340,
+        338,
+        1598,
+        644,
+        2476,
+        284,
+        307,
+        8948,
+        13,
+        50688
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.1105400931160405,
+      "compression_ratio": 1.7182130584192439,
+      "no_speech_prob": 0.0012743117986246943,
+      "words": [
+        {
+          "word": " We",
+          "start": 0.0,
+          "end": 0.56,
+          "probability": 0.8828125
+        },
+        {
+          "word": " start",
+          "start": 0.56,
+          "end": 0.76,
+          "probability": 0.96044921875
+        },
+        {
+          "word": " on",
+          "start": 0.76,
+          "end": 1.04,
+          "probability": 0.94677734375
+        },
+        {
+          "word": " the",
+          "start": 1.04,
+          "end": 1.18,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " supplier",
+          "start": 1.18,
+          "end": 1.42,
+          "probability": 0.767578125
+        },
+        {
+          "word": " side.",
+          "start": 1.42,
+          "end": 1.84,
+          "probability": 0.7890625
+        },
+        {
+          "word": " The",
+          "start": 2.22,
+          "end": 2.34,
+          "probability": 0.9931640625
+        },
+        {
+          "word": " portal",
+          "start": 2.34,
+          "end": 2.58,
+          "probability": 0.99267578125
+        },
+        {
+          "word": " keeps",
+          "start": 2.58,
+          "end": 2.9,
+          "probability": 0.9921875
+        },
+        {
+          "word": " the",
+          "start": 2.9,
+          "end": 3.12,
+          "probability": 0.99365234375
+        },
+        {
+          "word": " required",
+          "start": 3.12,
+          "end": 3.48,
+          "probability": 0.9873046875
+        },
+        {
+          "word": " documents",
+          "start": 3.48,
+          "end": 3.88,
+          "probability": 0.99169921875
+        },
+        {
+          "word": " together,",
+          "start": 3.88,
+          "end": 4.38,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " so",
+          "start": 4.5,
+          "end": 4.78,
+          "probability": 0.99365234375
+        },
+        {
+          "word": " it's",
+          "start": 4.78,
+          "end": 4.98,
+          "probability": 0.9345703125
+        },
+        {
+          "word": " clear",
+          "start": 4.98,
+          "end": 5.18,
+          "probability": 0.998046875
+        },
+        {
+          "word": " what",
+          "start": 5.18,
+          "end": 5.4,
+          "probability": 0.994140625
+        },
+        {
+          "word": " needs",
+          "start": 5.4,
+          "end": 5.7,
+          "probability": 0.98974609375
+        },
+        {
+          "word": " to",
+          "start": 5.7,
+          "end": 5.82,
+          "probability": 0.99951171875
+        },
+        {
+          "word": " be",
+          "start": 5.82,
+          "end": 5.92,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " submitted.",
+          "start": 5.92,
+          "end": 6.44,
+          "probability": 0.9990234375
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "seek": 0,
+      "start": 7.02,
+      "end": 11.28,
+      "text": " Here I'm opening a tax registration certificate and running the AI document check.",
+      "tokens": [
+        50688,
+        3423,
+        314,
+        1101,
+        4756,
+        257,
+        1687,
+        9352,
+        10703,
+        290,
+        2491,
+        262,
+        9552,
+        3188,
+        2198,
+        13,
+        50938
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.1105400931160405,
+      "compression_ratio": 1.7182130584192439,
+      "no_speech_prob": 0.0012743117986246943,
+      "words": [
+        {
+          "word": " Here",
+          "start": 7.02,
+          "end": 7.18,
+          "probability": 0.9931640625
+        },
+        {
+          "word": " I'm",
+          "start": 7.18,
+          "end": 7.4,
+          "probability": 0.80615234375
+        },
+        {
+          "word": " opening",
+          "start": 7.4,
+          "end": 7.78,
+          "probability": 0.9990234375
+        },
+        {
+          "word": " a",
+          "start": 7.78,
+          "end": 8.14,
+          "probability": 0.9921875
+        },
+        {
+          "word": " tax",
+          "start": 8.14,
+          "end": 8.16,
+          "probability": 0.89111328125
+        },
+        {
+          "word": " registration",
+          "start": 8.16,
+          "end": 8.68,
+          "probability": 0.93359375
+        },
+        {
+          "word": " certificate",
+          "start": 8.68,
+          "end": 9.22,
+          "probability": 0.998046875
+        },
+        {
+          "word": " and",
+          "start": 9.22,
+          "end": 9.58,
+          "probability": 0.9560546875
+        },
+        {
+          "word": " running",
+          "start": 9.58,
+          "end": 9.88,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " the",
+          "start": 9.88,
+          "end": 10.16,
+          "probability": 0.9892578125
+        },
+        {
+          "word": " AI",
+          "start": 10.16,
+          "end": 10.54,
+          "probability": 0.91552734375
+        },
+        {
+          "word": " document",
+          "start": 10.54,
+          "end": 10.86,
+          "probability": 0.8310546875
+        },
+        {
+          "word": " check.",
+          "start": 10.86,
+          "end": 11.28,
+          "probability": 0.9677734375
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "seek": 0,
+      "start": 11.86,
+      "end": 16.48,
+      "text": " Our Meta-powered tool reads the document and checks it against the requested requirement.",
+      "tokens": [
+        50938,
+        3954,
+        30277,
+        12,
+        12293,
+        2891,
+        9743,
+        262,
+        3188,
+        290,
+        8794,
+        340,
+        1028,
+        262,
+        9167,
+        9079,
+        13,
+        51188
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.1105400931160405,
+      "compression_ratio": 1.7182130584192439,
+      "no_speech_prob": 0.0012743117986246943,
+      "words": [
+        {
+          "word": " Our",
+          "start": 11.86,
+          "end": 12.1,
+          "probability": 0.994140625
+        },
+        {
+          "word": " Meta",
+          "start": 12.1,
+          "end": 12.56,
+          "probability": 0.11895751953125
+        },
+        {
+          "word": "-powered",
+          "start": 12.56,
+          "end": 12.68,
+          "probability": 0.390869140625
+        },
+        {
+          "word": " tool",
+          "start": 12.68,
+          "end": 13.04,
+          "probability": 0.95947265625
+        },
+        {
+          "word": " reads",
+          "start": 13.04,
+          "end": 13.4,
+          "probability": 0.994140625
+        },
+        {
+          "word": " the",
+          "start": 13.4,
+          "end": 13.62,
+          "probability": 0.99853515625
+        },
+        {
+          "word": " document",
+          "start": 13.62,
+          "end": 13.96,
+          "probability": 0.9931640625
+        },
+        {
+          "word": " and",
+          "start": 13.96,
+          "end": 14.3,
+          "probability": 0.95068359375
+        },
+        {
+          "word": " checks",
+          "start": 14.3,
+          "end": 14.58,
+          "probability": 0.99853515625
+        },
+        {
+          "word": " it",
+          "start": 14.58,
+          "end": 14.86,
+          "probability": 0.9931640625
+        },
+        {
+          "word": " against",
+          "start": 14.86,
+          "end": 15.18,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " the",
+          "start": 15.18,
+          "end": 15.44,
+          "probability": 0.97607421875
+        },
+        {
+          "word": " requested",
+          "start": 15.44,
+          "end": 15.84,
+          "probability": 0.97998046875
+        },
+        {
+          "word": " requirement.",
+          "start": 15.84,
+          "end": 16.48,
+          "probability": 0.98291015625
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "seek": 0,
+      "start": 17.1,
+      "end": 21.08,
+      "text": " The findings appear beside the original file, making the details easy to compare.",
+      "tokens": [
+        51188,
+        383,
+        6373,
+        1656,
+        13970,
+        262,
+        2656,
+        2393,
+        11,
+        1642,
+        262,
+        3307,
+        2562,
+        284,
+        8996,
+        13,
+        51413
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.1105400931160405,
+      "compression_ratio": 1.7182130584192439,
+      "no_speech_prob": 0.0012743117986246943,
+      "words": [
+        {
+          "word": " The",
+          "start": 17.1,
+          "end": 17.24,
+          "probability": 0.99072265625
+        },
+        {
+          "word": " findings",
+          "start": 17.24,
+          "end": 17.58,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " appear",
+          "start": 17.58,
+          "end": 17.92,
+          "probability": 0.99462890625
+        },
+        {
+          "word": " beside",
+          "start": 17.92,
+          "end": 18.3,
+          "probability": 0.9765625
+        },
+        {
+          "word": " the",
+          "start": 18.3,
+          "end": 18.54,
+          "probability": 0.99853515625
+        },
+        {
+          "word": " original",
+          "start": 18.54,
+          "end": 18.9,
+          "probability": 0.99755859375
+        },
+        {
+          "word": " file,",
+          "start": 18.9,
+          "end": 19.26,
+          "probability": 0.9931640625
+        },
+        {
+          "word": " making",
+          "start": 19.38,
+          "end": 19.66,
+          "probability": 0.99853515625
+        },
+        {
+          "word": " the",
+          "start": 19.66,
+          "end": 19.86,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " details",
+          "start": 19.86,
+          "end": 20.16,
+          "probability": 0.99609375
+        },
+        {
+          "word": " easy",
+          "start": 20.16,
+          "end": 20.46,
+          "probability": 0.98876953125
+        },
+        {
+          "word": " to",
+          "start": 20.46,
+          "end": 20.66,
+          "probability": 0.99609375
+        },
+        {
+          "word": " compare.",
+          "start": 20.66,
+          "end": 21.08,
+          "probability": 0.99951171875
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "seek": 0,
+      "start": 21.34,
+      "end": 23.9,
+      "text": " That gives the reviewer a useful starting point.",
+      "tokens": [
+        51413,
+        1320,
+        3607,
+        262,
+        37823,
+        257,
+        4465,
+        3599,
+        966,
+        13,
+        51563
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.1105400931160405,
+      "compression_ratio": 1.7182130584192439,
+      "no_speech_prob": 0.0012743117986246943,
+      "words": [
+        {
+          "word": " That",
+          "start": 21.34,
+          "end": 21.82,
+          "probability": 0.99072265625
+        },
+        {
+          "word": " gives",
+          "start": 21.82,
+          "end": 22.04,
+          "probability": 0.99462890625
+        },
+        {
+          "word": " the",
+          "start": 22.04,
+          "end": 22.64,
+          "probability": 0.998046875
+        },
+        {
+          "word": " reviewer",
+          "start": 22.64,
+          "end": 22.64,
+          "probability": 0.99365234375
+        },
+        {
+          "word": " a",
+          "start": 22.64,
+          "end": 22.82,
+          "probability": 0.9873046875
+        },
+        {
+          "word": " useful",
+          "start": 22.82,
+          "end": 23.12,
+          "probability": 0.99853515625
+        },
+        {
+          "word": " starting",
+          "start": 23.12,
+          "end": 23.54,
+          "probability": 0.99853515625
+        },
+        {
+          "word": " point.",
+          "start": 23.54,
+          "end": 23.9,
+          "probability": 0.99560546875
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "seek": 0,
+      "start": 24.26,
+      "end": 27.76,
+      "text": " It doesn't certify the document or decide whether the supplier qualifies.",
+      "tokens": [
+        51563,
+        632,
+        1595,
+        470,
+        46125,
+        262,
+        3188,
+        393,
+        5409,
+        1771,
+        262,
+        22693,
+        37782,
+        13,
+        51763
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.1105400931160405,
+      "compression_ratio": 1.7182130584192439,
+      "no_speech_prob": 0.0012743117986246943,
+      "words": [
+        {
+          "word": " It",
+          "start": 24.26,
+          "end": 24.48,
+          "probability": 0.994140625
+        },
+        {
+          "word": " doesn't",
+          "start": 24.48,
+          "end": 24.76,
+          "probability": 0.9931640625
+        },
+        {
+          "word": " certify",
+          "start": 24.76,
+          "end": 25.26,
+          "probability": 0.7041015625
+        },
+        {
+          "word": " the",
+          "start": 25.26,
+          "end": 25.46,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " document",
+          "start": 25.46,
+          "end": 25.82,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " or",
+          "start": 25.82,
+          "end": 26.04,
+          "probability": 0.95556640625
+        },
+        {
+          "word": " decide",
+          "start": 26.04,
+          "end": 26.36,
+          "probability": 0.9951171875
+        },
+        {
+          "word": " whether",
+          "start": 26.36,
+          "end": 26.6,
+          "probability": 0.9921875
+        },
+        {
+          "word": " the",
+          "start": 26.6,
+          "end": 26.86,
+          "probability": 0.99853515625
+        },
+        {
+          "word": " supplier",
+          "start": 26.86,
+          "end": 27.22,
+          "probability": 0.9931640625
+        },
+        {
+          "word": " qualifies.",
+          "start": 27.22,
+          "end": 27.76,
+          "probability": 0.998046875
+        }
+      ]
+    }
+  ]
+}

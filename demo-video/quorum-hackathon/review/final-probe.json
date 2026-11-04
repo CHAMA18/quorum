@@ -1,0 +1,38 @@
+{
+  "programs": [],
+  "stream_groups": [],
+  "streams": [
+    {
+      "index": 0,
+      "codec_name": "h264",
+      "width": 1920,
+      "height": 1080,
+      "r_frame_rate": "30/1",
+      "start_time": "0.000000",
+      "duration": "180.000000",
+      "nb_frames": "5400"
+    },
+    {
+      "index": 1,
+      "codec_name": "aac",
+      "sample_rate": "48000",
+      "channels": 2,
+      "r_frame_rate": "0/0",
+      "start_time": "0.000000",
+      "duration": "180.000000",
+      "nb_frames": "8439"
+    },
+    {
+      "index": 2,
+      "codec_name": "bin_data",
+      "r_frame_rate": "0/0",
+      "start_time": "0.000000",
+      "duration": "180.000000",
+      "nb_frames": "6"
+    }
+  ],
+  "format": {
+    "duration": "180.000000",
+    "size": "29206006"
+  }
+}

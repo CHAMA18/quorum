@@ -1,0 +1,498 @@
+{
+  "text": " Over 450 million US dollars is lost every year due to 40 procurement means. Through Quorum, we seek to address this challenge. On this section, we have got the login and also registration section. So we will first begin with the Quorum portal, which is for the organization. and then it will supply a portal which is",
+  "segments": [
+    {
+      "id": 0,
+      "seek": 0,
+      "start": 3.6999999999999975,
+      "end": 9.36,
+      "text": " Over 450 million US dollars is lost every year due to 40 procurement means.",
+      "tokens": [
+        50363,
+        3827,
+        18523,
+        1510,
+        1294,
+        5054,
+        318,
+        2626,
+        790,
+        614,
+        2233,
+        284,
+        2319,
+        31156,
+        1724,
+        13,
+        50893
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.23224836321019415,
+      "compression_ratio": 1.4497354497354498,
+      "no_speech_prob": 0.018832705914974213,
+      "words": [
+        {
+          "word": " Over",
+          "start": 3.6999999999999975,
+          "end": 4.219999999999999,
+          "probability": 0.86474609375
+        },
+        {
+          "word": " 450",
+          "start": 4.219999999999999,
+          "end": 4.74,
+          "probability": 0.55126953125
+        },
+        {
+          "word": " million",
+          "start": 4.74,
+          "end": 5.22,
+          "probability": 0.92333984375
+        },
+        {
+          "word": " US",
+          "start": 5.22,
+          "end": 6.34,
+          "probability": 0.71630859375
+        },
+        {
+          "word": " dollars",
+          "start": 6.34,
+          "end": 6.56,
+          "probability": 0.9384765625
+        },
+        {
+          "word": " is",
+          "start": 6.56,
+          "end": 6.8,
+          "probability": 0.97802734375
+        },
+        {
+          "word": " lost",
+          "start": 6.8,
+          "end": 7.06,
+          "probability": 0.99853515625
+        },
+        {
+          "word": " every",
+          "start": 7.06,
+          "end": 7.36,
+          "probability": 0.9873046875
+        },
+        {
+          "word": " year",
+          "start": 7.36,
+          "end": 7.62,
+          "probability": 0.9892578125
+        },
+        {
+          "word": " due",
+          "start": 7.62,
+          "end": 7.66,
+          "probability": 0.9736328125
+        },
+        {
+          "word": " to",
+          "start": 7.66,
+          "end": 7.8,
+          "probability": 0.998046875
+        },
+        {
+          "word": " 40",
+          "start": 7.8,
+          "end": 8.12,
+          "probability": 0.65234375
+        },
+        {
+          "word": " procurement",
+          "start": 8.12,
+          "end": 8.56,
+          "probability": 0.8486328125
+        },
+        {
+          "word": " means.",
+          "start": 8.56,
+          "end": 9.36,
+          "probability": 0.8994140625
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "seek": 0,
+      "start": 10.44,
+      "end": 13.08,
+      "text": " Through Quorum, we seek to address this challenge.",
+      "tokens": [
+        50893,
+        9561,
+        2264,
+        19220,
+        11,
+        356,
+        5380,
+        284,
+        2209,
+        428,
+        4427,
+        13,
+        51066
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.23224836321019415,
+      "compression_ratio": 1.4497354497354498,
+      "no_speech_prob": 0.018832705914974213,
+      "words": [
+        {
+          "word": " Through",
+          "start": 10.44,
+          "end": 10.92,
+          "probability": 0.990234375
+        },
+        {
+          "word": " Quorum,",
+          "start": 10.92,
+          "end": 11.02,
+          "probability": 0.6884765625
+        },
+        {
+          "word": " we",
+          "start": 11.3,
+          "end": 11.52,
+          "probability": 0.99365234375
+        },
+        {
+          "word": " seek",
+          "start": 11.52,
+          "end": 11.7,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " to",
+          "start": 11.7,
+          "end": 11.9,
+          "probability": 0.99755859375
+        },
+        {
+          "word": " address",
+          "start": 11.9,
+          "end": 12.2,
+          "probability": 0.994140625
+        },
+        {
+          "word": " this",
+          "start": 12.2,
+          "end": 12.7,
+          "probability": 0.99169921875
+        },
+        {
+          "word": " challenge.",
+          "start": 12.7,
+          "end": 13.08,
+          "probability": 0.99853515625
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "seek": 0,
+      "start": 13.98,
+      "end": 17.16,
+      "text": " On this section, we have got the login and also registration section.",
+      "tokens": [
+        51066,
+        1550,
+        428,
+        2665,
+        11,
+        356,
+        423,
+        1392,
+        262,
+        17594,
+        290,
+        635,
+        9352,
+        2665,
+        13,
+        51243
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.23224836321019415,
+      "compression_ratio": 1.4497354497354498,
+      "no_speech_prob": 0.018832705914974213,
+      "words": [
+        {
+          "word": " On",
+          "start": 13.98,
+          "end": 14.1,
+          "probability": 0.970703125
+        },
+        {
+          "word": " this",
+          "start": 14.1,
+          "end": 14.26,
+          "probability": 0.9912109375
+        },
+        {
+          "word": " section,",
+          "start": 14.26,
+          "end": 14.54,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " we",
+          "start": 14.54,
+          "end": 14.7,
+          "probability": 0.99755859375
+        },
+        {
+          "word": " have",
+          "start": 14.7,
+          "end": 14.9,
+          "probability": 0.9931640625
+        },
+        {
+          "word": " got",
+          "start": 14.9,
+          "end": 15.16,
+          "probability": 0.96826171875
+        },
+        {
+          "word": " the",
+          "start": 15.16,
+          "end": 15.4,
+          "probability": 0.95556640625
+        },
+        {
+          "word": " login",
+          "start": 15.4,
+          "end": 15.66,
+          "probability": 0.76416015625
+        },
+        {
+          "word": " and",
+          "start": 15.66,
+          "end": 16.16,
+          "probability": 0.9033203125
+        },
+        {
+          "word": " also",
+          "start": 16.16,
+          "end": 16.4,
+          "probability": 0.96728515625
+        },
+        {
+          "word": " registration",
+          "start": 16.4,
+          "end": 16.72,
+          "probability": 0.75927734375
+        },
+        {
+          "word": " section.",
+          "start": 16.72,
+          "end": 17.16,
+          "probability": 0.98486328125
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "seek": 0,
+      "start": 17.48,
+      "end": 21.58,
+      "text": " So we will first begin with the Quorum portal, which is for the organization.",
+      "tokens": [
+        51243,
+        1406,
+        356,
+        481,
+        717,
+        2221,
+        351,
+        262,
+        2264,
+        19220,
+        17898,
+        11,
+        543,
+        318,
+        329,
+        262,
+        4009,
+        13,
+        51485
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.23224836321019415,
+      "compression_ratio": 1.4497354497354498,
+      "no_speech_prob": 0.018832705914974213,
+      "words": [
+        {
+          "word": " So",
+          "start": 17.48,
+          "end": 17.7,
+          "probability": 0.94482421875
+        },
+        {
+          "word": " we",
+          "start": 17.7,
+          "end": 18.16,
+          "probability": 0.8681640625
+        },
+        {
+          "word": " will",
+          "start": 18.16,
+          "end": 18.42,
+          "probability": 0.397216796875
+        },
+        {
+          "word": " first",
+          "start": 18.42,
+          "end": 18.56,
+          "probability": 0.96533203125
+        },
+        {
+          "word": " begin",
+          "start": 18.56,
+          "end": 18.82,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " with",
+          "start": 18.82,
+          "end": 19.06,
+          "probability": 0.99853515625
+        },
+        {
+          "word": " the",
+          "start": 19.06,
+          "end": 19.46,
+          "probability": 0.923828125
+        },
+        {
+          "word": " Quorum",
+          "start": 19.46,
+          "end": 19.68,
+          "probability": 0.9931640625
+        },
+        {
+          "word": " portal,",
+          "start": 19.68,
+          "end": 19.98,
+          "probability": 0.90771484375
+        },
+        {
+          "word": " which",
+          "start": 20.24,
+          "end": 20.48,
+          "probability": 0.9990234375
+        },
+        {
+          "word": " is",
+          "start": 20.48,
+          "end": 20.64,
+          "probability": 0.99951171875
+        },
+        {
+          "word": " for",
+          "start": 20.64,
+          "end": 20.9,
+          "probability": 0.998046875
+        },
+        {
+          "word": " the",
+          "start": 20.9,
+          "end": 21.12,
+          "probability": 0.99462890625
+        },
+        {
+          "word": " organization.",
+          "start": 21.12,
+          "end": 21.58,
+          "probability": 0.85546875
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "seek": 2158,
+      "start": 22.22,
+      "end": 23.98,
+      "text": " and then it will supply a portal which is",
+      "tokens": [
+        50363,
+        290,
+        788,
+        340,
+        481,
+        5127,
+        257,
+        17898,
+        543,
+        318,
+        50487
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.6893819173177084,
+      "compression_ratio": 0.8541666666666666,
+      "no_speech_prob": 0.41941097378730774,
+      "words": [
+        {
+          "word": " and",
+          "start": 22.22,
+          "end": 22.54,
+          "probability": 0.1767578125
+        },
+        {
+          "word": " then",
+          "start": 22.54,
+          "end": 22.58,
+          "probability": 0.95068359375
+        },
+        {
+          "word": " it",
+          "start": 22.58,
+          "end": 22.72,
+          "probability": 0.61767578125
+        },
+        {
+          "word": " will",
+          "start": 22.72,
+          "end": 22.82,
+          "probability": 0.307861328125
+        },
+        {
+          "word": " supply",
+          "start": 22.82,
+          "end": 23.16,
+          "probability": 0.82421875
+        },
+        {
+          "word": " a",
+          "start": 23.16,
+          "end": 23.32,
+          "probability": 0.7412109375
+        },
+        {
+          "word": " portal",
+          "start": 23.32,
+          "end": 23.56,
+          "probability": 0.8603515625
+        },
+        {
+          "word": " which",
+          "start": 23.56,
+          "end": 23.94,
+          "probability": 0.51318359375
+        },
+        {
+          "word": " is",
+          "start": 23.94,
+          "end": 23.98,
+          "probability": 0.419921875
+        }
+      ]
+    }
+  ]
+}

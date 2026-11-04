@@ -1,0 +1,6 @@
+file '../renders/segment-1.mp4'
+duration 60
+file '../renders/segment-2.mp4'
+duration 60
+file '../renders/segment-3.mp4'
+duration 60

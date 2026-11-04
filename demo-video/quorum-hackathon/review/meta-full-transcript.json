@@ -1,0 +1,67 @@
+{
+  "sessionId": "voyager/transcribe/FA93049773404686ABB1356B6D6B8508",
+  "transcript": "Over 450 million US dollars is lost every year due to faulty procurement means. Through quorum, we seek to address this challenge. On this section we have got the login and also registration section. So we'll first begin with the quorum portal which is for the organization and then we've got supplier portal which is for firms who intend to offer their their service to an existing organization. So we already have a defined account that we'll proceed to access in our authentication authentication process so once we log in we are taken to the section where where where we have all the pending sections however the section of of Notus is the tender workflow so we already have a predefined um um tender section and so we have got a tender reference and then the buyer and so all this information on this section uh defines what is actually required for the tender to actually be filled before it is published. and so it outlines all the requirements that are actually needed before anything is sent. And so we also have predefined options whereby a supplier has to submit all this information prior to an application application for a for a tender that has been published. that we'll see shortly. So these are all the defined items in terms of the actual specifications that are required um and also defined evaluation criteria that that is mapped out. So after we have a tender that has been created, we look we look at the bid opening section but the the part of note is a bid evaluation because on this section we then use the AI for the to actually um to actually evaluate so on this section it would have any conflict of interest that has been declared by any party who is who is supposed to apply for a tender so under the evaluation matrices uh and under this section it will evaluate it will evaluate all the information that has been submitted by a supplier and then and then arrive at some recommendation based off of that however just to delve deeper into that we can review bidder information. So as we'll see and as we've seen already bidders pre-submit information that then is fed into the system to then arrive at a score. So once we click on this this section it will it will then proceed to then pick up insights based off of data that has been made available bearing in mind that we have the selected evaluation metrics metrics defined in this case we have got the we have got the technical capacity and experience that has been pre-filled and also and also delivery schedule based for their their past track record So as we wait for the AI to evaluate all the information that has been submitted it will share information at a very high level including anything that also needs to be reviewed before further consideration. So yeah it's gonna take a bit of some time in in a short while as it evaluates so here's information um so the AI proceeded to also submit information it says that the supplied accepts a loan presents the strongest documented fit for the committee consideration due to its valid legal signal and so in short it it then evaluates both sides presents committee I mean it then submits information to the committee to then take action so one thing to note is this isn't meant to make uh or to actually take any action it's just meant to present um who is the best bidder to actually take on a project and then based off of information that that it will give you give you as a committee you then proceed to then select so under this section you then take that information that has been shared to then award a contract so you then as a committee so as a committee you have the ability to then um set set up what we call the full committee that has to make up their own decision so as as you can see I am here and then this is a panel of the committee so we can add any other person to to the committee to then constitute constitute the quorum who then makes the final decision in terms of who to award a particular contract so each person has to have the verdict signed and then the one that has got the the one who has the most favor out of everybody's votes gets to have the tender awarded to them of course bearing in mind that you'd also get to have the chair uh we also have a section where you can join into meetings directly from from the platform you can actually join join a meeting and that in this meeting you then get to have a bot that then goes in and then collects recordings of the conversations in the meeting so just to quickly navigate to the supplier section of the portal So under so under the supplier section of the portal portal this is a bit of some overview over the information that they have to to submit so we've got the open tenders so a person can actually apply for a tender by submitting all the um data which then feeds into the AI so on the the quorum interface organizations define what information they will need from prospective bidders or also suppliers who then submit all the information that has been outlined outlined so under documents we have a section that then outlines all the possible requirements that a firm can need what at least a few of them and then as that happens and as we can see see here we have the ability to actually upload information and then have AI um analyze information for us and so that means it can proofread any document that has been submitted and then advise whether that will suffice or if it might need further consideration so as we can see here everything that is on the document is outlined and it does indicate that that is is a match ensuring that as you upload information it has got a higher rate of acceptance this runs on the Muse Spark um 1.3 model of the Meta API so yes this is a bit about Quorum thank you for your attention",
+  "audioDurationMs": 421120,
+  "turns": [
+    {
+      "turnId": 0,
+      "startMs": 3420,
+      "endMs": 9020,
+      "transcript": "Over 450 million US dollars is lost every year due to faulty procurement means."
+    },
+    {
+      "turnId": 1,
+      "startMs": 10140,
+      "endMs": 12860,
+      "transcript": "Through quorum, we seek to address this challenge."
+    },
+    {
+      "turnId": 2,
+      "startMs": 13580,
+      "endMs": 35100,
+      "transcript": "On this section we have got the login and also registration section. So we'll first begin with the quorum portal which is for the organization and then we've got supplier portal which is for firms who intend to offer their their service to an existing organization. So we already have a defined account that we'll proceed to access"
+    },
+    {
+      "turnId": 3,
+      "startMs": 35740,
+      "endMs": 37180,
+      "transcript": "in our authentication authentication process"
+    },
+    {
+      "turnId": 4,
+      "startMs": 38300,
+      "endMs": 86140,
+      "transcript": "so once we log in we are taken to the section where where where we have all the pending sections however the section of of Notus is the tender workflow so we already have a predefined um um tender section and so we have got a tender reference and then the buyer and so all this information on this section uh defines what is actually required for the tender to actually be filled before it is published. and so it outlines all the requirements that are actually needed before anything is sent. And so we also have predefined options whereby a supplier has to submit all this information prior to an application application for a for a tender that has been published."
+    },
+    {
+      "turnId": 5,
+      "startMs": 86620,
+      "endMs": 176540,
+      "transcript": "that we'll see shortly. So these are all the defined items in terms of the actual specifications that are required um and also defined evaluation criteria that that is mapped out. So after we have a tender that has been created, we look we look at the bid opening section but the the part of note is a bid evaluation because on this section we then use the AI for the to actually um to actually evaluate so on this section it would have any conflict of interest that has been declared by any party who is who is supposed to apply for a tender so under the evaluation matrices uh and under this section it will evaluate it will evaluate all the information that has been submitted by a supplier and then and then arrive at some recommendation based off of that however just to delve deeper into that we can review bidder information. So as we'll see and as we've seen already bidders pre-submit information that then is fed into the system to then arrive at a score. So once we click on this this section it will it will then proceed to then pick up insights based off of data that has been made available bearing in mind that we have the selected evaluation metrics metrics defined in this case we have got the we have got the technical capacity and experience that has been pre-filled and also and also delivery schedule based for their their past track record"
+    },
+    {
+      "turnId": 6,
+      "startMs": 177900,
+      "endMs": 191660,
+      "transcript": "So as we wait for the AI to evaluate all the information that has been submitted it will share information at a very high level including anything that also needs to be reviewed before further consideration. So yeah"
+    },
+    {
+      "turnId": 7,
+      "startMs": 193580,
+      "endMs": 197260,
+      "transcript": "it's gonna take a bit of some time in in a short while as it evaluates"
+    },
+    {
+      "turnId": 8,
+      "startMs": 198540,
+      "endMs": 325500,
+      "transcript": "so here's information um so the AI proceeded to also submit information it says that the supplied accepts a loan presents the strongest documented fit for the committee consideration due to its valid legal signal and so in short it it then evaluates both sides presents committee I mean it then submits information to the committee to then take action so one thing to note is this isn't meant to make uh or to actually take any action it's just meant to present um who is the best bidder to actually take on a project and then based off of information that that it will give you give you as a committee you then proceed to then select so under this section you then take that information that has been shared to then award a contract so you then as a committee so as a committee you have the ability to then um set set up what we call the full committee that has to make up their own decision so as as you can see I am here and then this is a panel of the committee so we can add any other person to to the committee to then constitute constitute the quorum who then makes the final decision in terms of who to award a particular contract so each person has to have the verdict signed and then the one that has got the the one who has the most favor out of everybody's votes gets to have the tender awarded to them of course bearing in mind that you'd also get to have the chair uh we also have a section where you can join into meetings directly from from the platform you can actually join join a meeting and that in this meeting you then get to have a bot that then goes in and then collects recordings of the conversations in the meeting so just to quickly navigate to the supplier section of the portal"
+    },
+    {
+      "turnId": 9,
+      "startMs": 333820,
+      "endMs": 418380,
+      "transcript": "So under so under the supplier section of the portal portal this is a bit of some overview over the information that they have to to submit so we've got the open tenders so a person can actually apply for a tender by submitting all the um data which then feeds into the AI so on the the quorum interface organizations define what information they will need from prospective bidders or also suppliers who then submit all the information that has been outlined outlined so under documents we have a section that then outlines all the possible requirements that a firm can need what at least a few of them and then as that happens and as we can see see here we have the ability to actually upload information and then have AI um analyze information for us and so that means it can proofread any document that has been submitted and then advise whether that will suffice or if it might need further consideration so as we can see here everything that is on the document is outlined and it does indicate that that is is a match ensuring that as you upload information it has got a higher rate of acceptance this runs on the Muse Spark um 1.3 model of the Meta API so yes this is a bit about Quorum thank you for your attention"
+    }
+  ]
+}

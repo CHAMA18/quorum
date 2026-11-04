@@ -1,0 +1,42 @@
+{
+  "rnnoise_active_window_gain_percentiles": [
+    -35.74367272012371,
+    -18.66383413098889,
+    -5.696276713648495,
+    -2.11312592300605,
+    -0.6782898434436219,
+    -0.1347950688715402,
+    0.5923792383497364
+  ],
+  "speech_windows_attenuated_over_12_db": 352,
+  "scene_voice_loudness": [
+    {
+      "scene": "opening",
+      "lufs": -19.0
+    },
+    {
+      "scene": "supplier",
+      "lufs": -19.5
+    },
+    {
+      "scene": "workflow",
+      "lufs": -17.8
+    },
+    {
+      "scene": "review",
+      "lufs": -17.1
+    },
+    {
+      "scene": "recommendation",
+      "lufs": -18.9
+    },
+    {
+      "scene": "control",
+      "lufs": -17.5
+    },
+    {
+      "scene": "mcp",
+      "lufs": -16.5
+    }
+  ]
+}

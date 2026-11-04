@@ -1,0 +1,3 @@
+Selected: One procurement file. Supplier document → issued criteria → comparative review → human accountability → published MCP. Real screen recordings with precise editorial crops. Strongest fit because it explains a concrete workflow using the provided evidence.
+Alternative: Evidence first. Open on NOT EVIDENCED, reverse into the criteria and original files, then return to committee checks. More suspense, less natural orientation for a first-time judge.
+Alternative: Two sides of the desk. Supplier and officer in split screen, collapsing into the common tender file. More graphic, but adds visual competition to dense source footage.

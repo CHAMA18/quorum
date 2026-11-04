@@ -1,0 +1,643 @@
+{
+  "scene": "workflow",
+  "expected": "Now let's move into the officer's workspace. This is the same procurement process, from the notice and mandatory requirements through to bid opening and evaluation. The criteria are set before the bids are assessed. In this example, technical capability carries sixty percent, and delivery carries forty percent. Officers can check the scores alongside the evidence. Everything stays in one tender file, so the next person can follow the reasoning without having to piece it together from separate spreadsheets and messages.",
+  "transcript": " Now, let's move into the officer's workspace. This is the same procurement process from the notice and mandatory requirements through to bid opening and evaluation. The criteria are set before the bids are assessed. In this example, technical capability carries 60% and delivery carries 40%. Officers can check the scores alongside the evidence. Everything stays in one tender file. So the next person can follow the reasoning without having to piece it together from separate spreadsheets and messages.",
+  "word_match": 0.9629629629629629,
+  "matched_word_median_timing_delta": 0.0,
+  "matched_word_p90_timing_delta": 0.03999999999999204,
+  "segments": [
+    {
+      "id": 0,
+      "seek": 0,
+      "start": 0.0,
+      "end": 9.78,
+      "text": " Now, let's move into the officer's workspace. This is the same procurement process from the notice and mandatory requirements through to bid opening and evaluation.",
+      "tokens": [
+        50363,
+        2735,
+        11,
+        1309,
+        338,
+        1445,
+        656,
+        262,
+        3818,
+        338,
+        44573,
+        13,
+        770,
+        318,
+        262,
+        976,
+        31156,
+        1429,
+        422,
+        262,
+        4003,
+        290,
+        13677,
+        5359,
+        832,
+        284,
+        8406,
+        4756,
+        290,
+        12660,
+        13,
+        50863
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.13283233153514373,
+      "compression_ratio": 1.5219123505976095,
+      "no_speech_prob": 0.06511740386486053,
+      "words": [
+        {
+          "word": " Now,",
+          "start": 0.0,
+          "end": 0.88,
+          "probability": 0.6845703125
+        },
+        {
+          "word": " let's",
+          "start": 1.0,
+          "end": 1.22,
+          "probability": 0.923828125
+        },
+        {
+          "word": " move",
+          "start": 1.22,
+          "end": 1.4,
+          "probability": 0.990234375
+        },
+        {
+          "word": " into",
+          "start": 1.4,
+          "end": 2.16,
+          "probability": 0.76806640625
+        },
+        {
+          "word": " the",
+          "start": 2.16,
+          "end": 2.36,
+          "probability": 0.900390625
+        },
+        {
+          "word": " officer's",
+          "start": 2.36,
+          "end": 2.7,
+          "probability": 0.681640625
+        },
+        {
+          "word": " workspace.",
+          "start": 2.7,
+          "end": 3.04,
+          "probability": 0.8359375
+        },
+        {
+          "word": " This",
+          "start": 3.66,
+          "end": 3.78,
+          "probability": 0.98193359375
+        },
+        {
+          "word": " is",
+          "start": 3.78,
+          "end": 3.9,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " the",
+          "start": 3.9,
+          "end": 4.16,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " same",
+          "start": 4.16,
+          "end": 4.32,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " procurement",
+          "start": 4.32,
+          "end": 4.76,
+          "probability": 0.99609375
+        },
+        {
+          "word": " process",
+          "start": 4.76,
+          "end": 5.36,
+          "probability": 0.99072265625
+        },
+        {
+          "word": " from",
+          "start": 5.36,
+          "end": 6.32,
+          "probability": 0.873046875
+        },
+        {
+          "word": " the",
+          "start": 6.32,
+          "end": 6.5,
+          "probability": 0.962890625
+        },
+        {
+          "word": " notice",
+          "start": 6.5,
+          "end": 6.7,
+          "probability": 0.9697265625
+        },
+        {
+          "word": " and",
+          "start": 6.7,
+          "end": 6.9,
+          "probability": 0.96728515625
+        },
+        {
+          "word": " mandatory",
+          "start": 6.9,
+          "end": 7.4,
+          "probability": 0.99365234375
+        },
+        {
+          "word": " requirements",
+          "start": 7.4,
+          "end": 7.98,
+          "probability": 0.99169921875
+        },
+        {
+          "word": " through",
+          "start": 7.98,
+          "end": 8.36,
+          "probability": 0.89111328125
+        },
+        {
+          "word": " to",
+          "start": 8.36,
+          "end": 8.54,
+          "probability": 0.98583984375
+        },
+        {
+          "word": " bid",
+          "start": 8.54,
+          "end": 8.68,
+          "probability": 0.57763671875
+        },
+        {
+          "word": " opening",
+          "start": 8.68,
+          "end": 9.08,
+          "probability": 0.98583984375
+        },
+        {
+          "word": " and",
+          "start": 9.08,
+          "end": 9.26,
+          "probability": 0.9931640625
+        },
+        {
+          "word": " evaluation.",
+          "start": 9.26,
+          "end": 9.78,
+          "probability": 0.90234375
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "seek": 0,
+      "start": 10.68,
+      "end": 20.0,
+      "text": " The criteria are set before the bids are assessed. In this example, technical capability carries 60% and delivery carries 40%.",
+      "tokens": [
+        50863,
+        383,
+        9987,
+        389,
+        900,
+        878,
+        262,
+        27837,
+        389,
+        15276,
+        13,
+        554,
+        428,
+        1672,
+        11,
+        6276,
+        12971,
+        10732,
+        3126,
+        4,
+        290,
+        7585,
+        10732,
+        2319,
+        7225,
+        51363
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.13283233153514373,
+      "compression_ratio": 1.5219123505976095,
+      "no_speech_prob": 0.06511740386486053,
+      "words": [
+        {
+          "word": " The",
+          "start": 10.68,
+          "end": 10.92,
+          "probability": 0.98486328125
+        },
+        {
+          "word": " criteria",
+          "start": 10.92,
+          "end": 11.26,
+          "probability": 0.990234375
+        },
+        {
+          "word": " are",
+          "start": 11.26,
+          "end": 11.66,
+          "probability": 0.99169921875
+        },
+        {
+          "word": " set",
+          "start": 11.66,
+          "end": 11.88,
+          "probability": 0.9931640625
+        },
+        {
+          "word": " before",
+          "start": 11.88,
+          "end": 12.16,
+          "probability": 0.99853515625
+        },
+        {
+          "word": " the",
+          "start": 12.16,
+          "end": 12.34,
+          "probability": 0.986328125
+        },
+        {
+          "word": " bids",
+          "start": 12.34,
+          "end": 12.52,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " are",
+          "start": 12.52,
+          "end": 12.76,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " assessed.",
+          "start": 12.76,
+          "end": 13.14,
+          "probability": 0.9990234375
+        },
+        {
+          "word": " In",
+          "start": 14.0,
+          "end": 14.2,
+          "probability": 0.9951171875
+        },
+        {
+          "word": " this",
+          "start": 14.2,
+          "end": 14.42,
+          "probability": 0.9990234375
+        },
+        {
+          "word": " example,",
+          "start": 14.42,
+          "end": 14.84,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " technical",
+          "start": 15.36,
+          "end": 15.62,
+          "probability": 0.9638671875
+        },
+        {
+          "word": " capability",
+          "start": 15.62,
+          "end": 16.26,
+          "probability": 0.9736328125
+        },
+        {
+          "word": " carries",
+          "start": 16.26,
+          "end": 16.6,
+          "probability": 0.97265625
+        },
+        {
+          "word": " 60",
+          "start": 16.6,
+          "end": 16.98,
+          "probability": 0.98388671875
+        },
+        {
+          "word": "%",
+          "start": 16.98,
+          "end": 17.42,
+          "probability": 0.69384765625
+        },
+        {
+          "word": " and",
+          "start": 17.42,
+          "end": 17.88,
+          "probability": 0.99365234375
+        },
+        {
+          "word": " delivery",
+          "start": 17.88,
+          "end": 18.2,
+          "probability": 0.98291015625
+        },
+        {
+          "word": " carries",
+          "start": 18.2,
+          "end": 19.0,
+          "probability": 0.98828125
+        },
+        {
+          "word": " 40%.",
+          "start": 19.0,
+          "end": 20.0,
+          "probability": 0.9775390625
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "seek": 0,
+      "start": 20.84,
+      "end": 25.76,
+      "text": " Officers can check the scores alongside the evidence. Everything stays in one tender file.",
+      "tokens": [
+        51363,
+        23512,
+        460,
+        2198,
+        262,
+        8198,
+        7848,
+        262,
+        2370,
+        13,
+        11391,
+        14768,
+        287,
+        530,
+        15403,
+        2393,
+        13,
+        51663
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.13283233153514373,
+      "compression_ratio": 1.5219123505976095,
+      "no_speech_prob": 0.06511740386486053,
+      "words": [
+        {
+          "word": " Officers",
+          "start": 20.84,
+          "end": 21.18,
+          "probability": 0.96142578125
+        },
+        {
+          "word": " can",
+          "start": 21.18,
+          "end": 21.48,
+          "probability": 0.998046875
+        },
+        {
+          "word": " check",
+          "start": 21.48,
+          "end": 21.7,
+          "probability": 0.99853515625
+        },
+        {
+          "word": " the",
+          "start": 21.7,
+          "end": 21.9,
+          "probability": 0.99267578125
+        },
+        {
+          "word": " scores",
+          "start": 21.9,
+          "end": 22.2,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " alongside",
+          "start": 22.2,
+          "end": 22.72,
+          "probability": 0.9814453125
+        },
+        {
+          "word": " the",
+          "start": 22.72,
+          "end": 22.94,
+          "probability": 0.99072265625
+        },
+        {
+          "word": " evidence.",
+          "start": 22.94,
+          "end": 23.32,
+          "probability": 0.9990234375
+        },
+        {
+          "word": " Everything",
+          "start": 24.04,
+          "end": 24.4,
+          "probability": 0.9951171875
+        },
+        {
+          "word": " stays",
+          "start": 24.4,
+          "end": 24.76,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " in",
+          "start": 24.76,
+          "end": 25.08,
+          "probability": 0.99267578125
+        },
+        {
+          "word": " one",
+          "start": 25.08,
+          "end": 25.2,
+          "probability": 0.96923828125
+        },
+        {
+          "word": " tender",
+          "start": 25.2,
+          "end": 25.46,
+          "probability": 0.83447265625
+        },
+        {
+          "word": " file.",
+          "start": 25.46,
+          "end": 25.76,
+          "probability": 0.98828125
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "seek": 2576,
+      "start": 25.76,
+      "end": 31.6,
+      "text": " So the next person can follow the reasoning without having to piece it together from separate spreadsheets and messages.",
+      "tokens": [
+        50363,
+        1406,
+        262,
+        1306,
+        1048,
+        460,
+        1061,
+        262,
+        14607,
+        1231,
+        1719,
+        284,
+        3704,
+        340,
+        1978,
+        422,
+        4553,
+        4104,
+        42011,
+        290,
+        6218,
+        13,
+        50663
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.15587610999743143,
+      "compression_ratio": 1.25,
+      "no_speech_prob": 0.023135734722018242,
+      "words": [
+        {
+          "word": " So",
+          "start": 25.76,
+          "end": 26.4,
+          "probability": 0.423828125
+        },
+        {
+          "word": " the",
+          "start": 26.4,
+          "end": 26.52,
+          "probability": 0.83349609375
+        },
+        {
+          "word": " next",
+          "start": 26.52,
+          "end": 26.78,
+          "probability": 0.99755859375
+        },
+        {
+          "word": " person",
+          "start": 26.78,
+          "end": 27.08,
+          "probability": 0.99609375
+        },
+        {
+          "word": " can",
+          "start": 27.08,
+          "end": 27.32,
+          "probability": 0.994140625
+        },
+        {
+          "word": " follow",
+          "start": 27.32,
+          "end": 27.62,
+          "probability": 0.9931640625
+        },
+        {
+          "word": " the",
+          "start": 27.62,
+          "end": 27.74,
+          "probability": 0.9892578125
+        },
+        {
+          "word": " reasoning",
+          "start": 27.74,
+          "end": 28.12,
+          "probability": 0.99755859375
+        },
+        {
+          "word": " without",
+          "start": 28.12,
+          "end": 28.56,
+          "probability": 0.95654296875
+        },
+        {
+          "word": " having",
+          "start": 28.56,
+          "end": 28.78,
+          "probability": 0.98876953125
+        },
+        {
+          "word": " to",
+          "start": 28.78,
+          "end": 29.0,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " piece",
+          "start": 29.0,
+          "end": 29.2,
+          "probability": 0.99169921875
+        },
+        {
+          "word": " it",
+          "start": 29.2,
+          "end": 29.4,
+          "probability": 0.98828125
+        },
+        {
+          "word": " together",
+          "start": 29.4,
+          "end": 29.74,
+          "probability": 0.99609375
+        },
+        {
+          "word": " from",
+          "start": 29.74,
+          "end": 30.22,
+          "probability": 0.97900390625
+        },
+        {
+          "word": " separate",
+          "start": 30.22,
+          "end": 30.52,
+          "probability": 0.98828125
+        },
+        {
+          "word": " spreadsheets",
+          "start": 30.52,
+          "end": 31.06,
+          "probability": 0.994140625
+        },
+        {
+          "word": " and",
+          "start": 31.06,
+          "end": 31.26,
+          "probability": 0.9912109375
+        },
+        {
+          "word": " messages.",
+          "start": 31.26,
+          "end": 31.6,
+          "probability": 0.99560546875
+        }
+      ]
+    }
+  ]
+}

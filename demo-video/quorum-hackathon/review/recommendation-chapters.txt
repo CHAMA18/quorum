@@ -1,0 +1,38 @@
+;FFMETADATA1
+title=Quorum — 3:50 hackathon demo in 4K
+comment=Recorded creator introduction and recommendation chapter; continuing narration based on the supplied Lusaka voice reference. UHD graphics with upscaled 1080p footage.
+[CHAPTER]
+TIMEBASE=1/1000
+START=0
+END=12000
+title=Introduction
+[CHAPTER]
+TIMEBASE=1/1000
+START=12000
+END=45000
+title=Supplier document check
+[CHAPTER]
+TIMEBASE=1/1000
+START=45000
+END=77000
+title=Tender workflow
+[CHAPTER]
+TIMEBASE=1/1000
+START=77000
+END=125000
+title=Evidence review
+[CHAPTER]
+TIMEBASE=1/1000
+START=125000
+END=175000
+title=AI recommendation and committee
+[CHAPTER]
+TIMEBASE=1/1000
+START=175000
+END=202000
+title=Evaluation integrity and human decision
+[CHAPTER]
+TIMEBASE=1/1000
+START=202000
+END=230000
+title=Published MCP and closing

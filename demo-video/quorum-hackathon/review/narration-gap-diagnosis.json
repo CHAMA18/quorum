@@ -1,0 +1,32 @@
+{
+  "assets/narration.wav": {
+    "duration_seconds": 180.0,
+    "silent_ranges_over_one_second": [
+      [
+        51.108438,
+        180.0
+      ]
+    ],
+    "mean_volume_db": [
+      "-21.3"
+    ],
+    "max_volume_db": [
+      "-2.0"
+    ]
+  },
+  "assets/part2.mp4": {
+    "duration_seconds": 321.194667,
+    "silent_ranges_over_one_second": [
+      [
+        0.0,
+        321.194667
+      ]
+    ],
+    "mean_volume_db": [
+      "-91.0"
+    ],
+    "max_volume_db": [
+      "-91.0"
+    ]
+  }
+}

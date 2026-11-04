@@ -1,0 +1,464 @@
+{
+  "ok": true,
+  "outputDir": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92",
+  "frames": [
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/beat-01-at-0.3s.png",
+      "time": 0.3,
+      "role": "beat",
+      "label": "opening"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/beat-02-at-8s.png",
+      "time": 8,
+      "role": "beat",
+      "label": "opening mid"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/beat-03-at-16.3s.png",
+      "time": 16.3,
+      "role": "beat",
+      "label": "supplier"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/beat-04-at-32.5s.png",
+      "time": 32.5,
+      "role": "beat",
+      "label": "supplier mid"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/beat-05-at-49.3s.png",
+      "time": 49.3,
+      "role": "beat",
+      "label": "workflow"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/beat-06-at-65s.png",
+      "time": 65,
+      "role": "beat",
+      "label": "workflow mid"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/beat-07-at-81.3s.png",
+      "time": 81.3,
+      "role": "beat",
+      "label": "review"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/beat-08-at-105s.png",
+      "time": 105,
+      "role": "beat",
+      "label": "review mid"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/beat-09-at-129.3s.png",
+      "time": 129.3,
+      "role": "beat",
+      "label": "control"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/beat-10-at-142.5s.png",
+      "time": 142.5,
+      "role": "beat",
+      "label": "control mid"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/beat-11-at-156.3s.png",
+      "time": 156.3,
+      "role": "beat",
+      "label": "mcp"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/beat-12-at-168s.png",
+      "time": 168,
+      "role": "beat",
+      "label": "mcp mid"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-01-1-at-15.8s.png",
+      "time": 15.8,
+      "role": "seam",
+      "label": "cut -0.2"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-01-2-at-15.9s.png",
+      "time": 15.9,
+      "role": "seam",
+      "label": "-0.1"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-01-3-at-16s.png",
+      "time": 16,
+      "role": "seam",
+      "label": "cut opening -> supplier"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-01-4-at-16.1s.png",
+      "time": 16.1,
+      "role": "seam",
+      "label": "+0.1"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-01-5-at-16.2s.png",
+      "time": 16.2,
+      "role": "seam",
+      "label": "+0.2"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-02-1-at-48.8s.png",
+      "time": 48.8,
+      "role": "seam",
+      "label": "cut -0.2"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-02-2-at-48.9s.png",
+      "time": 48.9,
+      "role": "seam",
+      "label": "-0.1"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-02-3-at-49s.png",
+      "time": 49,
+      "role": "seam",
+      "label": "cut supplier -> workflow"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-02-4-at-49.1s.png",
+      "time": 49.1,
+      "role": "seam",
+      "label": "+0.1"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-02-5-at-49.2s.png",
+      "time": 49.2,
+      "role": "seam",
+      "label": "+0.2"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-03-1-at-80.8s.png",
+      "time": 80.8,
+      "role": "seam",
+      "label": "cut -0.2"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-03-2-at-80.9s.png",
+      "time": 80.9,
+      "role": "seam",
+      "label": "-0.1"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-03-3-at-81s.png",
+      "time": 81,
+      "role": "seam",
+      "label": "cut workflow -> review"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-03-4-at-81.1s.png",
+      "time": 81.1,
+      "role": "seam",
+      "label": "+0.1"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-03-5-at-81.2s.png",
+      "time": 81.2,
+      "role": "seam",
+      "label": "+0.2"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-04-1-at-128.8s.png",
+      "time": 128.8,
+      "role": "seam",
+      "label": "cut -0.2"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-04-2-at-128.9s.png",
+      "time": 128.9,
+      "role": "seam",
+      "label": "-0.1"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-04-3-at-129s.png",
+      "time": 129,
+      "role": "seam",
+      "label": "cut review -> control"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-04-4-at-129.1s.png",
+      "time": 129.1,
+      "role": "seam",
+      "label": "+0.1"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-04-5-at-129.2s.png",
+      "time": 129.2,
+      "role": "seam",
+      "label": "+0.2"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-05-1-at-155.8s.png",
+      "time": 155.8,
+      "role": "seam",
+      "label": "cut -0.2"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-05-2-at-155.9s.png",
+      "time": 155.9,
+      "role": "seam",
+      "label": "-0.1"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-05-3-at-156s.png",
+      "time": 156,
+      "role": "seam",
+      "label": "cut control -> mcp"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-05-4-at-156.1s.png",
+      "time": 156.1,
+      "role": "seam",
+      "label": "+0.1"
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-05-5-at-156.2s.png",
+      "time": 156.2,
+      "role": "seam",
+      "label": "+0.2"
+    }
+  ],
+  "contactSheets": [
+    "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/review-beats.jpg",
+    "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/review-seam-01.jpg",
+    "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/review-seam-02.jpg",
+    "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/review-seam-03.jpg",
+    "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/review-seam-04.jpg",
+    "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/review-seam-05.jpg",
+    "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/review-phone.jpg"
+  ],
+  "review": {
+    "window": [
+      0,
+      180
+    ],
+    "scenes": [
+      {
+        "id": "opening",
+        "start": 0,
+        "end": 16
+      },
+      {
+        "id": "supplier",
+        "start": 16,
+        "end": 49
+      },
+      {
+        "id": "workflow",
+        "start": 49,
+        "end": 81
+      },
+      {
+        "id": "review",
+        "start": 81,
+        "end": 129
+      },
+      {
+        "id": "control",
+        "start": 129,
+        "end": 156
+      },
+      {
+        "id": "mcp",
+        "start": 156,
+        "end": 180
+      }
+    ],
+    "beats": [
+      {
+        "time": 0.3,
+        "label": "opening",
+        "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/beat-01-at-0.3s.png"
+      },
+      {
+        "time": 8,
+        "label": "opening mid",
+        "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/beat-02-at-8s.png"
+      },
+      {
+        "time": 16.3,
+        "label": "supplier",
+        "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/beat-03-at-16.3s.png"
+      },
+      {
+        "time": 32.5,
+        "label": "supplier mid",
+        "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/beat-04-at-32.5s.png"
+      },
+      {
+        "time": 49.3,
+        "label": "workflow",
+        "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/beat-05-at-49.3s.png"
+      },
+      {
+        "time": 65,
+        "label": "workflow mid",
+        "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/beat-06-at-65s.png"
+      },
+      {
+        "time": 81.3,
+        "label": "review",
+        "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/beat-07-at-81.3s.png"
+      },
+      {
+        "time": 105,
+        "label": "review mid",
+        "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/beat-08-at-105s.png"
+      },
+      {
+        "time": 129.3,
+        "label": "control",
+        "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/beat-09-at-129.3s.png"
+      },
+      {
+        "time": 142.5,
+        "label": "control mid",
+        "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/beat-10-at-142.5s.png"
+      },
+      {
+        "time": 156.3,
+        "label": "mcp",
+        "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/beat-11-at-156.3s.png"
+      },
+      {
+        "time": 168,
+        "label": "mcp mid",
+        "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/beat-12-at-168s.png"
+      }
+    ],
+    "seams": [
+      {
+        "time": 16,
+        "from": "opening",
+        "to": "supplier",
+        "times": [
+          15.8,
+          15.9,
+          16,
+          16.1,
+          16.2
+        ],
+        "paths": [
+          "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-01-1-at-15.8s.png",
+          "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-01-2-at-15.9s.png",
+          "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-01-3-at-16s.png",
+          "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-01-4-at-16.1s.png",
+          "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-01-5-at-16.2s.png"
+        ],
+        "sheet": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/review-seam-01.jpg"
+      },
+      {
+        "time": 49,
+        "from": "supplier",
+        "to": "workflow",
+        "times": [
+          48.8,
+          48.9,
+          49,
+          49.1,
+          49.2
+        ],
+        "paths": [
+          "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-02-1-at-48.8s.png",
+          "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-02-2-at-48.9s.png",
+          "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-02-3-at-49s.png",
+          "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-02-4-at-49.1s.png",
+          "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-02-5-at-49.2s.png"
+        ],
+        "sheet": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/review-seam-02.jpg"
+      },
+      {
+        "time": 81,
+        "from": "workflow",
+        "to": "review",
+        "times": [
+          80.8,
+          80.9,
+          81,
+          81.1,
+          81.2
+        ],
+        "paths": [
+          "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-03-1-at-80.8s.png",
+          "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-03-2-at-80.9s.png",
+          "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-03-3-at-81s.png",
+          "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-03-4-at-81.1s.png",
+          "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-03-5-at-81.2s.png"
+        ],
+        "sheet": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/review-seam-03.jpg"
+      },
+      {
+        "time": 129,
+        "from": "review",
+        "to": "control",
+        "times": [
+          128.8,
+          128.9,
+          129,
+          129.1,
+          129.2
+        ],
+        "paths": [
+          "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-04-1-at-128.8s.png",
+          "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-04-2-at-128.9s.png",
+          "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-04-3-at-129s.png",
+          "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-04-4-at-129.1s.png",
+          "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-04-5-at-129.2s.png"
+        ],
+        "sheet": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/review-seam-04.jpg"
+      },
+      {
+        "time": 156,
+        "from": "control",
+        "to": "mcp",
+        "times": [
+          155.8,
+          155.9,
+          156,
+          156.1,
+          156.2
+        ],
+        "paths": [
+          "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-05-1-at-155.8s.png",
+          "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-05-2-at-155.9s.png",
+          "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-05-3-at-156s.png",
+          "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-05-4-at-156.1s.png",
+          "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/seam-05-5-at-156.2s.png"
+        ],
+        "sheet": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/review-seam-05.jpg"
+      }
+    ],
+    "sheets": {
+      "beats": [
+        "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/review-beats.jpg"
+      ],
+      "seams": [
+        "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/review-seam-01.jpg",
+        "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/review-seam-02.jpg",
+        "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/review-seam-03.jpg",
+        "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/review-seam-04.jpg",
+        "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/review-seam-05.jpg"
+      ],
+      "phone": [
+        "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/.hyperframes/artifacts/snapshots/7945bbab-6ec8-408b-834b-c9637726db92/review-phone.jpg"
+      ]
+    },
+    "notes": [
+      "supplier holds several timed clips; run --review --composition supplier to review its cuts.",
+      "workflow holds several timed clips; run --review --composition workflow to review its cuts.",
+      "review holds several timed clips; run --review --composition review to review its cuts.",
+      "control holds several timed clips; run --review --composition control to review its cuts."
+    ]
+  },
+  "_meta": {
+    "version": "0.9.9",
+    "updateAvailable": false
+  }
+}

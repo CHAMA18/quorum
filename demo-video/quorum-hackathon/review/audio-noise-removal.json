@@ -1,0 +1,103 @@
+{
+  "delivery": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/Quorum-Hackathon-Demo-4K-3m50-Noise-Free.mp4",
+  "canonical_path_updated": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/Quorum-Hackathon-Demo-4K-3m50-Voice-Fixed.mp4",
+  "duration_seconds": 230.0,
+  "sample_rate": 48000,
+  "voice_sections": [
+    {
+      "scene": "opening",
+      "before_lufs": -18.95144068798228,
+      "gain_db": 0.35144068798227934,
+      "after_lufs": -19.352158115632815
+    },
+    {
+      "scene": "supplier",
+      "before_lufs": -18.680777512136647,
+      "gain_db": 0.08077751213664541,
+      "after_lufs": -19.352157433332646
+    },
+    {
+      "scene": "workflow",
+      "before_lufs": -18.568795224461557,
+      "gain_db": -0.031204775538444807,
+      "after_lufs": -19.352157519585173
+    },
+    {
+      "scene": "review",
+      "before_lufs": -18.623699979936788,
+      "gain_db": 0.02369997993678652,
+      "after_lufs": -19.352157810955962
+    },
+    {
+      "scene": "recommendation",
+      "before_lufs": -18.919761786158453,
+      "gain_db": 0.31976178615845186,
+      "after_lufs": -19.35215820132878
+    },
+    {
+      "scene": "control",
+      "before_lufs": -18.5922482824014,
+      "gain_db": -0.007751717598601715,
+      "after_lufs": -19.352157651641747
+    },
+    {
+      "scene": "mcp",
+      "before_lufs": -18.553803879213415,
+      "gain_db": -0.04619612078658619,
+      "after_lufs": -19.352157630762193
+    }
+  ],
+  "music_bed": {
+    "source_gain_db": -13.121455917504914,
+    "duck_attack_s": 0.14,
+    "duck_release_s": 0.9,
+    "max_duck_db": -6.5,
+    "presence_carve": 0.45,
+    "target_below_voice_db": -23.0
+  },
+  "before": {
+    "integrated_lufs": -16.135556739293275,
+    "true_peak_dbtp": -1.8892975421077616,
+    "recorded_vs_generated": {
+      "low": -0.5668170337241989,
+      "mid": -0.6339764820557292,
+      "pres": 4.459770542974951,
+      "sib": 7.934163592404104,
+      "air": 12.459384742865737
+    },
+    "music_pumping_20ms": [
+      5.977041113672868,
+      64.11045283553756
+    ]
+  },
+  "after": {
+    "integrated_lufs": -16.007529211106668,
+    "true_peak_dbtp": -1.5881332221287918,
+    "recorded_vs_generated": {
+      "low": -0.2714832961519491,
+      "mid": -0.3953852761073975,
+      "pres": 4.728903511155252,
+      "sib": 4.688670200268973,
+      "air": 8.608175668018418
+    },
+    "music_pumping_20ms": [
+      5.850239232735491,
+      64.4456372162231
+    ]
+  },
+  "encoded_delivery": {
+    "integrated_lufs": -16.00735518800146,
+    "true_peak_dbtp": -1.5466820472221872,
+    "audio_codec": "AAC LC 320 kb/s 48 kHz stereo",
+    "full_decode_passed": true
+  },
+  "noise_reduction": {
+    "high_shelf_11k5_db": -2.5,
+    "recorded_high_shelf_8k_db": -4.5,
+    "recorded_6k4_peak_db": -1.2,
+    "deess_generated": 0.3,
+    "deess_recorded": 0.5,
+    "highpass_hz": 65,
+    "music_lowpass_hz": 15000
+  }
+}

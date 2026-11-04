@@ -1,0 +1,22 @@
+Quorum — AI-assisted procurement, with people in control.
+
+Product: https://quorum-solutions.com
+Published MCP: https://m8ven.ai/mcp/chama18-quorum-5uxqrc
+
+A complete walkthrough from the supplier document check to issued criteria, bid review, and the accountable human decision. The published MCP extends the same workflow into compatible AI clients through read-only tools.
+
+The introduction and recommendation/committee chapter use the creator's actual recording from Meta Hackathon.mp4. Other narration was generated locally from the creator-supplied Lusaka.m4a voice reference. This 3:50 edition includes the AI recommendation, bidder summaries, and committee workflow. Exported in 4K with native UHD text and upscaled 1080p product footage. Background-noise reduction was applied to voice only; the music is retained. Demonstration tender data. AI recommendations are advisory; recorded scores and award decisions remain with authorised people.
+
+Chapters
+0:00 Introduction
+0:12 Supplier document check
+0:45 Tender workflow
+1:17 Evidence review
+2:05 AI recommendation and committee
+2:55 Evaluation integrity and human decision
+3:22 Published MCP and closing
+
+Music: “Signal to Noise” by Scott Buckley — released under CC BY 4.0. www.scottbuckley.com.au
+Track (No Piano Melody mix): https://www.scottbuckley.com.au/library/signal-to-noise/
+License: https://creativecommons.org/licenses/by/4.0/
+Music trimmed, level adjusted, dynamically carved, and ducked under speech. Include this music attribution in the public upload description.

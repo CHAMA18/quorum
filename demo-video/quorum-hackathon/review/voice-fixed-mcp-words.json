@@ -1,0 +1,488 @@
+{
+  "scene": "mcp",
+  "expected": "We've also published Quorum's MCP integration. It lets compatible AI clients connect to our read-only tools, bringing this evidence into the tools teams already use. The boundaries stay the same: the AI helps prepare the work, and authorised people keep control. That's Quorum. The agent prepares the file. The committee awards the tender.",
+  "transcript": " We've also published Quorum's MCP integration. It lets compatible AI clients connect to our read-only tools, bringing this evidence into the tools teams already use. The boundaries stay the same. The AI helps prepare the work and authorized people keep control. That's Quorum. The agent prepares the file, the committee awards the tender,",
+  "word_match": 0.9824561403508771,
+  "matched_word_median_timing_delta": 0.009999999999990905,
+  "matched_word_p90_timing_delta": 0.03399999999999755,
+  "segments": [
+    {
+      "id": 0,
+      "seek": 0,
+      "start": 0.0,
+      "end": 4.0,
+      "text": " We've also published Quorum's MCP integration.",
+      "tokens": [
+        50363,
+        775,
+        1053,
+        635,
+        3199,
+        2264,
+        19220,
+        338,
+        337,
+        8697,
+        11812,
+        13,
+        50563
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.15311086177825928,
+      "compression_ratio": 1.5089285714285714,
+      "no_speech_prob": 0.0006461996235884726,
+      "words": [
+        {
+          "word": " We've",
+          "start": 0.0,
+          "end": 1.42,
+          "probability": 0.87646484375
+        },
+        {
+          "word": " also",
+          "start": 1.42,
+          "end": 1.64,
+          "probability": 0.9931640625
+        },
+        {
+          "word": " published",
+          "start": 1.64,
+          "end": 2.14,
+          "probability": 0.994140625
+        },
+        {
+          "word": " Quorum's",
+          "start": 2.14,
+          "end": 2.68,
+          "probability": 0.92822265625
+        },
+        {
+          "word": " MCP",
+          "start": 2.68,
+          "end": 3.36,
+          "probability": 0.958984375
+        },
+        {
+          "word": " integration.",
+          "start": 3.36,
+          "end": 4.0,
+          "probability": 0.9228515625
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "seek": 0,
+      "start": 5.26,
+      "end": 12.54,
+      "text": " It lets compatible AI clients connect to our read-only tools, bringing this evidence into the tools teams already use.",
+      "tokens": [
+        50563,
+        632,
+        8781,
+        11670,
+        9552,
+        7534,
+        2018,
+        284,
+        674,
+        1100,
+        12,
+        8807,
+        4899,
+        11,
+        6079,
+        428,
+        2370,
+        656,
+        262,
+        4899,
+        3466,
+        1541,
+        779,
+        13,
+        51013
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.15311086177825928,
+      "compression_ratio": 1.5089285714285714,
+      "no_speech_prob": 0.0006461996235884726,
+      "words": [
+        {
+          "word": " It",
+          "start": 5.26,
+          "end": 5.4,
+          "probability": 0.984375
+        },
+        {
+          "word": " lets",
+          "start": 5.4,
+          "end": 5.66,
+          "probability": 0.95947265625
+        },
+        {
+          "word": " compatible",
+          "start": 5.66,
+          "end": 6.26,
+          "probability": 0.974609375
+        },
+        {
+          "word": " AI",
+          "start": 6.26,
+          "end": 6.98,
+          "probability": 0.857421875
+        },
+        {
+          "word": " clients",
+          "start": 6.98,
+          "end": 7.44,
+          "probability": 0.95458984375
+        },
+        {
+          "word": " connect",
+          "start": 7.44,
+          "end": 7.8,
+          "probability": 0.98828125
+        },
+        {
+          "word": " to",
+          "start": 7.8,
+          "end": 8.22,
+          "probability": 0.99560546875
+        },
+        {
+          "word": " our",
+          "start": 8.22,
+          "end": 8.5,
+          "probability": 0.99609375
+        },
+        {
+          "word": " read",
+          "start": 8.5,
+          "end": 8.74,
+          "probability": 0.91357421875
+        },
+        {
+          "word": "-only",
+          "start": 8.74,
+          "end": 8.94,
+          "probability": 0.9658203125
+        },
+        {
+          "word": " tools,",
+          "start": 8.94,
+          "end": 9.38,
+          "probability": 0.98681640625
+        },
+        {
+          "word": " bringing",
+          "start": 9.56,
+          "end": 9.78,
+          "probability": 0.99169921875
+        },
+        {
+          "word": " this",
+          "start": 9.78,
+          "end": 10.08,
+          "probability": 0.99462890625
+        },
+        {
+          "word": " evidence",
+          "start": 10.08,
+          "end": 10.4,
+          "probability": 0.9931640625
+        },
+        {
+          "word": " into",
+          "start": 10.4,
+          "end": 10.8,
+          "probability": 0.96630859375
+        },
+        {
+          "word": " the",
+          "start": 10.8,
+          "end": 10.98,
+          "probability": 0.99365234375
+        },
+        {
+          "word": " tools",
+          "start": 10.98,
+          "end": 11.22,
+          "probability": 0.9736328125
+        },
+        {
+          "word": " teams",
+          "start": 11.22,
+          "end": 11.56,
+          "probability": 0.98779296875
+        },
+        {
+          "word": " already",
+          "start": 11.56,
+          "end": 12.12,
+          "probability": 0.99072265625
+        },
+        {
+          "word": " use.",
+          "start": 12.12,
+          "end": 12.54,
+          "probability": 0.99609375
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "seek": 0,
+      "start": 13.8,
+      "end": 15.44,
+      "text": " The boundaries stay the same.",
+      "tokens": [
+        51013,
+        383,
+        13215,
+        2652,
+        262,
+        976,
+        13,
+        51163
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.15311086177825928,
+      "compression_ratio": 1.5089285714285714,
+      "no_speech_prob": 0.0006461996235884726,
+      "words": [
+        {
+          "word": " The",
+          "start": 13.8,
+          "end": 14.08,
+          "probability": 0.9951171875
+        },
+        {
+          "word": " boundaries",
+          "start": 14.08,
+          "end": 14.5,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " stay",
+          "start": 14.5,
+          "end": 14.94,
+          "probability": 0.99169921875
+        },
+        {
+          "word": " the",
+          "start": 14.94,
+          "end": 15.44,
+          "probability": 0.99951171875
+        },
+        {
+          "word": " same.",
+          "start": 15.44,
+          "end": 15.44,
+          "probability": 0.99951171875
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "seek": 0,
+      "start": 16.48,
+      "end": 20.36,
+      "text": " The AI helps prepare the work and authorized people keep control.",
+      "tokens": [
+        51163,
+        383,
+        9552,
+        5419,
+        8335,
+        262,
+        670,
+        290,
+        10435,
+        661,
+        1394,
+        1630,
+        13,
+        51413
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.15311086177825928,
+      "compression_ratio": 1.5089285714285714,
+      "no_speech_prob": 0.0006461996235884726,
+      "words": [
+        {
+          "word": " The",
+          "start": 16.48,
+          "end": 16.62,
+          "probability": 0.9892578125
+        },
+        {
+          "word": " AI",
+          "start": 16.62,
+          "end": 16.9,
+          "probability": 0.9951171875
+        },
+        {
+          "word": " helps",
+          "start": 16.9,
+          "end": 17.2,
+          "probability": 0.99755859375
+        },
+        {
+          "word": " prepare",
+          "start": 17.2,
+          "end": 17.6,
+          "probability": 0.98681640625
+        },
+        {
+          "word": " the",
+          "start": 17.6,
+          "end": 17.8,
+          "probability": 0.994140625
+        },
+        {
+          "word": " work",
+          "start": 17.8,
+          "end": 18.04,
+          "probability": 0.99755859375
+        },
+        {
+          "word": " and",
+          "start": 18.04,
+          "end": 18.72,
+          "probability": 0.642578125
+        },
+        {
+          "word": " authorized",
+          "start": 18.72,
+          "end": 19.24,
+          "probability": 0.94775390625
+        },
+        {
+          "word": " people",
+          "start": 19.24,
+          "end": 19.72,
+          "probability": 0.99560546875
+        },
+        {
+          "word": " keep",
+          "start": 19.72,
+          "end": 19.96,
+          "probability": 0.97314453125
+        },
+        {
+          "word": " control.",
+          "start": 19.96,
+          "end": 20.36,
+          "probability": 0.9970703125
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "seek": 0,
+      "start": 21.76,
+      "end": 26.92,
+      "text": " That's Quorum. The agent prepares the file, the committee awards the tender,",
+      "tokens": [
+        51413,
+        1320,
+        338,
+        2264,
+        19220,
+        13,
+        383,
+        5797,
+        25978,
+        262,
+        2393,
+        11,
+        262,
+        5583,
+        13304,
+        262,
+        15403,
+        11,
+        51713
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.15311086177825928,
+      "compression_ratio": 1.5089285714285714,
+      "no_speech_prob": 0.0006461996235884726,
+      "words": [
+        {
+          "word": " That's",
+          "start": 21.76,
+          "end": 22.22,
+          "probability": 0.958984375
+        },
+        {
+          "word": " Quorum.",
+          "start": 22.22,
+          "end": 22.4,
+          "probability": 0.99560546875
+        },
+        {
+          "word": " The",
+          "start": 22.76,
+          "end": 22.88,
+          "probability": 0.9921875
+        },
+        {
+          "word": " agent",
+          "start": 22.88,
+          "end": 23.1,
+          "probability": 0.970703125
+        },
+        {
+          "word": " prepares",
+          "start": 23.1,
+          "end": 23.48,
+          "probability": 0.99853515625
+        },
+        {
+          "word": " the",
+          "start": 23.48,
+          "end": 23.84,
+          "probability": 0.97021484375
+        },
+        {
+          "word": " file,",
+          "start": 23.84,
+          "end": 24.0,
+          "probability": 0.99560546875
+        },
+        {
+          "word": " the",
+          "start": 25.12,
+          "end": 25.48,
+          "probability": 0.97802734375
+        },
+        {
+          "word": " committee",
+          "start": 25.48,
+          "end": 25.82,
+          "probability": 0.96875
+        },
+        {
+          "word": " awards",
+          "start": 25.82,
+          "end": 26.3,
+          "probability": 0.9833984375
+        },
+        {
+          "word": " the",
+          "start": 26.3,
+          "end": 26.6,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " tender,",
+          "start": 26.6,
+          "end": 26.92,
+          "probability": 0.91259765625
+        }
+      ]
+    }
+  ]
+}

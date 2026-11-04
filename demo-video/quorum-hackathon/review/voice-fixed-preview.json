@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "outputDir": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/voice-fixed-preview",
+  "frames": [
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/voice-fixed-preview/frame-00-at-132s.png",
+      "time": 132
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/voice-fixed-preview/frame-01-at-228s.png",
+      "time": 228
+    }
+  ],
+  "contactSheets": [
+    "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/voice-fixed-preview/contact-sheet.jpg"
+  ],
+  "_meta": {
+    "version": "0.9.9",
+    "updateAvailable": false
+  }
+}

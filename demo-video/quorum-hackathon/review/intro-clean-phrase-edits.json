@@ -1,0 +1,32 @@
+[
+  {
+    "scene": "supplier",
+    "removed_clause": "certify the document or",
+    "source_range": [
+      41.66,
+      42.88
+    ],
+    "sentence_pause_addition_seconds": 0.20333333333333434,
+    "scene_duration_preserved": true
+  },
+  {
+    "scene": "review",
+    "removed_clause": "or quietly treat it as a pass",
+    "source_range": [
+      103.84,
+      105.86
+    ],
+    "sentence_pause_addition_seconds": 0.2019999999999996,
+    "scene_duration_preserved": true
+  },
+  {
+    "scene": "control",
+    "removed_clause": "rank bidders",
+    "source_range": [
+      136.58,
+      137.44
+    ],
+    "sentence_pause_addition_seconds": 0.17199999999999704,
+    "scene_duration_preserved": true
+  }
+]

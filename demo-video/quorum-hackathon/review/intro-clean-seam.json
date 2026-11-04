@@ -1,0 +1,62 @@
+{
+  "ok": true,
+  "outputDir": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/intro-clean-seam",
+  "frames": [
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/intro-clean-seam/frame-00-at-12s.png",
+      "time": 12
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/intro-clean-seam/frame-01-at-12.033s.png",
+      "time": 12.033
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/intro-clean-seam/frame-02-at-12.067s.png",
+      "time": 12.067
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/intro-clean-seam/frame-03-at-12.1s.png",
+      "time": 12.1
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/intro-clean-seam/frame-04-at-12.133s.png",
+      "time": 12.133
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/intro-clean-seam/frame-05-at-12.167s.png",
+      "time": 12.167
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/intro-clean-seam/frame-06-at-12.2s.png",
+      "time": 12.2
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/intro-clean-seam/frame-07-at-12.233s.png",
+      "time": 12.233
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/intro-clean-seam/frame-08-at-12.267s.png",
+      "time": 12.267
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/intro-clean-seam/frame-09-at-12.3s.png",
+      "time": 12.3
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/intro-clean-seam/frame-10-at-12.333s.png",
+      "time": 12.333
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/intro-clean-seam/frame-11-at-12.367s.png",
+      "time": 12.367
+    }
+  ],
+  "contactSheets": [
+    "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/intro-clean-seam/contact-sheet-1.jpg",
+    "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/intro-clean-seam/contact-sheet-2.jpg"
+  ],
+  "_meta": {
+    "version": "0.9.9",
+    "updateAvailable": false
+  }
+}

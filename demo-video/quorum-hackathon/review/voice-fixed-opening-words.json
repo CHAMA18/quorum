@@ -1,0 +1,270 @@
+{
+  "scene": "opening",
+  "expected": "Over 450 million US dollars is lost every year due to faulty procurement means. Through Quorum, we seek to address this challenge. Let me show you how it works.",
+  "transcript": " Over $450 million US dollars is lost every year due to faulty procurement means. Through Quorum, we seek to address this challenge. Let me show you how it works.",
+  "word_match": 1.0,
+  "matched_word_median_timing_delta": 0.0,
+  "matched_word_p90_timing_delta": 0.044000000000000115,
+  "segments": [
+    {
+      "id": 0,
+      "seek": 0,
+      "start": 0.0,
+      "end": 6.48,
+      "text": " Over $450 million US dollars is lost every year due to faulty procurement means.",
+      "tokens": [
+        50363,
+        3827,
+        720,
+        17885,
+        1510,
+        1294,
+        5054,
+        318,
+        2626,
+        790,
+        614,
+        2233,
+        284,
+        30954,
+        31156,
+        1724,
+        13,
+        50739
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.3206612042018345,
+      "compression_ratio": 1.2290076335877862,
+      "no_speech_prob": 0.0007208341849036515,
+      "words": [
+        {
+          "word": " Over",
+          "start": 0.0,
+          "end": 0.78,
+          "probability": 0.7822265625
+        },
+        {
+          "word": " $450",
+          "start": 0.78,
+          "end": 1.66,
+          "probability": 0.65234375
+        },
+        {
+          "word": " million",
+          "start": 1.66,
+          "end": 2.46,
+          "probability": 0.84912109375
+        },
+        {
+          "word": " US",
+          "start": 2.46,
+          "end": 3.28,
+          "probability": 0.473876953125
+        },
+        {
+          "word": " dollars",
+          "start": 3.28,
+          "end": 3.54,
+          "probability": 0.86376953125
+        },
+        {
+          "word": " is",
+          "start": 3.54,
+          "end": 3.72,
+          "probability": 0.986328125
+        },
+        {
+          "word": " lost",
+          "start": 3.72,
+          "end": 4.0,
+          "probability": 0.998046875
+        },
+        {
+          "word": " every",
+          "start": 4.0,
+          "end": 4.28,
+          "probability": 0.98583984375
+        },
+        {
+          "word": " year",
+          "start": 4.28,
+          "end": 4.52,
+          "probability": 0.9931640625
+        },
+        {
+          "word": " due",
+          "start": 4.52,
+          "end": 4.58,
+          "probability": 0.982421875
+        },
+        {
+          "word": " to",
+          "start": 4.58,
+          "end": 4.96,
+          "probability": 0.998046875
+        },
+        {
+          "word": " faulty",
+          "start": 4.96,
+          "end": 5.06,
+          "probability": 0.043853759765625
+        },
+        {
+          "word": " procurement",
+          "start": 5.06,
+          "end": 5.54,
+          "probability": 0.99560546875
+        },
+        {
+          "word": " means.",
+          "start": 5.54,
+          "end": 6.48,
+          "probability": 0.8701171875
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "seek": 0,
+      "start": 7.26,
+      "end": 10.02,
+      "text": " Through Quorum, we seek to address this challenge.",
+      "tokens": [
+        50739,
+        9561,
+        2264,
+        19220,
+        11,
+        356,
+        5380,
+        284,
+        2209,
+        428,
+        4427,
+        13,
+        50863
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.3206612042018345,
+      "compression_ratio": 1.2290076335877862,
+      "no_speech_prob": 0.0007208341849036515,
+      "words": [
+        {
+          "word": " Through",
+          "start": 7.26,
+          "end": 7.66,
+          "probability": 0.99072265625
+        },
+        {
+          "word": " Quorum,",
+          "start": 7.66,
+          "end": 7.98,
+          "probability": 0.61962890625
+        },
+        {
+          "word": " we",
+          "start": 8.36,
+          "end": 8.44,
+          "probability": 0.98974609375
+        },
+        {
+          "word": " seek",
+          "start": 8.44,
+          "end": 8.62,
+          "probability": 0.9931640625
+        },
+        {
+          "word": " to",
+          "start": 8.62,
+          "end": 8.82,
+          "probability": 0.99755859375
+        },
+        {
+          "word": " address",
+          "start": 8.82,
+          "end": 9.08,
+          "probability": 0.99267578125
+        },
+        {
+          "word": " this",
+          "start": 9.08,
+          "end": 9.62,
+          "probability": 0.9912109375
+        },
+        {
+          "word": " challenge.",
+          "start": 9.62,
+          "end": 10.02,
+          "probability": 0.99755859375
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "seek": 0,
+      "start": 10.54,
+      "end": 11.56,
+      "text": " Let me show you how it works.",
+      "tokens": [
+        50863,
+        3914,
+        502,
+        905,
+        345,
+        703,
+        340,
+        2499,
+        13,
+        50945
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.3206612042018345,
+      "compression_ratio": 1.2290076335877862,
+      "no_speech_prob": 0.0007208341849036515,
+      "words": [
+        {
+          "word": " Let",
+          "start": 10.54,
+          "end": 10.66,
+          "probability": 0.8974609375
+        },
+        {
+          "word": " me",
+          "start": 10.66,
+          "end": 10.78,
+          "probability": 0.998046875
+        },
+        {
+          "word": " show",
+          "start": 10.78,
+          "end": 10.92,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " you",
+          "start": 10.92,
+          "end": 11.1,
+          "probability": 0.9921875
+        },
+        {
+          "word": " how",
+          "start": 11.1,
+          "end": 11.22,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " it",
+          "start": 11.22,
+          "end": 11.34,
+          "probability": 0.99462890625
+        },
+        {
+          "word": " works.",
+          "start": 11.34,
+          "end": 11.56,
+          "probability": 0.99755859375
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,552 @@
+{
+  "ok": true,
+  "strict": false,
+  "browserSkipped": false,
+  "lint": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 15,
+    "infoCount": 0,
+    "findings": [
+      {
+        "code": "nested_media_start_basis_ambiguous",
+        "severity": "warning",
+        "message": "<video id=\"control-v3\"> has data-start=\"16.6\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+        "selector": "#control-v3",
+        "dataAttributes": {},
+        "sourceFile": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/control.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Keep data-start=\"16.6\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start."
+      },
+      {
+        "code": "nested_media_start_basis_ambiguous",
+        "severity": "warning",
+        "message": "<video id=\"control-v4\"> has data-start=\"22\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+        "selector": "#control-v4",
+        "dataAttributes": {},
+        "sourceFile": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/control.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Keep data-start=\"22\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start."
+      },
+      {
+        "code": "nested_media_start_basis_ambiguous",
+        "severity": "warning",
+        "message": "<video id=\"review-v1\"> has data-start=\"4.4\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+        "selector": "#review-v1",
+        "dataAttributes": {},
+        "sourceFile": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/review.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Keep data-start=\"4.4\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start."
+      },
+      {
+        "code": "nested_media_start_basis_ambiguous",
+        "severity": "warning",
+        "message": "<video id=\"review-v2\"> has data-start=\"11.9\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+        "selector": "#review-v2",
+        "dataAttributes": {},
+        "sourceFile": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/review.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Keep data-start=\"11.9\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start."
+      },
+      {
+        "code": "nested_media_start_basis_ambiguous",
+        "severity": "warning",
+        "message": "<video id=\"review-v3\"> has data-start=\"17.8\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+        "selector": "#review-v3",
+        "dataAttributes": {},
+        "sourceFile": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/review.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Keep data-start=\"17.8\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start."
+      },
+      {
+        "code": "nested_media_start_basis_ambiguous",
+        "severity": "warning",
+        "message": "<video id=\"review-v4\"> has data-start=\"25.5\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+        "selector": "#review-v4",
+        "dataAttributes": {},
+        "sourceFile": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/review.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Keep data-start=\"25.5\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start."
+      },
+      {
+        "code": "nested_media_start_basis_ambiguous",
+        "severity": "warning",
+        "message": "<video id=\"review-v5\"> has data-start=\"34.2\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+        "selector": "#review-v5",
+        "dataAttributes": {},
+        "sourceFile": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/review.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Keep data-start=\"34.2\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start."
+      },
+      {
+        "code": "nested_media_start_basis_ambiguous",
+        "severity": "warning",
+        "message": "<video id=\"review-v6\"> has data-start=\"41.9\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+        "selector": "#review-v6",
+        "dataAttributes": {},
+        "sourceFile": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/review.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Keep data-start=\"41.9\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start."
+      },
+      {
+        "code": "nested_media_start_basis_ambiguous",
+        "severity": "warning",
+        "message": "<video id=\"supplier-v1\"> has data-start=\"6.2\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+        "selector": "#supplier-v1",
+        "dataAttributes": {},
+        "sourceFile": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/supplier.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Keep data-start=\"6.2\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start."
+      },
+      {
+        "code": "nested_media_start_basis_ambiguous",
+        "severity": "warning",
+        "message": "<video id=\"supplier-v2\"> has data-start=\"11.2\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+        "selector": "#supplier-v2",
+        "dataAttributes": {},
+        "sourceFile": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/supplier.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Keep data-start=\"11.2\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start."
+      },
+      {
+        "code": "nested_media_start_basis_ambiguous",
+        "severity": "warning",
+        "message": "<video id=\"supplier-v3\"> has data-start=\"18.9\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+        "selector": "#supplier-v3",
+        "dataAttributes": {},
+        "sourceFile": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/supplier.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Keep data-start=\"18.9\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start."
+      },
+      {
+        "code": "nested_media_start_basis_ambiguous",
+        "severity": "warning",
+        "message": "<video id=\"supplier-v4\"> has data-start=\"26.6\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+        "selector": "#supplier-v4",
+        "dataAttributes": {},
+        "sourceFile": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/supplier.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Keep data-start=\"26.6\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start."
+      },
+      {
+        "code": "nested_media_start_basis_ambiguous",
+        "severity": "warning",
+        "message": "<video id=\"workflow-v1\"> has data-start=\"5.7\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+        "selector": "#workflow-v1",
+        "dataAttributes": {},
+        "sourceFile": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/workflow.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Keep data-start=\"5.7\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start."
+      },
+      {
+        "code": "nested_media_start_basis_ambiguous",
+        "severity": "warning",
+        "message": "<video id=\"workflow-v3\"> has data-start=\"18.4\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+        "selector": "#workflow-v3",
+        "dataAttributes": {},
+        "sourceFile": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/workflow.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Keep data-start=\"18.4\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start."
+      },
+      {
+        "code": "nested_media_start_basis_ambiguous",
+        "severity": "warning",
+        "message": "<video id=\"workflow-v4\"> has data-start=\"25.2\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+        "selector": "#workflow-v4",
+        "dataAttributes": {},
+        "sourceFile": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/workflow.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 0,
+        "fixHint": "Keep data-start=\"25.2\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start."
+      }
+    ],
+    "filesScanned": 8
+  },
+  "runtime": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": []
+  },
+  "layout": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 4,
+    "findings": [
+      {
+        "code": "content_overlap",
+        "severity": "info",
+        "time": 16.364,
+        "selector": "div.brand",
+        "message": "Two text blocks overlap and may render unreadable.",
+        "rect": {
+          "left": 194,
+          "top": 126,
+          "right": 394.52,
+          "bottom": 178,
+          "width": 200.52,
+          "height": 52
+        },
+        "containerSelector": "#supplier-headline",
+        "text": "QUORUM",
+        "fixHint": "Give each block its own zone, or put data-layout-allow-overlap on the text or on a container inside the scene. A marker on the scene root does not apply.",
+        "dataAttributes": {
+          "data-hf-id": "hf-louy"
+        },
+        "sourceFile": "compositions/opening.html",
+        "bbox": {
+          "x": 194,
+          "y": 126,
+          "width": 200.52,
+          "height": 52
+        },
+        "firstSeen": 16.364,
+        "lastSeen": 16.364,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          16.364
+        ]
+      },
+      {
+        "code": "content_overlap",
+        "severity": "info",
+        "time": 49.091,
+        "selector": "#supplier > div:nth-of-type(1) > div:nth-of-type(2)",
+        "message": "Two text blocks overlap and may render unreadable.",
+        "rect": {
+          "left": 100,
+          "top": 62,
+          "right": 442.73,
+          "bottom": 99,
+          "width": 342.73,
+          "height": 37
+        },
+        "containerSelector": "#workflow > div:nth-of-type(1) > div:nth-of-type(2)",
+        "text": "SUPPLIER DOCUMENTS",
+        "fixHint": "Give each block its own zone, or put data-layout-allow-overlap on the text or on a container inside the scene. A marker on the scene root does not apply.",
+        "dataAttributes": {
+          "data-hf-id": "hf-ptu5"
+        },
+        "sourceFile": "compositions/supplier.html",
+        "bbox": {
+          "x": 100,
+          "y": 62,
+          "width": 342.73,
+          "height": 37
+        },
+        "firstSeen": 49.091,
+        "lastSeen": 49.091,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          49.091
+        ]
+      },
+      {
+        "code": "content_overlap",
+        "severity": "info",
+        "time": 49.091,
+        "selector": "#supplier > div:nth-of-type(1) > div:nth-of-type(3)",
+        "message": "Two text blocks overlap and may render unreadable.",
+        "rect": {
+          "left": 1467.19,
+          "top": 67,
+          "right": 1820,
+          "bottom": 104,
+          "width": 352.81,
+          "height": 37
+        },
+        "containerSelector": "#workflow > div:nth-of-type(1) > div:nth-of-type(3)",
+        "text": "META · MUSE SPARK 1.3",
+        "fixHint": "Give each block its own zone, or put data-layout-allow-overlap on the text or on a container inside the scene. A marker on the scene root does not apply.",
+        "dataAttributes": {
+          "data-hf-id": "hf-m6px"
+        },
+        "sourceFile": "compositions/supplier.html",
+        "bbox": {
+          "x": 1467.19,
+          "y": 67,
+          "width": 352.81,
+          "height": 37
+        },
+        "firstSeen": 49.091,
+        "lastSeen": 49.091,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          49.091
+        ]
+      },
+      {
+        "code": "content_overlap",
+        "severity": "info",
+        "time": 49.091,
+        "selector": "#supplier > div:nth-of-type(1) > div:nth-of-type(5)",
+        "message": "Two text blocks overlap and may render unreadable.",
+        "rect": {
+          "left": 100,
+          "top": 884,
+          "right": 1017.84,
+          "bottom": 918,
+          "width": 917.84,
+          "height": 34
+        },
+        "containerSelector": "#workflow > div:nth-of-type(1) > div:nth-of-type(5)",
+        "text": "Advisory document check · compare every detail with the original",
+        "fixHint": "Give each block its own zone, or put data-layout-allow-overlap on the text or on a container inside the scene. A marker on the scene root does not apply.",
+        "dataAttributes": {
+          "data-hf-id": "hf-cp7k"
+        },
+        "sourceFile": "compositions/supplier.html",
+        "bbox": {
+          "x": 100,
+          "y": 884,
+          "width": 917.84,
+          "height": 34
+        },
+        "firstSeen": 49.091,
+        "lastSeen": 49.091,
+        "occurrences": 1,
+        "heldMs": 0,
+        "times": [
+          49.091
+        ]
+      }
+    ],
+    "duration": 180,
+    "samples": [
+      10,
+      30,
+      50,
+      70,
+      90,
+      110,
+      130,
+      150,
+      170
+    ],
+    "transitionSamples": [],
+    "transitionSamplesDropped": 0,
+    "tolerance": 2,
+    "totalIssueCount": 4,
+    "truncated": false
+  },
+  "motion": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "enabled": false,
+    "samples": 0
+  },
+  "contrast": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": [],
+    "enabled": true,
+    "samples": [
+      10,
+      50,
+      90,
+      130,
+      170
+    ],
+    "checked": 31,
+    "passed": 31
+  },
+  "craft": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 4,
+    "infoCount": 0,
+    "findings": [
+      {
+        "code": "dead_stretch",
+        "severity": "warning",
+        "message": "Nothing on screen changes for 3.61 s (60.70–64.31 s): start the next move within 3 s, or put data-hold on the element whose stillness is deliberate; see references/motion.md.",
+        "selector": "[data-composition-id]",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 60.701,
+        "seconds": 3.606,
+        "floorSeconds": 3,
+        "until": 64.307
+      },
+      {
+        "code": "dead_stretch",
+        "severity": "warning",
+        "message": "Nothing on screen changes for 3.00 s (157.16–160.17 s): start the next move within 3 s, or put data-hold on the element whose stillness is deliberate; see references/motion.md.",
+        "selector": "[data-composition-id]",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 157.162,
+        "seconds": 3.005,
+        "floorSeconds": 3,
+        "until": 160.167
+      },
+      {
+        "code": "dead_stretch",
+        "severity": "warning",
+        "message": "Nothing on screen changes for 6.61 s (162.27–168.88 s): start the next move within 3 s, or put data-hold on the element whose stillness is deliberate; see references/motion.md.",
+        "selector": "[data-composition-id]",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 162.27,
+        "seconds": 6.611,
+        "floorSeconds": 3,
+        "until": 168.881
+      },
+      {
+        "code": "dead_stretch",
+        "severity": "warning",
+        "message": "Nothing on screen changes for 5.72 s (171.28–177.00 s): start the next move within 3 s, or put data-hold on the element whose stillness is deliberate; see references/motion.md.",
+        "selector": "[data-composition-id]",
+        "dataAttributes": {},
+        "sourceFile": "index.html",
+        "bbox": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "time": 171.285,
+        "seconds": 5.715,
+        "floorSeconds": 3,
+        "until": 177
+      }
+    ],
+    "enabled": true,
+    "step": 0.3009999999999877,
+    "samples": 599
+  },
+  "audio": {
+    "ok": true,
+    "errorCount": 0,
+    "warningCount": 0,
+    "infoCount": 0,
+    "findings": []
+  },
+  "hdr": {
+    "autoPromotion": null,
+    "inspection": "available"
+  },
+  "snapshots": {
+    "enabled": false,
+    "files": [],
+    "times": [],
+    "findingFiles": []
+  }
+}

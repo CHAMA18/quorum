@@ -1,0 +1,178 @@
+{
+  "ok": true,
+  "errorCount": 0,
+  "warningCount": 15,
+  "infoCount": 0,
+  "findings": [
+    {
+      "code": "nested_media_start_basis_ambiguous",
+      "severity": "warning",
+      "message": "<video id=\"control-v3\"> has data-start=\"16.6\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+      "elementId": "control-v3",
+      "fixHint": "Keep data-start=\"16.6\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start.",
+      "snippet": "<video data-hf-id=\"hf-u638\" id=\"control-v3\" class=\"clip\" src=\"assets/part2.mp4\" muted playsinline data-start=\"16.6\" data-duration=\"5.7\" data-media-start=\"283\" data-track-index=\"0\" data-layout-allow-overflow>",
+      "file": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/control.html",
+      "line": 1,
+      "column": 1951
+    },
+    {
+      "code": "nested_media_start_basis_ambiguous",
+      "severity": "warning",
+      "message": "<video id=\"control-v4\"> has data-start=\"22\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+      "elementId": "control-v4",
+      "fixHint": "Keep data-start=\"22\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start.",
+      "snippet": "<video data-hf-id=\"hf-l3cb\" id=\"control-v4\" class=\"clip\" src=\"assets/part2.mp4\" muted playsinline data-start=\"22\" data-duration=\"5.4\" data-media-start=\"290\" data-track-index=\"0\" data-layout-allow-overflow>",
+      "file": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/control.html",
+      "line": 1,
+      "column": 2166
+    },
+    {
+      "code": "nested_media_start_basis_ambiguous",
+      "severity": "warning",
+      "message": "<video id=\"review-v1\"> has data-start=\"4.4\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+      "elementId": "review-v1",
+      "fixHint": "Keep data-start=\"4.4\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start.",
+      "snippet": "<video data-hf-id=\"hf-b4vi\" id=\"review-v1\" class=\"clip\" src=\"assets/part2.mp4\" muted playsinline data-start=\"4.4\" data-duration=\"7.8\" data-media-start=\"166\" data-track-index=\"0\" data-layout-allow-overflow>",
+      "file": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/review.html",
+      "line": 1,
+      "column": 1579
+    },
+    {
+      "code": "nested_media_start_basis_ambiguous",
+      "severity": "warning",
+      "message": "<video id=\"review-v2\"> has data-start=\"11.9\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+      "elementId": "review-v2",
+      "fixHint": "Keep data-start=\"11.9\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start.",
+      "snippet": "<video data-hf-id=\"hf-wvd7\" id=\"review-v2\" class=\"clip\" src=\"assets/part2.mp4\" muted playsinline data-start=\"11.9\" data-duration=\"6.2\" data-media-start=\"220\" data-track-index=\"0\" data-layout-allow-overflow>",
+      "file": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/review.html",
+      "line": 1,
+      "column": 1792
+    },
+    {
+      "code": "nested_media_start_basis_ambiguous",
+      "severity": "warning",
+      "message": "<video id=\"review-v3\"> has data-start=\"17.8\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+      "elementId": "review-v3",
+      "fixHint": "Keep data-start=\"17.8\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start.",
+      "snippet": "<video data-hf-id=\"hf-7oeb\" id=\"review-v3\" class=\"clip\" src=\"assets/part2.mp4\" muted playsinline data-start=\"17.8\" data-duration=\"8\" data-media-start=\"225\" data-track-index=\"0\" data-layout-allow-overflow>",
+      "file": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/review.html",
+      "line": 1,
+      "column": 2006
+    },
+    {
+      "code": "nested_media_start_basis_ambiguous",
+      "severity": "warning",
+      "message": "<video id=\"review-v4\"> has data-start=\"25.5\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+      "elementId": "review-v4",
+      "fixHint": "Keep data-start=\"25.5\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start.",
+      "snippet": "<video data-hf-id=\"hf-673s\" id=\"review-v4\" class=\"clip\" src=\"assets/part2.mp4\" muted playsinline data-start=\"25.5\" data-duration=\"9\" data-media-start=\"230\" data-track-index=\"0\" data-layout-allow-overflow>",
+      "file": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/review.html",
+      "line": 1,
+      "column": 2218
+    },
+    {
+      "code": "nested_media_start_basis_ambiguous",
+      "severity": "warning",
+      "message": "<video id=\"review-v5\"> has data-start=\"34.2\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+      "elementId": "review-v5",
+      "fixHint": "Keep data-start=\"34.2\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start.",
+      "snippet": "<video data-hf-id=\"hf-vtwu\" id=\"review-v5\" class=\"clip\" src=\"assets/part2.mp4\" muted playsinline data-start=\"34.2\" data-duration=\"8\" data-media-start=\"235\" data-track-index=\"0\" data-layout-allow-overflow>",
+      "file": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/review.html",
+      "line": 1,
+      "column": 2430
+    },
+    {
+      "code": "nested_media_start_basis_ambiguous",
+      "severity": "warning",
+      "message": "<video id=\"review-v6\"> has data-start=\"41.9\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+      "elementId": "review-v6",
+      "fixHint": "Keep data-start=\"41.9\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start.",
+      "snippet": "<video data-hf-id=\"hf-wvkd\" id=\"review-v6\" class=\"clip\" src=\"assets/part2.mp4\" muted playsinline data-start=\"41.9\" data-duration=\"6.5\" data-media-start=\"238\" data-track-index=\"0\" data-layout-allow-overflow>",
+      "file": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/review.html",
+      "line": 1,
+      "column": 2642
+    },
+    {
+      "code": "nested_media_start_basis_ambiguous",
+      "severity": "warning",
+      "message": "<video id=\"supplier-v1\"> has data-start=\"6.2\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+      "elementId": "supplier-v1",
+      "fixHint": "Keep data-start=\"6.2\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start.",
+      "snippet": "<video data-hf-id=\"hf-syhj\" id=\"supplier-v1\" class=\"clip\" src=\"assets/part1.mp4\" muted playsinline data-start=\"6.2\" data-duration=\"5.3\" data-media-start=\"39\" data-track-index=\"0\" data-layout-allow-overflow>",
+      "file": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/supplier.html",
+      "line": 1,
+      "column": 1584
+    },
+    {
+      "code": "nested_media_start_basis_ambiguous",
+      "severity": "warning",
+      "message": "<video id=\"supplier-v2\"> has data-start=\"11.2\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+      "elementId": "supplier-v2",
+      "fixHint": "Keep data-start=\"11.2\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start.",
+      "snippet": "<video data-hf-id=\"hf-wqzj\" id=\"supplier-v2\" class=\"clip\" src=\"assets/part1.mp4\" muted playsinline data-start=\"11.2\" data-duration=\"8\" data-media-start=\"56\" data-track-index=\"0\" data-layout-allow-overflow>",
+      "file": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/supplier.html",
+      "line": 1,
+      "column": 1798
+    },
+    {
+      "code": "nested_media_start_basis_ambiguous",
+      "severity": "warning",
+      "message": "<video id=\"supplier-v3\"> has data-start=\"18.9\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+      "elementId": "supplier-v3",
+      "fixHint": "Keep data-start=\"18.9\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start.",
+      "snippet": "<video data-hf-id=\"hf-1j2b\" id=\"supplier-v3\" class=\"clip\" src=\"assets/part1.mp4\" muted playsinline data-start=\"18.9\" data-duration=\"8\" data-media-start=\"63\" data-track-index=\"0\" data-layout-allow-overflow>",
+      "file": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/supplier.html",
+      "line": 1,
+      "column": 2011
+    },
+    {
+      "code": "nested_media_start_basis_ambiguous",
+      "severity": "warning",
+      "message": "<video id=\"supplier-v4\"> has data-start=\"26.6\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+      "elementId": "supplier-v4",
+      "fixHint": "Keep data-start=\"26.6\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start.",
+      "snippet": "<video data-hf-id=\"hf-8qfv\" id=\"supplier-v4\" class=\"clip\" src=\"assets/part1.mp4\" muted playsinline data-start=\"26.6\" data-duration=\"6.800000000000001\" data-media-start=\"65\" data-track-index=\"0\" data-layout-allow-overf...",
+      "file": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/supplier.html",
+      "line": 1,
+      "column": 2224
+    },
+    {
+      "code": "nested_media_start_basis_ambiguous",
+      "severity": "warning",
+      "message": "<video id=\"workflow-v1\"> has data-start=\"5.7\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+      "elementId": "workflow-v1",
+      "fixHint": "Keep data-start=\"5.7\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start.",
+      "snippet": "<video data-hf-id=\"hf-pjlk\" id=\"workflow-v1\" class=\"clip\" src=\"assets/part2.mp4\" muted playsinline data-start=\"5.7\" data-duration=\"5.8\" data-media-start=\"61\" data-track-index=\"0\" data-layout-allow-overflow>",
+      "file": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/workflow.html",
+      "line": 1,
+      "column": 1582
+    },
+    {
+      "code": "nested_media_start_basis_ambiguous",
+      "severity": "warning",
+      "message": "<video id=\"workflow-v3\"> has data-start=\"18.4\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+      "elementId": "workflow-v3",
+      "fixHint": "Keep data-start=\"18.4\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start.",
+      "snippet": "<video data-hf-id=\"hf-hyy4\" id=\"workflow-v3\" class=\"clip\" src=\"assets/part2.mp4\" muted playsinline data-start=\"18.4\" data-duration=\"7.1\" data-media-start=\"148\" data-track-index=\"0\" data-layout-allow-overflow>",
+      "file": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/workflow.html",
+      "line": 1,
+      "column": 1981
+    },
+    {
+      "code": "nested_media_start_basis_ambiguous",
+      "severity": "warning",
+      "message": "<video id=\"workflow-v4\"> has data-start=\"25.2\" inside a sub-composition. Nested media timing is local to its composition by default; a nonzero value can be confused with a legacy root-global timestamp.",
+      "elementId": "workflow-v4",
+      "fixHint": "Keep data-start=\"25.2\" if it is composition-local. If this is a legacy root-global timestamp, add data-hf-media-start-basis=\"global\"; otherwise convert it to local time by subtracting the host start.",
+      "snippet": "<video data-hf-id=\"hf-wi21\" id=\"workflow-v4\" class=\"clip\" src=\"assets/part2.mp4\" muted playsinline data-start=\"25.2\" data-duration=\"7.2\" data-media-start=\"130\" data-track-index=\"0\" data-layout-allow-overflow>",
+      "file": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/compositions/workflow.html",
+      "line": 1,
+      "column": 2197
+    }
+  ],
+  "filesScanned": 8,
+  "_meta": {
+    "version": "0.9.9",
+    "updateAvailable": false
+  }
+}

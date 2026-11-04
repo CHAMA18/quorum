@@ -1,0 +1,3205 @@
+{
+  "scenes": [
+    {
+      "scene": "opening",
+      "expected": "Over 450 million US dollars is lost every year due to faulty procurement means. Through Quorum, we seek to address this challenge. Let me show you how it works.",
+      "transcript": "Over 450 million US dollars is lost every year due to faulty procurement means. Through Quorum, we seek to address this challenge. Let me show you how it works.",
+      "word_match": 1.0
+    },
+    {
+      "scene": "supplier",
+      "expected": "We start on the supplier side. The portal keeps the required documents together, so it's clear what needs to be submitted. Here, I'm opening a tax registration certificate and running the AI document check. Our Meta-powered tool reads the document and checks it against the requested requirement. The findings appear beside the original file, making the details easy to compare. That gives the reviewer a useful starting point. It doesn't decide whether the supplier qualifies.",
+      "transcript": "We start on the supplier side. The portal keeps the required documents together, so it's clear what needs to be submitted. Here I'm opening a tax registration certificate and running the AI document check. Our Meta -powered tool reads the document and checks it against the requested requirement. The findings appear beside the original file, making the details easy to compare. That gives the reviewer a useful starting point. It doesn't decide whether the supplier qualifies.",
+      "word_match": 1.0
+    },
+    {
+      "scene": "workflow",
+      "expected": "Now let's move into the officer's workspace. This is the same procurement process, from the notice and mandatory requirements through to bid opening and evaluation. The criteria are set before the bids are assessed. In this example, technical capability carries sixty percent, and delivery carries forty percent. Officers can check the scores alongside the evidence. Everything stays in one tender file, so the next person can follow the reasoning without having to piece it together from separate spreadsheets and messages.",
+      "transcript": "Now, let's move into the officer's workspace. This is the same procurement process from the notice and mandatory requirements through to bid opening and evaluation. The criteria are set before the bids are assessed. In this example, technical capability carries 60 % and delivery carries 40%. Officers can check the scores alongside the evidence. Everything stays in one tender file, so the next person can follow the reasoning without having to piece it together from separate spreadsheets and messages.",
+      "word_match": 0.9629629629629629
+    },
+    {
+      "scene": "review",
+      "expected": "Next, we run the AI-assisted bid review. We include every admitted bidder, confirm consent, and review their submissions against the issued criteria. The review is read only. Here, you can see both bidders compared against the same requirements. When the documents don't establish a required reference contract or a committed delivery plan, the result says, not evidenced. It doesn't fill in the gap. Instead, it gives the committee specific questions to follow up. Can we verify these references? Are the delivery milestones clear? Does the price build-up support the proposal? That is where the AI helps: it prepares a clearer review, so people can spend their time checking what matters.",
+      "transcript": "Next, we run the AI assisted bid review. We include every admitted bidder, confirm consent, and review their submissions against the issued criteria. The review is read only. Here you can see both bidders compared against the same requirements. When the documents don't establish a required reference contract or a committed delivery plan, the result says not evidenced. It doesn't fill in the gap. Instead, it gives the committee specific questions to follow up. Can we verify these references? Are the delivery milestones clear? Does the price build up support the proposal? That is where the AI helps. It prepares a clearer review so people can spend their time checking what matters.",
+      "word_match": 1.0
+    },
+    {
+      "scene": "recommendation",
+      "expected": "The AI presents the strongest documented fit for the committee consideration. It then evaluates both sides. It then submits information to the committee. Based off of information that it will give you as a committee, you then proceed to then select. So as a committee, you have the ability to set up what we call the full committee that has to make up their own decision. This is a panel of the committee. We can add any other person to the committee to constitute the quorum, who then makes the final decision in terms of who to award a particular contract. Each person has to have the verdict signed.",
+      "transcript": " The AI presents the strongest documented fit for the committee consideration. It then evaluates both sides. It then submits information to the committee. Based off of information that it will give you as a committee, you then proceed to then select. So as a committee, you have the ability to set up what we call the full committee. that has to make up their own decision. This is a panel of the committee. We can add any other person to the committee to constitute the quorum, who then makes the final decision in terms of who to award a particular contract. Each person has to have the verdict signed.",
+      "word_match": 1.0
+    },
+    {
+      "scene": "control",
+      "expected": "The evaluation record stays visible too. Officers can inspect the evaluator sheets, differences in scores, and the recorded consensus. The AI doesn't write those scores or award the tender. The committee records its assessment, and authorised people make the decision. Award, contract, and complaint records remain connected to the same file. So the team can explain both what it decided and the evidence behind that decision.",
+      "transcript": "The evaluation record stays visible too. Officers can inspect the evaluator sheets, differences in scores, and the recorded consensus. The AI doesn't write those scores or award the tender. The committee records its assessment and authorised people make the decision. Award, contract and complaint records remain connected to the same file. So the team can explain both what it decided and the evidence behind that decision.",
+      "word_match": 1.0
+    },
+    {
+      "scene": "mcp",
+      "expected": "We've also published Quorum's MCP integration. It lets compatible AI clients connect to our read-only tools, bringing this evidence into the tools teams already use. The boundaries stay the same: the AI helps prepare the work, and authorised people keep control. That's Quorum. The agent prepares the file. The committee awards the tender.",
+      "transcript": "We've also published Quorum's MCP integration. It lets compatible AI clients connect to our read -only tools, bringing this evidence into the tools teams already use. The boundaries stay the same. The AI helps prepare the work and authorized people keep control. That's Quorum. The agent prepares the file. The committee awards the tender.",
+      "word_match": 0.9824561403508771
+    }
+  ],
+  "words": [
+    {
+      "text": "Over",
+      "start": 0.0,
+      "end": 0.78,
+      "scene": "opening"
+    },
+    {
+      "text": "450",
+      "start": 0.78,
+      "end": 1.66,
+      "scene": "opening"
+    },
+    {
+      "text": "million",
+      "start": 1.66,
+      "end": 2.2,
+      "scene": "opening"
+    },
+    {
+      "text": "US",
+      "start": 2.2,
+      "end": 3.26,
+      "scene": "opening"
+    },
+    {
+      "text": "dollars",
+      "start": 3.26,
+      "end": 3.5,
+      "scene": "opening"
+    },
+    {
+      "text": "is",
+      "start": 3.5,
+      "end": 3.72,
+      "scene": "opening"
+    },
+    {
+      "text": "lost",
+      "start": 3.72,
+      "end": 4.0,
+      "scene": "opening"
+    },
+    {
+      "text": "every",
+      "start": 4.0,
+      "end": 4.28,
+      "scene": "opening"
+    },
+    {
+      "text": "year",
+      "start": 4.28,
+      "end": 4.48,
+      "scene": "opening"
+    },
+    {
+      "text": "due",
+      "start": 4.48,
+      "end": 4.58,
+      "scene": "opening"
+    },
+    {
+      "text": "to",
+      "start": 4.58,
+      "end": 4.86,
+      "scene": "opening"
+    },
+    {
+      "text": "faulty",
+      "start": 4.86,
+      "end": 5.06,
+      "scene": "opening"
+    },
+    {
+      "text": "procurement",
+      "start": 5.06,
+      "end": 5.58,
+      "scene": "opening"
+    },
+    {
+      "text": "means.",
+      "start": 5.58,
+      "end": 6.42,
+      "scene": "opening"
+    },
+    {
+      "text": "Through",
+      "start": 7.32,
+      "end": 7.66,
+      "scene": "opening"
+    },
+    {
+      "text": "Quorum,",
+      "start": 7.66,
+      "end": 7.98,
+      "scene": "opening"
+    },
+    {
+      "text": "we",
+      "start": 8.36,
+      "end": 8.44,
+      "scene": "opening"
+    },
+    {
+      "text": "seek",
+      "start": 8.44,
+      "end": 8.62,
+      "scene": "opening"
+    },
+    {
+      "text": "to",
+      "start": 8.62,
+      "end": 8.82,
+      "scene": "opening"
+    },
+    {
+      "text": "address",
+      "start": 8.82,
+      "end": 9.08,
+      "scene": "opening"
+    },
+    {
+      "text": "this",
+      "start": 9.08,
+      "end": 9.62,
+      "scene": "opening"
+    },
+    {
+      "text": "challenge.",
+      "start": 9.62,
+      "end": 10.02,
+      "scene": "opening"
+    },
+    {
+      "text": "Let",
+      "start": 10.52,
+      "end": 10.66,
+      "scene": "opening"
+    },
+    {
+      "text": "me",
+      "start": 10.66,
+      "end": 10.78,
+      "scene": "opening"
+    },
+    {
+      "text": "show",
+      "start": 10.78,
+      "end": 10.92,
+      "scene": "opening"
+    },
+    {
+      "text": "you",
+      "start": 10.92,
+      "end": 11.1,
+      "scene": "opening"
+    },
+    {
+      "text": "how",
+      "start": 11.1,
+      "end": 11.22,
+      "scene": "opening"
+    },
+    {
+      "text": "it",
+      "start": 11.22,
+      "end": 11.34,
+      "scene": "opening"
+    },
+    {
+      "text": "works.",
+      "start": 11.34,
+      "end": 11.56,
+      "scene": "opening"
+    },
+    {
+      "text": "We",
+      "start": 12.0,
+      "end": 12.9,
+      "scene": "supplier"
+    },
+    {
+      "text": "start",
+      "start": 12.9,
+      "end": 12.96,
+      "scene": "supplier"
+    },
+    {
+      "text": "on",
+      "start": 12.96,
+      "end": 13.26,
+      "scene": "supplier"
+    },
+    {
+      "text": "the",
+      "start": 13.26,
+      "end": 13.64,
+      "scene": "supplier"
+    },
+    {
+      "text": "supplier",
+      "start": 13.64,
+      "end": 13.64,
+      "scene": "supplier"
+    },
+    {
+      "text": "side.",
+      "start": 13.64,
+      "end": 14.1,
+      "scene": "supplier"
+    },
+    {
+      "text": "The",
+      "start": 14.96,
+      "end": 15.32,
+      "scene": "supplier"
+    },
+    {
+      "text": "portal",
+      "start": 15.32,
+      "end": 15.58,
+      "scene": "supplier"
+    },
+    {
+      "text": "keeps",
+      "start": 15.58,
+      "end": 15.9,
+      "scene": "supplier"
+    },
+    {
+      "text": "the",
+      "start": 15.9,
+      "end": 16.12,
+      "scene": "supplier"
+    },
+    {
+      "text": "required",
+      "start": 16.12,
+      "end": 16.44,
+      "scene": "supplier"
+    },
+    {
+      "text": "documents",
+      "start": 16.44,
+      "end": 16.86,
+      "scene": "supplier"
+    },
+    {
+      "text": "together,",
+      "start": 16.86,
+      "end": 17.44,
+      "scene": "supplier"
+    },
+    {
+      "text": "so",
+      "start": 17.84,
+      "end": 18.34,
+      "scene": "supplier"
+    },
+    {
+      "text": "it's",
+      "start": 18.34,
+      "end": 18.54,
+      "scene": "supplier"
+    },
+    {
+      "text": "clear",
+      "start": 18.54,
+      "end": 18.740000000000002,
+      "scene": "supplier"
+    },
+    {
+      "text": "what",
+      "start": 18.740000000000002,
+      "end": 18.96,
+      "scene": "supplier"
+    },
+    {
+      "text": "needs",
+      "start": 18.96,
+      "end": 19.259999999999998,
+      "scene": "supplier"
+    },
+    {
+      "text": "to",
+      "start": 19.259999999999998,
+      "end": 19.38,
+      "scene": "supplier"
+    },
+    {
+      "text": "be",
+      "start": 19.38,
+      "end": 19.46,
+      "scene": "supplier"
+    },
+    {
+      "text": "submitted.",
+      "start": 19.46,
+      "end": 20.16,
+      "scene": "supplier"
+    },
+    {
+      "text": "Here",
+      "start": 21.28,
+      "end": 21.54,
+      "scene": "supplier"
+    },
+    {
+      "text": "I'm",
+      "start": 21.54,
+      "end": 21.740000000000002,
+      "scene": "supplier"
+    },
+    {
+      "text": "opening",
+      "start": 21.740000000000002,
+      "end": 22.14,
+      "scene": "supplier"
+    },
+    {
+      "text": "a",
+      "start": 22.14,
+      "end": 22.4,
+      "scene": "supplier"
+    },
+    {
+      "text": "tax",
+      "start": 22.4,
+      "end": 22.52,
+      "scene": "supplier"
+    },
+    {
+      "text": "registration",
+      "start": 22.52,
+      "end": 23.04,
+      "scene": "supplier"
+    },
+    {
+      "text": "certificate",
+      "start": 23.04,
+      "end": 23.560000000000002,
+      "scene": "supplier"
+    },
+    {
+      "text": "and",
+      "start": 23.560000000000002,
+      "end": 23.92,
+      "scene": "supplier"
+    },
+    {
+      "text": "running",
+      "start": 23.92,
+      "end": 24.22,
+      "scene": "supplier"
+    },
+    {
+      "text": "the",
+      "start": 24.22,
+      "end": 24.5,
+      "scene": "supplier"
+    },
+    {
+      "text": "AI",
+      "start": 24.5,
+      "end": 24.939999999999998,
+      "scene": "supplier"
+    },
+    {
+      "text": "document",
+      "start": 24.939999999999998,
+      "end": 25.240000000000002,
+      "scene": "supplier"
+    },
+    {
+      "text": "check.",
+      "start": 25.240000000000002,
+      "end": 25.66,
+      "scene": "supplier"
+    },
+    {
+      "text": "Our",
+      "start": 26.96,
+      "end": 27.259999999999998,
+      "scene": "supplier"
+    },
+    {
+      "text": "Meta",
+      "start": 27.259999999999998,
+      "end": 27.7,
+      "scene": "supplier"
+    },
+    {
+      "text": "-powered",
+      "start": 27.7,
+      "end": 27.82,
+      "scene": "supplier"
+    },
+    {
+      "text": "tool",
+      "start": 27.82,
+      "end": 28.18,
+      "scene": "supplier"
+    },
+    {
+      "text": "reads",
+      "start": 28.18,
+      "end": 28.54,
+      "scene": "supplier"
+    },
+    {
+      "text": "the",
+      "start": 28.54,
+      "end": 28.78,
+      "scene": "supplier"
+    },
+    {
+      "text": "document",
+      "start": 28.78,
+      "end": 29.1,
+      "scene": "supplier"
+    },
+    {
+      "text": "and",
+      "start": 29.1,
+      "end": 29.44,
+      "scene": "supplier"
+    },
+    {
+      "text": "checks",
+      "start": 29.44,
+      "end": 29.72,
+      "scene": "supplier"
+    },
+    {
+      "text": "it",
+      "start": 29.72,
+      "end": 30.0,
+      "scene": "supplier"
+    },
+    {
+      "text": "against",
+      "start": 30.0,
+      "end": 30.34,
+      "scene": "supplier"
+    },
+    {
+      "text": "the",
+      "start": 30.34,
+      "end": 30.54,
+      "scene": "supplier"
+    },
+    {
+      "text": "requested",
+      "start": 30.54,
+      "end": 31.0,
+      "scene": "supplier"
+    },
+    {
+      "text": "requirement.",
+      "start": 31.0,
+      "end": 31.64,
+      "scene": "supplier"
+    },
+    {
+      "text": "The",
+      "start": 33.019999999999996,
+      "end": 33.14,
+      "scene": "supplier"
+    },
+    {
+      "text": "findings",
+      "start": 33.14,
+      "end": 33.480000000000004,
+      "scene": "supplier"
+    },
+    {
+      "text": "appear",
+      "start": 33.480000000000004,
+      "end": 33.86,
+      "scene": "supplier"
+    },
+    {
+      "text": "beside",
+      "start": 33.86,
+      "end": 34.239999999999995,
+      "scene": "supplier"
+    },
+    {
+      "text": "the",
+      "start": 34.239999999999995,
+      "end": 34.480000000000004,
+      "scene": "supplier"
+    },
+    {
+      "text": "original",
+      "start": 34.480000000000004,
+      "end": 34.82,
+      "scene": "supplier"
+    },
+    {
+      "text": "file,",
+      "start": 34.82,
+      "end": 35.260000000000005,
+      "scene": "supplier"
+    },
+    {
+      "text": "making",
+      "start": 35.68,
+      "end": 36.18,
+      "scene": "supplier"
+    },
+    {
+      "text": "the",
+      "start": 36.18,
+      "end": 36.36,
+      "scene": "supplier"
+    },
+    {
+      "text": "details",
+      "start": 36.36,
+      "end": 36.7,
+      "scene": "supplier"
+    },
+    {
+      "text": "easy",
+      "start": 36.7,
+      "end": 36.94,
+      "scene": "supplier"
+    },
+    {
+      "text": "to",
+      "start": 36.94,
+      "end": 37.16,
+      "scene": "supplier"
+    },
+    {
+      "text": "compare.",
+      "start": 37.16,
+      "end": 37.620000000000005,
+      "scene": "supplier"
+    },
+    {
+      "text": "That",
+      "start": 37.620000000000005,
+      "end": 39.06,
+      "scene": "supplier"
+    },
+    {
+      "text": "gives",
+      "start": 39.06,
+      "end": 39.34,
+      "scene": "supplier"
+    },
+    {
+      "text": "the",
+      "start": 39.34,
+      "end": 39.56,
+      "scene": "supplier"
+    },
+    {
+      "text": "reviewer",
+      "start": 39.56,
+      "end": 39.9,
+      "scene": "supplier"
+    },
+    {
+      "text": "a",
+      "start": 39.9,
+      "end": 40.1,
+      "scene": "supplier"
+    },
+    {
+      "text": "useful",
+      "start": 40.1,
+      "end": 40.42,
+      "scene": "supplier"
+    },
+    {
+      "text": "starting",
+      "start": 40.42,
+      "end": 40.82,
+      "scene": "supplier"
+    },
+    {
+      "text": "point.",
+      "start": 40.82,
+      "end": 41.2,
+      "scene": "supplier"
+    },
+    {
+      "text": "It",
+      "start": 42.18,
+      "end": 42.56,
+      "scene": "supplier"
+    },
+    {
+      "text": "doesn't",
+      "start": 42.56,
+      "end": 42.82,
+      "scene": "supplier"
+    },
+    {
+      "text": "decide",
+      "start": 42.82,
+      "end": 43.22,
+      "scene": "supplier"
+    },
+    {
+      "text": "whether",
+      "start": 43.22,
+      "end": 43.46,
+      "scene": "supplier"
+    },
+    {
+      "text": "the",
+      "start": 43.46,
+      "end": 43.7,
+      "scene": "supplier"
+    },
+    {
+      "text": "supplier",
+      "start": 43.7,
+      "end": 44.08,
+      "scene": "supplier"
+    },
+    {
+      "text": "qualifies.",
+      "start": 44.08,
+      "end": 44.58,
+      "scene": "supplier"
+    },
+    {
+      "text": "Now,",
+      "start": 45.0,
+      "end": 45.88,
+      "scene": "workflow"
+    },
+    {
+      "text": "let's",
+      "start": 46.0,
+      "end": 46.22,
+      "scene": "workflow"
+    },
+    {
+      "text": "move",
+      "start": 46.22,
+      "end": 46.42,
+      "scene": "workflow"
+    },
+    {
+      "text": "into",
+      "start": 46.42,
+      "end": 47.16,
+      "scene": "workflow"
+    },
+    {
+      "text": "the",
+      "start": 47.16,
+      "end": 47.36,
+      "scene": "workflow"
+    },
+    {
+      "text": "officer's",
+      "start": 47.36,
+      "end": 47.7,
+      "scene": "workflow"
+    },
+    {
+      "text": "workspace.",
+      "start": 47.7,
+      "end": 48.04,
+      "scene": "workflow"
+    },
+    {
+      "text": "This",
+      "start": 48.7,
+      "end": 48.78,
+      "scene": "workflow"
+    },
+    {
+      "text": "is",
+      "start": 48.78,
+      "end": 48.92,
+      "scene": "workflow"
+    },
+    {
+      "text": "the",
+      "start": 48.92,
+      "end": 49.16,
+      "scene": "workflow"
+    },
+    {
+      "text": "same",
+      "start": 49.16,
+      "end": 49.3,
+      "scene": "workflow"
+    },
+    {
+      "text": "procurement",
+      "start": 49.3,
+      "end": 49.76,
+      "scene": "workflow"
+    },
+    {
+      "text": "process",
+      "start": 49.76,
+      "end": 50.38,
+      "scene": "workflow"
+    },
+    {
+      "text": "from",
+      "start": 50.38,
+      "end": 51.34,
+      "scene": "workflow"
+    },
+    {
+      "text": "the",
+      "start": 51.34,
+      "end": 51.5,
+      "scene": "workflow"
+    },
+    {
+      "text": "notice",
+      "start": 51.5,
+      "end": 51.7,
+      "scene": "workflow"
+    },
+    {
+      "text": "and",
+      "start": 51.7,
+      "end": 51.9,
+      "scene": "workflow"
+    },
+    {
+      "text": "mandatory",
+      "start": 51.9,
+      "end": 52.42,
+      "scene": "workflow"
+    },
+    {
+      "text": "requirements",
+      "start": 52.42,
+      "end": 52.980000000000004,
+      "scene": "workflow"
+    },
+    {
+      "text": "through",
+      "start": 52.980000000000004,
+      "end": 53.36,
+      "scene": "workflow"
+    },
+    {
+      "text": "to",
+      "start": 53.36,
+      "end": 53.519999999999996,
+      "scene": "workflow"
+    },
+    {
+      "text": "bid",
+      "start": 53.519999999999996,
+      "end": 53.68,
+      "scene": "workflow"
+    },
+    {
+      "text": "opening",
+      "start": 53.68,
+      "end": 54.08,
+      "scene": "workflow"
+    },
+    {
+      "text": "and",
+      "start": 54.08,
+      "end": 54.26,
+      "scene": "workflow"
+    },
+    {
+      "text": "evaluation.",
+      "start": 54.26,
+      "end": 54.78,
+      "scene": "workflow"
+    },
+    {
+      "text": "The",
+      "start": 55.8,
+      "end": 55.92,
+      "scene": "workflow"
+    },
+    {
+      "text": "criteria",
+      "start": 55.92,
+      "end": 56.28,
+      "scene": "workflow"
+    },
+    {
+      "text": "are",
+      "start": 56.28,
+      "end": 56.66,
+      "scene": "workflow"
+    },
+    {
+      "text": "set",
+      "start": 56.66,
+      "end": 56.88,
+      "scene": "workflow"
+    },
+    {
+      "text": "before",
+      "start": 56.88,
+      "end": 57.16,
+      "scene": "workflow"
+    },
+    {
+      "text": "the",
+      "start": 57.16,
+      "end": 57.34,
+      "scene": "workflow"
+    },
+    {
+      "text": "bids",
+      "start": 57.34,
+      "end": 57.519999999999996,
+      "scene": "workflow"
+    },
+    {
+      "text": "are",
+      "start": 57.519999999999996,
+      "end": 57.76,
+      "scene": "workflow"
+    },
+    {
+      "text": "assessed.",
+      "start": 57.76,
+      "end": 58.12,
+      "scene": "workflow"
+    },
+    {
+      "text": "In",
+      "start": 59.019999999999996,
+      "end": 59.2,
+      "scene": "workflow"
+    },
+    {
+      "text": "this",
+      "start": 59.2,
+      "end": 59.4,
+      "scene": "workflow"
+    },
+    {
+      "text": "example,",
+      "start": 59.4,
+      "end": 59.84,
+      "scene": "workflow"
+    },
+    {
+      "text": "technical",
+      "start": 60.34,
+      "end": 60.62,
+      "scene": "workflow"
+    },
+    {
+      "text": "capability",
+      "start": 60.62,
+      "end": 61.260000000000005,
+      "scene": "workflow"
+    },
+    {
+      "text": "carries",
+      "start": 61.260000000000005,
+      "end": 61.6,
+      "scene": "workflow"
+    },
+    {
+      "text": "60",
+      "start": 61.6,
+      "end": 61.980000000000004,
+      "scene": "workflow"
+    },
+    {
+      "text": "%",
+      "start": 61.980000000000004,
+      "end": 62.42,
+      "scene": "workflow"
+    },
+    {
+      "text": "and",
+      "start": 62.42,
+      "end": 62.9,
+      "scene": "workflow"
+    },
+    {
+      "text": "delivery",
+      "start": 62.9,
+      "end": 63.22,
+      "scene": "workflow"
+    },
+    {
+      "text": "carries",
+      "start": 63.22,
+      "end": 64.02,
+      "scene": "workflow"
+    },
+    {
+      "text": "40%.",
+      "start": 64.02,
+      "end": 65.8,
+      "scene": "workflow"
+    },
+    {
+      "text": "Officers",
+      "start": 65.8,
+      "end": 66.16,
+      "scene": "workflow"
+    },
+    {
+      "text": "can",
+      "start": 66.16,
+      "end": 66.48,
+      "scene": "workflow"
+    },
+    {
+      "text": "check",
+      "start": 66.48,
+      "end": 66.7,
+      "scene": "workflow"
+    },
+    {
+      "text": "the",
+      "start": 66.7,
+      "end": 66.9,
+      "scene": "workflow"
+    },
+    {
+      "text": "scores",
+      "start": 66.9,
+      "end": 67.2,
+      "scene": "workflow"
+    },
+    {
+      "text": "alongside",
+      "start": 67.2,
+      "end": 67.72,
+      "scene": "workflow"
+    },
+    {
+      "text": "the",
+      "start": 67.72,
+      "end": 67.94,
+      "scene": "workflow"
+    },
+    {
+      "text": "evidence.",
+      "start": 67.94,
+      "end": 68.32,
+      "scene": "workflow"
+    },
+    {
+      "text": "Everything",
+      "start": 69.06,
+      "end": 69.4,
+      "scene": "workflow"
+    },
+    {
+      "text": "stays",
+      "start": 69.4,
+      "end": 69.76,
+      "scene": "workflow"
+    },
+    {
+      "text": "in",
+      "start": 69.76,
+      "end": 70.08,
+      "scene": "workflow"
+    },
+    {
+      "text": "one",
+      "start": 70.08,
+      "end": 70.18,
+      "scene": "workflow"
+    },
+    {
+      "text": "tender",
+      "start": 70.18,
+      "end": 70.46000000000001,
+      "scene": "workflow"
+    },
+    {
+      "text": "file,",
+      "start": 70.46000000000001,
+      "end": 70.78,
+      "scene": "workflow"
+    },
+    {
+      "text": "so",
+      "start": 71.06,
+      "end": 71.42,
+      "scene": "workflow"
+    },
+    {
+      "text": "the",
+      "start": 71.42,
+      "end": 71.53999999999999,
+      "scene": "workflow"
+    },
+    {
+      "text": "next",
+      "start": 71.53999999999999,
+      "end": 71.78,
+      "scene": "workflow"
+    },
+    {
+      "text": "person",
+      "start": 71.78,
+      "end": 72.06,
+      "scene": "workflow"
+    },
+    {
+      "text": "can",
+      "start": 72.06,
+      "end": 72.32,
+      "scene": "workflow"
+    },
+    {
+      "text": "follow",
+      "start": 72.32,
+      "end": 72.62,
+      "scene": "workflow"
+    },
+    {
+      "text": "the",
+      "start": 72.62,
+      "end": 72.76,
+      "scene": "workflow"
+    },
+    {
+      "text": "reasoning",
+      "start": 72.76,
+      "end": 73.1,
+      "scene": "workflow"
+    },
+    {
+      "text": "without",
+      "start": 73.1,
+      "end": 73.52,
+      "scene": "workflow"
+    },
+    {
+      "text": "having",
+      "start": 73.52,
+      "end": 73.82,
+      "scene": "workflow"
+    },
+    {
+      "text": "to",
+      "start": 73.82,
+      "end": 74.03999999999999,
+      "scene": "workflow"
+    },
+    {
+      "text": "piece",
+      "start": 74.03999999999999,
+      "end": 74.24,
+      "scene": "workflow"
+    },
+    {
+      "text": "it",
+      "start": 74.24,
+      "end": 74.46000000000001,
+      "scene": "workflow"
+    },
+    {
+      "text": "together",
+      "start": 74.46000000000001,
+      "end": 74.74,
+      "scene": "workflow"
+    },
+    {
+      "text": "from",
+      "start": 74.74,
+      "end": 75.24,
+      "scene": "workflow"
+    },
+    {
+      "text": "separate",
+      "start": 75.24,
+      "end": 75.53999999999999,
+      "scene": "workflow"
+    },
+    {
+      "text": "spreadsheets",
+      "start": 75.53999999999999,
+      "end": 76.03999999999999,
+      "scene": "workflow"
+    },
+    {
+      "text": "and",
+      "start": 76.03999999999999,
+      "end": 76.26,
+      "scene": "workflow"
+    },
+    {
+      "text": "messages.",
+      "start": 76.26,
+      "end": 76.62,
+      "scene": "workflow"
+    },
+    {
+      "text": "Next,",
+      "start": 77.0,
+      "end": 77.76,
+      "scene": "review"
+    },
+    {
+      "text": "we",
+      "start": 78.2,
+      "end": 78.24,
+      "scene": "review"
+    },
+    {
+      "text": "run",
+      "start": 78.24,
+      "end": 78.48,
+      "scene": "review"
+    },
+    {
+      "text": "the",
+      "start": 78.48,
+      "end": 78.82,
+      "scene": "review"
+    },
+    {
+      "text": "AI",
+      "start": 78.82,
+      "end": 79.14,
+      "scene": "review"
+    },
+    {
+      "text": "assisted",
+      "start": 79.14,
+      "end": 79.52,
+      "scene": "review"
+    },
+    {
+      "text": "bid",
+      "start": 79.52,
+      "end": 79.82,
+      "scene": "review"
+    },
+    {
+      "text": "review.",
+      "start": 79.82,
+      "end": 80.28,
+      "scene": "review"
+    },
+    {
+      "text": "We",
+      "start": 81.46,
+      "end": 81.5,
+      "scene": "review"
+    },
+    {
+      "text": "include",
+      "start": 81.5,
+      "end": 81.8,
+      "scene": "review"
+    },
+    {
+      "text": "every",
+      "start": 81.8,
+      "end": 82.1,
+      "scene": "review"
+    },
+    {
+      "text": "admitted",
+      "start": 82.1,
+      "end": 82.5,
+      "scene": "review"
+    },
+    {
+      "text": "bidder,",
+      "start": 82.5,
+      "end": 82.78,
+      "scene": "review"
+    },
+    {
+      "text": "confirm",
+      "start": 83.78,
+      "end": 84.06,
+      "scene": "review"
+    },
+    {
+      "text": "consent,",
+      "start": 84.06,
+      "end": 84.52,
+      "scene": "review"
+    },
+    {
+      "text": "and",
+      "start": 84.92,
+      "end": 85.03999999999999,
+      "scene": "review"
+    },
+    {
+      "text": "review",
+      "start": 85.03999999999999,
+      "end": 85.34,
+      "scene": "review"
+    },
+    {
+      "text": "their",
+      "start": 85.34,
+      "end": 85.58,
+      "scene": "review"
+    },
+    {
+      "text": "submissions",
+      "start": 85.58,
+      "end": 85.96000000000001,
+      "scene": "review"
+    },
+    {
+      "text": "against",
+      "start": 85.96000000000001,
+      "end": 86.42,
+      "scene": "review"
+    },
+    {
+      "text": "the",
+      "start": 86.42,
+      "end": 86.62,
+      "scene": "review"
+    },
+    {
+      "text": "issued",
+      "start": 86.62,
+      "end": 86.86,
+      "scene": "review"
+    },
+    {
+      "text": "criteria.",
+      "start": 86.86,
+      "end": 87.38,
+      "scene": "review"
+    },
+    {
+      "text": "The",
+      "start": 88.72,
+      "end": 88.98,
+      "scene": "review"
+    },
+    {
+      "text": "review",
+      "start": 88.98,
+      "end": 89.26,
+      "scene": "review"
+    },
+    {
+      "text": "is",
+      "start": 89.26,
+      "end": 89.42,
+      "scene": "review"
+    },
+    {
+      "text": "read",
+      "start": 89.42,
+      "end": 89.68,
+      "scene": "review"
+    },
+    {
+      "text": "only.",
+      "start": 89.68,
+      "end": 90.03999999999999,
+      "scene": "review"
+    },
+    {
+      "text": "Here",
+      "start": 90.94,
+      "end": 91.18,
+      "scene": "review"
+    },
+    {
+      "text": "you",
+      "start": 91.18,
+      "end": 91.32,
+      "scene": "review"
+    },
+    {
+      "text": "can",
+      "start": 91.32,
+      "end": 91.56,
+      "scene": "review"
+    },
+    {
+      "text": "see",
+      "start": 91.56,
+      "end": 91.7,
+      "scene": "review"
+    },
+    {
+      "text": "both",
+      "start": 91.7,
+      "end": 91.94,
+      "scene": "review"
+    },
+    {
+      "text": "bidders",
+      "start": 91.94,
+      "end": 92.26,
+      "scene": "review"
+    },
+    {
+      "text": "compared",
+      "start": 92.26,
+      "end": 92.72,
+      "scene": "review"
+    },
+    {
+      "text": "against",
+      "start": 92.72,
+      "end": 93.14,
+      "scene": "review"
+    },
+    {
+      "text": "the",
+      "start": 93.14,
+      "end": 93.34,
+      "scene": "review"
+    },
+    {
+      "text": "same",
+      "start": 93.34,
+      "end": 93.5,
+      "scene": "review"
+    },
+    {
+      "text": "requirements.",
+      "start": 93.5,
+      "end": 94.03999999999999,
+      "scene": "review"
+    },
+    {
+      "text": "When",
+      "start": 95.3,
+      "end": 95.53999999999999,
+      "scene": "review"
+    },
+    {
+      "text": "the",
+      "start": 95.53999999999999,
+      "end": 95.68,
+      "scene": "review"
+    },
+    {
+      "text": "documents",
+      "start": 95.68,
+      "end": 96.03999999999999,
+      "scene": "review"
+    },
+    {
+      "text": "don't",
+      "start": 96.03999999999999,
+      "end": 96.44,
+      "scene": "review"
+    },
+    {
+      "text": "establish",
+      "start": 96.44,
+      "end": 96.88,
+      "scene": "review"
+    },
+    {
+      "text": "a",
+      "start": 96.88,
+      "end": 97.06,
+      "scene": "review"
+    },
+    {
+      "text": "required",
+      "start": 97.06,
+      "end": 97.5,
+      "scene": "review"
+    },
+    {
+      "text": "reference",
+      "start": 97.5,
+      "end": 97.9,
+      "scene": "review"
+    },
+    {
+      "text": "contract",
+      "start": 97.9,
+      "end": 98.32,
+      "scene": "review"
+    },
+    {
+      "text": "or",
+      "start": 98.32,
+      "end": 98.64,
+      "scene": "review"
+    },
+    {
+      "text": "a",
+      "start": 98.64,
+      "end": 98.84,
+      "scene": "review"
+    },
+    {
+      "text": "committed",
+      "start": 98.84,
+      "end": 99.18,
+      "scene": "review"
+    },
+    {
+      "text": "delivery",
+      "start": 99.18,
+      "end": 99.56,
+      "scene": "review"
+    },
+    {
+      "text": "plan,",
+      "start": 99.56,
+      "end": 100.03999999999999,
+      "scene": "review"
+    },
+    {
+      "text": "the",
+      "start": 100.66,
+      "end": 100.96000000000001,
+      "scene": "review"
+    },
+    {
+      "text": "result",
+      "start": 100.96000000000001,
+      "end": 101.22,
+      "scene": "review"
+    },
+    {
+      "text": "says",
+      "start": 101.22,
+      "end": 101.56,
+      "scene": "review"
+    },
+    {
+      "text": "not",
+      "start": 101.56,
+      "end": 101.9,
+      "scene": "review"
+    },
+    {
+      "text": "evidenced.",
+      "start": 101.9,
+      "end": 102.4,
+      "scene": "review"
+    },
+    {
+      "text": "It",
+      "start": 103.16,
+      "end": 103.72,
+      "scene": "review"
+    },
+    {
+      "text": "doesn't",
+      "start": 103.72,
+      "end": 104.02,
+      "scene": "review"
+    },
+    {
+      "text": "fill",
+      "start": 104.02,
+      "end": 104.26,
+      "scene": "review"
+    },
+    {
+      "text": "in",
+      "start": 104.26,
+      "end": 104.6,
+      "scene": "review"
+    },
+    {
+      "text": "the",
+      "start": 104.6,
+      "end": 104.64,
+      "scene": "review"
+    },
+    {
+      "text": "gap.",
+      "start": 104.64,
+      "end": 104.84,
+      "scene": "review"
+    },
+    {
+      "text": "Instead,",
+      "start": 105.94,
+      "end": 106.24,
+      "scene": "review"
+    },
+    {
+      "text": "it",
+      "start": 106.4,
+      "end": 106.4,
+      "scene": "review"
+    },
+    {
+      "text": "gives",
+      "start": 106.4,
+      "end": 106.56,
+      "scene": "review"
+    },
+    {
+      "text": "the",
+      "start": 106.56,
+      "end": 106.82,
+      "scene": "review"
+    },
+    {
+      "text": "committee",
+      "start": 106.82,
+      "end": 107.12,
+      "scene": "review"
+    },
+    {
+      "text": "specific",
+      "start": 107.12,
+      "end": 107.58,
+      "scene": "review"
+    },
+    {
+      "text": "questions",
+      "start": 107.58,
+      "end": 108.02,
+      "scene": "review"
+    },
+    {
+      "text": "to",
+      "start": 108.02,
+      "end": 108.4,
+      "scene": "review"
+    },
+    {
+      "text": "follow",
+      "start": 108.4,
+      "end": 108.62,
+      "scene": "review"
+    },
+    {
+      "text": "up.",
+      "start": 108.62,
+      "end": 109.3,
+      "scene": "review"
+    },
+    {
+      "text": "Can",
+      "start": 110.06,
+      "end": 110.14,
+      "scene": "review"
+    },
+    {
+      "text": "we",
+      "start": 110.14,
+      "end": 110.36,
+      "scene": "review"
+    },
+    {
+      "text": "verify",
+      "start": 110.36,
+      "end": 110.74000000000001,
+      "scene": "review"
+    },
+    {
+      "text": "these",
+      "start": 110.74000000000001,
+      "end": 110.97999999999999,
+      "scene": "review"
+    },
+    {
+      "text": "references?",
+      "start": 110.97999999999999,
+      "end": 111.44,
+      "scene": "review"
+    },
+    {
+      "text": "Are",
+      "start": 112.2,
+      "end": 112.4,
+      "scene": "review"
+    },
+    {
+      "text": "the",
+      "start": 112.4,
+      "end": 112.56,
+      "scene": "review"
+    },
+    {
+      "text": "delivery",
+      "start": 112.56,
+      "end": 112.92,
+      "scene": "review"
+    },
+    {
+      "text": "milestones",
+      "start": 112.92,
+      "end": 113.38,
+      "scene": "review"
+    },
+    {
+      "text": "clear?",
+      "start": 113.38,
+      "end": 113.78,
+      "scene": "review"
+    },
+    {
+      "text": "Does",
+      "start": 114.92,
+      "end": 115.1,
+      "scene": "review"
+    },
+    {
+      "text": "the",
+      "start": 115.1,
+      "end": 115.3,
+      "scene": "review"
+    },
+    {
+      "text": "price",
+      "start": 115.3,
+      "end": 115.58,
+      "scene": "review"
+    },
+    {
+      "text": "build",
+      "start": 115.58,
+      "end": 115.92,
+      "scene": "review"
+    },
+    {
+      "text": "up",
+      "start": 115.92,
+      "end": 116.22,
+      "scene": "review"
+    },
+    {
+      "text": "support",
+      "start": 116.22,
+      "end": 116.68,
+      "scene": "review"
+    },
+    {
+      "text": "the",
+      "start": 116.68,
+      "end": 116.86,
+      "scene": "review"
+    },
+    {
+      "text": "proposal?",
+      "start": 116.86,
+      "end": 117.24000000000001,
+      "scene": "review"
+    },
+    {
+      "text": "That",
+      "start": 118.28,
+      "end": 118.56,
+      "scene": "review"
+    },
+    {
+      "text": "is",
+      "start": 118.56,
+      "end": 118.66,
+      "scene": "review"
+    },
+    {
+      "text": "where",
+      "start": 118.66,
+      "end": 118.9,
+      "scene": "review"
+    },
+    {
+      "text": "the",
+      "start": 118.9,
+      "end": 119.16,
+      "scene": "review"
+    },
+    {
+      "text": "AI",
+      "start": 119.16,
+      "end": 119.4,
+      "scene": "review"
+    },
+    {
+      "text": "helps.",
+      "start": 119.4,
+      "end": 119.78,
+      "scene": "review"
+    },
+    {
+      "text": "It",
+      "start": 120.88,
+      "end": 121.12,
+      "scene": "review"
+    },
+    {
+      "text": "prepares",
+      "start": 121.12,
+      "end": 121.58,
+      "scene": "review"
+    },
+    {
+      "text": "a",
+      "start": 121.58,
+      "end": 121.72,
+      "scene": "review"
+    },
+    {
+      "text": "clearer",
+      "start": 121.72,
+      "end": 122.08,
+      "scene": "review"
+    },
+    {
+      "text": "review",
+      "start": 122.08,
+      "end": 122.44,
+      "scene": "review"
+    },
+    {
+      "text": "so",
+      "start": 122.44,
+      "end": 122.62,
+      "scene": "review"
+    },
+    {
+      "text": "people",
+      "start": 122.62,
+      "end": 122.88,
+      "scene": "review"
+    },
+    {
+      "text": "can",
+      "start": 122.88,
+      "end": 123.1,
+      "scene": "review"
+    },
+    {
+      "text": "spend",
+      "start": 123.1,
+      "end": 123.3,
+      "scene": "review"
+    },
+    {
+      "text": "their",
+      "start": 123.3,
+      "end": 123.56,
+      "scene": "review"
+    },
+    {
+      "text": "time",
+      "start": 123.56,
+      "end": 123.78,
+      "scene": "review"
+    },
+    {
+      "text": "checking",
+      "start": 123.78,
+      "end": 124.03999999999999,
+      "scene": "review"
+    },
+    {
+      "text": "what",
+      "start": 124.03999999999999,
+      "end": 124.34,
+      "scene": "review"
+    },
+    {
+      "text": "matters.",
+      "start": 124.34,
+      "end": 124.62,
+      "scene": "review"
+    },
+    {
+      "text": "The",
+      "start": 125.0,
+      "end": 126.1,
+      "scene": "recommendation"
+    },
+    {
+      "text": "AI",
+      "start": 126.1,
+      "end": 126.66,
+      "scene": "recommendation"
+    },
+    {
+      "text": "presents",
+      "start": 126.66,
+      "end": 128.46,
+      "scene": "recommendation"
+    },
+    {
+      "text": "the",
+      "start": 128.46,
+      "end": 128.78,
+      "scene": "recommendation"
+    },
+    {
+      "text": "strongest",
+      "start": 128.78,
+      "end": 129.12,
+      "scene": "recommendation"
+    },
+    {
+      "text": "documented",
+      "start": 129.12,
+      "end": 129.66,
+      "scene": "recommendation"
+    },
+    {
+      "text": "fit",
+      "start": 129.66,
+      "end": 130.12,
+      "scene": "recommendation"
+    },
+    {
+      "text": "for",
+      "start": 130.12,
+      "end": 130.96,
+      "scene": "recommendation"
+    },
+    {
+      "text": "the",
+      "start": 130.96,
+      "end": 131.28,
+      "scene": "recommendation"
+    },
+    {
+      "text": "committee",
+      "start": 131.28,
+      "end": 131.48,
+      "scene": "recommendation"
+    },
+    {
+      "text": "consideration.",
+      "start": 131.48,
+      "end": 131.86,
+      "scene": "recommendation"
+    },
+    {
+      "text": "It",
+      "start": 133.66,
+      "end": 133.92,
+      "scene": "recommendation"
+    },
+    {
+      "text": "then",
+      "start": 133.92,
+      "end": 134.08,
+      "scene": "recommendation"
+    },
+    {
+      "text": "evaluates",
+      "start": 134.08,
+      "end": 134.5,
+      "scene": "recommendation"
+    },
+    {
+      "text": "both",
+      "start": 134.5,
+      "end": 135.14,
+      "scene": "recommendation"
+    },
+    {
+      "text": "sides.",
+      "start": 135.14,
+      "end": 135.62,
+      "scene": "recommendation"
+    },
+    {
+      "text": "It",
+      "start": 136.48,
+      "end": 136.48,
+      "scene": "recommendation"
+    },
+    {
+      "text": "then",
+      "start": 136.48,
+      "end": 136.66,
+      "scene": "recommendation"
+    },
+    {
+      "text": "submits",
+      "start": 136.66,
+      "end": 136.84,
+      "scene": "recommendation"
+    },
+    {
+      "text": "information",
+      "start": 136.84,
+      "end": 137.28,
+      "scene": "recommendation"
+    },
+    {
+      "text": "to",
+      "start": 137.28,
+      "end": 137.58,
+      "scene": "recommendation"
+    },
+    {
+      "text": "the",
+      "start": 137.58,
+      "end": 137.84,
+      "scene": "recommendation"
+    },
+    {
+      "text": "committee.",
+      "start": 137.84,
+      "end": 138.18,
+      "scene": "recommendation"
+    },
+    {
+      "text": "Based",
+      "start": 139.18,
+      "end": 139.48,
+      "scene": "recommendation"
+    },
+    {
+      "text": "off",
+      "start": 139.48,
+      "end": 139.74,
+      "scene": "recommendation"
+    },
+    {
+      "text": "of",
+      "start": 139.74,
+      "end": 139.76,
+      "scene": "recommendation"
+    },
+    {
+      "text": "information",
+      "start": 139.76,
+      "end": 140.06,
+      "scene": "recommendation"
+    },
+    {
+      "text": "that",
+      "start": 140.06,
+      "end": 140.66,
+      "scene": "recommendation"
+    },
+    {
+      "text": "it",
+      "start": 140.66,
+      "end": 140.82,
+      "scene": "recommendation"
+    },
+    {
+      "text": "will",
+      "start": 140.82,
+      "end": 141.34,
+      "scene": "recommendation"
+    },
+    {
+      "text": "give",
+      "start": 141.34,
+      "end": 141.68,
+      "scene": "recommendation"
+    },
+    {
+      "text": "you",
+      "start": 141.68,
+      "end": 141.98,
+      "scene": "recommendation"
+    },
+    {
+      "text": "as",
+      "start": 141.98,
+      "end": 142.06,
+      "scene": "recommendation"
+    },
+    {
+      "text": "a",
+      "start": 142.06,
+      "end": 142.18,
+      "scene": "recommendation"
+    },
+    {
+      "text": "committee,",
+      "start": 142.18,
+      "end": 142.52,
+      "scene": "recommendation"
+    },
+    {
+      "text": "you",
+      "start": 142.7,
+      "end": 142.74,
+      "scene": "recommendation"
+    },
+    {
+      "text": "then",
+      "start": 142.74,
+      "end": 142.92000000000002,
+      "scene": "recommendation"
+    },
+    {
+      "text": "proceed",
+      "start": 142.92000000000002,
+      "end": 143.18,
+      "scene": "recommendation"
+    },
+    {
+      "text": "to",
+      "start": 143.18,
+      "end": 143.4,
+      "scene": "recommendation"
+    },
+    {
+      "text": "then",
+      "start": 143.4,
+      "end": 143.72,
+      "scene": "recommendation"
+    },
+    {
+      "text": "select.",
+      "start": 143.72,
+      "end": 144.18,
+      "scene": "recommendation"
+    },
+    {
+      "text": "So",
+      "start": 145.55,
+      "end": 145.88,
+      "scene": "recommendation"
+    },
+    {
+      "text": "as",
+      "start": 145.88,
+      "end": 146.16,
+      "scene": "recommendation"
+    },
+    {
+      "text": "a",
+      "start": 146.16,
+      "end": 146.3,
+      "scene": "recommendation"
+    },
+    {
+      "text": "committee,",
+      "start": 146.3,
+      "end": 146.66,
+      "scene": "recommendation"
+    },
+    {
+      "text": "you",
+      "start": 146.74,
+      "end": 146.9,
+      "scene": "recommendation"
+    },
+    {
+      "text": "have",
+      "start": 146.9,
+      "end": 147.16,
+      "scene": "recommendation"
+    },
+    {
+      "text": "the",
+      "start": 147.16,
+      "end": 147.32,
+      "scene": "recommendation"
+    },
+    {
+      "text": "ability",
+      "start": 147.32,
+      "end": 147.72,
+      "scene": "recommendation"
+    },
+    {
+      "text": "to",
+      "start": 147.72,
+      "end": 149.28,
+      "scene": "recommendation"
+    },
+    {
+      "text": "set",
+      "start": 149.28,
+      "end": 150.38,
+      "scene": "recommendation"
+    },
+    {
+      "text": "up",
+      "start": 150.38,
+      "end": 150.74,
+      "scene": "recommendation"
+    },
+    {
+      "text": "what",
+      "start": 150.74,
+      "end": 151.02,
+      "scene": "recommendation"
+    },
+    {
+      "text": "we",
+      "start": 151.02,
+      "end": 151.22,
+      "scene": "recommendation"
+    },
+    {
+      "text": "call",
+      "start": 151.22,
+      "end": 151.74,
+      "scene": "recommendation"
+    },
+    {
+      "text": "the",
+      "start": 151.74,
+      "end": 152.64,
+      "scene": "recommendation"
+    },
+    {
+      "text": "full",
+      "start": 152.64,
+      "end": 153.14,
+      "scene": "recommendation"
+    },
+    {
+      "text": "committee",
+      "start": 153.14,
+      "end": 153.5,
+      "scene": "recommendation"
+    },
+    {
+      "text": "that",
+      "start": 154.12,
+      "end": 154.68,
+      "scene": "recommendation"
+    },
+    {
+      "text": "has",
+      "start": 154.68,
+      "end": 154.9,
+      "scene": "recommendation"
+    },
+    {
+      "text": "to",
+      "start": 154.9,
+      "end": 155.14,
+      "scene": "recommendation"
+    },
+    {
+      "text": "make",
+      "start": 155.14,
+      "end": 155.54,
+      "scene": "recommendation"
+    },
+    {
+      "text": "up",
+      "start": 155.54,
+      "end": 155.76,
+      "scene": "recommendation"
+    },
+    {
+      "text": "their",
+      "start": 155.76,
+      "end": 155.94,
+      "scene": "recommendation"
+    },
+    {
+      "text": "own",
+      "start": 155.94,
+      "end": 156.2,
+      "scene": "recommendation"
+    },
+    {
+      "text": "decision.",
+      "start": 156.2,
+      "end": 156.74,
+      "scene": "recommendation"
+    },
+    {
+      "text": "This",
+      "start": 157.84,
+      "end": 158.18,
+      "scene": "recommendation"
+    },
+    {
+      "text": "is",
+      "start": 158.18,
+      "end": 158.3,
+      "scene": "recommendation"
+    },
+    {
+      "text": "a",
+      "start": 158.3,
+      "end": 158.44,
+      "scene": "recommendation"
+    },
+    {
+      "text": "panel",
+      "start": 158.44,
+      "end": 158.62,
+      "scene": "recommendation"
+    },
+    {
+      "text": "of",
+      "start": 158.62,
+      "end": 158.9,
+      "scene": "recommendation"
+    },
+    {
+      "text": "the",
+      "start": 158.9,
+      "end": 159.04,
+      "scene": "recommendation"
+    },
+    {
+      "text": "committee.",
+      "start": 159.04,
+      "end": 159.36,
+      "scene": "recommendation"
+    },
+    {
+      "text": "We",
+      "start": 160.1,
+      "end": 160.28,
+      "scene": "recommendation"
+    },
+    {
+      "text": "can",
+      "start": 160.28,
+      "end": 160.46,
+      "scene": "recommendation"
+    },
+    {
+      "text": "add",
+      "start": 160.46,
+      "end": 160.76,
+      "scene": "recommendation"
+    },
+    {
+      "text": "any",
+      "start": 160.76,
+      "end": 160.96,
+      "scene": "recommendation"
+    },
+    {
+      "text": "other",
+      "start": 160.96,
+      "end": 161.2,
+      "scene": "recommendation"
+    },
+    {
+      "text": "person",
+      "start": 161.2,
+      "end": 161.48,
+      "scene": "recommendation"
+    },
+    {
+      "text": "to",
+      "start": 161.48,
+      "end": 162.46,
+      "scene": "recommendation"
+    },
+    {
+      "text": "the",
+      "start": 162.46,
+      "end": 162.98,
+      "scene": "recommendation"
+    },
+    {
+      "text": "committee",
+      "start": 162.98,
+      "end": 163.36,
+      "scene": "recommendation"
+    },
+    {
+      "text": "to",
+      "start": 163.36,
+      "end": 164.07999999999998,
+      "scene": "recommendation"
+    },
+    {
+      "text": "constitute",
+      "start": 164.07999999999998,
+      "end": 164.4,
+      "scene": "recommendation"
+    },
+    {
+      "text": "the",
+      "start": 164.4,
+      "end": 164.82,
+      "scene": "recommendation"
+    },
+    {
+      "text": "quorum,",
+      "start": 164.82,
+      "end": 165.24,
+      "scene": "recommendation"
+    },
+    {
+      "text": "who",
+      "start": 165.84,
+      "end": 165.94,
+      "scene": "recommendation"
+    },
+    {
+      "text": "then",
+      "start": 165.94,
+      "end": 166.12,
+      "scene": "recommendation"
+    },
+    {
+      "text": "makes",
+      "start": 166.12,
+      "end": 166.4,
+      "scene": "recommendation"
+    },
+    {
+      "text": "the",
+      "start": 166.4,
+      "end": 167.57999999999998,
+      "scene": "recommendation"
+    },
+    {
+      "text": "final",
+      "start": 167.57999999999998,
+      "end": 167.72,
+      "scene": "recommendation"
+    },
+    {
+      "text": "decision",
+      "start": 167.72,
+      "end": 168.22,
+      "scene": "recommendation"
+    },
+    {
+      "text": "in",
+      "start": 168.22,
+      "end": 168.5,
+      "scene": "recommendation"
+    },
+    {
+      "text": "terms",
+      "start": 168.5,
+      "end": 168.66,
+      "scene": "recommendation"
+    },
+    {
+      "text": "of",
+      "start": 168.66,
+      "end": 168.84,
+      "scene": "recommendation"
+    },
+    {
+      "text": "who",
+      "start": 168.84,
+      "end": 169.14,
+      "scene": "recommendation"
+    },
+    {
+      "text": "to",
+      "start": 169.14,
+      "end": 169.42000000000002,
+      "scene": "recommendation"
+    },
+    {
+      "text": "award",
+      "start": 169.42000000000002,
+      "end": 169.54,
+      "scene": "recommendation"
+    },
+    {
+      "text": "a",
+      "start": 169.54,
+      "end": 169.94,
+      "scene": "recommendation"
+    },
+    {
+      "text": "particular",
+      "start": 169.94,
+      "end": 170.16,
+      "scene": "recommendation"
+    },
+    {
+      "text": "contract.",
+      "start": 170.16,
+      "end": 170.5,
+      "scene": "recommendation"
+    },
+    {
+      "text": "Each",
+      "start": 171.5,
+      "end": 171.68,
+      "scene": "recommendation"
+    },
+    {
+      "text": "person",
+      "start": 171.68,
+      "end": 172.02,
+      "scene": "recommendation"
+    },
+    {
+      "text": "has",
+      "start": 172.02,
+      "end": 172.26,
+      "scene": "recommendation"
+    },
+    {
+      "text": "to",
+      "start": 172.26,
+      "end": 172.48,
+      "scene": "recommendation"
+    },
+    {
+      "text": "have",
+      "start": 172.48,
+      "end": 173.06,
+      "scene": "recommendation"
+    },
+    {
+      "text": "the",
+      "start": 173.06,
+      "end": 173.72,
+      "scene": "recommendation"
+    },
+    {
+      "text": "verdict",
+      "start": 173.72,
+      "end": 173.92000000000002,
+      "scene": "recommendation"
+    },
+    {
+      "text": "signed.",
+      "start": 173.92000000000002,
+      "end": 174.18,
+      "scene": "recommendation"
+    },
+    {
+      "text": "The",
+      "start": 175.0,
+      "end": 175.94,
+      "scene": "control"
+    },
+    {
+      "text": "evaluation",
+      "start": 175.94,
+      "end": 176.32,
+      "scene": "control"
+    },
+    {
+      "text": "record",
+      "start": 176.32,
+      "end": 176.68,
+      "scene": "control"
+    },
+    {
+      "text": "stays",
+      "start": 176.68,
+      "end": 177.04000000000002,
+      "scene": "control"
+    },
+    {
+      "text": "visible",
+      "start": 177.04000000000002,
+      "end": 177.48000000000002,
+      "scene": "control"
+    },
+    {
+      "text": "too.",
+      "start": 177.48000000000002,
+      "end": 177.9,
+      "scene": "control"
+    },
+    {
+      "text": "Officers",
+      "start": 178.08,
+      "end": 178.54,
+      "scene": "control"
+    },
+    {
+      "text": "can",
+      "start": 178.54,
+      "end": 178.86,
+      "scene": "control"
+    },
+    {
+      "text": "inspect",
+      "start": 178.86,
+      "end": 179.32,
+      "scene": "control"
+    },
+    {
+      "text": "the",
+      "start": 179.32,
+      "end": 179.6,
+      "scene": "control"
+    },
+    {
+      "text": "evaluator",
+      "start": 179.6,
+      "end": 180.06,
+      "scene": "control"
+    },
+    {
+      "text": "sheets,",
+      "start": 180.06,
+      "end": 180.52,
+      "scene": "control"
+    },
+    {
+      "text": "differences",
+      "start": 181.2,
+      "end": 181.5,
+      "scene": "control"
+    },
+    {
+      "text": "in",
+      "start": 181.5,
+      "end": 181.84,
+      "scene": "control"
+    },
+    {
+      "text": "scores,",
+      "start": 181.84,
+      "end": 182.14,
+      "scene": "control"
+    },
+    {
+      "text": "and",
+      "start": 183.06,
+      "end": 183.18,
+      "scene": "control"
+    },
+    {
+      "text": "the",
+      "start": 183.18,
+      "end": 183.3,
+      "scene": "control"
+    },
+    {
+      "text": "recorded",
+      "start": 183.3,
+      "end": 183.72,
+      "scene": "control"
+    },
+    {
+      "text": "consensus.",
+      "start": 183.72,
+      "end": 184.22,
+      "scene": "control"
+    },
+    {
+      "text": "The",
+      "start": 185.0,
+      "end": 185.1,
+      "scene": "control"
+    },
+    {
+      "text": "AI",
+      "start": 185.1,
+      "end": 185.42,
+      "scene": "control"
+    },
+    {
+      "text": "doesn't",
+      "start": 185.42,
+      "end": 185.92,
+      "scene": "control"
+    },
+    {
+      "text": "write",
+      "start": 185.92,
+      "end": 186.32,
+      "scene": "control"
+    },
+    {
+      "text": "those",
+      "start": 186.32,
+      "end": 186.62,
+      "scene": "control"
+    },
+    {
+      "text": "scores",
+      "start": 186.62,
+      "end": 186.86,
+      "scene": "control"
+    },
+    {
+      "text": "or",
+      "start": 186.86,
+      "end": 187.22,
+      "scene": "control"
+    },
+    {
+      "text": "award",
+      "start": 187.22,
+      "end": 187.48,
+      "scene": "control"
+    },
+    {
+      "text": "the",
+      "start": 187.48,
+      "end": 187.64,
+      "scene": "control"
+    },
+    {
+      "text": "tender.",
+      "start": 187.64,
+      "end": 187.9,
+      "scene": "control"
+    },
+    {
+      "text": "The",
+      "start": 188.7,
+      "end": 189.12,
+      "scene": "control"
+    },
+    {
+      "text": "committee",
+      "start": 189.12,
+      "end": 189.3,
+      "scene": "control"
+    },
+    {
+      "text": "records",
+      "start": 189.3,
+      "end": 189.78,
+      "scene": "control"
+    },
+    {
+      "text": "its",
+      "start": 189.78,
+      "end": 190.04,
+      "scene": "control"
+    },
+    {
+      "text": "assessment",
+      "start": 190.04,
+      "end": 190.44,
+      "scene": "control"
+    },
+    {
+      "text": "and",
+      "start": 190.44,
+      "end": 190.92,
+      "scene": "control"
+    },
+    {
+      "text": "authorised",
+      "start": 190.92,
+      "end": 191.28,
+      "scene": "control"
+    },
+    {
+      "text": "people",
+      "start": 191.28,
+      "end": 191.57999999999998,
+      "scene": "control"
+    },
+    {
+      "text": "make",
+      "start": 191.57999999999998,
+      "end": 191.86,
+      "scene": "control"
+    },
+    {
+      "text": "the",
+      "start": 191.86,
+      "end": 192.06,
+      "scene": "control"
+    },
+    {
+      "text": "decision.",
+      "start": 192.06,
+      "end": 192.42000000000002,
+      "scene": "control"
+    },
+    {
+      "text": "Award,",
+      "start": 193.57999999999998,
+      "end": 193.57999999999998,
+      "scene": "control"
+    },
+    {
+      "text": "contract",
+      "start": 193.76,
+      "end": 194.02,
+      "scene": "control"
+    },
+    {
+      "text": "and",
+      "start": 194.02,
+      "end": 194.3,
+      "scene": "control"
+    },
+    {
+      "text": "complaint",
+      "start": 194.3,
+      "end": 194.68,
+      "scene": "control"
+    },
+    {
+      "text": "records",
+      "start": 194.68,
+      "end": 195.12,
+      "scene": "control"
+    },
+    {
+      "text": "remain",
+      "start": 195.12,
+      "end": 195.42000000000002,
+      "scene": "control"
+    },
+    {
+      "text": "connected",
+      "start": 195.42000000000002,
+      "end": 195.78,
+      "scene": "control"
+    },
+    {
+      "text": "to",
+      "start": 195.78,
+      "end": 196.04,
+      "scene": "control"
+    },
+    {
+      "text": "the",
+      "start": 196.04,
+      "end": 196.16,
+      "scene": "control"
+    },
+    {
+      "text": "same",
+      "start": 196.16,
+      "end": 196.34,
+      "scene": "control"
+    },
+    {
+      "text": "file.",
+      "start": 196.34,
+      "end": 196.68,
+      "scene": "control"
+    },
+    {
+      "text": "So",
+      "start": 197.5,
+      "end": 197.82,
+      "scene": "control"
+    },
+    {
+      "text": "the",
+      "start": 197.82,
+      "end": 197.92000000000002,
+      "scene": "control"
+    },
+    {
+      "text": "team",
+      "start": 197.92000000000002,
+      "end": 198.1,
+      "scene": "control"
+    },
+    {
+      "text": "can",
+      "start": 198.1,
+      "end": 198.28,
+      "scene": "control"
+    },
+    {
+      "text": "explain",
+      "start": 198.28,
+      "end": 198.74,
+      "scene": "control"
+    },
+    {
+      "text": "both",
+      "start": 198.74,
+      "end": 199.04,
+      "scene": "control"
+    },
+    {
+      "text": "what",
+      "start": 199.04,
+      "end": 199.32,
+      "scene": "control"
+    },
+    {
+      "text": "it",
+      "start": 199.32,
+      "end": 199.46,
+      "scene": "control"
+    },
+    {
+      "text": "decided",
+      "start": 199.46,
+      "end": 199.8,
+      "scene": "control"
+    },
+    {
+      "text": "and",
+      "start": 199.8,
+      "end": 200.1,
+      "scene": "control"
+    },
+    {
+      "text": "the",
+      "start": 200.1,
+      "end": 200.26,
+      "scene": "control"
+    },
+    {
+      "text": "evidence",
+      "start": 200.26,
+      "end": 200.6,
+      "scene": "control"
+    },
+    {
+      "text": "behind",
+      "start": 200.6,
+      "end": 200.98,
+      "scene": "control"
+    },
+    {
+      "text": "that",
+      "start": 200.98,
+      "end": 201.26,
+      "scene": "control"
+    },
+    {
+      "text": "decision.",
+      "start": 201.26,
+      "end": 201.62,
+      "scene": "control"
+    },
+    {
+      "text": "We've",
+      "start": 202.0,
+      "end": 203.42,
+      "scene": "mcp"
+    },
+    {
+      "text": "also",
+      "start": 203.42,
+      "end": 203.64,
+      "scene": "mcp"
+    },
+    {
+      "text": "published",
+      "start": 203.64,
+      "end": 204.14,
+      "scene": "mcp"
+    },
+    {
+      "text": "Quorum's",
+      "start": 204.14,
+      "end": 204.66,
+      "scene": "mcp"
+    },
+    {
+      "text": "MCP",
+      "start": 204.66,
+      "end": 205.38,
+      "scene": "mcp"
+    },
+    {
+      "text": "integration.",
+      "start": 205.38,
+      "end": 206.02,
+      "scene": "mcp"
+    },
+    {
+      "text": "It",
+      "start": 207.28,
+      "end": 207.4,
+      "scene": "mcp"
+    },
+    {
+      "text": "lets",
+      "start": 207.4,
+      "end": 207.66,
+      "scene": "mcp"
+    },
+    {
+      "text": "compatible",
+      "start": 207.66,
+      "end": 208.28,
+      "scene": "mcp"
+    },
+    {
+      "text": "AI",
+      "start": 208.28,
+      "end": 208.96,
+      "scene": "mcp"
+    },
+    {
+      "text": "clients",
+      "start": 208.96,
+      "end": 209.42,
+      "scene": "mcp"
+    },
+    {
+      "text": "connect",
+      "start": 209.42,
+      "end": 209.8,
+      "scene": "mcp"
+    },
+    {
+      "text": "to",
+      "start": 209.8,
+      "end": 210.22,
+      "scene": "mcp"
+    },
+    {
+      "text": "our",
+      "start": 210.22,
+      "end": 210.5,
+      "scene": "mcp"
+    },
+    {
+      "text": "read",
+      "start": 210.5,
+      "end": 210.76,
+      "scene": "mcp"
+    },
+    {
+      "text": "-only",
+      "start": 210.76,
+      "end": 210.96,
+      "scene": "mcp"
+    },
+    {
+      "text": "tools,",
+      "start": 210.96,
+      "end": 211.4,
+      "scene": "mcp"
+    },
+    {
+      "text": "bringing",
+      "start": 211.56,
+      "end": 211.76,
+      "scene": "mcp"
+    },
+    {
+      "text": "this",
+      "start": 211.76,
+      "end": 212.08,
+      "scene": "mcp"
+    },
+    {
+      "text": "evidence",
+      "start": 212.08,
+      "end": 212.4,
+      "scene": "mcp"
+    },
+    {
+      "text": "into",
+      "start": 212.4,
+      "end": 212.8,
+      "scene": "mcp"
+    },
+    {
+      "text": "the",
+      "start": 212.8,
+      "end": 212.98,
+      "scene": "mcp"
+    },
+    {
+      "text": "tools",
+      "start": 212.98,
+      "end": 213.22,
+      "scene": "mcp"
+    },
+    {
+      "text": "teams",
+      "start": 213.22,
+      "end": 213.58,
+      "scene": "mcp"
+    },
+    {
+      "text": "already",
+      "start": 213.58,
+      "end": 214.12,
+      "scene": "mcp"
+    },
+    {
+      "text": "use.",
+      "start": 214.12,
+      "end": 214.58,
+      "scene": "mcp"
+    },
+    {
+      "text": "The",
+      "start": 215.78,
+      "end": 216.08,
+      "scene": "mcp"
+    },
+    {
+      "text": "boundaries",
+      "start": 216.08,
+      "end": 216.48,
+      "scene": "mcp"
+    },
+    {
+      "text": "stay",
+      "start": 216.48,
+      "end": 216.94,
+      "scene": "mcp"
+    },
+    {
+      "text": "the",
+      "start": 216.94,
+      "end": 217.44,
+      "scene": "mcp"
+    },
+    {
+      "text": "same.",
+      "start": 217.44,
+      "end": 217.44,
+      "scene": "mcp"
+    },
+    {
+      "text": "The",
+      "start": 218.44,
+      "end": 218.64,
+      "scene": "mcp"
+    },
+    {
+      "text": "AI",
+      "start": 218.64,
+      "end": 218.9,
+      "scene": "mcp"
+    },
+    {
+      "text": "helps",
+      "start": 218.9,
+      "end": 219.22,
+      "scene": "mcp"
+    },
+    {
+      "text": "prepare",
+      "start": 219.22,
+      "end": 219.62,
+      "scene": "mcp"
+    },
+    {
+      "text": "the",
+      "start": 219.62,
+      "end": 219.8,
+      "scene": "mcp"
+    },
+    {
+      "text": "work",
+      "start": 219.8,
+      "end": 220.04,
+      "scene": "mcp"
+    },
+    {
+      "text": "and",
+      "start": 220.04,
+      "end": 220.74,
+      "scene": "mcp"
+    },
+    {
+      "text": "authorized",
+      "start": 220.74,
+      "end": 221.24,
+      "scene": "mcp"
+    },
+    {
+      "text": "people",
+      "start": 221.24,
+      "end": 221.7,
+      "scene": "mcp"
+    },
+    {
+      "text": "keep",
+      "start": 221.7,
+      "end": 221.96,
+      "scene": "mcp"
+    },
+    {
+      "text": "control.",
+      "start": 221.96,
+      "end": 222.38,
+      "scene": "mcp"
+    },
+    {
+      "text": "That's",
+      "start": 223.8,
+      "end": 224.22,
+      "scene": "mcp"
+    },
+    {
+      "text": "Quorum.",
+      "start": 224.22,
+      "end": 224.4,
+      "scene": "mcp"
+    },
+    {
+      "text": "The",
+      "start": 224.4,
+      "end": 224.84,
+      "scene": "mcp"
+    },
+    {
+      "text": "agent",
+      "start": 224.84,
+      "end": 225.14,
+      "scene": "mcp"
+    },
+    {
+      "text": "prepares",
+      "start": 225.14,
+      "end": 225.5,
+      "scene": "mcp"
+    },
+    {
+      "text": "the",
+      "start": 225.5,
+      "end": 225.86,
+      "scene": "mcp"
+    },
+    {
+      "text": "file.",
+      "start": 225.86,
+      "end": 226.02,
+      "scene": "mcp"
+    },
+    {
+      "text": "The",
+      "start": 227.14,
+      "end": 227.48,
+      "scene": "mcp"
+    },
+    {
+      "text": "committee",
+      "start": 227.48,
+      "end": 227.78,
+      "scene": "mcp"
+    },
+    {
+      "text": "awards",
+      "start": 227.78,
+      "end": 228.32,
+      "scene": "mcp"
+    },
+    {
+      "text": "the",
+      "start": 228.32,
+      "end": 228.6,
+      "scene": "mcp"
+    },
+    {
+      "text": "tender.",
+      "start": 228.6,
+      "end": 228.92000000000002,
+      "scene": "mcp"
+    }
+  ],
+  "captions": 64,
+  "new_captions": 12,
+  "duration": 230,
+  "delivery_resolution": [
+    3840,
+    2160
+  ]
+}
