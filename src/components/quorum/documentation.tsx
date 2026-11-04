@@ -2,7 +2,22 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { BookOpen, CircleAlert, Gavel, Maximize2, Search, X } from "lucide-react";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  BookOpen,
+  Building2,
+  CircleAlert,
+  ClipboardCheck,
+  Code2,
+  Gavel,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  X,
+  Maximize2,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { HorizontalScrollRegion } from "@/components/quorum/horizontal-scroll-region";
 import { cn } from "@/lib/utils";
 import { preferredScrollBehavior, trapTabFocus } from "@/lib/a11y";
@@ -22,6 +37,7 @@ type DocFigure = { src: string; alt: string; caption: string; screen: string };
 
 type DocBlock =
   | { kind: "p"; text: string }
+  | { kind: "resource"; href: string; label: string; title: string; text: string }
   | { kind: "steps"; title?: string; items: string[] }
   | { kind: "table"; title?: string; head: string[]; rows: string[][] }
   | { kind: "terms"; title?: string; items: { term: string; def: string }[] }
@@ -344,6 +360,59 @@ const DOC_CHAPTERS: DocChapter[] = [
     ],
   },
   {
+    id: "model-evidence",
+    kicker: "AI and evidence",
+    title: "AI assistance, citations & human control",
+    lead: "Quorum combines explicit checks with optional model assistance. Reviewers verify sources, record the outcome and retain responsibility for every decision.",
+    blocks: [
+      {
+        kind: "p",
+        text: "A model can help plan a comparison, surface a passage or draft a redline when the configured service responds. It does not set official weighted scores or select an award. The report for each run identifies which path answered, including the returned model name, latency and token use when available.",
+      },
+      {
+        kind: "table",
+        title: "How to read an AI-assisted result",
+        head: ["LAYER", "WHAT IT DOES", "WHAT YOU STILL VERIFY"],
+        rows: [
+          ["Rule checks", "Apply recorded checks for requirements such as missing documents, budget limits and specified thresholds.", "Confirm the rule matches the tender and the extracted values are correct."],
+          ["Muse Spark 1.3, when configured", "Can assist with planning, bidder comparison and drafting a committee redline.", "Check the run report, source documents and the exact claim before using the draft."],
+          ["Fallback path", "A configured in-region model may answer when the hosted service is unavailable; a deterministic template may be used if model calls fail.", "Read the report's model source. A template is not a model analysis."],
+          ["Quote matching", "Can confirm that quoted text appears in the selected source document.", "A text match does not prove the passage supports the conclusion or legal interpretation."],
+          ["Human review", "An officer verifies findings; an authorised committee member records the decision.", "Check authority, applicable rules and the full procurement file."],
+        ],
+      },
+      {
+        kind: "steps",
+        title: "Before relying on a model-assisted finding",
+        items: [
+          "Open the cited source and confirm the document, page, clause or schedule line.",
+          "Read enough surrounding context to confirm the quotation means what the finding says.",
+          "Check any deadline, exception or legal procedure against the tender and current law.",
+          "Record whether the finding is confirmed, corrected or needs another review, with your reason.",
+        ],
+      },
+      {
+        kind: "callout",
+        tone: "rule",
+        title: "A citation is a place to verify",
+        text: "A source link helps you inspect a claim. It does not make the claim correct, and generated text never replaces the committee's own review.",
+      },
+      {
+        kind: "callout",
+        tone: "warn",
+        title: "Check proposed procedure before adopting it",
+        text: "A generated cure period, exception or legal route must be grounded in the tender and applicable law. Do not apply it solely because it appears in a draft.",
+      },
+      {
+        kind: "resource",
+        href: "/api",
+        label: "DEVELOPER REFERENCE",
+        title: "Explore the API directory",
+        text: "See the published API surfaces, authentication requirements and live readiness checks.",
+      },
+    ],
+  },
+  {
     id: "zambia",
     kicker: "The law",
     title: "Zambia procurement rules",
@@ -461,6 +530,55 @@ const DOC_CHAPTERS: DocChapter[] = [
         tone: "warn",
         title: "Check supplier registration numbers",
         text: "If a registration number is missing or does not match the required format, verify it with the relevant registry before relying on the bid.",
+      },
+    ],
+  },
+  {
+    id: "supplier-portal",
+    kicker: "Supplier portal",
+    title: "Register and submit as a supplier",
+    lead: "The supplier portal gives organizations a separate account space to maintain their profile, find opportunities and submit tender applications.",
+    blocks: [
+      {
+        kind: "callout",
+        tone: "tip",
+        title: "A separate account space",
+        text: "Supplier sign-in is separate from officer workspace access. Use the supplier portal for organization profiles and applications; officers manage the procuring entity's review record.",
+      },
+      {
+        kind: "steps",
+        title: "From organization profile to application",
+        items: [
+          "Open the supplier portal and register the organization with its legal identity, registration details and contact person.",
+          "Complete the profile with the statutory documents and capabilities requested by the portal.",
+          "Review published opportunities, their requirements and closing dates before preparing an application.",
+          "Submit one complete application for the tender before its closing time, then keep the receipt for your records.",
+          "Return to the portal to follow the application's status and respond to permitted follow-up requests.",
+        ],
+      },
+      {
+        kind: "table",
+        title: "Application checks",
+        head: ["CHECK", "PORTAL BEHAVIOUR", "WHAT THE SUPPLIER SHOULD DO"],
+        rows: [
+          ["Closing time", "Late applications are refused.", "Allow time to upload files and submit before the published deadline."],
+          ["One application per tender", "A second application for the same organization and tender is refused.", "Review the complete application before sending it."],
+          ["Organization status", "Suspended or excluded organizations cannot submit new applications.", "Contact the procuring entity about the status shown in the portal."],
+          ["Application receipt", "A submitted application is recorded against the organization account.", "Save the receipt and reference for your procurement records."],
+        ],
+      },
+      {
+        kind: "callout",
+        tone: "warn",
+        title: "The portal does not make an award",
+        text: "Submission records delivery of an application. The procuring entity's authorised officers and committee evaluate bids and record the decision.",
+      },
+      {
+        kind: "resource",
+        href: "/org",
+        label: "SUPPLIER PORTAL",
+        title: "Open supplier sign-in",
+        text: "Go to the organization account space to register, sign in or review an application.",
       },
     ],
   },
@@ -674,8 +792,7 @@ const DOC_CHAPTERS: DocChapter[] = [
 /* The rule register is rendered from the sidecar's live catalogue; the static
    rows are only the offline fallback. */
 function chaptersWithLiveRules(rules: RuleCatalogueRow[] | null): DocChapter[] {
-  if (!rules?.length) return DOC_CHAPTERS;
-  return DOC_CHAPTERS.map((chapter) => ({
+  const chapters = !rules?.length ? DOC_CHAPTERS : DOC_CHAPTERS.map((chapter) => ({
     ...chapter,
     blocks: chapter.blocks.map((block) =>
       block.kind === "table" && block.title === "The rule register"
@@ -687,9 +804,99 @@ function chaptersWithLiveRules(rules: RuleCatalogueRow[] | null): DocChapter[] {
         : block,
     ),
   }));
+  const byId = new Map(chapters.map((chapter) => [chapter.id, chapter]));
+  return DOC_CHAPTER_ORDER.flatMap((id) => {
+    const chapter = byId.get(id);
+    return chapter ? [chapter] : [];
+  });
 }
 
-const DOC_CHAPTER_IDS = DOC_CHAPTERS.map((c) => c.id);
+const DOC_CHAPTER_ORDER = [
+  "start",
+  "pipeline",
+  "launch",
+  "findings",
+  "model-evidence",
+  "gates",
+  "suppliers",
+  "supplier-portal",
+  "evidence",
+  "audit",
+  "roles",
+  "safeguards",
+  "control",
+  "zambia",
+  "glossary",
+];
+
+const DOC_CHAPTER_IDS: string[] = DOC_CHAPTER_ORDER;
+
+const DOC_NAV_GROUPS = [
+  { label: "START HERE", ids: ["start", "pipeline", "launch"] },
+  { label: "REVIEW THE FILE", ids: ["findings", "model-evidence", "evidence"] },
+  { label: "PEOPLE & DECISIONS", ids: ["gates", "roles", "audit"] },
+  { label: "SUPPLIERS", ids: ["suppliers", "supplier-portal"] },
+  { label: "ADMINISTRATION", ids: ["safeguards", "control", "zambia"] },
+  { label: "REFERENCE", ids: ["glossary"] },
+] as const;
+
+type DocPath = {
+  audience: string;
+  title: string;
+  description: string;
+  action: string;
+  target: string | null;
+  href: string | null;
+  icon: LucideIcon;
+};
+
+const DOC_PATHS: DocPath[] = [
+  {
+    audience: "PROCUREMENT OFFICER",
+    title: "Prepare a review",
+    description: "Set up the file, check bids and resolve evidence findings.",
+    action: "Follow the review path",
+    target: "pipeline",
+    href: null,
+    icon: ClipboardCheck,
+  },
+  {
+    audience: "COMMITTEE MEMBER",
+    title: "Make a recorded decision",
+    description: "Verify the file, confirm authority and record an outcome.",
+    action: "Open the decision guide",
+    target: "gates",
+    href: null,
+    icon: Gavel,
+  },
+  {
+    audience: "SUPPLIER",
+    title: "Submit an application",
+    description: "Register your organization and respond to an opportunity.",
+    action: "Read the supplier guide",
+    target: "supplier-portal",
+    href: null,
+    icon: Building2,
+  },
+  {
+    audience: "WORKSPACE ADMIN",
+    title: "Set the controls",
+    description: "Review roles, rules, readiness and operational boundaries.",
+    action: "Review administration",
+    target: "control",
+    href: null,
+    icon: ShieldCheck,
+  },
+  {
+    audience: "DEVELOPER",
+    title: "Connect to Quorum",
+    description: "Inspect API surfaces, access requirements and service checks.",
+    action: "Open API reference",
+    target: null,
+    href: "/api",
+    icon: Code2,
+  },
+];
 
 function docChapterText(ch: DocChapter): string {
   return `${ch.title} ${ch.kicker} ${ch.lead} ${JSON.stringify(ch.blocks)}`.toLowerCase();
@@ -882,6 +1089,20 @@ function DocBlockView({ block, onOpenShot }: { block: DocBlock; onOpenShot?: (fi
   switch (block.kind) {
     case "p":
       return <p className="text-[13.5px] leading-relaxed text-ink-700">{block.text}</p>;
+    case "resource":
+      return (
+        <a
+          href={block.href}
+          className="group flex min-h-11 flex-wrap items-center justify-between gap-4 rounded-xl border border-ink-200 bg-sand/65 px-4 py-4 transition-colors hover:border-ink-400 hover:bg-sand focus-brand"
+        >
+          <span className="min-w-0">
+            <span className="block font-code text-[9px] font-bold tracking-[0.12em] text-brand-700">{block.label}</span>
+            <span className="mt-1 block text-[14px] font-bold text-ink-950">{block.title}</span>
+            <span className="mt-1 block max-w-2xl text-[12px] leading-relaxed text-ink-600">{block.text}</span>
+          </span>
+          <ArrowUpRight className="h-4 w-4 shrink-0 text-ink-500 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden="true" />
+        </a>
+      );
     case "callout":
       return <DocCallout tone={block.tone} title={block.title} text={block.text} />;
     case "figure":
@@ -1001,24 +1222,25 @@ const DOC_TOUR: TourStep[] = [
   {
     target: "docs-search",
     title: "Search jumps to the point",
-    body: "Type a rule code (R-OVER-BUDGET), a method, or a field name — the chapters and the rail filter as you type.",
+    body: "Search a workflow, rule, role or field name. Matching chapters appear as you type.",
   },
   {
     target: "docs-rail",
     title: "Read in order, or aim",
-    body: "This menu follows the chapter you are reading. Each chapter explains the relevant workspace pages, requirements and decisions.",
+    body: "Browse by workflow, evidence, decisions, suppliers or administration. The current chapter stays highlighted as you read.",
   },
   {
     target: "docs-chapters",
     title: "The full handbook",
-    body: "Read about the tender review process, committee approvals, supplier records and Zambia's procurement rules.",
+    body: "Use the handbook for practical workflows, supplier applications, AI boundaries, committee decisions and reference material.",
   },
 ];
 
 export function DocumentationView() {
   const [query, setQuery] = useState("");
-  const [activeId, setActiveId] = useState(DOC_CHAPTERS[0].id);
+  const [activeId, setActiveId] = useState("start");
   const [tourStep, setTourStep] = useState<number | null>(null);
+  const searchRef = useRef<HTMLInputElement | null>(null);
   /* The enlarged shot — set by a figure, cleared by Escape or a click away. */
   const [shot, setShot] = useState<DocFigure | null>(null);
   const shotCloseRef = useRef<HTMLButtonElement | null>(null);
@@ -1056,6 +1278,27 @@ export function DocumentationView() {
       if (opener?.isConnected) opener.focus();
     };
   }, [shot]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target;
+      const isEditing = target instanceof HTMLElement && (
+        target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)
+      );
+      const commandSearch = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k";
+      const slashSearch = event.key === "/" && !isEditing;
+      if (commandSearch || slashSearch) {
+        event.preventDefault();
+        searchRef.current?.focus();
+      }
+      if (event.key === "Escape" && document.activeElement === searchRef.current) {
+        if (query) setQuery("");
+        else searchRef.current?.blur();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [query]);
 
   /* Arriving from the walkthrough's final chapter — /docs?tour=1. */
   useEffect(() => {
@@ -1113,113 +1356,285 @@ export function DocumentationView() {
     document.getElementById(`docs-${id}`)?.scrollIntoView({ behavior: preferredScrollBehavior(), block: "start" });
   };
 
+  const navChapters = q ? visible : chapters;
+  const navGroups = DOC_NAV_GROUPS.map((group) => ({
+    label: group.label,
+    chapters: group.ids.flatMap((id) => navChapters.filter((chapter) => chapter.id === id)),
+  })).filter((group) => group.chapters.length > 0);
+
   return (
-    <div>
-      <div className="flex flex-wrap items-end justify-between gap-5">
-        <div className="min-w-0">
-          <p className="flex items-center gap-2.5 font-code text-[10px] font-semibold uppercase tracking-[0.3em] text-ink-500">
-            <span className="inline-block h-[2px] w-6 bg-brand-600" aria-hidden="true" />
-            {chapters.length} CHAPTERS · THE COMPLETE HANDBOOK
-          </p>
-          <h1 className="type-display mt-5 text-[30px] text-ink-950 sm:text-[38px]">
-            Documentation<span className="text-brand-600">.</span>
-          </h1>
-          <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-ink-600">
-            Learn how to prepare a tender review, verify findings, record decisions and manage supplier information.
+    <div className="space-y-12">
+      <section
+        aria-labelledby="docs-title"
+        className="relative isolate overflow-hidden rounded-[26px] bg-[#0b1017] text-white shadow-[0_28px_80px_rgba(11,16,23,0.18)]"
+      >
+        <div className="pointer-events-none absolute inset-0 bg-grid-dark opacity-50" aria-hidden="true" />
+        <div
+          className="pointer-events-none absolute -right-36 -top-48 h-[520px] w-[520px] rounded-full blur-[150px]"
+          style={{ background: "radial-gradient(circle, rgba(217,38,22,0.27), transparent 68%)" }}
+          aria-hidden="true"
+        />
+        <div className="relative grid gap-8 p-6 sm:p-9 lg:grid-cols-[minmax(0,1.08fr)_minmax(330px,0.92fr)] lg:gap-12 lg:p-11">
+          <div className="flex min-w-0 flex-col justify-center">
+            <p className="flex flex-wrap items-center gap-x-3 gap-y-2 font-code text-[9px] font-bold tracking-[0.19em] text-ink-300">
+              <span className="inline-flex items-center gap-2 text-brand-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-brand-500" aria-hidden="true" />
+                QUORUM FIELD GUIDE
+              </span>
+              <span className="text-white/25" aria-hidden="true">/</span>
+              <span>{chapters.length} CHAPTERS</span>
+              <span className="text-white/25" aria-hidden="true">/</span>
+              <span>FOR EVERY ROLE</span>
+            </p>
+            <h1 id="docs-title" className="type-display mt-6 max-w-3xl text-[clamp(2.55rem,5.5vw,4.65rem)] text-white">
+              Understand the file.<br />
+              Defend the <span className="text-brand-400">decision.</span>
+            </h1>
+            <p className="type-lede mt-5 max-w-2xl text-[14px] text-ink-300 sm:text-[15px]">
+              Practical guidance for preparing tender reviews, checking source evidence, using AI responsibly, working with suppliers and recording committee decisions.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => jumpTo("pipeline")}
+                className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-600 px-4 text-[12px] font-bold text-white shadow-[0_10px_24px_rgba(217,38,22,0.25)] transition-colors hover:bg-brand-500"
+              >
+                Follow a tender review <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+              <a
+                href="/api"
+                className="focus-brand inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/15 bg-white/[0.045] px-4 text-[12px] font-semibold text-ink-100 transition-colors hover:bg-white/10"
+              >
+                API reference <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </a>
+            </div>
+            <button
+              type="button"
+              onClick={() => searchRef.current?.focus()}
+              className="focus-brand mt-7 flex min-h-12 w-full max-w-xl items-center gap-3 rounded-xl border border-white/10 bg-white/[0.055] px-3.5 text-left transition-colors hover:border-white/20 hover:bg-white/[0.08]"
+              aria-label="Focus handbook search"
+            >
+              <Search className="h-4 w-4 shrink-0 text-ink-300" aria-hidden="true" />
+              <span className="min-w-0 flex-1 truncate text-[12px] text-ink-300">Search workflows, rules, roles and fields</span>
+              <kbd className="shrink-0 rounded-md border border-white/15 bg-black/15 px-2 py-1 font-code text-[9px] text-ink-200">⌘ / Ctrl K</kbd>
+            </button>
+          </div>
+
+          <div className="relative self-center rounded-[20px] border border-white/10 bg-white/[0.045] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.22)] backdrop-blur-sm sm:p-6">
+            <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-4">
+              <div>
+                <p className="font-code text-[9px] font-bold tracking-[0.16em] text-brand-300">THE PROCUREMENT RECORD</p>
+                <h2 className="mt-1.5 text-[16px] font-bold tracking-tight text-white">From requirement to accountable action</h2>
+              </div>
+              <span className="rounded-full border border-white/10 px-2.5 py-1 font-code text-[9px] font-bold tracking-[0.06em] text-ink-300">4 MOVES</span>
+            </div>
+            <div className="relative mt-2">
+              <span className="absolute bottom-6 left-[17px] top-6 w-px bg-gradient-to-b from-brand-400/80 via-white/20 to-emerald-300/70" aria-hidden="true" />
+              <ol>
+                {[
+                  { n: "01", title: "Published requirement", detail: "Notice · specification · criteria" },
+                  { n: "02", title: "Source-linked finding", detail: "Document · passage · reviewer check" },
+                  { n: "03", title: "Human review", detail: "Confirm · correct · request clarification" },
+                  { n: "04", title: "Recorded decision", detail: "Authorised person · reason · time" },
+                ].map((step) => (
+                  <li key={step.n} className="relative flex gap-3.5 py-3">
+                    <span className="z-10 grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 bg-[#121923] font-code text-[9px] font-bold text-brand-300">
+                      {step.n}
+                    </span>
+                    <span className="min-w-0 pt-0.5">
+                      <span className="block text-[12px] font-semibold text-white">{step.title}</span>
+                      <span className="mt-1 block text-[10.5px] leading-relaxed text-ink-400">{step.detail}</span>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2 border-t border-white/10 pt-4">
+              {[
+                ["SOURCE-LED", "text-brand-200"],
+                ["ROLE-BOUND", "text-sky-200"],
+                ["HUMAN-DECIDED", "text-emerald-200"],
+              ].map(([label, color]) => (
+                <span key={label} className={cn("rounded-full border border-white/10 bg-white/[0.035] px-2.5 py-1.5 font-code text-[8px] font-bold tracking-[0.08em]", color)}>
+                  {label}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="docs-paths-title">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="font-code text-[9px] font-bold tracking-[0.18em] text-brand-700">CHOOSE YOUR PATH</p>
+            <h2 id="docs-paths-title" className="type-display mt-2 text-[26px] text-ink-950 sm:text-[32px]">Start with the work in front of you.</h2>
+            <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-ink-600">{DOC_PATHS.length} clear entry points into the handbook, based on what you need to do.</p>
+          </div>
+          <span className="hidden items-center gap-2 pb-1 font-code text-[9px] font-semibold tracking-[0.08em] text-ink-500 md:inline-flex">
+            <BookOpen className="h-3.5 w-3.5" aria-hidden="true" /> SEARCHABLE · ROLE-BASED · SOURCE-AWARE
+          </span>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          {DOC_PATHS.map((path, i) => {
+            const Icon = path.icon;
+            const card = (
+              <>
+                <span className="flex items-center justify-between gap-3">
+                  <span className="grid h-10 w-10 place-items-center rounded-xl border border-ink-200 bg-paper text-ink-800 transition-colors group-hover:border-brand-200 group-hover:bg-brand-50 group-hover:text-brand-700">
+                    <Icon className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                  <span className="font-code text-[9px] font-bold tracking-[0.12em] text-ink-500">0{i + 1}</span>
+                </span>
+                <span className="mt-5 block font-code text-[8px] font-bold tracking-[0.1em] text-brand-700">{path.audience}</span>
+                <span className="mt-1.5 block text-[15px] font-bold leading-snug tracking-tight text-ink-950">{path.title}</span>
+                <span className="mt-2 block min-h-[54px] text-[11.5px] leading-relaxed text-ink-600">{path.description}</span>
+                <span className="mt-4 inline-flex items-center gap-1.5 text-[10.5px] font-semibold text-ink-800 transition-colors group-hover:text-brand-700">
+                  {path.action} <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                </span>
+              </>
+            );
+            const cardClass = "group flex min-h-[222px] flex-col rounded-2xl border border-ink-200/80 bg-white p-4 text-left shadow-[0_1px_2px_rgba(11,12,15,0.035)] transition-all hover:-translate-y-0.5 hover:border-ink-300 hover:shadow-[0_14px_30px_rgba(11,12,15,0.08)] focus-brand";
+            return path.href ? (
+              <a key={path.audience} href={path.href} className={cardClass}>{card}</a>
+            ) : (
+              <button key={path.audience} type="button" onClick={() => path.target && jumpTo(path.target)} className={cardClass}>{card}</button>
+            );
+          })}
+        </div>
+      </section>
+
+      <div className="flex flex-wrap items-start gap-3 rounded-2xl border border-ink-200/80 bg-sand/65 px-4 py-4 sm:px-5">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-brand-700 shadow-sm">
+          <Sparkles className="h-4 w-4" aria-hidden="true" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[12px] font-bold text-ink-950">A guide to the work—and its limits.</p>
+          <p className="mt-1 max-w-4xl text-[11.5px] leading-relaxed text-ink-600">
+            Several interface screenshots are historical captures and are labeled in their captions. Procurement rules vary by jurisdiction and change over time; verify the current law and your entity's approved process before acting.
           </p>
         </div>
+        <span className="hidden self-center font-code text-[8px] font-bold tracking-[0.1em] text-ink-500 lg:inline">{chapters.length} CHAPTERS · ONE HANDBOOK</span>
       </div>
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[264px_minmax(0,1fr)]">
-        {/* The chapter rail */}
-        <nav aria-label="Documentation chapters" data-tour="docs-rail" className="lg:sticky lg:top-20 lg:self-start">
-          <div className="rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-4 shadow-[0_1px_2px_rgba(11,12,15,0.04)]">
+
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-8">
+        <nav aria-label="Documentation chapters" data-tour="docs-rail" className="lg:sticky lg:top-24 lg:self-start">
+          <div className="rounded-2xl border border-ink-200/80 bg-white p-4 shadow-[0_8px_24px_rgba(11,12,15,0.045)]">
+            <div className="mb-3 flex items-center justify-between gap-3 px-1">
+              <div>
+                <p className="font-code text-[9px] font-bold tracking-[0.13em] text-ink-800">HANDBOOK INDEX</p>
+                <p className="mt-1 text-[10px] text-ink-500">{chapters.length} chapters · {DOC_PATHS.length} paths</p>
+              </div>
+              <span className="rounded-md border border-ink-200 bg-paper px-2 py-1 font-code text-[8px] font-semibold text-ink-500">⌘K</span>
+            </div>
             <label data-tour="docs-search" className="relative block">
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-300"
-                aria-hidden="true"
-              />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400" aria-hidden="true" />
               <input
+                ref={searchRef}
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && visible[0]) jumpTo(visible[0].id);
+                }}
                 placeholder="Search the handbook…"
-                aria-label="Search the handbook"
-                className="focus-brand h-11 w-full rounded-full border border-ink-200 bg-paper pl-9 pr-3 text-[14px] text-ink-900 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10 dark:placeholder:text-ink-400"
+                aria-label="Search chapters, rules and workflows"
+                aria-controls="docs-chapters"
+                className="focus-brand h-11 w-full rounded-xl border border-ink-200 bg-paper pl-9 pr-3 text-[12px] text-ink-900 outline-none transition-colors placeholder:text-ink-400 focus:border-ink-950 focus:ring-2 focus:ring-ink-950/10"
               />
             </label>
             {q && (
-              <p className="mt-2 px-1 font-code text-[10px] tracking-[0.04em] text-ink-600">
+              <p className="mt-2 px-1 font-code text-[9px] tracking-[0.04em] text-ink-600" aria-live="polite">
                 {visible.length} OF {chapters.length} CHAPTERS MATCH
               </p>
             )}
-            <ul className="mt-3 max-h-[62vh] space-y-0.5 overflow-y-auto pr-1 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-ink-200 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1">
-              {(q ? visible : chapters).map((ch) => {
-                const idx = chapters.indexOf(ch);
-                const isActive = !q && activeId === ch.id;
-                return (
-                  <li key={ch.id}>
-                    <button
-                      type="button"
-                      onClick={() => jumpTo(ch.id)}
-                      aria-current={isActive ? "true" : undefined}
-                      className={cn(
-                        "focus-brand flex min-h-11 w-full items-baseline gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors",
-                        isActive ? "bg-ink-950 text-white" : "text-ink-600 hover:bg-paper hover:text-ink-950",
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "font-code text-[10px] font-bold tracking-[0.04em]",
-                          isActive ? "text-brand-400" : "text-ink-500",
-                        )}
-                      >
-                        {String(idx + 1).padStart(2, "0")}
-                      </span>
-                      <span className="min-w-0 flex-1 text-[12.5px] font-medium leading-snug">{ch.title}</span>
-                    </button>
-                  </li>
-                );
-              })}
+            <ul className="mt-4 max-h-[58vh] space-y-4 overflow-y-auto pr-1 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-ink-200 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-1">
+              {navGroups.map((group) => (
+                <li key={group.label}>
+                  <p className="mb-1.5 px-2 font-code text-[8px] font-bold tracking-[0.12em] text-ink-400">{group.label}</p>
+                  <ul className="space-y-0.5">
+                    {group.chapters.map((ch) => {
+                      const idx = chapters.indexOf(ch);
+                      const isActive = !q && activeId === ch.id;
+                      return (
+                        <li key={ch.id}>
+                          <button
+                            type="button"
+                            onClick={() => jumpTo(ch.id)}
+                            aria-current={isActive ? "location" : undefined}
+                            className={cn(
+                              "focus-brand flex min-h-10 w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors",
+                              isActive ? "bg-ink-950 text-white" : "text-ink-600 hover:bg-paper hover:text-ink-950",
+                            )}
+                          >
+                            <span className={cn("font-code text-[9px] font-bold tracking-[0.04em]", isActive ? "text-brand-400" : "text-ink-400")}>
+                              {String(idx + 1).padStart(2, "0")}
+                            </span>
+                            <span className="min-w-0 flex-1 text-[11px] font-medium leading-snug">{ch.title}</span>
+                            {isActive ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-400" aria-hidden="true" /> : null}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </li>
+              ))}
             </ul>
             {q && visible.length === 0 && (
-              <p className="mt-3 rounded-lg bg-paper px-3 py-2.5 text-[12px] leading-relaxed text-ink-500">
-                Nothing matches. Try a rule code (R-OVER-BUDGET), a method, or a field name.
-              </p>
+              <div className="mt-3 rounded-xl bg-paper px-3 py-3">
+                <p className="text-[11px] leading-relaxed text-ink-600">No chapter matches yet. Try a rule, page name or procurement term.</p>
+                <button type="button" onClick={() => setQuery("")} className="focus-brand mt-2 inline-flex min-h-9 items-center text-[10px] font-semibold text-brand-700">Clear search</button>
+              </div>
             )}
           </div>
-
-          <p className="mt-3 px-2 font-code text-[10px] leading-relaxed tracking-[0.04em] text-ink-600">
-            {chapters.length} chapters · aligned with the current workspace
-          </p>
+          <a href="/api" className="focus-brand mt-3 flex min-h-11 items-center justify-between gap-3 rounded-xl border border-ink-200/80 bg-white px-3.5 text-[10.5px] font-semibold text-ink-700 transition-colors hover:border-ink-300 hover:text-ink-950">
+            <span className="inline-flex items-center gap-2"><Code2 className="h-3.5 w-3.5 text-brand-700" aria-hidden="true" /> API directory</span>
+            <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
+          </a>
         </nav>
 
-        {/* The chapters */}
-        <div data-tour="docs-chapters" className="min-w-0 space-y-5">
-          {(q ? visible : chapters).map((ch) => {
+        <section id="docs-chapters" data-tour="docs-chapters" aria-label="Handbook chapters" className="min-w-0 space-y-5">
+          {q && visible.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-ink-300 bg-white px-6 py-10 text-center sm:px-10">
+              <Search className="mx-auto h-5 w-5 text-ink-400" aria-hidden="true" />
+              <h2 className="mt-3 text-[16px] font-bold text-ink-950">No chapter found for “{query.trim()}”</h2>
+              <p className="mx-auto mt-2 max-w-md text-[12px] leading-relaxed text-ink-600">Try a term such as “committee”, “supplier”, “source”, “Zambia” or a rule name.</p>
+              <button type="button" onClick={() => setQuery("")} className="focus-brand mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg bg-ink-950 px-3.5 text-[11px] font-semibold text-white hover:bg-ink-800">Show all chapters</button>
+            </div>
+          ) : (q ? visible : chapters).map((ch) => {
             const no = String(chapters.indexOf(ch) + 1).padStart(2, "0");
             return (
               <article
                 key={ch.id}
                 id={`docs-${ch.id}`}
-                className="scroll-mt-24 rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-5 shadow-[0_1px_2px_rgba(11,12,15,0.04)] sm:p-7"
+                className="scroll-mt-24 rounded-2xl border border-ink-200/80 bg-white p-5 shadow-[0_4px_16px_rgba(11,12,15,0.035)] sm:p-7 lg:p-8"
               >
-                <p className="flex items-center gap-2.5 font-code text-[10px] font-bold tracking-[0.26em] text-brand-700">
-                  <span className="inline-block h-[2px] w-5 bg-brand-600" aria-hidden="true" />
-                  CHAPTER {no} · {ch.kicker.toUpperCase()}
-                </p>
-                <h2 className="type-display mt-3 text-[22px] text-ink-950 sm:text-[26px]">
-                  {ch.title}
-                </h2>
-                <p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-ink-600">{ch.lead}</p>
-                <div className="mt-6 space-y-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="flex items-center gap-2.5 font-code text-[9px] font-bold tracking-[0.17em] text-brand-700">
+                    <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand-50 text-[9px] text-brand-700">{no}</span>
+                    {ch.kicker.toUpperCase()}
+                  </p>
+                  <span className="rounded-full border border-ink-100 bg-paper px-2.5 py-1 font-code text-[8px] font-semibold tracking-[0.08em] text-ink-500">FIELD GUIDE</span>
+                </div>
+                <h2 className="type-display mt-4 text-[23px] text-ink-950 sm:text-[28px]">{ch.title}</h2>
+                <p className="type-lede mt-3 max-w-3xl text-[12.5px] text-ink-600 sm:text-[13px]">{ch.lead}</p>
+                <div className="mt-6 space-y-5 border-t border-ink-100 pt-6">
                   {ch.blocks.map((b, i) => (
                     <DocBlockView key={i} block={b} onOpenShot={setShot} />
                   ))}
                 </div>
+                <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-ink-100 pt-4">
+                  <span className="font-code text-[8px] font-semibold tracking-[0.11em] text-ink-400">QUORUM · {no} / {String(chapters.length).padStart(2, "0")}</span>
+                  {chapters[chapters.indexOf(ch) + 1] ? (
+                    <button type="button" onClick={() => jumpTo(chapters[chapters.indexOf(ch) + 1].id)} className="focus-brand inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-[10.5px] font-semibold text-ink-700 transition-colors hover:text-brand-700">
+                      Next: {chapters[chapters.indexOf(ch) + 1].title} <ArrowRight className="h-3 w-3" aria-hidden="true" />
+                    </button>
+                  ) : null}
+                </div>
               </article>
             );
           })}
-        </div>
+        </section>
       </div>
 
       {/* The enlarged screenshot — click any figure to read it at full size. */}
