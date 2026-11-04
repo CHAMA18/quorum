@@ -32,6 +32,7 @@ interface R2ObjectMeta {
 
 interface Env {
   ORIGIN_URL: string;
+  ADMIN_PORTAL_URL?: string;
   EDGE_SHARED_SECRET?: string;
   MCP_REMOTE_TOKEN?: string;
   RESEND_API_KEY?: string;
@@ -670,6 +671,21 @@ async function remoteMcp(request: Request, env: Env, url: URL): Promise<Response
 const worker = {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+
+    /* Keep the public admin URL on the branded domain while sending the
+       browser to the server-backed workspace that owns its auth session. */
+    if (
+      url.hostname === "quorum-solutions.com" &&
+      (url.pathname === "/admin" || url.pathname.startsWith("/admin/"))
+    ) {
+      const portalOrigin = env.ADMIN_PORTAL_URL;
+      if (!portalOrigin) return json({ error: "admin portal URL is not configured" }, 503);
+      const destination = new URL(`${url.pathname}${url.search}`, portalOrigin);
+      return new Response(null, {
+        status: 302,
+        headers: { location: destination.toString(), "cache-control": "no-store" },
+      });
+    }
 
     if (url.pathname === "/__edge/health") {
       return json({
