@@ -714,8 +714,8 @@ function ErrorNote({ children }: { children: React.ReactNode }) {
 type ResetFlow = "signin" | "request" | "issued" | "done";
 
 function SignIn({ onDone }: { onDone: () => void }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("chungu424@gmail.com");
+  const [password, setPassword] = useState("Chungu1998");
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [wrongPass, setWrongPass] = useState(false); // 401 — offer the reset door
