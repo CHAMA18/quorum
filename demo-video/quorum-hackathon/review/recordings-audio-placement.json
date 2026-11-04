@@ -1,0 +1,58 @@
+[
+  {
+    "scene": "stakes",
+    "start": 0.2,
+    "end": 17.96,
+    "sourceDuration": 17.76,
+    "gain": 2.0,
+    "tempoChanged": false
+  },
+  {
+    "scene": "supplier",
+    "start": 20.2,
+    "end": 39.64,
+    "sourceDuration": 19.44,
+    "gain": 2.0,
+    "tempoChanged": false
+  },
+  {
+    "scene": "workflow",
+    "start": 45.2,
+    "end": 68.4,
+    "sourceDuration": 23.2,
+    "gain": 2.0,
+    "tempoChanged": false
+  },
+  {
+    "scene": "review",
+    "start": 72.2,
+    "end": 107.48,
+    "sourceDuration": 35.28,
+    "gain": 2.0,
+    "tempoChanged": false
+  },
+  {
+    "scene": "committee",
+    "start": 110.2,
+    "end": 137.72,
+    "sourceDuration": 27.52,
+    "gain": 2.0,
+    "tempoChanged": false
+  },
+  {
+    "scene": "boundary",
+    "start": 142.2,
+    "end": 166.67999999999998,
+    "sourceDuration": 24.48,
+    "gain": 2.0,
+    "tempoChanged": false
+  },
+  {
+    "scene": "close",
+    "start": 170,
+    "end": 180.0,
+    "sourceDuration": 10.0,
+    "gain": 1.7226648330688477,
+    "tempoChanged": false
+  }
+]

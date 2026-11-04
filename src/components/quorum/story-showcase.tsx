@@ -1,5 +1,7 @@
 "use client";
 
+import { useReducedMotion } from "@/lib/use-reduced-motion";
+
 /**
  * StoryShowcase — the shared story-panel carousel for both product doors.
  *
@@ -20,7 +22,7 @@
  */
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Building2, ChevronLeft, ChevronRight, FileText, Landmark, Scale, ScrollText, ShieldCheck, Workflow } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { nextRovingTabIndex } from "@/lib/a11y";

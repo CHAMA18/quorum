@@ -1,3 +1,4 @@
+import { sidecarOrigin } from "@/lib/sidecar-origin";
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 
@@ -29,7 +30,7 @@ function matchesSecret(supplied: string, expected: string) {
 }
 
 async function sidecarRpc(message: RpcMessage) {
-  const response = await fetch("http://127.0.0.1:3031/mcp", {
+  const response = await fetch(`${sidecarOrigin()}/mcp`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(message),

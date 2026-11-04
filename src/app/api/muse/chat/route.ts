@@ -134,6 +134,7 @@ export async function POST(request: NextRequest) {
   if (!user && org) {
     return NextResponse.json(await orgAssistantReply(org, message));
   }
+  if (!user) return NextResponse.json({ error: "Sign in to use the assistant." }, { status: 401 });
   const cfg = museConfigFromEnv();
   if (cfg) {
     return NextResponse.json(await modelLoop(cfg, message, history, user));

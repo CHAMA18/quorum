@@ -1,3 +1,4 @@
+import { sidecarOrigin } from "@/lib/sidecar-origin";
 import { NextResponse, type NextRequest } from "next/server";
 import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -45,7 +46,7 @@ export const dynamic = "force-dynamic";
  * only owners and admins receive the writable flags.
  */
 
-const SIDECAR = (process.env.QUORUM_SIDECAR_URL?.trim() || "http://127.0.0.1:3031").replace(/\/+$/, "");
+const SIDECAR = sidecarOrigin();
 const TIMEOUT_MS = 4000;
 
 async function readSidecar<T>(

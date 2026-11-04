@@ -1,0 +1,49 @@
+{
+  "method": "Local Whisper word timestamps; source wording matched by sequence alignment; substitutions interpolated within recognised spans",
+  "manualListeningPerformed": false,
+  "scenes": [
+    {
+      "scene": "stakes",
+      "expectedWords": 48,
+      "recognisedWords": 48,
+      "exactWordAnchors": 45
+    },
+    {
+      "scene": "supplier",
+      "expectedWords": 50,
+      "recognisedWords": 50,
+      "exactWordAnchors": 50
+    },
+    {
+      "scene": "workflow",
+      "expectedWords": 59,
+      "recognisedWords": 59,
+      "exactWordAnchors": 56
+    },
+    {
+      "scene": "review",
+      "expectedWords": 89,
+      "recognisedWords": 91,
+      "exactWordAnchors": 84
+    },
+    {
+      "scene": "committee",
+      "expectedWords": 64,
+      "recognisedWords": 64,
+      "exactWordAnchors": 62
+    },
+    {
+      "scene": "boundary",
+      "expectedWords": 60,
+      "recognisedWords": 63,
+      "exactWordAnchors": 50
+    },
+    {
+      "scene": "close",
+      "expectedWords": 23,
+      "recognisedWords": 23,
+      "exactWordAnchors": 22
+    }
+  ],
+  "captions": 51
+}

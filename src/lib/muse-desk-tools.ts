@@ -1,3 +1,4 @@
+import { sidecarOrigin } from "@/lib/sidecar-origin";
 /**
  * Desk tools for the Muse assistant.
  *
@@ -19,7 +20,7 @@ import { getCommitteeState } from "@/lib/committee";
 import { attestSignature } from "@/lib/sidecar-attest";
 import type { AuthUser } from "@/lib/auth-types";
 
-const SIDECAR = "http://127.0.0.1:3031";
+const SIDECAR = sidecarOrigin();
 
 export interface DeskToolContext {
   user: AuthUser;

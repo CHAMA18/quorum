@@ -1,3 +1,4 @@
+import { sidecarOrigin } from "@/lib/sidecar-origin";
 import { NextResponse, type NextRequest } from "next/server";
 import { getUserFromToken, rateLimit, SESSION_COOKIE } from "@/lib/auth";
 import { can } from "@/lib/permissions";
@@ -33,7 +34,7 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const SIDECAR = (process.env.QUORUM_SIDECAR_URL?.trim() || "http://127.0.0.1:3031").replace(/\/+$/, "");
+const SIDECAR = sidecarOrigin();
 
 type ReadResult<T> = { ok: true; data: T } | { ok: false; error: string };
 

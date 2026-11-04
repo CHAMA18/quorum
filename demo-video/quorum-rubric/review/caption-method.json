@@ -1,0 +1,6 @@
+{
+  "method": "Local Whisper word timestamps, matched to source wording; substitutions interpolated within recognised spans",
+  "wordLevelAlignment": true,
+  "manualListeningPerformed": false,
+  "captionCount": 52
+}

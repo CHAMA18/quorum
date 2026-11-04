@@ -1,0 +1,19 @@
+{
+  "scene": "close",
+  "text": "Quorum. Built by Chungu Chama. The agent prepares the file. The authorised committee makes the decision. Explore the source and join the pilot.",
+  "synthesis_text": "Quorum. Built by Chungu Chama. The agent prepares the file. The authorised committee makes the decision. Explore the source and join the pilot.",
+  "source": "Lusaka.m4a",
+  "reference_range": [
+    31.58,
+    38.86
+  ],
+  "reference_text": "So that's what we need to understand is how best can we create content that is of value to the whole world.",
+  "model": "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-4bit",
+  "seed": 68,
+  "sample_rate": 24000,
+  "duration_seconds": 10.0,
+  "generation_seconds": 15.98,
+  "generated_voice": true,
+  "temperature": 0.65,
+  "repetition_penalty": 1.15
+}

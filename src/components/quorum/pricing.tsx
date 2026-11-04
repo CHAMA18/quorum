@@ -1,6 +1,8 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
+
+import { motion } from "framer-motion";
 import { ArrowRight, Check } from "lucide-react";
 import { Reveal, SpecBar } from "@/components/quorum/reveal";
 import { Aurora, Spotlight } from "@/components/quorum/motion-kit";

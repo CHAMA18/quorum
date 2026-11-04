@@ -1,7 +1,9 @@
 "use client";
 
+import { useReducedMotion } from "@/lib/use-reduced-motion";
+
 import { useEffect, useRef, useState } from "react";
-import { useReducedMotion } from "framer-motion";
+import {  } from "framer-motion";
 import { Reveal, SpecBar } from "@/components/quorum/reveal";
 import { WordReveal } from "@/components/quorum/motion-kit";
 

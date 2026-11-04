@@ -1,0 +1,27 @@
+{
+  "capturedAt": "2026-11-04T07:40:39.251Z",
+  "viewport": {
+    "width": 1600,
+    "height": 1000
+  },
+  "deviceScaleFactor": 2,
+  "reducedMotion": "reduce",
+  "errors": [],
+  "textStyles": {
+    "background": "rgb(32, 36, 43)",
+    "paragraphs": [
+      {
+        "color": "rgb(240, 107, 92)",
+        "text": "MODEL OUTPUT · muse-spark-1.3"
+      },
+      {
+        "color": "rgb(255, 255, 255)",
+        "text": "2 admitted bidders · 2 source documents · 6 exact source quotations verified · 31.0 s"
+      },
+      {
+        "color": "rgb(201, 204, 211)",
+        "text": "Generated 11/4/2026, 9:40:37 AM. Quote matching checks that the text exists in the cited bidder document; the committee still checks its meaning and relevance."
+      }
+    ]
+  }
+}

@@ -37,11 +37,11 @@ describe("Quorum sidebar", () => {
 
   test("the labels renamed for title case are the ones on screen", () => {
     for (const label of [
-      "Tender Cycle",
-      "Data Sources",
+      "Tender Workflow",
+      "Source Records",
       "Award History",
-      "Audit Trail",
-      "Rules & Safeguards",
+      "Activity Log",
+      "Rules & Controls",
     ]) {
       expect(labels).toContain(label);
     }

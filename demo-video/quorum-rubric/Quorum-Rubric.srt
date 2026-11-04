@@ -1,0 +1,208 @@
+1
+00:00:00,700 --> 00:00:03,570
+A hospital cannot use equipment that is still waiting for
+
+2
+00:00:03,580 --> 00:00:06,850
+procurement review. Across Africa, public procurement averages
+
+3
+00:00:06,860 --> 00:00:09,960
+seventeen percent of GDP, according to the World Bank.
+
+4
+00:00:10,400 --> 00:00:13,100
+In Zambia, Quorum starts with the officer's desk:
+
+5
+00:00:13,440 --> 00:00:16,650
+read the evidence, identify the gaps, and prepare a decision
+
+6
+00:00:16,660 --> 00:00:17,980
+that people can explain.
+
+7
+00:00:22,420 --> 00:00:25,550
+This is one fictional Zambia tender for ten vaccine
+
+8
+00:00:25,560 --> 00:00:29,350
+refrigerators. Two timely bids, prices in kwacha, and
+
+9
+00:00:29,360 --> 00:00:31,080
+criteria issued before evaluation.
+
+10
+00:00:31,280 --> 00:00:33,310
+Technical capability carries sixty percent;
+
+11
+00:00:33,320 --> 00:00:37,150
+delivery carries forty. The demonstration contains no real
+
+12
+00:00:37,160 --> 00:00:39,930
+supplier's tax record. The source documents and starting state
+
+13
+00:00:39,940 --> 00:00:42,780
+are included so a reviewer can reproduce the result.
+
+14
+00:00:45,700 --> 00:00:49,730
+Muse Spark on Meta Model API compares each
+
+15
+00:00:49,740 --> 00:00:52,360
+admitted bidder against those same criteria.
+
+16
+00:00:52,880 --> 00:00:56,040
+Here is the actual returned review, beside its source.
+
+17
+00:00:56,580 --> 00:01:00,470
+One supplier commits to delivery within thirty days and names a
+
+18
+00:01:00,480 --> 00:01:04,670
+local service team. The other says delivery will be agreed after
+
+19
+00:01:04,680 --> 00:01:08,390
+award. Quorum checks every quotation against that bidder's
+
+20
+00:01:08,400 --> 00:01:11,330
+documents. An invented quotation is rejected.
+
+21
+00:01:11,340 --> 00:01:14,920
+Missing evidence becomes a question for the committee.
+
+22
+00:01:15,540 --> 00:01:19,570
+The model advises; it does not enter official scores or decide
+
+23
+00:01:19,580 --> 00:01:20,320
+the award.
+
+24
+00:01:21,580 --> 00:01:25,200
+Now the boundary that makes this useful in a public institution.
+
+25
+00:01:25,780 --> 00:01:28,360
+The LangGraph review stops at a pending human gate.
+
+26
+00:01:28,820 --> 00:01:32,210
+These are captured responses from the real HTTP approval path.
+
+27
+00:01:32,220 --> 00:01:34,750
+An unsigned direct request is refused.
+
+28
+00:01:34,760 --> 00:01:38,150
+An authenticated request without step-up verification is also
+
+29
+00:01:38,160 --> 00:01:41,390
+refused. After both attempts, the gate is still pending and
+
+30
+00:01:41,400 --> 00:01:42,600
+there is no filing receipt.
+
+31
+00:01:43,400 --> 00:01:45,520
+The review graph has no edge to filing.
+
+32
+00:01:45,860 --> 00:01:48,140
+Changing the model's instructions cannot add one.
+
+33
+00:01:54,840 --> 00:01:58,090
+A separate authorised test account now completes two-factor
+
+34
+00:01:58,100 --> 00:02:01,900
+verification. The server checks office authority, committee
+
+35
+00:02:02,220 --> 00:02:05,510
+Quorum and the gate-bound assertion before accepting the
+
+36
+00:02:05,520 --> 00:02:08,650
+decision. Only then does the simulation produce a sealed
+
+37
+00:02:08,660 --> 00:02:10,410
+receipt. Its signature verifies.
+
+38
+00:02:10,420 --> 00:02:13,900
+This is a local filing simulation on fictional data;
+
+39
+00:02:14,340 --> 00:02:16,200
+it is not a government portal transaction.
+
+40
+00:02:16,800 --> 00:02:19,200
+The accountable decision remains with authorised people.
+
+41
+00:02:20,300 --> 00:02:24,330
+The evidence bundle includes the model response, exact source
+
+42
+00:02:24,340 --> 00:02:27,040
+files, failed requests and verified receipt.
+
+43
+00:02:27,820 --> 00:02:30,990
+Tests cover quotation grounding, access controls and replay
+
+44
+00:02:31,000 --> 00:02:35,070
+protection. A procurement officer study is prepared, but no
+
+45
+00:02:35,080 --> 00:02:38,610
+time saving or money recovered is claimed before real officers
+
+46
+00:02:38,620 --> 00:02:42,790
+measure it. The next step is a consenting procurement
+
+47
+00:02:42,800 --> 00:02:45,300
+unit reviewing one retrospective tender.
+
+48
+00:02:47,060 --> 00:02:48,020
+Built by Chungu Chama.
+
+49
+00:02:48,620 --> 00:02:51,650
+Quorum brings Meta's models into a reviewable procurement
+
+50
+00:02:51,660 --> 00:02:55,080
+workflow. Explore the source and reproduce the demonstration.
+
+51
+00:02:55,560 --> 00:02:57,040
+The agent prepares the file.
+
+52
+00:02:57,200 --> 00:02:58,920
+The authorised committee makes the decision.
+

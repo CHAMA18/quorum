@@ -100,3 +100,6 @@ backups/
 
 # Demo video raw source recordings (large, local-only)
 demo-video/source/
+
+# Locally generated hackathon submission PDF
+/output/pdf/meta-hackathon-project-description.pdf

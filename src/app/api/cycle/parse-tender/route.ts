@@ -1,3 +1,4 @@
+import { sidecarOrigin } from "@/lib/sidecar-origin";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getUserFromToken, rateLimit, SESSION_COOKIE } from "@/lib/auth";
@@ -69,7 +70,7 @@ async function recordMetaRun(
   const timestamp = Date.now();
   const path = "/api/audit/model-call";
   try {
-    await fetch(`http://127.0.0.1:${process.env.MCP_PORT?.trim() || "3031"}${path}`, {
+    await fetch(`${sidecarOrigin()}${path}`, {
       method: "POST",
       headers: {
         "content-type": "application/json",

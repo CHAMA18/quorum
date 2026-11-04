@@ -1,3 +1,4 @@
+import { sidecarOrigin } from "@/lib/sidecar-origin";
 import { NextResponse } from "next/server";
 
 /**
@@ -10,7 +11,7 @@ import { NextResponse } from "next/server";
  * few activity lines without actor, inputs or outputs.
  */
 
-const SIDECAR = (process.env.QUORUM_SIDECAR_URL?.trim() || "http://127.0.0.1:3031").replace(/\/+$/, "");
+const SIDECAR = sidecarOrigin();
 
 interface SidecarRun {
   id?: string;

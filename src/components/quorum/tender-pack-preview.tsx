@@ -1,5 +1,7 @@
 "use client";
 
+import { useReducedMotion } from "@/lib/use-reduced-motion";
+
 /**
  * TenderPackPreview — read the ENTIRE tender pack before staging it.
  *
@@ -12,7 +14,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { BookOpen, FileText, Loader2, ScanSearch, X } from "lucide-react";
 import { HorizontalScrollRegion } from "@/components/quorum/horizontal-scroll-region";
 import { trapTabFocus } from "@/lib/a11y";

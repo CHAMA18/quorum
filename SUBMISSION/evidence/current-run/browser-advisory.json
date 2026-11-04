@@ -1,0 +1,94 @@
+{
+  "overview": "Synthetic Zambia demonstration for ten vaccine refrigerators under matrix_demo_001 with C-01 Technical capability weight 60 and C-02 Delivery plan weight 40. Compared two admitted bidders on same basis using full bid texts. Demo Clinic Supplies documents specification, named technicians and 30-day milestones. Demo Medical Works documents specification only and states no service team and no signed schedule.",
+  "recommendation": {
+    "bidder": "Demo Clinic Supplies",
+    "basis": "Demo Clinic Supplies shows the strongest documented fit with SUPPORTED evidence on both C-01 and C-02 in supplied text, while Demo Medical Works is PARTIAL on C-01 and NOT_EVIDENCED on C-02 and has a recorded administratively nonresponsive context. Advisory comparison only for committee verification and scoring; not an award decision."
+  },
+  "bidders": [
+    {
+      "bidder": "Demo Clinic Supplies",
+      "recommendation": "Documented fit on both criteria with specification, named service team and 30-day milestones stated. Bid value shown as ZMW 420,000. For committee consideration subject to verification of signed dated schedule, specification and recorded scoring; no award decision made.",
+      "criteria": [
+        {
+          "criterionId": "C-01",
+          "alignment": "SUPPORTED",
+          "assessment": "Specification of 2-8 degrees and maintenance plan naming two local technicians with quarterly preventive servicing are both documented. Strength is complete evidence for C-01. Committee should still verify technician availability and specification compliance.",
+          "evidence": [
+            {
+              "citation": "02-bid-demo-clinic.md",
+              "quote": "The ten vaccine refrigerators operate at 2-8 degrees Celsius."
+            },
+            {
+              "citation": "02-bid-demo-clinic.md",
+              "quote": "The maintenance plan names the local service team: Demo Technician One and Demo Technician Two, with quarterly preventive servicing."
+            }
+          ]
+        },
+        {
+          "criterionId": "C-02",
+          "alignment": "SUPPORTED",
+          "assessment": "Bid asserts a signed schedule committing delivery within 30 days with dispatch, installation and acceptance milestones on days 10, 25 and 30. Strength is clear commitment and milestones within required window. Committee should verify signature and date on original schedule.",
+          "evidence": [
+            {
+              "citation": "02-bid-demo-clinic.md",
+              "quote": "Our signed delivery schedule commits delivery within 30 days: dispatch on day 10, installation on day 25, and acceptance testing on day 30."
+            },
+            {
+              "citation": "02-bid-demo-clinic.md",
+              "quote": "Included documents: Tax clearance certificate; Company registration certificate; Signed delivery schedule."
+            }
+          ]
+        }
+      ],
+      "committeeChecks": [
+        "Verify signed and dated delivery schedule with dispatch day 10, installation day 25 and acceptance day 30 in the original.",
+        "Verify 2-8 Celsius specification and maintenance capacity of named technicians with quarterly servicing.",
+        "Confirm recorded technical scores remain to be applied under matrix_demo_001; no scores recalculated here."
+      ]
+    },
+    {
+      "bidder": "Demo Medical Works",
+      "recommendation": "Limited documented fit: only operating range stated, with maintenance team and 30-day signed schedule missing on the supplied text. Bid value shown as ZMW 450,000. For committee to verify responsiveness and missing evidence; no award decision made.",
+      "criteria": [
+        {
+          "criterionId": "C-01",
+          "alignment": "PARTIAL",
+          "assessment": "Refrigerator operating range of 2-8 degrees is stated, but submission explicitly states it names no local service team and provides no preventive maintenance schedule. Gap is missing service-team and maintenance evidence required for C-01.",
+          "evidence": [
+            {
+              "citation": "03-bid-demo-medical.md",
+              "quote": "The ten vaccine refrigerators operate at 2-8 degrees Celsius."
+            },
+            {
+              "citation": "03-bid-demo-medical.md",
+              "quote": "Maintenance support is available on request; this submission names no local service team and provides no preventive maintenance schedule."
+            }
+          ]
+        },
+        {
+          "criterionId": "C-02",
+          "alignment": "NOT_EVIDENCED",
+          "assessment": "No signed dated schedule committing delivery within 30 days is evidenced. Supplied text indicates delivery timing to be agreed after award. Evidence for milestones and commitment is missing.",
+          "evidence": []
+        }
+      ],
+      "committeeChecks": [
+        "Confirm absence of signed dated 30-day schedule and tax clearance noted in starting record before any further review.",
+        "Verify whether any maintenance plan naming service team or preventive schedule exists outside supplied text.",
+        "Confirm recorded ADMINISTRATIVELY_NONRESPONSIVE context is preserved; no responsiveness change made here."
+      ]
+    }
+  ],
+  "analysis": "Synthetic Zambia demonstration for ten vaccine refrigerators under matrix_demo_001 with C-01 Technical capability weight 60 and C-02 Delivery plan weight 40. Compared two admitted bidders on same basis using full bid texts. Demo Clinic Supplies documents specification, named technicians and 30-day milestones. Demo Medical Works documents specification only and states no service team and no signed schedule.",
+  "model": "muse-spark-1.3",
+  "durationMs": 31001,
+  "evidenceVerification": {
+    "policy": "exact-source-match",
+    "verifiedQuotes": 6,
+    "criteriaAssessed": 4,
+    "criteriaWithQuotes": 3
+  },
+  "evaluatedAt": "2026-11-04T07:40:37.549Z",
+  "excludedLateBidders": [],
+  "documentCount": 2
+}

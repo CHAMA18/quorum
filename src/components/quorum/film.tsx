@@ -1,5 +1,7 @@
 "use client";
 
+import { useReducedMotion } from "@/lib/use-reduced-motion";
+
 /**
  * The Film — REEL 01, "From Paper to Proof".
  *
@@ -10,7 +12,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Maximize,
   Pause,
@@ -41,7 +43,7 @@ const CHAPTERS: Chapter[] = [
   {
     id: 1,
     title: "The Stack",
-    kicker: "CHAPTER 01 — 14,000 PAGES",
+    kicker: "CHAPTER 01 — THE REVIEW STACK",
     line: "Every page is someone's money. Nobody can read them all.",
     src: "/film/chapter-1.mp4",
   },

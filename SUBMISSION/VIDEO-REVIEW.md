@@ -9,6 +9,18 @@ Everything below is fixable. Most of it is editing, not building.
 
 ---
 
+## Update — the 4K 3:50 cut (received 4 Nov)
+
+`Quorum-Hackathon-Demo-4K-3m50-Noise-Free.mp4` — 3840×2160, 30 fps, **230 s**, −16.1 LUFS, 173 MB.
+
+**Better than the 3:00 cut:** crisper image, genuinely noise-free audio, a cold open on the landing hero instead of "Good evening, Chungu," "faulty procurement" now intelligible, a `Demonstration tender data` label, and a clean end card.
+
+**Worse, and this decides it:** the cut is **3:50 — 50 seconds over the 3:00 rule**; it adds a `META AI RECOMMENDATION · strongest documented fit` panel (2:20) that contradicts the no-rank, no-award thesis; the 2:05–2:55 block is unscripted and ungrammatical; and the signed award report with the SHA-256 filing seal is **no longer shown at all**.
+
+**Verdict: do not submit this file as-is.** Cutting 2:05–2:55 removes exactly 50 seconds, lands at 3:00, and deletes both the recommendation contradiction and the ramble in one edit.
+
+---
+
 ## 1. Which file is actually the submission
 
 | File | Length | Status |
@@ -215,3 +227,11 @@ Two rules for the edit: the refusal gets the longest uninterrupted hold in the f
 The product already has the hard part: a real refusal, a real signature, a real audit trail, and a sentence most startups cannot honestly say — *the AI does not decide.* The film currently spends its three minutes describing that product instead of showing the moment that proves it.
 
 Add the gate refusal, clean the stage, and re-time the captions. That is a day of work, and it moves this from "nice demo" to "that one had a thesis."
+
+## Resolution - separate evidence-led edition, 4 November 2026
+
+The current work preserves the review above and all older exports. A new 180-second edition lives in `demo-video/quorum-rubric/`. It uses one fictional Zambia case, ZMW, two timely bids, issued 60/40 criteria and an unscored draft matrix. It replaces the unsupported US$450m annual opening with the sourced Africa procurement share and a Zambia officer task. It contains no real supplier tax record.
+
+The production integration now captures unsigned 401, no-step-up 403, a still-pending gate with no receipt, and then an authorised fictional account's signature-verified simulated receipt. Meta's returned model, documents, exact quote checks and measured latency are visible; advisory comparison is explicitly separate from committee scores and authority. Dark-token contrast and reduced-motion hydration are fixed. Local word timestamps replace estimated caption timing. See `SUBMISSION/evidence/current-run/` and the new project's `REVIEW.md` for scope and limitations.
+
+The screenshot rubric does not itself specify a duration limit. The new three-minute edition is a presentation choice, not evidence that the prior 3:50 cut was formally disqualified. Real officer validation remains pending; the project does not claim an awarded 98/100.

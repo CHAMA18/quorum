@@ -34,10 +34,7 @@ const nextConfig: NextConfig = {
      read-excel-file) whose bundling trips Turbopack's NFT tracer. Loading them
      from node_modules at runtime keeps the route server-side and the build
      intact; the standalone output copies them. */
-  serverExternalPackages: ["unpdf", "pdfjs-dist", "mammoth", "read-excel-file"],
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+  serverExternalPackages: ["unpdf", "pdfjs-dist", "mammoth", "read-excel-file", "@modelcontextprotocol/server-filesystem"],
   reactStrictMode: false,
   /* Keep the corner clear — the dashboard sidebar lives bottom-left */
   devIndicators: false,

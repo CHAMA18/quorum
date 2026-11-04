@@ -1,7 +1,9 @@
 "use client";
 
+import { useReducedMotion } from "@/lib/use-reduced-motion";
+
 import { useCallback, useEffect, useReducer, useRef, useState, useSyncExternalStore } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { TopTicker } from "@/components/quorum/top-ticker";
 import { SiteHeader } from "@/components/quorum/site-header";
 import { Hero } from "@/components/quorum/hero";

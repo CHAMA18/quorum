@@ -1,0 +1,49 @@
+{
+  "method": "Local Whisper word timestamps; source wording matched by sequence alignment; substitutions interpolated within recognised spans",
+  "manualListeningPerformed": false,
+  "scenes": [
+    {
+      "scene": "stakes",
+      "expectedWords": 48,
+      "recognisedWords": 47,
+      "exactWordAnchors": 45
+    },
+    {
+      "scene": "record",
+      "expectedWords": 52,
+      "recognisedWords": 52,
+      "exactWordAnchors": 47
+    },
+    {
+      "scene": "model",
+      "expectedWords": 80,
+      "recognisedWords": 79,
+      "exactWordAnchors": 76
+    },
+    {
+      "scene": "refusal",
+      "expectedWords": 74,
+      "recognisedWords": 75,
+      "exactWordAnchors": 72
+    },
+    {
+      "scene": "signature",
+      "expectedWords": 59,
+      "recognisedWords": 60,
+      "exactWordAnchors": 53
+    },
+    {
+      "scene": "evidence",
+      "expectedWords": 56,
+      "recognisedWords": 57,
+      "exactWordAnchors": 55
+    },
+    {
+      "scene": "close",
+      "expectedWords": 31,
+      "recognisedWords": 30,
+      "exactWordAnchors": 26
+    }
+  ],
+  "captions": 52
+}

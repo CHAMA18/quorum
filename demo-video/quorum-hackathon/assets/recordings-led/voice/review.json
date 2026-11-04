@@ -1,0 +1,19 @@
+{
+  "scene": "review",
+  "text": "The officer opens the AI-assisted bid review, confirms permission to share the documents, and starts the assessment. Every admitted bidder is considered against the same issued criteria. Watch what happens when the submitted information does not establish a requirement: the result says, not evidenced. The AI leaves the gap visible and gives the committee questions to resolve. It can offer an advisory comparison, but it cannot turn missing evidence into a pass. Muse Spark on Meta Model API also returned the separately verified source-linked assessment included with this submission.",
+  "synthesis_text": "The officer opens the A I-assisted bid review, confirms permission to share the documents, and starts the assessment. Every admitted bidder is considered against the same issued criteria. Watch what happens when the submitted information does not establish a requirement: the result says, not evidenced. The A I leaves the gap visible and gives the committee questions to resolve. It can offer an advisory comparison, but it cannot turn missing evidence into a pass. Muse Spark on Meta Model API also returned the separately verified source-linked assessment included with this submission.",
+  "source": "Lusaka.m4a",
+  "reference_range": [
+    31.58,
+    38.86
+  ],
+  "reference_text": "So that's what we need to understand is how best can we create content that is of value to the whole world.",
+  "model": "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-4bit",
+  "seed": 65,
+  "sample_rate": 24000,
+  "duration_seconds": 35.28,
+  "generation_seconds": 50.11,
+  "generated_voice": true,
+  "temperature": 0.65,
+  "repetition_penalty": 1.15
+}

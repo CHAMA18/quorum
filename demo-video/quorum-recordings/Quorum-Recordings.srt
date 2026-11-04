@@ -1,0 +1,204 @@
+1
+00:00:00,200 --> 00:00:03,430
+A hospital cannot use equipment that is still waiting for
+
+2
+00:00:03,440 --> 00:00:06,690
+procurement review. Across Africa, public procurement averages
+
+3
+00:00:06,700 --> 00:00:09,800
+seventeen percent of GDP, according to the World Bank.
+
+4
+00:00:10,260 --> 00:00:13,000
+In Zambia, Quorum starts with the officer's desk:
+
+5
+00:00:13,280 --> 00:00:16,490
+read the evidence, identify the gaps, and prepare a decision
+
+6
+00:00:16,500 --> 00:00:17,820
+that people can explain.
+
+7
+00:00:20,200 --> 00:00:22,540
+Here is the actual supplier workflow.
+
+8
+00:00:22,900 --> 00:00:25,360
+Required documents stay together in one checklist.
+
+9
+00:00:25,920 --> 00:00:29,210
+The supplier opens a supporting file and requests an AI document
+
+10
+00:00:29,220 --> 00:00:33,230
+check. The findings appear beside the source, so the reviewer
+
+11
+00:00:33,240 --> 00:00:36,160
+can compare them. This helps prepare the submission;
+
+12
+00:00:36,420 --> 00:00:39,160
+it does not decide whether the supplier qualifies.
+
+13
+00:00:45,200 --> 00:00:47,340
+Now the recorded officer workspace.
+
+14
+00:00:48,160 --> 00:00:50,830
+The team moves from the tender notice through opening and
+
+15
+00:00:50,840 --> 00:00:53,130
+evaluation. Published criteria govern the review.
+
+16
+00:00:53,140 --> 00:00:56,890
+Officers can inspect the matrix, compare the admitted bids, and
+
+17
+00:00:56,900 --> 00:00:58,280
+trace the supporting file.
+
+18
+00:00:58,840 --> 00:01:01,320
+These earlier recordings use illustrative records;
+
+19
+00:01:01,800 --> 00:01:04,720
+their fields vary. The committee enters its own scores.
+
+20
+00:01:05,340 --> 00:01:08,220
+Quorum keeps the review and the accountable decision connected.
+
+21
+00:01:12,200 --> 00:01:16,360
+The officer opens the AI-assisted bid review,
+
+22
+00:01:16,500 --> 00:01:19,370
+confirms permission to share the documents, and starts the
+
+23
+00:01:19,380 --> 00:01:23,330
+assessment. Every admitted bidder is considered against the same
+
+24
+00:01:23,340 --> 00:01:26,030
+issued criteria. Watch what happens when the submitted
+
+25
+00:01:26,040 --> 00:01:28,300
+information does not establish a requirement:
+
+26
+00:01:28,720 --> 00:01:30,730
+the result says, not evidenced.
+
+27
+00:01:30,740 --> 00:01:34,610
+The AI leaves the gap visible and gives the committee questions
+
+28
+00:01:34,620 --> 00:01:38,390
+to resolve. It can offer an advisory comparison, but it cannot
+
+29
+00:01:38,400 --> 00:01:40,190
+turn missing evidence into a pass.
+
+30
+00:01:40,200 --> 00:01:44,090
+Muse Spark on Meta Model API also returned the separately
+
+31
+00:01:44,100 --> 00:01:47,320
+verified source-linked assessment included with this submission.
+
+32
+00:01:50,200 --> 00:01:54,330
+The original recording also shows the people who make the
+
+33
+00:01:54,340 --> 00:01:58,090
+decision. Here is the committee panel, followed by member
+
+34
+00:01:58,100 --> 00:02:01,930
+registration. Each officer has an identity, role and recorded
+
+35
+00:02:01,940 --> 00:02:05,410
+position. Evaluator sheets, score differences and committee
+
+36
+00:02:05,420 --> 00:02:07,340
+consensus remain part of the file.
+
+37
+00:02:08,080 --> 00:02:10,830
+The AI's recommendation is advice for consideration;
+
+38
+00:02:10,840 --> 00:02:14,230
+official scores, formal ranking and the award remain with
+
+39
+00:02:14,240 --> 00:02:17,620
+authorised people. Quorum keeps that distinction visible.
+
+40
+00:02:22,200 --> 00:02:25,310
+We also tested the approval boundary against the production
+
+41
+00:02:25,320 --> 00:02:28,510
+build. An unsigned request returns four oh one.
+
+42
+00:02:28,520 --> 00:02:31,670
+A signed-in request without step-up verification returns four oh
+
+43
+00:02:31,680 --> 00:02:34,240
+three. The gate remains pending with no receipt.
+
+44
+00:02:34,800 --> 00:02:37,270
+A separate authorised fictional account then completes
+
+45
+00:02:37,280 --> 00:02:40,950
+two-factor verification, and the local simulation produces a
+
+46
+00:02:40,960 --> 00:02:44,950
+signature-verified receipt. This is test evidence, not a
+
+47
+00:02:44,960 --> 00:02:46,300
+government portal transaction.
+
+48
+00:02:50,000 --> 00:02:53,140
+Quorum. Built by Chungu Chama.
+
+49
+00:02:53,740 --> 00:02:55,040
+The agent prepares the file.
+
+50
+00:02:55,340 --> 00:02:57,540
+The authorised committee makes the decision.
+
+51
+00:02:57,900 --> 00:02:59,840
+Explore the source and join the pilot.
+

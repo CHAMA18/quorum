@@ -1,0 +1,25 @@
+{
+  "capturedAt": "2026-11-04T07:48:03.807Z",
+  "logicalSelector": "3031",
+  "configuredSidecarPort": 3131,
+  "traceId": "e1fd4f68-96a1-43d5-90bb-0e0a8e194ebd",
+  "readStatus": 200,
+  "matchedInIsolatedAudit": true,
+  "entry": {
+    "seq": 286,
+    "workspaceId": "demo",
+    "id": "tl_00286_e96f2706",
+    "ts": "2026-11-04T07:48:03.804Z",
+    "traceId": "e1fd4f68-96a1-43d5-90bb-0e0a8e194ebd",
+    "actor": "Demo Procurement Officer",
+    "server": "quorum-mcp",
+    "tool": "record_read",
+    "kind": "READ",
+    "inputs": "{\"path\":\"/api/gates/gate_a5d1a80f1683501ee15c060e677ff404/verify\"}",
+    "outputs": "{\"status\":200}",
+    "status": "OK",
+    "durationMs": 0,
+    "prev": "0abd335add55ac74",
+    "self": "664d6a40f78f861f"
+  }
+}

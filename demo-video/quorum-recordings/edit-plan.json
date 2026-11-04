@@ -1,0 +1,348 @@
+{
+  "sourceResolution": [
+    1920,
+    1080
+  ],
+  "recordedFootageSeconds": 122,
+  "timeline": [
+    20,
+    142
+  ],
+  "sourceSha256": {
+    "Part 1.mp4": "a458090cc959e7a5bb6900dfdd5b2bcb7c2b040aac45a965adcc51c3d6f4cea1",
+    "Part 2.mp4": "4adef98dfa3755bb2a1ea4cef6843fc5d1b159b0fb4a33ac38e8888c034b9e6e",
+    "Untitled video.mp4": "dc61d2904a5e9b0285609447d2761c2c78555ce90ef106dcc0fd38eb5431aacf"
+  },
+  "edits": [
+    {
+      "id": "footage-00",
+      "chapter": "supplier",
+      "source": "Part 1.mp4",
+      "sourceStart": 31,
+      "duration": 8,
+      "timelineStart": 20,
+      "crop": [
+        280,
+        60,
+        1600,
+        900
+      ],
+      "privacyRedaction": false,
+      "rate": 1,
+      "preparedFile": "clip-00.mp4"
+    },
+    {
+      "id": "footage-01",
+      "chapter": "supplier",
+      "source": "Part 1.mp4",
+      "sourceStart": 39,
+      "duration": 6,
+      "timelineStart": 28,
+      "crop": [
+        200,
+        80,
+        1504,
+        846
+      ],
+      "privacyRedaction": true,
+      "rate": 1,
+      "preparedFile": "clip-01.mp4"
+    },
+    {
+      "id": "footage-02",
+      "chapter": "supplier",
+      "source": "Part 1.mp4",
+      "sourceStart": 52,
+      "duration": 7,
+      "timelineStart": 34,
+      "crop": [
+        200,
+        80,
+        1504,
+        846
+      ],
+      "privacyRedaction": true,
+      "rate": 1,
+      "preparedFile": "clip-02.mp4"
+    },
+    {
+      "id": "footage-03",
+      "chapter": "supplier",
+      "source": "Part 1.mp4",
+      "sourceStart": 63,
+      "duration": 4,
+      "timelineStart": 41,
+      "crop": [
+        200,
+        80,
+        1504,
+        846
+      ],
+      "privacyRedaction": true,
+      "rate": 1,
+      "preparedFile": "clip-03.mp4"
+    },
+    {
+      "id": "footage-04",
+      "chapter": "workflow",
+      "source": "Part 2.mp4",
+      "sourceStart": 78,
+      "duration": 7,
+      "timelineStart": 45,
+      "crop": [
+        280,
+        100,
+        1600,
+        900
+      ],
+      "privacyRedaction": false,
+      "rate": 1,
+      "preparedFile": "clip-04.mp4"
+    },
+    {
+      "id": "footage-05",
+      "chapter": "workflow",
+      "source": "Part 2.mp4",
+      "sourceStart": 165,
+      "duration": 9,
+      "timelineStart": 52,
+      "crop": [
+        420,
+        170,
+        1080,
+        608
+      ],
+      "privacyRedaction": false,
+      "rate": 1,
+      "preparedFile": "clip-05.mp4"
+    },
+    {
+      "id": "footage-06",
+      "chapter": "workflow",
+      "source": "Part 2.mp4",
+      "sourceStart": 151,
+      "duration": 6,
+      "timelineStart": 61,
+      "crop": [
+        400,
+        245,
+        1120,
+        630
+      ],
+      "privacyRedaction": false,
+      "rate": 1,
+      "preparedFile": "clip-06.mp4"
+    },
+    {
+      "id": "footage-07",
+      "chapter": "workflow",
+      "source": "Part 2.mp4",
+      "sourceStart": 130,
+      "duration": 5,
+      "timelineStart": 67,
+      "crop": [
+        180,
+        100,
+        1600,
+        900
+      ],
+      "privacyRedaction": false,
+      "rate": 1,
+      "preparedFile": "clip-07.mp4"
+    },
+    {
+      "id": "footage-08",
+      "chapter": "review",
+      "source": "Part 2.mp4",
+      "sourceStart": 163,
+      "duration": 8,
+      "timelineStart": 72,
+      "crop": [
+        180,
+        100,
+        1600,
+        900
+      ],
+      "privacyRedaction": false,
+      "rate": 1,
+      "preparedFile": "clip-08.mp4"
+    },
+    {
+      "id": "footage-09",
+      "chapter": "review",
+      "source": "Part 2.mp4",
+      "sourceStart": 170,
+      "duration": 6,
+      "timelineStart": 80,
+      "crop": [
+        180,
+        100,
+        1600,
+        900
+      ],
+      "privacyRedaction": false,
+      "rate": 1,
+      "preparedFile": "clip-09.mp4"
+    },
+    {
+      "id": "footage-10",
+      "chapter": "review",
+      "source": "Part 2.mp4",
+      "sourceStart": 213,
+      "duration": 5,
+      "timelineStart": 86,
+      "crop": [
+        420,
+        270,
+        1080,
+        608
+      ],
+      "privacyRedaction": false,
+      "rate": 1,
+      "preparedFile": "clip-10.mp4"
+    },
+    {
+      "id": "footage-11",
+      "chapter": "review",
+      "source": "Part 2.mp4",
+      "sourceStart": 225,
+      "duration": 5.5,
+      "timelineStart": 91,
+      "crop": [
+        492,
+        420,
+        460,
+        258
+      ],
+      "privacyRedaction": false,
+      "rate": 1,
+      "preparedFile": "clip-11.mp4"
+    },
+    {
+      "id": "footage-12",
+      "chapter": "review",
+      "source": "Part 2.mp4",
+      "sourceStart": 230.5,
+      "duration": 5.5,
+      "timelineStart": 96.5,
+      "crop": [
+        492,
+        650,
+        460,
+        258
+      ],
+      "privacyRedaction": false,
+      "rate": 1,
+      "preparedFile": "clip-12.mp4"
+    },
+    {
+      "id": "footage-13",
+      "chapter": "review",
+      "source": "Part 2.mp4",
+      "sourceStart": 233,
+      "duration": 4,
+      "timelineStart": 102.0,
+      "crop": [
+        975,
+        420,
+        460,
+        258
+      ],
+      "privacyRedaction": false,
+      "rate": 1,
+      "preparedFile": "clip-13.mp4"
+    },
+    {
+      "id": "footage-14",
+      "chapter": "review",
+      "source": "Part 2.mp4",
+      "sourceStart": 237,
+      "duration": 4,
+      "timelineStart": 106.0,
+      "crop": [
+        975,
+        650,
+        460,
+        258
+      ],
+      "privacyRedaction": false,
+      "rate": 1,
+      "preparedFile": "clip-14.mp4"
+    },
+    {
+      "id": "footage-15",
+      "chapter": "committee",
+      "source": "Untitled video.mp4",
+      "sourceStart": 262,
+      "duration": 9,
+      "timelineStart": 110.0,
+      "crop": [
+        280,
+        60,
+        1600,
+        900
+      ],
+      "privacyRedaction": false,
+      "rate": 1,
+      "preparedFile": "clip-15.mp4"
+    },
+    {
+      "id": "footage-16",
+      "chapter": "committee",
+      "source": "Untitled video.mp4",
+      "sourceStart": 271,
+      "duration": 8,
+      "timelineStart": 119.0,
+      "crop": [
+        420,
+        170,
+        1080,
+        608
+      ],
+      "privacyRedaction": false,
+      "rate": 1,
+      "preparedFile": "clip-16.mp4"
+    },
+    {
+      "id": "footage-17",
+      "chapter": "committee",
+      "source": "Untitled video.mp4",
+      "sourceStart": 285,
+      "duration": 7,
+      "timelineStart": 127.0,
+      "crop": [
+        280,
+        60,
+        1600,
+        900
+      ],
+      "privacyRedaction": false,
+      "rate": 1,
+      "preparedFile": "clip-17.mp4"
+    },
+    {
+      "id": "footage-18",
+      "chapter": "committee",
+      "source": "Part 2.mp4",
+      "sourceStart": 250,
+      "duration": 8,
+      "timelineStart": 134.0,
+      "crop": [
+        400,
+        170,
+        1120,
+        630
+      ],
+      "privacyRedaction": false,
+      "rate": 1,
+      "preparedFile": "clip-18.mp4"
+    }
+  ],
+  "notes": [
+    "Normal source speed; cuts remove waiting intervals.",
+    "Raw recordings preserved.",
+    "Crops focus panels and exclude account/dev badges.",
+    "Supplier tax identifiers are explicitly redacted.",
+    "Recorded demonstration state is separate from the current Zambia integration fixture."
+  ]
+}

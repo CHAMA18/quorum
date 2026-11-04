@@ -14,6 +14,7 @@ requirements before it can execute.
 
 **Product:** [Live workspace](https://d1n7mv5t5hn4xe.cloudfront.net) ·
 [Landing page](https://quorum-solutions.com) ·
+[Admin portal](https://quorum-solutions.com/admin) ·
 [API directory](https://d1n7mv5t5hn4xe.cloudfront.net/api) ·
 [Product documentation](https://d1n7mv5t5hn4xe.cloudfront.net/docs) ·
 [MCP implementation](SUBMISSION/06-mcp-implementation.md)
@@ -78,15 +79,20 @@ notarization credentials are configured in Codemagic.
 
 - **Theme — *Build for Your World*.** Public-procurement review desks are a problem known
   firsthand: committees cross-checking hundreds of pages by hand, backlogs delaying
-  hospital supplies, and thin award documentation where fraud goes unchallenged. Quorum
-  brings Meta's models into that desk and makes a fully cited first-pass file possible.
+  hospital supplies, and thin award documentation that is hard to scrutinise. Quorum
+  brings Meta's models into that desk to help assemble a source-linked first-pass review;
+  the committee retains the decision.
 - **Track — Indie developer.** One builder, one deployed product.
 - **Meta models in the loop.**
-  - **Muse Spark 1.3 on Meta Model API** plans the review and drafts every committee
-    redline. Hosted calls carry **redacted** evidence — supplier names and currency
-    amounts are replaced by the model gateway before the request leaves the desk. Live
-    call verified 2026-10-31; on the real KEMSA pack it produced a model-led plan and
-    2 model drafts in 22.8 s, with 4 redactions.
+  - **Muse Spark 1.3 on Meta Model API** supports live bidder comparisons and drafts
+    committee redlines when the hosted call succeeds. Deterministic rules still establish
+    formal missing-document flags; the model does not set official scores or awards.
+    Hosted review calls apply the configured redaction policy. A KEMSA run captured on
+    2026-10-31 returned a model-led plan and 2 model drafts in 22.8 s, with 4 redactions.
+    In the later synthetic Zambia tender demo on 2026-11-04, the browser advisory took
+    31.0 s and returned 6 exact source quotations across 4 criterion assessments; 3 of
+    the 4 assessments had quotations. Matching verifies that quoted text exists in the
+    cited bid, not that its interpretation is correct.
   - **Llama 3.2 (Meta open weights)** is the **in-region fallback**: the chain tries it
     when the hosted call fails, and its drafts keep the full pack on the desk. The
     Ollama setup is measured in-repo (`ollama pull llama3.2:3b`; numbers in
@@ -111,6 +117,26 @@ notarization credentials are configured in Codemagic.
     report its state. The chat bubble includes Chat, Model and Support sections;
     officers can choose Automatic, Meta Muse or Quorum AI for replies. Barry
     cannot sign, award, return, file or summon without the officer's consent.
+- **Current tender evidence and its limits.** The 2026-11-04 integration uses a fictional
+  Zambia tender for ten vaccine refrigerators, two admitted bids, two bid documents and
+  a draft, unscored 60/40 matrix. On the same supplied documents, the advisory found
+  specification and named-maintenance-team evidence plus a signed 30-day schedule for
+  Demo Clinic Supplies; it found specification-only evidence and no documented signed
+  30-day schedule for Demo Medical Works. These are documentary comparisons, not official
+  scores or an award recommendation. In the separate end-to-end proof, the Muse planning
+  call timed out and a heuristic fallback selected the review; Muse then drafted one
+  redline in 11.3 s that proposed a three-working-day cure rule not stated in the tender.
+  That policy proposal needs human source and rule review. The quote check does not verify
+  free-form legal or procedural advice. The gate test used fictional accounts and ended
+  in a signed **local simulation receipt**, not a national e-GP filing. See the [dated
+  evidence index](SUBMISSION/evidence/current-run/README.md) and the [proof
+  artifact](SUBMISSION/evidence/current-run/proof.json).
+- **Impact evaluation is not complete.** No manual-versus-Quorum officer study has been
+  run, so review time saved, material-issue recall, citation accuracy against independent
+  reviewers, correction rates and downstream procurement outcomes are unmeasured. The
+  prepared protocol plans a counterbalanced review with two officers and two cases; it
+  currently has no completed observations. A same-task model-on versus model-off
+  comparison is also pending. See the [officer-study protocol](SUBMISSION/USER-VALIDATION.md).
 - **Submission kit.** Pitch page: [`SUBMISSION/submission.html`](SUBMISSION/submission.html) ·
   one-page brief: [`META_HACKATHON.md`](META_HACKATHON.md).
 
@@ -149,7 +175,7 @@ The image prompts and render steps live in the
 [Muse Image film kit](SUBMISSION/muse-film-kit/README.md). The product walkthrough script is
 [`SUBMISSION/DEMO.md`](SUBMISSION/DEMO.md).
 
-**Chapter 01 · The Stack — 14,000 pages.** Every page is someone's money. Nobody can read them all.
+**Chapter 01 · The Stack.** Every page is someone's money. Nobody can read them all.
 
 <video src="public/film/chapter-1.mp4" controls muted width="100%"></video>
 
@@ -200,11 +226,13 @@ The image prompts and render steps live in the
 
 ## Problem statement
 
-Public procurement consumes a large share of government spending across Africa, and it is where public money most often leaks. Evaluation committees — typically under-resourced officers in ministries of health and public works — must manually review tender packs that run to hundreds of pages: checking each bid against requirements, spotting price outliers and missing compliance documents, and drafting justifications for award decisions. The bottleneck is the review desk itself: backlogs delay hospitals waiting on critical supplies, and when officers are overwhelmed, compliance checks become spot-checks. Weak, inconsistent documentation of *why* a tender was awarded is precisely what enables procurement fraud to go unchallenged.
+Across Africa, public procurement averages about **17% of GDP**, making each tender review consequential for public services ([World Bank](https://blogs.worldbank.org/en/governance/expanding-role-public-procurement-africas-economic-development)). Evaluation teams must check tender packs against requirements, compare prices, verify compliance documents and explain recommendations. When review capacity is thin, essential supplies and public works can be delayed, while weak records make decisions harder to scrutinise.
 
-The people who feel this are (1) evaluation officers drowning in manual cross-checking, (2) procuring entities whose awards stall for months, and (3) citizens who fund public health through taxes but see procurement disputes, cancelled awards and audit queries instead of supplies.
+In Zambia, ZPPA’s 2023 annual report recorded **203 procuring entities** and **71,102 suppliers** registered on e-GP at year-end. In a separate set of 25 follow-up assessments, **13 entities were non-compliant and none were fully compliant**; these visits are not a national prevalence estimate ([ZPPA 2023 Annual Report](https://www.zppa.org.zm/documents/20182/280039/ZPPA_2023_ANNUAL_REPORT.pdf/b9d3c434-e670-4cf0-bcf3-69a8c2bcf421)).
 
-Quorum attacks the review bottleneck directly: an agent reads every document, extracts requirements, flags findings with citations and drafts committee-ready redlines — while every irreversible award decision stays behind a named human sign-off with a full audit trail.
+The loss figures need their scope stated. UNECA cites a **US$148 billion annual corruption estimate across Africa**, not procurement losses alone ([UNECA](https://archive.uneca.org/stories/corruption-public-procurement-case-infrastructure-africa)). Zambia’s FIC estimated about **US$450 million** in losses associated with cases disseminated in 2017; most was suspected tax evasion, and that total is not procurement-only or an annual recurring loss. The same report separately discusses 624 suspected procurement-corruption reports. A 2022 FIC case study records an advance payment above **ZMW 85 million** in one suspected case; it is not a US$85 million national loss estimate ([FIC 2017](https://www.fic.gov.zm/component/attachments/download/45) · [FIC 2022](https://www.fic.gov.zm/component/attachments/download/131)).
+
+Quorum helps procurement officers assemble a cited first-pass review, flag issues and draft committee-ready redlines. A named, authorised human committee retains the award decision, and actions remain recorded for audit.
 
 ---
 
@@ -663,3 +691,9 @@ fallback keeps the full pack on the desk.
 
 Infrastructure, architecture, product code and deployment: **CHAMA18** — Quorum, agentic procurement for Africa.
 Stack foundation: Next.js · Bun · LangGraph.js · Model Context Protocol (own server + official filesystem server) · JSON file store · Firebase · an OpenAI-compatible LLM endpoint for drafting.
+
+### Current hackathon evidence (4 November 2026)
+
+The current film uses 122 seconds of actual supplier, bid-review and committee recordings, with a separate current production test on one fictional Zambia tender, two timely bids, ZMW and issued 60/40 criteria. [Submission brief](META_HACKATHON.md), [dated proof and test scope](SUBMISSION/evidence/current-run/README.md), and [officer validation protocol](SUBMISSION/USER-VALIDATION.md) separate verified integration behaviour from pending human impact evidence. The [revised 3-minute video source](demo-video/quorum-recordings/index.html) preserves all older editions.
+
+`bash scripts/judge-demo.sh --production` runs against the built app on isolated ports 3100/3131 with temporary stores and signing keys. Omit `--production` for development, or add `--template` to test the labelled template path without model access. It refuses occupied ports and does not stop an existing app. The filesystem MCP server is pinned locally. Next.js development and production scripts select Webpack; production TypeScript checking is enabled.

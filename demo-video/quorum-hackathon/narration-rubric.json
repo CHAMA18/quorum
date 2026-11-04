@@ -1,0 +1,47 @@
+{
+  "duration_seconds": 180,
+  "scenes": [
+    {
+      "id": "stakes",
+      "start": 0,
+      "end": 22,
+      "text": "A hospital cannot use equipment that is still waiting for procurement review. Across Africa, public procurement averages seventeen percent of GDP, according to the World Bank. In Zambia, Quorum starts with the officer's desk: read the evidence, identify the gaps, and prepare a decision that people can explain."
+    },
+    {
+      "id": "record",
+      "start": 22,
+      "end": 45,
+      "text": "This is one fictional Zambia tender for ten vaccine refrigerators. Two timely bids, prices in kwacha, and criteria issued before evaluation. Technical capability carries sixty percent; delivery carries forty. The demonstration contains no real supplier's tax record. The source documents and starting state are included so a reviewer can reproduce the result."
+    },
+    {
+      "id": "model",
+      "start": 45,
+      "end": 81,
+      "text": "Muse Spark on Meta Model API compares each admitted bidder against those same criteria. Here is the actual returned review, beside its source. One supplier commits to delivery within thirty days and names a local service team. The other says delivery will be agreed after award. Quorum checks every quotation against that bidder's documents. An invented quotation is rejected. Missing evidence becomes a question for the committee. The model advises; it does not enter official scores or decide the award."
+    },
+    {
+      "id": "refusal",
+      "start": 81,
+      "end": 114,
+      "text": "Now the boundary that makes this useful in a public institution. The LangGraph review stops at a pending human gate. These are captured responses from the real HTTP approval path. An unsigned direct request is refused. An authenticated request without step-up verification is also refused. After both attempts, the gate is still pending and there is no filing receipt. The review graph has no edge to filing. Changing the model's instructions cannot add one."
+    },
+    {
+      "id": "signature",
+      "start": 114,
+      "end": 140,
+      "text": "A separate authorised test account now completes two-factor verification. The server checks office authority, committee quorum and the gate-bound assertion before accepting the decision. Only then does the simulation produce a sealed receipt. Its signature verifies. This is a local filing simulation on fictional data; it is not a government portal transaction. The accountable decision remains with authorised people."
+    },
+    {
+      "id": "evidence",
+      "start": 140,
+      "end": 166,
+      "text": "The evidence bundle includes the model response, exact source files, failed requests and verified receipt. Tests cover quotation grounding, access controls and replay protection. A procurement officer study is prepared, but no time saving or money recovered is claimed before real officers measure it. The next step is a consenting procurement unit reviewing one retrospective tender."
+    },
+    {
+      "id": "close",
+      "start": 166,
+      "end": 180,
+      "text": "Built by Chungu Chama. Quorum brings Meta's models into a reviewable procurement workflow. Explore the source and reproduce the demonstration. The agent prepares the file. The authorised committee makes the decision."
+    }
+  ]
+}

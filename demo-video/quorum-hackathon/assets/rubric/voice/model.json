@@ -1,0 +1,19 @@
+{
+  "scene": "model",
+  "text": "Muse Spark on Meta Model API compares each admitted bidder against those same criteria. Here is the actual returned review, beside its source. One supplier commits to delivery within thirty days and names a local service team. The other says delivery will be agreed after award. Quorum checks every quotation against that bidder's documents. An invented quotation is rejected. Missing evidence becomes a question for the committee. The model advises; it does not enter official scores or decide the award.",
+  "synthesis_text": "Muse Spark on Meta Model API compares each admitted bidder against those same criteria. Here is the actual returned review, beside its source. One supplier commits to delivery within thirty days and names a local service team. The other says delivery will be agreed after award. Quorum checks every quotation against that bidder's documents. An invented quotation is rejected. Missing evidence becomes a question for the committee. The model advises; it does not enter official scores or decide the award.",
+  "source": "Lusaka.m4a",
+  "reference_range": [
+    31.58,
+    38.86
+  ],
+  "reference_text": "So that's what we need to understand is how best can we create content that is of value to the whole world.",
+  "model": "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-4bit",
+  "seed": 54,
+  "sample_rate": 24000,
+  "duration_seconds": 35.04,
+  "generation_seconds": 44.18,
+  "generated_voice": true,
+  "temperature": 0.65,
+  "repetition_penalty": 1.15
+}

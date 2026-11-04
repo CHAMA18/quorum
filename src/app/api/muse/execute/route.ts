@@ -1,3 +1,4 @@
+import { sidecarOrigin } from "@/lib/sidecar-origin";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
@@ -23,7 +24,7 @@ import { verifyProposal } from "@/lib/muse-actions";
  * what it produced, who signed. Failures name the reason and change nothing.
  */
 
-const SIDECAR = (process.env.QUORUM_SIDECAR_URL?.trim() || "http://127.0.0.1:3031").replace(/\/+$/, "");
+const SIDECAR = sidecarOrigin();
 
 const BodySchema = z.object({
   proposal: z

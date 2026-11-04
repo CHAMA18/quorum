@@ -1,8 +1,10 @@
 "use client";
 
+import { useReducedMotion } from "@/lib/use-reduced-motion";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   CircleAlert,
   CircleCheck,

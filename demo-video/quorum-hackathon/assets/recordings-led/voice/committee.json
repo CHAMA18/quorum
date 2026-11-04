@@ -1,0 +1,19 @@
+{
+  "scene": "committee",
+  "text": "The original recording also shows the people who make the decision. Here is the committee panel, followed by member registration. Each officer has an identity, role and recorded position. Evaluator sheets, score differences and committee consensus remain part of the file. The AI's recommendation is advice for consideration; official scores, formal ranking and the award remain with authorised people. Quorum keeps that distinction visible.",
+  "synthesis_text": "The original recording also shows the people who make the decision. Here is the committee panel, followed by member registration. Each officer has an identity, role and recorded position. Evaluator sheets, score differences and committee consensus remain part of the file. The A I's recommendation is advice for consideration; official scores, formal ranking and the award remain with authorised people. Quorum keeps that distinction visible.",
+  "source": "Lusaka.m4a",
+  "reference_range": [
+    31.58,
+    38.86
+  ],
+  "reference_text": "So that's what we need to understand is how best can we create content that is of value to the whole world.",
+  "model": "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-4bit",
+  "seed": 66,
+  "sample_rate": 24000,
+  "duration_seconds": 27.52,
+  "generation_seconds": 48.47,
+  "generated_voice": true,
+  "temperature": 0.65,
+  "repetition_penalty": 1.15
+}

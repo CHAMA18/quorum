@@ -1,5 +1,7 @@
 "use client";
 
+import { useReducedMotion } from "@/lib/use-reduced-motion";
+
 /**
  * CalendarView — the committee's calendar.
  *
@@ -22,7 +24,7 @@
  */
 
 import { useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowUpRight,
   CalendarDays,

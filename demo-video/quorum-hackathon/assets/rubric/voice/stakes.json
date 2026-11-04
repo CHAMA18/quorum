@@ -1,0 +1,17 @@
+{
+  "scene": "stakes",
+  "text": "A hospital cannot use equipment that is still waiting for procurement review. Across Africa, public procurement averages seventeen percent of GDP, according to the World Bank. In Zambia, Quorum starts with the officer's desk: read the evidence, identify the gaps, and prepare a decision that people can explain.",
+  "synthesis_text": "A hospital cannot use equipment that is still waiting for procurement review. Across Africa, public procurement averages seventeen percent of GDP, according to the World Bank. In Zambia, Quorum starts with the officer's desk: read the evidence, identify the gaps, and prepare a decision that people can explain.",
+  "source": "Lusaka.m4a",
+  "reference_range": [
+    31.58,
+    38.86
+  ],
+  "reference_text": "So that's what we need to understand is how best can we create content that is of value to the whole world.",
+  "model": "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-4bit",
+  "seed": 42,
+  "sample_rate": 24000,
+  "duration_seconds": 17.76,
+  "generation_seconds": 31.83,
+  "generated_voice": true
+}

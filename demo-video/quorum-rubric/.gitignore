@@ -1,0 +1,7 @@
+.hyperframes/
+*.mp4
+assets/*.wav
+assets/*.mp3
+review/*.png
+review/*.jpg
+renders/

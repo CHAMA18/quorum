@@ -1,3 +1,4 @@
+import { sidecarOrigin } from "@/lib/sidecar-origin";
 import { createHash } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { canMutateSidecar } from "@/lib/permissions";
@@ -8,7 +9,7 @@ import { redisRateLimit } from "@/lib/redis-rate-limit";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const SIDECAR = (process.env.QUORUM_SIDECAR_URL?.trim() || "http://127.0.0.1:3031").replace(/\/+$/, "");
+const SIDECAR = sidecarOrigin();
 const REQUISITION_LIMIT = 20;
 const REQUISITION_WINDOW_MS = 15 * 60_000;
 
