@@ -97,3 +97,6 @@ backups/
 /Cursor Company Logo.jpeg
 /Mac Logo.png
 /Windows Logo.png
+
+# Demo video raw source recordings (large, local-only)
+demo-video/source/

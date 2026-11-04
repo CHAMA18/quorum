@@ -1,0 +1,91 @@
+{
+  "programs": [],
+  "stream_groups": [],
+  "streams": [
+    {
+      "codec_name": "h264",
+      "width": 1920,
+      "height": 1080,
+      "r_frame_rate": "30/1",
+      "duration": "180.000000",
+      "nb_frames": "5400"
+    },
+    {
+      "codec_name": "aac",
+      "sample_rate": "48000",
+      "channels": 2,
+      "r_frame_rate": "0/0",
+      "duration": "180.000000",
+      "nb_frames": "8439"
+    },
+    {
+      "codec_name": "bin_data",
+      "r_frame_rate": "0/0",
+      "duration": "180.000000",
+      "nb_frames": "6"
+    }
+  ],
+  "format": {
+    "duration": "180.000000",
+    "size": "35146111"
+  },
+  "recorded_intro_source": "Meta Hackathon.mp4",
+  "continuing_voice_reference": "Lusaka.m4a",
+  "noise_reduction_on_voice_only": true,
+  "music_retained": true,
+  "tempo_or_pitch_changed": false,
+  "voice_only_silent_ranges_over_1_5_seconds": [],
+  "last_spoken_word_end": 178.92000000000002,
+  "narration_scenes": [
+    {
+      "scene": "opening",
+      "expected": "Over 450 million US dollars is lost every year due to faulty procurement means. Through Quorum, we seek to address this challenge. Let me show you how it works.",
+      "transcript": "Over 450 million US dollars is lost every year due to faulty procurement means. Through Quorum, we seek to address this challenge. Let me show you how it works.",
+      "word_match": 1.0
+    },
+    {
+      "scene": "supplier",
+      "expected": "We start on the supplier side. The portal keeps the required documents together, so it's clear what needs to be submitted. Here, I'm opening a tax registration certificate and running the AI document check. Our Meta-powered tool reads the document and checks it against the requested requirement. The findings appear beside the original file, making the details easy to compare. That gives the reviewer a useful starting point. It doesn't decide whether the supplier qualifies.",
+      "transcript": "We start on the supplier side. The portal keeps the required documents together, so it's clear what needs to be submitted. Here I'm opening a tax registration certificate and running the AI document check. Our Meta -powered tool reads the document and checks it against the requested requirement. The findings appear beside the original file, making the details easy to compare. That gives the reviewer a useful starting point. It doesn't decide whether the supplier qualifies.",
+      "word_match": 1.0
+    },
+    {
+      "scene": "workflow",
+      "expected": "Now let's move into the officer's workspace. This is the same procurement process, from the notice and mandatory requirements through to bid opening and evaluation. The criteria are set before the bids are assessed. In this example, technical capability carries sixty percent, and delivery carries forty percent. Officers can check the scores alongside the evidence. Everything stays in one tender file, so the next person can follow the reasoning without having to piece it together from separate spreadsheets and messages.",
+      "transcript": "Now, let's move into the officer's workspace. This is the same procurement process from the notice and mandatory requirements through to bid opening and evaluation. The criteria are set before the bids are assessed. In this example, technical capability carries 60 % and delivery carries 40%. Officers can check the scores alongside the evidence. Everything stays in one tender file, so the next person can follow the reasoning without having to piece it together from separate spreadsheets and messages.",
+      "word_match": 0.9629629629629629
+    },
+    {
+      "scene": "review",
+      "expected": "Next, we run the AI-assisted bid review. We include every admitted bidder, confirm consent, and review their submissions against the issued criteria. The review is read only. Here, you can see both bidders compared against the same requirements. When the documents don't establish a required reference contract or a committed delivery plan, the result says, not evidenced. It doesn't fill in the gap. Instead, it gives the committee specific questions to follow up. Can we verify these references? Are the delivery milestones clear? Does the price build-up support the proposal? That is where the AI helps: it prepares a clearer review, so people can spend their time checking what matters.",
+      "transcript": "Next, we run the AI assisted bid review. We include every admitted bidder, confirm consent, and review their submissions against the issued criteria. The review is read only. Here you can see both bidders compared against the same requirements. When the documents don't establish a required reference contract or a committed delivery plan, the result says not evidenced. It doesn't fill in the gap. Instead, it gives the committee specific questions to follow up. Can we verify these references? Are the delivery milestones clear? Does the price build up support the proposal? That is where the AI helps. It prepares a clearer review so people can spend their time checking what matters.",
+      "word_match": 1.0
+    },
+    {
+      "scene": "control",
+      "expected": "The evaluation record stays visible too. Officers can inspect the evaluator sheets, differences in scores, and the recorded consensus. The AI doesn't write those scores or award the tender. The committee records its assessment, and authorised people make the decision. Award, contract, and complaint records remain connected to the same file. So the team can explain both what it decided and the evidence behind that decision.",
+      "transcript": "The evaluation record stays visible too. Officers can inspect the evaluator sheets, differences in scores, and the recorded consensus. The AI doesn't write those scores or award the tender. The committee records its assessment and authorised people make the decision. Award, contract and complaint records remain connected to the same file. So the team can explain both what it decided and the evidence behind that decision.",
+      "word_match": 1.0
+    },
+    {
+      "scene": "mcp",
+      "expected": "We've also published Quorum's MCP integration. It lets compatible AI clients connect to our read-only tools, bringing this evidence into the tools teams already use. The boundaries stay the same: the AI helps prepare the work, and authorised people keep control. That's Quorum. The agent prepares the file. The committee awards the tender.",
+      "transcript": "We've also published Quorum's MCP integration. It lets compatible AI clients connect to our read -only tools, bringing this evidence into the tools teams already use. The boundaries stay the same. The AI helps prepare the work and authorized people keep control. That's Quorum. The agent prepares the file. The committee awards the tender.",
+      "word_match": 0.9824561403508771
+    }
+  ],
+  "caption_count": 52,
+  "audio_loudness": {
+    "input_i": "-15.30",
+    "input_tp": "-1.50",
+    "input_lra": "4.50",
+    "input_thresh": "-26.19",
+    "output_i": "-15.65",
+    "output_tp": "-1.50",
+    "output_lra": "4.50",
+    "output_thresh": "-26.53",
+    "normalization_type": "dynamic",
+    "target_offset": "-0.35"
+  },
+  "full_decode_passed": true
+}

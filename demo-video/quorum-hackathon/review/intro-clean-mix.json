@@ -1,0 +1,20 @@
+{
+  "voice": "assets/narration-intro-clean.wav",
+  "music": "assets/music-intro-clean.wav",
+  "master": "assets/master-intro-clean.wav",
+  "target_lufs": -16,
+  "true_peak_ceiling_dbtp": -1.5,
+  "music_carve": {
+    "detector": "voice RMS",
+    "presence_band_hz": [
+      250,
+      4000
+    ],
+    "max_presence_reduction_db": -9.1,
+    "max_broadband_duck_db": -8,
+    "attack_seconds": 0.035,
+    "release_seconds": 0.65
+  },
+  "voice_tempo_changed": false,
+  "voice_denoising": true
+}

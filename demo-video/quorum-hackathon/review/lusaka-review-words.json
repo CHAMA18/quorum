@@ -1,0 +1,962 @@
+{
+  "sha256": "b0cc8fc432c9c15f6e1892723775b0672fe508ca5d735f93ffd13d0224e3b78d",
+  "text": " Next, we run the AI assisted bid review. We include every admitted bidder, confirm consent, and review their submissions against the issued criteria. The review is read only. Here you can see both bidders compared against the same requirements. When the documents don't establish a required reference contract or a committed delivery plan, the result says not evidenced. It doesn't fill in the gap or quietly treat it as a pass. Instead, it gives the committee specific questions to follow up. Can we verify these references? Are the delivery milestones clear? Does the price build up support the proposal? That is where the AI helps. It prepares a clearer review so people can spend their time checking what matters.",
+  "segments": [
+    {
+      "id": 0,
+      "seek": 0,
+      "start": 0.0,
+      "end": 8.88,
+      "text": " Next, we run the AI assisted bid review. We include every admitted bidder, confirm consent, and review their submissions against the issued criteria.",
+      "tokens": [
+        50363,
+        7406,
+        11,
+        356,
+        1057,
+        262,
+        9552,
+        18419,
+        8406,
+        2423,
+        13,
+        775,
+        2291,
+        790,
+        6848,
+        44848,
+        11,
+        6216,
+        8281,
+        11,
+        290,
+        2423,
+        511,
+        22129,
+        1028,
+        262,
+        4884,
+        9987,
+        13,
+        50813
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.09699684214369159,
+      "compression_ratio": 1.6883561643835616,
+      "no_speech_prob": 0.0019722781144082546,
+      "words": [
+        {
+          "word": " Next,",
+          "start": 0.0,
+          "end": 0.58,
+          "probability": 0.75244140625
+        },
+        {
+          "word": " we",
+          "start": 0.78,
+          "end": 1.04,
+          "probability": 0.97412109375
+        },
+        {
+          "word": " run",
+          "start": 1.04,
+          "end": 1.28,
+          "probability": 0.92919921875
+        },
+        {
+          "word": " the",
+          "start": 1.28,
+          "end": 1.54,
+          "probability": 0.95361328125
+        },
+        {
+          "word": " AI",
+          "start": 1.54,
+          "end": 1.92,
+          "probability": 0.6337890625
+        },
+        {
+          "word": " assisted",
+          "start": 1.92,
+          "end": 2.28,
+          "probability": 0.5322265625
+        },
+        {
+          "word": " bid",
+          "start": 2.28,
+          "end": 2.62,
+          "probability": 0.91455078125
+        },
+        {
+          "word": " review.",
+          "start": 2.62,
+          "end": 3.0,
+          "probability": 0.994140625
+        },
+        {
+          "word": " We",
+          "start": 3.58,
+          "end": 3.58,
+          "probability": 0.990234375
+        },
+        {
+          "word": " include",
+          "start": 3.58,
+          "end": 3.88,
+          "probability": 0.978515625
+        },
+        {
+          "word": " every",
+          "start": 3.88,
+          "end": 4.16,
+          "probability": 0.98046875
+        },
+        {
+          "word": " admitted",
+          "start": 4.16,
+          "end": 4.58,
+          "probability": 0.97607421875
+        },
+        {
+          "word": " bidder,",
+          "start": 4.58,
+          "end": 4.84,
+          "probability": 0.99267578125
+        },
+        {
+          "word": " confirm",
+          "start": 5.34,
+          "end": 5.62,
+          "probability": 0.97314453125
+        },
+        {
+          "word": " consent,",
+          "start": 5.62,
+          "end": 6.06,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " and",
+          "start": 6.46,
+          "end": 6.56,
+          "probability": 0.99755859375
+        },
+        {
+          "word": " review",
+          "start": 6.56,
+          "end": 6.88,
+          "probability": 0.9921875
+        },
+        {
+          "word": " their",
+          "start": 6.88,
+          "end": 7.14,
+          "probability": 0.99267578125
+        },
+        {
+          "word": " submissions",
+          "start": 7.14,
+          "end": 7.52,
+          "probability": 0.97607421875
+        },
+        {
+          "word": " against",
+          "start": 7.52,
+          "end": 7.96,
+          "probability": 0.99609375
+        },
+        {
+          "word": " the",
+          "start": 7.96,
+          "end": 8.16,
+          "probability": 0.95947265625
+        },
+        {
+          "word": " issued",
+          "start": 8.16,
+          "end": 8.4,
+          "probability": 0.796875
+        },
+        {
+          "word": " criteria.",
+          "start": 8.4,
+          "end": 8.88,
+          "probability": 0.9931640625
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "seek": 0,
+      "start": 9.6,
+      "end": 14.14,
+      "text": " The review is read only. Here you can see both bidders compared against the same requirements.",
+      "tokens": [
+        50813,
+        383,
+        2423,
+        318,
+        1100,
+        691,
+        13,
+        3423,
+        345,
+        460,
+        766,
+        1111,
+        275,
+        1638,
+        364,
+        3688,
+        1028,
+        262,
+        976,
+        5359,
+        13,
+        51063
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.09699684214369159,
+      "compression_ratio": 1.6883561643835616,
+      "no_speech_prob": 0.0019722781144082546,
+      "words": [
+        {
+          "word": " The",
+          "start": 9.6,
+          "end": 9.82,
+          "probability": 0.99365234375
+        },
+        {
+          "word": " review",
+          "start": 9.82,
+          "end": 10.1,
+          "probability": 0.99462890625
+        },
+        {
+          "word": " is",
+          "start": 10.1,
+          "end": 10.26,
+          "probability": 0.99560546875
+        },
+        {
+          "word": " read",
+          "start": 10.26,
+          "end": 10.5,
+          "probability": 0.98828125
+        },
+        {
+          "word": " only.",
+          "start": 10.5,
+          "end": 10.84,
+          "probability": 0.9765625
+        },
+        {
+          "word": " Here",
+          "start": 11.08,
+          "end": 11.28,
+          "probability": 0.9443359375
+        },
+        {
+          "word": " you",
+          "start": 11.28,
+          "end": 11.42,
+          "probability": 0.6064453125
+        },
+        {
+          "word": " can",
+          "start": 11.42,
+          "end": 11.64,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " see",
+          "start": 11.64,
+          "end": 11.82,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " both",
+          "start": 11.82,
+          "end": 12.04,
+          "probability": 0.9833984375
+        },
+        {
+          "word": " bidders",
+          "start": 12.04,
+          "end": 12.38,
+          "probability": 0.99462890625
+        },
+        {
+          "word": " compared",
+          "start": 12.38,
+          "end": 12.82,
+          "probability": 0.8388671875
+        },
+        {
+          "word": " against",
+          "start": 12.82,
+          "end": 13.24,
+          "probability": 0.99462890625
+        },
+        {
+          "word": " the",
+          "start": 13.24,
+          "end": 13.48,
+          "probability": 0.998046875
+        },
+        {
+          "word": " same",
+          "start": 13.48,
+          "end": 13.6,
+          "probability": 0.99609375
+        },
+        {
+          "word": " requirements.",
+          "start": 13.6,
+          "end": 14.14,
+          "probability": 0.99462890625
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "seek": 0,
+      "start": 14.74,
+      "end": 21.24,
+      "text": " When the documents don't establish a required reference contract or a committed delivery plan, the result says not evidenced.",
+      "tokens": [
+        51063,
+        1649,
+        262,
+        4963,
+        836,
+        470,
+        4474,
+        257,
+        2672,
+        4941,
+        2775,
+        393,
+        257,
+        5364,
+        7585,
+        1410,
+        11,
+        262,
+        1255,
+        1139,
+        407,
+        30204,
+        13,
+        51413
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.09699684214369159,
+      "compression_ratio": 1.6883561643835616,
+      "no_speech_prob": 0.0019722781144082546,
+      "words": [
+        {
+          "word": " When",
+          "start": 14.74,
+          "end": 14.92,
+          "probability": 0.99462890625
+        },
+        {
+          "word": " the",
+          "start": 14.92,
+          "end": 15.08,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " documents",
+          "start": 15.08,
+          "end": 15.42,
+          "probability": 0.98974609375
+        },
+        {
+          "word": " don't",
+          "start": 15.42,
+          "end": 15.82,
+          "probability": 0.9775390625
+        },
+        {
+          "word": " establish",
+          "start": 15.82,
+          "end": 16.26,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " a",
+          "start": 16.26,
+          "end": 16.48,
+          "probability": 0.98583984375
+        },
+        {
+          "word": " required",
+          "start": 16.48,
+          "end": 16.9,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " reference",
+          "start": 16.9,
+          "end": 17.28,
+          "probability": 0.998046875
+        },
+        {
+          "word": " contract",
+          "start": 17.28,
+          "end": 17.7,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " or",
+          "start": 17.7,
+          "end": 18.04,
+          "probability": 0.96337890625
+        },
+        {
+          "word": " a",
+          "start": 18.04,
+          "end": 18.18,
+          "probability": 0.876953125
+        },
+        {
+          "word": " committed",
+          "start": 18.18,
+          "end": 18.56,
+          "probability": 0.9775390625
+        },
+        {
+          "word": " delivery",
+          "start": 18.56,
+          "end": 18.92,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " plan,",
+          "start": 18.92,
+          "end": 19.38,
+          "probability": 0.9990234375
+        },
+        {
+          "word": " the",
+          "start": 19.58,
+          "end": 19.82,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " result",
+          "start": 19.82,
+          "end": 20.1,
+          "probability": 0.95947265625
+        },
+        {
+          "word": " says",
+          "start": 20.1,
+          "end": 20.4,
+          "probability": 0.99365234375
+        },
+        {
+          "word": " not",
+          "start": 20.4,
+          "end": 20.76,
+          "probability": 0.365966796875
+        },
+        {
+          "word": " evidenced.",
+          "start": 20.76,
+          "end": 21.24,
+          "probability": 0.8095703125
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "seek": 0,
+      "start": 21.68,
+      "end": 28.52,
+      "text": " It doesn't fill in the gap or quietly treat it as a pass. Instead, it gives the committee specific questions to follow up.",
+      "tokens": [
+        51413,
+        632,
+        1595,
+        470,
+        6070,
+        287,
+        262,
+        7625,
+        393,
+        12703,
+        2190,
+        340,
+        355,
+        257,
+        1208,
+        13,
+        5455,
+        11,
+        340,
+        3607,
+        262,
+        5583,
+        2176,
+        2683,
+        284,
+        1061,
+        510,
+        13,
+        51763
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.09699684214369159,
+      "compression_ratio": 1.6883561643835616,
+      "no_speech_prob": 0.0019722781144082546,
+      "words": [
+        {
+          "word": " It",
+          "start": 21.68,
+          "end": 21.92,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " doesn't",
+          "start": 21.92,
+          "end": 22.16,
+          "probability": 0.9951171875
+        },
+        {
+          "word": " fill",
+          "start": 22.16,
+          "end": 22.42,
+          "probability": 0.9951171875
+        },
+        {
+          "word": " in",
+          "start": 22.42,
+          "end": 22.62,
+          "probability": 0.9833984375
+        },
+        {
+          "word": " the",
+          "start": 22.62,
+          "end": 22.76,
+          "probability": 0.9921875
+        },
+        {
+          "word": " gap",
+          "start": 22.76,
+          "end": 22.98,
+          "probability": 0.99072265625
+        },
+        {
+          "word": " or",
+          "start": 22.98,
+          "end": 23.36,
+          "probability": 0.8720703125
+        },
+        {
+          "word": " quietly",
+          "start": 23.36,
+          "end": 23.88,
+          "probability": 0.7314453125
+        },
+        {
+          "word": " treat",
+          "start": 23.88,
+          "end": 24.18,
+          "probability": 0.6484375
+        },
+        {
+          "word": " it",
+          "start": 24.18,
+          "end": 24.42,
+          "probability": 0.99169921875
+        },
+        {
+          "word": " as",
+          "start": 24.42,
+          "end": 24.52,
+          "probability": 0.998046875
+        },
+        {
+          "word": " a",
+          "start": 24.52,
+          "end": 24.62,
+          "probability": 0.99609375
+        },
+        {
+          "word": " pass.",
+          "start": 24.62,
+          "end": 24.98,
+          "probability": 0.986328125
+        },
+        {
+          "word": " Instead,",
+          "start": 25.5,
+          "end": 25.88,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " it",
+          "start": 25.9,
+          "end": 26.02,
+          "probability": 0.998046875
+        },
+        {
+          "word": " gives",
+          "start": 26.02,
+          "end": 26.18,
+          "probability": 0.99609375
+        },
+        {
+          "word": " the",
+          "start": 26.18,
+          "end": 26.48,
+          "probability": 0.98583984375
+        },
+        {
+          "word": " committee",
+          "start": 26.48,
+          "end": 26.68,
+          "probability": 0.9560546875
+        },
+        {
+          "word": " specific",
+          "start": 26.68,
+          "end": 27.18,
+          "probability": 0.9443359375
+        },
+        {
+          "word": " questions",
+          "start": 27.18,
+          "end": 27.68,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " to",
+          "start": 27.68,
+          "end": 28.02,
+          "probability": 0.994140625
+        },
+        {
+          "word": " follow",
+          "start": 28.02,
+          "end": 28.24,
+          "probability": 0.994140625
+        },
+        {
+          "word": " up.",
+          "start": 28.24,
+          "end": 28.52,
+          "probability": 0.69384765625
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "seek": 2852,
+      "start": 28.52,
+      "end": 34.7,
+      "text": " Can we verify these references? Are the delivery milestones clear? Does the price build up support the proposal?",
+      "tokens": [
+        50363,
+        1680,
+        356,
+        11767,
+        777,
+        10288,
+        30,
+        4231,
+        262,
+        7585,
+        41926,
+        1598,
+        30,
+        8314,
+        262,
+        2756,
+        1382,
+        510,
+        1104,
+        262,
+        6961,
+        30,
+        50663
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.12169769406318665,
+      "compression_ratio": 1.4203821656050954,
+      "no_speech_prob": 0.012599362060427666,
+      "words": [
+        {
+          "word": " Can",
+          "start": 28.52,
+          "end": 29.04,
+          "probability": 0.708984375
+        },
+        {
+          "word": " we",
+          "start": 29.04,
+          "end": 29.26,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " verify",
+          "start": 29.26,
+          "end": 29.64,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " these",
+          "start": 29.64,
+          "end": 29.88,
+          "probability": 0.98388671875
+        },
+        {
+          "word": " references?",
+          "start": 29.88,
+          "end": 30.34,
+          "probability": 0.9912109375
+        },
+        {
+          "word": " Are",
+          "start": 30.6,
+          "end": 30.6,
+          "probability": 0.99365234375
+        },
+        {
+          "word": " the",
+          "start": 30.6,
+          "end": 30.74,
+          "probability": 0.98681640625
+        },
+        {
+          "word": " delivery",
+          "start": 30.74,
+          "end": 31.08,
+          "probability": 0.99560546875
+        },
+        {
+          "word": " milestones",
+          "start": 31.08,
+          "end": 31.54,
+          "probability": 0.98974609375
+        },
+        {
+          "word": " clear?",
+          "start": 31.54,
+          "end": 31.96,
+          "probability": 0.994140625
+        },
+        {
+          "word": " Does",
+          "start": 32.54,
+          "end": 32.54,
+          "probability": 0.990234375
+        },
+        {
+          "word": " the",
+          "start": 32.54,
+          "end": 32.74,
+          "probability": 0.994140625
+        },
+        {
+          "word": " price",
+          "start": 32.74,
+          "end": 33.04,
+          "probability": 0.990234375
+        },
+        {
+          "word": " build",
+          "start": 33.04,
+          "end": 33.36,
+          "probability": 0.890625
+        },
+        {
+          "word": " up",
+          "start": 33.36,
+          "end": 33.68,
+          "probability": 0.89013671875
+        },
+        {
+          "word": " support",
+          "start": 33.68,
+          "end": 34.1,
+          "probability": 0.40283203125
+        },
+        {
+          "word": " the",
+          "start": 34.1,
+          "end": 34.3,
+          "probability": 0.99267578125
+        },
+        {
+          "word": " proposal?",
+          "start": 34.3,
+          "end": 34.7,
+          "probability": 0.99609375
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "seek": 2852,
+      "start": 35.12,
+      "end": 40.62,
+      "text": " That is where the AI helps. It prepares a clearer review so people can spend their time checking what matters.",
+      "tokens": [
+        50663,
+        1320,
+        318,
+        810,
+        262,
+        9552,
+        5419,
+        13,
+        632,
+        25978,
+        257,
+        22363,
+        2423,
+        523,
+        661,
+        460,
+        4341,
+        511,
+        640,
+        10627,
+        644,
+        6067,
+        13,
+        50963
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.12169769406318665,
+      "compression_ratio": 1.4203821656050954,
+      "no_speech_prob": 0.012599362060427666,
+      "words": [
+        {
+          "word": " That",
+          "start": 35.12,
+          "end": 35.28,
+          "probability": 0.9755859375
+        },
+        {
+          "word": " is",
+          "start": 35.28,
+          "end": 35.38,
+          "probability": 0.98583984375
+        },
+        {
+          "word": " where",
+          "start": 35.38,
+          "end": 35.64,
+          "probability": 0.990234375
+        },
+        {
+          "word": " the",
+          "start": 35.64,
+          "end": 35.86,
+          "probability": 0.9765625
+        },
+        {
+          "word": " AI",
+          "start": 35.86,
+          "end": 36.08,
+          "probability": 0.861328125
+        },
+        {
+          "word": " helps.",
+          "start": 36.08,
+          "end": 36.48,
+          "probability": 0.9912109375
+        },
+        {
+          "word": " It",
+          "start": 37.08,
+          "end": 37.12,
+          "probability": 0.9853515625
+        },
+        {
+          "word": " prepares",
+          "start": 37.12,
+          "end": 37.58,
+          "probability": 0.99462890625
+        },
+        {
+          "word": " a",
+          "start": 37.58,
+          "end": 37.74,
+          "probability": 0.96630859375
+        },
+        {
+          "word": " clearer",
+          "start": 37.74,
+          "end": 38.08,
+          "probability": 0.9951171875
+        },
+        {
+          "word": " review",
+          "start": 38.08,
+          "end": 38.44,
+          "probability": 0.86181640625
+        },
+        {
+          "word": " so",
+          "start": 38.44,
+          "end": 38.64,
+          "probability": 0.7822265625
+        },
+        {
+          "word": " people",
+          "start": 38.64,
+          "end": 38.88,
+          "probability": 0.98046875
+        },
+        {
+          "word": " can",
+          "start": 38.88,
+          "end": 39.14,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " spend",
+          "start": 39.14,
+          "end": 39.3,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " their",
+          "start": 39.3,
+          "end": 39.56,
+          "probability": 0.99462890625
+        },
+        {
+          "word": " time",
+          "start": 39.56,
+          "end": 39.76,
+          "probability": 0.99853515625
+        },
+        {
+          "word": " checking",
+          "start": 39.76,
+          "end": 40.04,
+          "probability": 0.99267578125
+        },
+        {
+          "word": " what",
+          "start": 40.04,
+          "end": 40.34,
+          "probability": 0.9912109375
+        },
+        {
+          "word": " matters.",
+          "start": 40.34,
+          "end": 40.62,
+          "probability": 0.9931640625
+        }
+      ]
+    }
+  ]
+}

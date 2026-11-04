@@ -1,0 +1,23 @@
+{
+  "project_check_passed": true,
+  "warnings_reviewed": 16,
+  "captions": 64,
+  "duration_seconds": 230,
+  "planned_delivery_resolution": [
+    3840,
+    2160
+  ],
+  "motion_compositions": 9,
+  "motion_tweens": 42,
+  "motion_note": "MCP opacity exit has an implicit starting opacity of 1; verified in preview. All added fades have explicit endpoints.",
+  "picture_review": [
+    "all seven scene midpoints",
+    "recorded intro",
+    "recommendation entrance",
+    "recommendation to committee transition",
+    "committee to evaluation transition",
+    "MCP",
+    "closing"
+  ],
+  "audio_review": "New recorded chapter transcript matches the edited wording after punctuation normalization. Voice-only silencedetect reports no gaps of two seconds or longer. Final encoded file verification pending."
+}

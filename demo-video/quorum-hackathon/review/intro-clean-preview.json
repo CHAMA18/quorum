@@ -1,0 +1,45 @@
+{
+  "ok": true,
+  "outputDir": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/intro-clean-preview",
+  "frames": [
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/intro-clean-preview/frame-00-at-6s.png",
+      "time": 6
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/intro-clean-preview/frame-01-at-11.8s.png",
+      "time": 11.8
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/intro-clean-preview/frame-02-at-12.2s.png",
+      "time": 12.2
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/intro-clean-preview/frame-03-at-12.4s.png",
+      "time": 12.4
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/intro-clean-preview/frame-04-at-54s.png",
+      "time": 54
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/intro-clean-preview/frame-05-at-106s.png",
+      "time": 106
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/intro-clean-preview/frame-06-at-164s.png",
+      "time": 164
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/intro-clean-preview/frame-07-at-178s.png",
+      "time": 178
+    }
+  ],
+  "contactSheets": [
+    "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/intro-clean-preview/contact-sheet.jpg"
+  ],
+  "_meta": {
+    "version": "0.9.9",
+    "updateAvailable": false
+  }
+}

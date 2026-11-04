@@ -1,0 +1,32 @@
+# Local HyperFrames caches and preview artefacts
+.hyperframes/
+.thumbnails/
+.waveform-cache/
+.media/
+__pycache__/
+*.pyc
+work/
+renders/
+revisions/
+
+# The 181 MB 4K master is published as a GitHub Release asset (see DELIVERY.md),
+# because it exceeds GitHub's 100 MB per-file Git limit and the account's LFS
+# budget is exhausted. Keep local delivery copies out of Git.
+/Quorum-Hackathon-Demo-4K-3m50-*.mp4
+
+# Editable audio stems are local-only; rebuild them with scripts/remaster_audio.py.
+/assets/*.wav
+
+# Source clips and the music track are local-only; the final master is the
+# demo-v1 release asset. See DELIVERY.md for the inventory.
+/assets/*.mp4
+/assets/*.mp3
+
+# Review evidence is committed as machine-readable reports, not screenshots or audio.
+review/*.png
+review/*.jpg
+review/*.wav
+review/*.ffconcat
+review/*.log
+review/**/*.png
+review/**/*.jpg

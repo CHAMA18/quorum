@@ -1,0 +1,33 @@
+;FFMETADATA1
+title=Quorum — procurement demo
+comment=Recorded creator intro; continuing narration from the creator-supplied Lusaka voice reference. Voice-only noise reduction; original music retained.
+[CHAPTER]
+TIMEBASE=1/1000
+START=0
+END=12000
+title=Opening
+[CHAPTER]
+TIMEBASE=1/1000
+START=12000
+END=45000
+title=Supplier
+[CHAPTER]
+TIMEBASE=1/1000
+START=45000
+END=77000
+title=Workflow
+[CHAPTER]
+TIMEBASE=1/1000
+START=77000
+END=125000
+title=Review
+[CHAPTER]
+TIMEBASE=1/1000
+START=125000
+END=152000
+title=Control
+[CHAPTER]
+TIMEBASE=1/1000
+START=152000
+END=180000
+title=Mcp

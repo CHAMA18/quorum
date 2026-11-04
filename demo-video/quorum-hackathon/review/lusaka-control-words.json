@@ -1,0 +1,551 @@
+{
+  "sha256": "7b8974ed94ad30a35c489528a988557cadc5123926fc14b8262c42d3605cb41a",
+  "text": " The evaluation record stays visible too. Officers can inspect the evaluator sheets, differences in scores, and the recorded consensus. The AI doesn't write those scores, rank bidders, or award the tender. The committee records its assessment, and authorised people make the decision. Award, contract, and complaint records remain connected to the same file. So the team can explain both what it decided and the evidence behind that decision.",
+  "segments": [
+    {
+      "id": 0,
+      "seek": 0,
+      "start": 0.0,
+      "end": 8.22,
+      "text": " The evaluation record stays visible too. Officers can inspect the evaluator sheets, differences in scores, and the recorded consensus.",
+      "tokens": [
+        50363,
+        383,
+        12660,
+        1700,
+        14768,
+        7424,
+        1165,
+        13,
+        23512,
+        460,
+        10104,
+        262,
+        5418,
+        84,
+        1352,
+        15747,
+        11,
+        5400,
+        287,
+        8198,
+        11,
+        290,
+        262,
+        6264,
+        11529,
+        13,
+        50763
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.07662673663067561,
+      "compression_ratio": 1.7294117647058824,
+      "no_speech_prob": 0.014615554362535477,
+      "words": [
+        {
+          "word": " The",
+          "start": 0.0,
+          "end": 0.74,
+          "probability": 0.69384765625
+        },
+        {
+          "word": " evaluation",
+          "start": 0.74,
+          "end": 1.1,
+          "probability": 0.96142578125
+        },
+        {
+          "word": " record",
+          "start": 1.1,
+          "end": 1.5,
+          "probability": 0.62451171875
+        },
+        {
+          "word": " stays",
+          "start": 1.5,
+          "end": 1.84,
+          "probability": 0.98046875
+        },
+        {
+          "word": " visible",
+          "start": 1.84,
+          "end": 2.28,
+          "probability": 0.9716796875
+        },
+        {
+          "word": " too.",
+          "start": 2.28,
+          "end": 2.64,
+          "probability": 0.7509765625
+        },
+        {
+          "word": " Officers",
+          "start": 3.02,
+          "end": 3.02,
+          "probability": 0.978515625
+        },
+        {
+          "word": " can",
+          "start": 3.02,
+          "end": 3.28,
+          "probability": 0.994140625
+        },
+        {
+          "word": " inspect",
+          "start": 3.28,
+          "end": 3.74,
+          "probability": 0.9951171875
+        },
+        {
+          "word": " the",
+          "start": 3.74,
+          "end": 4.04,
+          "probability": 0.98828125
+        },
+        {
+          "word": " evaluator",
+          "start": 4.04,
+          "end": 4.46,
+          "probability": 0.99267578125
+        },
+        {
+          "word": " sheets,",
+          "start": 4.46,
+          "end": 4.9,
+          "probability": 0.97509765625
+        },
+        {
+          "word": " differences",
+          "start": 5.42,
+          "end": 5.72,
+          "probability": 0.98681640625
+        },
+        {
+          "word": " in",
+          "start": 5.72,
+          "end": 6.08,
+          "probability": 0.9931640625
+        },
+        {
+          "word": " scores,",
+          "start": 6.08,
+          "end": 6.32,
+          "probability": 0.99609375
+        },
+        {
+          "word": " and",
+          "start": 7.08,
+          "end": 7.2,
+          "probability": 0.99462890625
+        },
+        {
+          "word": " the",
+          "start": 7.2,
+          "end": 7.3,
+          "probability": 0.970703125
+        },
+        {
+          "word": " recorded",
+          "start": 7.3,
+          "end": 7.74,
+          "probability": 0.99462890625
+        },
+        {
+          "word": " consensus.",
+          "start": 7.74,
+          "end": 8.22,
+          "probability": 0.98974609375
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "seek": 0,
+      "start": 8.64,
+      "end": 16.08,
+      "text": " The AI doesn't write those scores, rank bidders, or award the tender. The committee records its assessment, and authorised people make the decision.",
+      "tokens": [
+        50763,
+        383,
+        9552,
+        1595,
+        470,
+        3551,
+        883,
+        8198,
+        11,
+        4279,
+        275,
+        1638,
+        364,
+        11,
+        393,
+        5764,
+        262,
+        15403,
+        13,
+        383,
+        5583,
+        4406,
+        663,
+        8922,
+        11,
+        290,
+        39019,
+        661,
+        787,
+        262,
+        2551,
+        13,
+        51163
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.07662673663067561,
+      "compression_ratio": 1.7294117647058824,
+      "no_speech_prob": 0.014615554362535477,
+      "words": [
+        {
+          "word": " The",
+          "start": 8.64,
+          "end": 8.72,
+          "probability": 0.99072265625
+        },
+        {
+          "word": " AI",
+          "start": 8.72,
+          "end": 9.04,
+          "probability": 0.94970703125
+        },
+        {
+          "word": " doesn't",
+          "start": 9.04,
+          "end": 9.52,
+          "probability": 0.96142578125
+        },
+        {
+          "word": " write",
+          "start": 9.52,
+          "end": 9.94,
+          "probability": 0.9892578125
+        },
+        {
+          "word": " those",
+          "start": 9.94,
+          "end": 10.26,
+          "probability": 0.9775390625
+        },
+        {
+          "word": " scores,",
+          "start": 10.26,
+          "end": 10.56,
+          "probability": 0.99560546875
+        },
+        {
+          "word": " rank",
+          "start": 10.68,
+          "end": 10.86,
+          "probability": 0.986328125
+        },
+        {
+          "word": " bidders,",
+          "start": 10.86,
+          "end": 11.26,
+          "probability": 0.7744140625
+        },
+        {
+          "word": " or",
+          "start": 11.44,
+          "end": 11.58,
+          "probability": 0.9951171875
+        },
+        {
+          "word": " award",
+          "start": 11.58,
+          "end": 11.78,
+          "probability": 0.9599609375
+        },
+        {
+          "word": " the",
+          "start": 11.78,
+          "end": 11.92,
+          "probability": 0.9912109375
+        },
+        {
+          "word": " tender.",
+          "start": 11.92,
+          "end": 12.18,
+          "probability": 0.97021484375
+        },
+        {
+          "word": " The",
+          "start": 12.7,
+          "end": 13.04,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " committee",
+          "start": 13.04,
+          "end": 13.2,
+          "probability": 0.880859375
+        },
+        {
+          "word": " records",
+          "start": 13.2,
+          "end": 13.68,
+          "probability": 0.99365234375
+        },
+        {
+          "word": " its",
+          "start": 13.68,
+          "end": 13.94,
+          "probability": 0.9580078125
+        },
+        {
+          "word": " assessment,",
+          "start": 13.94,
+          "end": 14.34,
+          "probability": 0.98046875
+        },
+        {
+          "word": " and",
+          "start": 14.58,
+          "end": 14.7,
+          "probability": 0.990234375
+        },
+        {
+          "word": " authorised",
+          "start": 14.7,
+          "end": 14.94,
+          "probability": 0.1600341796875
+        },
+        {
+          "word": " people",
+          "start": 14.94,
+          "end": 15.28,
+          "probability": 0.998046875
+        },
+        {
+          "word": " make",
+          "start": 15.28,
+          "end": 15.58,
+          "probability": 0.9462890625
+        },
+        {
+          "word": " the",
+          "start": 15.58,
+          "end": 15.82,
+          "probability": 0.98876953125
+        },
+        {
+          "word": " decision.",
+          "start": 15.82,
+          "end": 16.08,
+          "probability": 0.990234375
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "seek": 0,
+      "start": 16.88,
+      "end": 24.56,
+      "text": " Award, contract, and complaint records remain connected to the same file. So the team can explain both what it decided and the evidence behind that decision.",
+      "tokens": [
+        51163,
+        11289,
+        11,
+        2775,
+        11,
+        290,
+        8224,
+        4406,
+        3520,
+        5884,
+        284,
+        262,
+        976,
+        2393,
+        13,
+        1406,
+        262,
+        1074,
+        460,
+        4727,
+        1111,
+        644,
+        340,
+        3066,
+        290,
+        262,
+        2370,
+        2157,
+        326,
+        2551,
+        13,
+        51563
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.07662673663067561,
+      "compression_ratio": 1.7294117647058824,
+      "no_speech_prob": 0.014615554362535477,
+      "words": [
+        {
+          "word": " Award,",
+          "start": 16.88,
+          "end": 16.88,
+          "probability": 0.9609375
+        },
+        {
+          "word": " contract,",
+          "start": 17.08,
+          "end": 17.34,
+          "probability": 0.9501953125
+        },
+        {
+          "word": " and",
+          "start": 17.6,
+          "end": 17.66,
+          "probability": 0.9951171875
+        },
+        {
+          "word": " complaint",
+          "start": 17.66,
+          "end": 17.96,
+          "probability": 0.986328125
+        },
+        {
+          "word": " records",
+          "start": 17.96,
+          "end": 18.42,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " remain",
+          "start": 18.42,
+          "end": 18.74,
+          "probability": 0.98486328125
+        },
+        {
+          "word": " connected",
+          "start": 18.74,
+          "end": 19.12,
+          "probability": 0.9951171875
+        },
+        {
+          "word": " to",
+          "start": 19.12,
+          "end": 19.36,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " the",
+          "start": 19.36,
+          "end": 19.46,
+          "probability": 0.998046875
+        },
+        {
+          "word": " same",
+          "start": 19.46,
+          "end": 19.66,
+          "probability": 0.9990234375
+        },
+        {
+          "word": " file.",
+          "start": 19.66,
+          "end": 20.0,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " So",
+          "start": 20.46,
+          "end": 20.76,
+          "probability": 0.98291015625
+        },
+        {
+          "word": " the",
+          "start": 20.76,
+          "end": 20.86,
+          "probability": 0.83251953125
+        },
+        {
+          "word": " team",
+          "start": 20.86,
+          "end": 21.02,
+          "probability": 0.99365234375
+        },
+        {
+          "word": " can",
+          "start": 21.02,
+          "end": 21.22,
+          "probability": 0.998046875
+        },
+        {
+          "word": " explain",
+          "start": 21.22,
+          "end": 21.7,
+          "probability": 0.994140625
+        },
+        {
+          "word": " both",
+          "start": 21.7,
+          "end": 21.98,
+          "probability": 0.97314453125
+        },
+        {
+          "word": " what",
+          "start": 21.98,
+          "end": 22.26,
+          "probability": 0.97509765625
+        },
+        {
+          "word": " it",
+          "start": 22.26,
+          "end": 22.38,
+          "probability": 0.70458984375
+        },
+        {
+          "word": " decided",
+          "start": 22.38,
+          "end": 22.74,
+          "probability": 0.96630859375
+        },
+        {
+          "word": " and",
+          "start": 22.74,
+          "end": 23.04,
+          "probability": 0.78515625
+        },
+        {
+          "word": " the",
+          "start": 23.04,
+          "end": 23.2,
+          "probability": 0.96875
+        },
+        {
+          "word": " evidence",
+          "start": 23.2,
+          "end": 23.54,
+          "probability": 0.99755859375
+        },
+        {
+          "word": " behind",
+          "start": 23.54,
+          "end": 23.92,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " that",
+          "start": 23.92,
+          "end": 24.2,
+          "probability": 0.984375
+        },
+        {
+          "word": " decision.",
+          "start": 24.2,
+          "end": 24.56,
+          "probability": 0.9970703125
+        }
+      ]
+    }
+  ]
+}

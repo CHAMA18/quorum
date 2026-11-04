@@ -1,0 +1,42 @@
+{
+  "recorded_intro_source": "Meta Hackathon.mp4",
+  "recorded_intro_range": [
+    3.2,
+    13.2
+  ],
+  "recorded_intro_position": 0.12,
+  "bridge_source": "previous voice track, 14.38\u201315.8 seconds",
+  "bridge_position": 10.3,
+  "body_shift_seconds": -4,
+  "mcp_added_seconds": 4,
+  "mcp_sentence_boundaries": [
+    160.28714285714284,
+    168.0257142857143,
+    169.94,
+    174.28857142857143,
+    177.04285714285714
+  ],
+  "mcp_added_pause_seconds": 0.8,
+  "body_denoiser_delay_compensated_samples": 470,
+  "intro_denoiser_delay_compensated_samples": 479,
+  "noise_test_before_dbfs": -72.1078109741211,
+  "noise_test_after_dbfs": -77.92679595947266,
+  "speech_tempo_changed": false,
+  "music_denoised": false,
+  "scene_starts": {
+    "opening": 0,
+    "supplier": 12,
+    "workflow": 45,
+    "review": 77,
+    "control": 125,
+    "mcp": 152
+  },
+  "scene_ends": {
+    "opening": 12,
+    "supplier": 45,
+    "workflow": 77,
+    "review": 125,
+    "control": 152,
+    "mcp": 180
+  }
+}

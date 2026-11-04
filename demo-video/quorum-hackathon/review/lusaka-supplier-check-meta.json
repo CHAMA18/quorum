@@ -1,0 +1,13 @@
+{
+  "sessionId": "voyager/transcribe/688E3B9E0651480D8C23B69CC3169BA6",
+  "transcript": "We start on the supplier side. The portal keeps the required documents together so it's it's clear what needs to be submitted here I'm opening a tax registration certificate and running the AI document check our Meta powered tool reads the document and checks it against the requested requirement the findings appear beside the original file making the details easy to compare that that gives the reviewer a useful starting point it doesn't certify the document or decide whether the supplier qualifies",
+  "audioDurationMs": 28240,
+  "turns": [
+    {
+      "turnId": 0,
+      "startMs": 60,
+      "endMs": 27740,
+      "transcript": "We start on the supplier side. The portal keeps the required documents together so it's it's clear what needs to be submitted here I'm opening a tax registration certificate and running the AI document check our Meta powered tool reads the document and checks it against the requested requirement the findings appear beside the original file making the details easy to compare that that gives the reviewer a useful starting point it doesn't certify the document or decide whether the supplier qualifies"
+    }
+  ]
+}

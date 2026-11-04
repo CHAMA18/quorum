@@ -1,0 +1,263 @@
+{
+  "sha256": "151c5e2f4c530636b8fc3a6e68c21202d01d8fe730e964dde52305c10bacdd68",
+  "text": " Hello, welcome to Quorum. We built it to help procurement teams spend less time chasing documents, and more time making decisions they can explain. Let me show you how it works.",
+  "segments": [
+    {
+      "id": 0,
+      "seek": 0,
+      "start": 0.0,
+      "end": 6.14,
+      "text": " Hello, welcome to Quorum. We built it to help procurement teams spend less time chasing documents,",
+      "tokens": [
+        50363,
+        18435,
+        11,
+        7062,
+        284,
+        2264,
+        19220,
+        13,
+        775,
+        3170,
+        340,
+        284,
+        1037,
+        31156,
+        3466,
+        4341,
+        1342,
+        640,
+        20023,
+        4963,
+        11,
+        50687
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.14437949089776903,
+      "compression_ratio": 1.3111111111111111,
+      "no_speech_prob": 0.016720687970519066,
+      "words": [
+        {
+          "word": " Hello,",
+          "start": 0.0,
+          "end": 0.5,
+          "probability": 0.9423828125
+        },
+        {
+          "word": " welcome",
+          "start": 0.74,
+          "end": 0.98,
+          "probability": 0.95458984375
+        },
+        {
+          "word": " to",
+          "start": 0.98,
+          "end": 1.42,
+          "probability": 0.9921875
+        },
+        {
+          "word": " Quorum.",
+          "start": 1.42,
+          "end": 1.58,
+          "probability": 0.962890625
+        },
+        {
+          "word": " We",
+          "start": 2.04,
+          "end": 2.08,
+          "probability": 0.98876953125
+        },
+        {
+          "word": " built",
+          "start": 2.08,
+          "end": 2.32,
+          "probability": 0.9892578125
+        },
+        {
+          "word": " it",
+          "start": 2.32,
+          "end": 2.68,
+          "probability": 0.9912109375
+        },
+        {
+          "word": " to",
+          "start": 2.68,
+          "end": 2.72,
+          "probability": 0.99609375
+        },
+        {
+          "word": " help",
+          "start": 2.72,
+          "end": 2.94,
+          "probability": 0.99755859375
+        },
+        {
+          "word": " procurement",
+          "start": 2.94,
+          "end": 3.34,
+          "probability": 0.99560546875
+        },
+        {
+          "word": " teams",
+          "start": 3.34,
+          "end": 3.96,
+          "probability": 0.99658203125
+        },
+        {
+          "word": " spend",
+          "start": 3.96,
+          "end": 4.48,
+          "probability": 0.9560546875
+        },
+        {
+          "word": " less",
+          "start": 4.48,
+          "end": 4.78,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " time",
+          "start": 4.78,
+          "end": 5.08,
+          "probability": 0.9990234375
+        },
+        {
+          "word": " chasing",
+          "start": 5.08,
+          "end": 5.52,
+          "probability": 0.98681640625
+        },
+        {
+          "word": " documents,",
+          "start": 5.52,
+          "end": 6.14,
+          "probability": 0.99658203125
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "seek": 0,
+      "start": 6.7,
+      "end": 10.2,
+      "text": " and more time making decisions they can explain. Let me show you how it works.",
+      "tokens": [
+        50687,
+        290,
+        517,
+        640,
+        1642,
+        5370,
+        484,
+        460,
+        4727,
+        13,
+        3914,
+        502,
+        905,
+        345,
+        703,
+        340,
+        2499,
+        13,
+        50887
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.14437949089776903,
+      "compression_ratio": 1.3111111111111111,
+      "no_speech_prob": 0.016720687970519066,
+      "words": [
+        {
+          "word": " and",
+          "start": 6.7,
+          "end": 6.8,
+          "probability": 0.98681640625
+        },
+        {
+          "word": " more",
+          "start": 6.8,
+          "end": 7.02,
+          "probability": 0.99365234375
+        },
+        {
+          "word": " time",
+          "start": 7.02,
+          "end": 7.22,
+          "probability": 0.99462890625
+        },
+        {
+          "word": " making",
+          "start": 7.22,
+          "end": 7.48,
+          "probability": 0.99560546875
+        },
+        {
+          "word": " decisions",
+          "start": 7.48,
+          "end": 7.78,
+          "probability": 0.99072265625
+        },
+        {
+          "word": " they",
+          "start": 7.78,
+          "end": 8.1,
+          "probability": 0.90576171875
+        },
+        {
+          "word": " can",
+          "start": 8.1,
+          "end": 8.22,
+          "probability": 0.99755859375
+        },
+        {
+          "word": " explain.",
+          "start": 8.22,
+          "end": 8.52,
+          "probability": 0.9970703125
+        },
+        {
+          "word": " Let",
+          "start": 9.12,
+          "end": 9.34,
+          "probability": 0.99560546875
+        },
+        {
+          "word": " me",
+          "start": 9.34,
+          "end": 9.44,
+          "probability": 0.99951171875
+        },
+        {
+          "word": " show",
+          "start": 9.44,
+          "end": 9.58,
+          "probability": 0.99853515625
+        },
+        {
+          "word": " you",
+          "start": 9.58,
+          "end": 9.72,
+          "probability": 0.99755859375
+        },
+        {
+          "word": " how",
+          "start": 9.72,
+          "end": 9.88,
+          "probability": 0.998046875
+        },
+        {
+          "word": " it",
+          "start": 9.88,
+          "end": 10.02,
+          "probability": 0.998046875
+        },
+        {
+          "word": " works.",
+          "start": 10.02,
+          "end": 10.2,
+          "probability": 0.998046875
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+[
+  {
+    "scene": "opening",
+    "mediaCount": 1,
+    "bounds": [
+      0,
+      0,
+      1920,
+      1080
+    ],
+    "sourceAspectRatio": "16:9, original recording fully visible"
+  },
+  {
+    "scene": "supplier",
+    "mediaCount": 5,
+    "bounds": [
+      0,
+      0,
+      1920,
+      1080
+    ],
+    "sourceAspectRatio": "16:9, original recording fully visible"
+  },
+  {
+    "scene": "workflow",
+    "mediaCount": 5,
+    "bounds": [
+      0,
+      0,
+      1920,
+      1080
+    ],
+    "sourceAspectRatio": "16:9, original recording fully visible"
+  },
+  {
+    "scene": "review",
+    "mediaCount": 7,
+    "bounds": [
+      0,
+      0,
+      1920,
+      1080
+    ],
+    "sourceAspectRatio": "16:9, original recording fully visible"
+  },
+  {
+    "scene": "control",
+    "mediaCount": 5,
+    "bounds": [
+      0,
+      0,
+      1920,
+      1080
+    ],
+    "sourceAspectRatio": "16:9, original recording fully visible"
+  }
+]

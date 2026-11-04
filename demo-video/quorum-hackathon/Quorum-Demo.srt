@@ -1,0 +1,255 @@
+1
+00:00:00,000 --> 00:00:05,025
+Over 450 million US dollars is lost every year due to faulty
+
+2
+00:00:05,060 --> 00:00:10,270
+procurement means. Through Quorum, we seek to address this challenge.
+
+3
+00:00:10,520 --> 00:00:11,810
+Let me show you how it works.
+
+4
+00:00:12,000 --> 00:00:14,350
+We start on the supplier side.
+
+5
+00:00:14,960 --> 00:00:19,225
+The portal keeps the required documents together, so it's clear what needs
+
+6
+00:00:19,260 --> 00:00:20,410
+to be submitted.
+
+7
+00:00:21,280 --> 00:00:25,205
+Here I'm opening a tax registration certificate and running the AI document
+
+8
+00:00:25,240 --> 00:00:30,305
+check. Our Meta-powered tool reads the document and checks it against
+
+9
+00:00:30,340 --> 00:00:31,890
+the requested requirement.
+
+10
+00:00:33,020 --> 00:00:36,905
+The findings appear beside the original file, making the details easy
+
+11
+00:00:36,940 --> 00:00:41,450
+to compare. That gives the reviewer a useful starting point.
+
+12
+00:00:42,180 --> 00:00:44,830
+It doesn't decide whether the supplier qualifies.
+
+13
+00:00:45,000 --> 00:00:48,290
+Now, let's move into the officer's workspace.
+
+14
+00:00:48,700 --> 00:00:52,385
+This is the same procurement process from the notice and mandatory
+
+15
+00:00:52,420 --> 00:00:55,030
+requirements through to bid opening and evaluation.
+
+16
+00:00:55,800 --> 00:00:58,370
+The criteria are set before the bids are assessed.
+
+17
+00:00:59,020 --> 00:01:05,765
+In this example, technical capability carries 60% and delivery carries 40%.
+
+18
+00:01:05,800 --> 00:01:08,570
+Officers can check the scores alongside the evidence.
+
+19
+00:01:09,060 --> 00:01:12,585
+Everything stays in one tender file, so the next person can follow
+
+20
+00:01:12,620 --> 00:01:16,005
+the reasoning without having to piece it together from separate spreadsheets
+
+21
+00:01:16,040 --> 00:01:16,870
+and messages.
+
+22
+00:01:17,000 --> 00:01:20,530
+Next, we run the AI assisted bid review.
+
+23
+00:01:21,460 --> 00:01:25,545
+We include every admitted bidder, confirm consent, and review their
+
+24
+00:01:25,580 --> 00:01:27,630
+submissions against the issued criteria.
+
+25
+00:01:28,720 --> 00:01:30,290
+The review is read only.
+
+26
+00:01:30,940 --> 00:01:34,290
+Here you can see both bidders compared against the same requirements.
+
+27
+00:01:35,300 --> 00:01:38,285
+When the documents don't establish a required reference contract
+
+28
+00:01:38,320 --> 00:01:42,650
+or a committed delivery plan, the result says not evidenced.
+
+29
+00:01:43,160 --> 00:01:45,090
+It doesn't fill in the gap.
+
+30
+00:01:45,940 --> 00:01:49,550
+Instead, it gives the committee specific questions to follow up.
+
+31
+00:01:50,060 --> 00:01:51,690
+Can we verify these references?
+
+32
+00:01:52,200 --> 00:01:54,030
+Are the delivery milestones clear?
+
+33
+00:01:54,920 --> 00:01:57,490
+Does the price build up support the proposal?
+
+34
+00:01:58,280 --> 00:02:00,030
+That is where the AI helps.
+
+35
+00:02:00,880 --> 00:02:04,005
+It prepares a clearer review so people can spend their time checking
+
+36
+00:02:04,040 --> 00:02:04,870
+what matters.
+
+37
+00:02:05,864 --> 00:02:12,110
+The AI presents the strongest documented fit for the committee consideration.
+
+38
+00:02:13,660 --> 00:02:15,870
+It then evaluates both sides.
+
+39
+00:02:16,480 --> 00:02:18,430
+It then submits information to the committee.
+
+40
+00:02:19,180 --> 00:02:22,665
+Based off of information that it will give you as a committee,
+
+41
+00:02:22,700 --> 00:02:24,430
+you then proceed to then select.
+
+42
+00:02:25,550 --> 00:02:30,985
+So as a committee, you have the ability to set up what
+
+43
+00:02:31,020 --> 00:02:36,165
+we call the full committee that has to make up their own
+
+44
+00:02:36,200 --> 00:02:39,610
+decision. This is a panel of the committee.
+
+45
+00:02:40,100 --> 00:02:44,365
+We can add any other person to the committee to constitute
+
+46
+00:02:44,400 --> 00:02:49,105
+the quorum, who then makes the final decision in terms of who
+
+47
+00:02:49,140 --> 00:02:50,750
+to award a particular contract.
+
+48
+00:02:51,500 --> 00:02:54,430
+Each person has to have the verdict signed.
+
+49
+00:02:55,000 --> 00:02:58,045
+The evaluation record stays visible too.
+
+50
+00:02:58,080 --> 00:03:02,390
+Officers can inspect the evaluator sheets, differences in scores,
+
+51
+00:03:03,060 --> 00:03:04,470
+and the recorded consensus.
+
+52
+00:03:05,000 --> 00:03:08,150
+The AI doesn't write those scores or award the tender.
+
+53
+00:03:08,700 --> 00:03:11,825
+The committee records its assessment and authorised people make
+
+54
+00:03:11,860 --> 00:03:15,745
+the decision. Award, contract and complaint records remain connected
+
+55
+00:03:15,780 --> 00:03:16,930
+to the same file.
+
+56
+00:03:17,500 --> 00:03:20,565
+So the team can explain both what it decided and the evidence
+
+57
+00:03:20,600 --> 00:03:21,870
+behind that decision.
+
+58
+00:03:22,000 --> 00:03:26,270
+We've also published Quorum's MCP integration.
+
+59
+00:03:27,280 --> 00:03:31,725
+It lets compatible AI clients connect to our read-only tools, bringing
+
+60
+00:03:31,760 --> 00:03:34,830
+this evidence into the tools teams already use.
+
+61
+00:03:35,780 --> 00:03:37,690
+The boundaries stay the same.
+
+62
+00:03:38,440 --> 00:03:42,630
+The AI helps prepare the work and authorized people keep control.
+
+63
+00:03:43,800 --> 00:03:46,270
+That's Quorum. The agent prepares the file.
+
+64
+00:03:47,140 --> 00:03:49,170
+The committee awards the tender.

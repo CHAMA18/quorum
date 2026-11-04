@@ -1,0 +1,117 @@
+{
+  "source": "Meta Hackathon.mp4",
+  "duration": 50,
+  "latency_compensated_samples": 479,
+  "tempo_or_pitch_changed": false,
+  "sentences": [
+    {
+      "text": "The AI presents the strongest documented fit for the committee consideration.",
+      "source_ranges": [
+        [
+          201.8,
+          202.64
+        ],
+        [
+          209.1,
+          214.3
+        ]
+      ],
+      "speech_duration": 6.04,
+      "start": 0.864,
+      "end": 6.904
+    },
+    {
+      "text": "It then evaluates both sides.",
+      "source_ranges": [
+        [
+          219.25,
+          221.3
+        ]
+      ],
+      "speech_duration": 1.8,
+      "start": 8.776,
+      "end": 10.576
+    },
+    {
+      "text": "It then submits information to the committee.",
+      "source_ranges": [
+        [
+          223.49,
+          225.35
+        ]
+      ],
+      "speech_duration": 1.86,
+      "start": 11.368,
+      "end": 13.228
+    },
+    {
+      "text": "Based off of information that it will give you as a committee, you then proceed to then select.",
+      "source_ranges": [
+        [
+          240.45,
+          245.4
+        ]
+      ],
+      "speech_duration": 4.95,
+      "start": 14.308,
+      "end": 19.258
+    },
+    {
+      "text": "So as a committee, you have the ability to set up what we call the full committee that has to make up their own decision.",
+      "source_ranges": [
+        [
+          256.66,
+          259.96
+        ],
+        [
+          260.4,
+          268.7
+        ]
+      ],
+      "speech_duration": 11.6,
+      "start": 20.266,
+      "end": 31.866
+    },
+    {
+      "text": "This is a panel of the committee.",
+      "source_ranges": [
+        [
+          272.44,
+          274.03
+        ]
+      ],
+      "speech_duration": 1.59,
+      "start": 32.874,
+      "end": 34.464
+    },
+    {
+      "text": "We can add any other person to the committee to constitute the quorum, who then makes the final decision in terms of who to award a particular contract.",
+      "source_ranges": [
+        [
+          274.3,
+          278.18
+        ],
+        [
+          278.36,
+          284.88
+        ]
+      ],
+      "speech_duration": 10.34,
+      "start": 35.184,
+      "end": 45.524
+    },
+    {
+      "text": "Each person has to have the verdict signed.",
+      "source_ranges": [
+        [
+          285.16,
+          287.98
+        ]
+      ],
+      "speech_duration": 2.82,
+      "start": 46.46,
+      "end": 49.28
+    }
+  ],
+  "text": "The AI presents the strongest documented fit for the committee consideration. It then evaluates both sides. It then submits information to the committee. Based off of information that it will give you as a committee, you then proceed to then select. So as a committee, you have the ability to set up what we call the full committee that has to make up their own decision. This is a panel of the committee. We can add any other person to the committee to constitute the quorum, who then makes the final decision in terms of who to award a particular contract. Each person has to have the verdict signed."
+}

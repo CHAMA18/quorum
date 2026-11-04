@@ -1,0 +1,14 @@
+{
+  "source": "Lusaka.m4a",
+  "source_duration_seconds": 63.402667,
+  "reference": "assets/lusaka-reference.wav",
+  "reference_range_seconds": [
+    31.58,
+    38.86
+  ],
+  "reference_transcript": "So that\u2019s what we need to understand is how best can we create content that is of value to the whole world.",
+  "method": "Local voice cloning of the user-supplied sample for the complete Quorum script",
+  "voice_generation_requested_by": "User supplied Lusaka.m4a as the voice to use throughout after discussing local cloning.",
+  "voice_generation_external_upload": false,
+  "reference_transcription": "Meta Muse Voice Transcribe using the project\u2019s configured API"
+}

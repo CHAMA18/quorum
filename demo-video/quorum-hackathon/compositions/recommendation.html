@@ -1,0 +1,24 @@
+<template>
+<style>
+*{box-sizing:border-box;margin:0}
+#root{width:100%;height:100%;position:relative;overflow:hidden;background:#121318;color:#f5f2ed;font-family:Montserrat,sans-serif}
+video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.chapter{position:absolute;left:384px;right:384px;top:110px;text-align:center;z-index:20}
+.chapter span{display:inline-block;font-size:34px;line-height:1.25;font-weight:700;letter-spacing:-.025em;background:rgba(12,13,16,.92);padding:12px 24px;border-radius:5px}
+</style>
+<div id="root" data-composition-id="recommendation" data-duration="50.4" data-width="1920" data-height="1080">
+  <video id="recommendation-results" class="clip" src="assets/recommendation-results.mp4" muted playsinline data-start="0" data-duration="25.4" data-track-index="0"></video>
+  <video id="recommendation-committee" class="clip" src="assets/recommendation-committee.mp4" muted playsinline data-start="25" data-duration="25.4" data-track-index="0"></video>
+  <div id="recommendation-chapter" class="clip chapter" data-start="0" data-duration="3.6" data-track-index="1"><span>AI recommendation · Advisory only.</span></div>
+  <div id="recommendation-decision" class="clip chapter" data-start="25" data-duration="3.6" data-track-index="1"><span>The committee makes the decision.</span></div>
+</div>
+<script>
+const tl=gsap.timeline({paused:true});
+tl.fromTo("#recommendation-committee",{opacity:0},{opacity:1,duration:.4,ease:"power2.inOut",immediateRender:false},25);
+tl.fromTo("#recommendation-chapter span",{opacity:0,y:-10},{opacity:1,y:0,duration:.35,ease:"power3.out"},.12);
+tl.to("#recommendation-chapter span",{opacity:0,duration:.3,ease:"power2.inOut"},3.25);
+tl.fromTo("#recommendation-decision span",{opacity:0,y:-10},{opacity:1,y:0,duration:.35,ease:"power3.out"},25.12);
+tl.to("#recommendation-decision span",{opacity:0,duration:.3,ease:"power2.inOut"},28.25);
+window.__timelines["recommendation"]=tl;
+</script>
+</template>

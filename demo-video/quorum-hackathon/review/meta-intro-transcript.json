@@ -1,0 +1,37 @@
+{
+  "sessionId": "voyager/transcribe/E3DCA60AD9EA40608ED5FD92E312BFB8",
+  "transcript": "Over $450 million US dollars is lost every year due to faulty procurement, means through Quorum, we seek to address this challenge. on this section we have got the login and also registration section. So we'll first begin with the Quorum portal which is for the organization and then we've got supplier portal which is for firms who intend to offer their their service to an existing organization. So we already have a defined account that we'll proceed to access. in our authentication process. So once we log in we are taken to the section where where where we have all the pending sections however the section of of notress is the tender workflow so we already have a predefined um um um tender section and and so we have got a tender reference and then the buyer and so all this information on this section uh defines what is actually required for the tender to actually be filled before it is published. and so it outlines all the requirements that are actually needed before anything is sent. And so we also have predefined options whereby a supplier supplier has to submit all this information prior to an application application for a for a tender that has has been published. That we'll see shortly. So these are all the the defined items in terms of the actual specifications that are required um and also defined evaluation criteria that that is is mapped out. So after we have a tender that has been created we look at the bid opening section but the the part of note is a bid evaluation because on this section we then use the use the AI for the to actually um to actually evaluate so on this section it would have any conflict of interest that has been declared",
+  "audioDurationMs": 120000,
+  "turns": [
+    {
+      "turnId": 0,
+      "startMs": 3260,
+      "endMs": 9020,
+      "transcript": "Over $450 million US dollars is lost every year due to faulty procurement, means"
+    },
+    {
+      "turnId": 1,
+      "startMs": 10140,
+      "endMs": 13020,
+      "transcript": "through Quorum, we seek to address this challenge."
+    },
+    {
+      "turnId": 2,
+      "startMs": 13580,
+      "endMs": 35100,
+      "transcript": "on this section we have got the login and also registration section. So we'll first begin with the Quorum portal which is for the organization and then we've got supplier portal which is for firms who intend to offer their their service to an existing organization. So we already have a defined account that we'll proceed to access."
+    },
+    {
+      "turnId": 3,
+      "startMs": 35820,
+      "endMs": 37260,
+      "transcript": "in our authentication process."
+    },
+    {
+      "turnId": 4,
+      "startMs": 38220,
+      "endMs": 119500,
+      "transcript": "So once we log in we are taken to the section where where where we have all the pending sections however the section of of notress is the tender workflow so we already have a predefined um um um tender section and and so we have got a tender reference and then the buyer and so all this information on this section uh defines what is actually required for the tender to actually be filled before it is published. and so it outlines all the requirements that are actually needed before anything is sent. And so we also have predefined options whereby a supplier supplier has to submit all this information prior to an application application for a for a tender that has has been published. That we'll see shortly. So these are all the the defined items in terms of the actual specifications that are required um and also defined evaluation criteria that that is is mapped out. So after we have a tender that has been created we look at the bid opening section but the the part of note is a bid evaluation because on this section we then use the use the AI for the to actually um to actually evaluate so on this section it would have any conflict of interest that has been declared"
+    }
+  ]
+}

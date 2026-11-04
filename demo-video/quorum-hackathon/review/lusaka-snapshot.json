@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "outputDir": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/lusaka-preview",
+  "frames": [
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/lusaka-preview/frame-00-at-38s.png",
+      "time": 38
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/lusaka-preview/frame-01-at-114s.png",
+      "time": 114
+    },
+    {
+      "path": "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/lusaka-preview/frame-02-at-178s.png",
+      "time": 178
+    }
+  ],
+  "contactSheets": [
+    "/Users/chunguchama/Downloads/Board Vision Documentation/demo-video/quorum-hackathon/review/lusaka-preview/contact-sheet.jpg"
+  ],
+  "_meta": {
+    "version": "0.9.9",
+    "updateAvailable": false
+  }
+}

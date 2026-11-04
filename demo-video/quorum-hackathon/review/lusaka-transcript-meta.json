@@ -1,0 +1,43 @@
+{
+  "sessionId": "voyager/transcribe/ABD055A9F4B5409BBC555A0923506060",
+  "transcript": "Hello. We need to create the voice that we can use for the for for the same transcriber. So here's the thing, my name is Chimwichi Muchama I'm a software engineer with over eight years experience. working for low code company called FlutterFlow from my own company called Dower Health. Stack one and many other ventures. So today's lecture is about how best can we create different societies that creates an everlasting impact. So that's what we need to understand is how best can we create content that is of value to the whole world. So we need to figure out which one is the best section to establish such information, how can we do so, and where do we go from there. So once we have all this information, it will be helpful for the overall growing of the world. so let me know what your thoughts are then we can pick it up from there otherwise I will always and I'm Thank you for your kind attention.",
+  "audioDurationMs": 63440,
+  "turns": [
+    {
+      "turnId": 0,
+      "startMs": 620,
+      "endMs": 14380,
+      "transcript": "Hello. We need to create the voice that we can use for the for for the same transcriber. So here's the thing, my name is Chimwichi Muchama I'm a software engineer with over eight years experience."
+    },
+    {
+      "turnId": 1,
+      "startMs": 15260,
+      "endMs": 31100,
+      "transcript": "working for low code company called FlutterFlow from my own company called Dower Health. Stack one and many other ventures. So today's lecture is about how best can we create different societies that creates an everlasting impact."
+    },
+    {
+      "turnId": 2,
+      "startMs": 31580,
+      "endMs": 38860,
+      "transcript": "So that's what we need to understand is how best can we create content that is of value to the whole world."
+    },
+    {
+      "turnId": 3,
+      "startMs": 39660,
+      "endMs": 53900,
+      "transcript": "So we need to figure out which one is the best section to establish such information, how can we do so, and where do we go from there. So once we have all this information, it will be helpful for the overall growing of the world."
+    },
+    {
+      "turnId": 4,
+      "startMs": 54460,
+      "endMs": 61420,
+      "transcript": "so let me know what your thoughts are then we can pick it up from there otherwise I will always and I'm"
+    },
+    {
+      "turnId": 5,
+      "startMs": 61980,
+      "endMs": 62940,
+      "transcript": "Thank you for your kind attention."
+    }
+  ]
+}
