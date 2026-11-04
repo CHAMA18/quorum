@@ -1,0 +1,19 @@
+{
+  "scene": "supplier",
+  "text": "Here is the actual supplier workflow. Required documents stay together in one checklist. The supplier opens a supporting file and requests an AI document check. The findings appear beside the source, so the reviewer can compare them. This helps prepare the submission; it does not decide whether the supplier qualifies.",
+  "synthesis_text": "Here is the actual supplier workflow. Required documents stay together in one checklist. The supplier opens a supporting file and requests an A I document check. The findings appear beside the source, so the reviewer can compare them. This helps prepare the submission; it does not decide whether the supplier qualifies.",
+  "source": "Lusaka.m4a",
+  "reference_range": [
+    31.58,
+    38.86
+  ],
+  "reference_text": "So that's what we need to understand is how best can we create content that is of value to the whole world.",
+  "model": "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-4bit",
+  "seed": 63,
+  "sample_rate": 24000,
+  "duration_seconds": 19.44,
+  "generation_seconds": 36.76,
+  "generated_voice": true,
+  "temperature": 0.65,
+  "repetition_penalty": 1.15
+}

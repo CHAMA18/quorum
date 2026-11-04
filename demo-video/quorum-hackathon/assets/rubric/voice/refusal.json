@@ -1,0 +1,19 @@
+{
+  "scene": "refusal",
+  "text": "Now the boundary that makes this useful in a public institution. The LangGraph review stops at a pending human gate. These are captured responses from the real HTTP approval path. An unsigned direct request is refused. An authenticated request without step-up verification is also refused. After both attempts, the gate is still pending and there is no filing receipt. The review graph has no edge to filing. Changing the model's instructions cannot add one.",
+  "synthesis_text": "Now the boundary that makes this useful in a public institution. The LangGraph review stops at a pending human gate. These are captured responses from the real HTTP approval path. An unsigned direct request is refused. An authenticated request without step-up verification is also refused. After both attempts, the gate is still pending and there is no filing receipt. The review graph has no edge to filing. Changing the model's instructions cannot add one.",
+  "source": "Lusaka.m4a",
+  "reference_range": [
+    31.58,
+    38.86
+  ],
+  "reference_text": "So that's what we need to understand is how best can we create content that is of value to the whole world.",
+  "model": "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-4bit",
+  "seed": 55,
+  "sample_rate": 24000,
+  "duration_seconds": 26.8,
+  "generation_seconds": 32.51,
+  "generated_voice": true,
+  "temperature": 0.65,
+  "repetition_penalty": 1.15
+}

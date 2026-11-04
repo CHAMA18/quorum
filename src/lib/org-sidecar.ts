@@ -1,3 +1,4 @@
+import { sidecarOrigin } from "@/lib/sidecar-origin";
 import { attestSignature } from "@/lib/sidecar-attest";
 
 /**
@@ -10,7 +11,7 @@ import { attestSignature } from "@/lib/sidecar-attest";
  * org session: `org:<name>`. The formula must mirror store.ts exactly.
  */
 
-const SIDECAR = "http://127.0.0.1:3031";
+const SIDECAR = sidecarOrigin();
 
 export async function sidecarFetch(
   path: string,

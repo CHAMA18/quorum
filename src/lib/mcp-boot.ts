@@ -9,7 +9,8 @@
 
 export type McpBootResult = "running" | "spawned" | "unavailable";
 
-const PORT = 3031;
+import { sidecarPort } from "./sidecar-origin";
+const PORT = sidecarPort();
 
 /**
  * Locate the sidecar entry script. In `next dev` the cwd is the repo root;

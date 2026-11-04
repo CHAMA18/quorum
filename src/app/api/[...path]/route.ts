@@ -30,9 +30,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { attestSignature } from "@/lib/sidecar-attest";
 import { canMutateSidecar, canReadSidecar } from "@/lib/permissions";
+import { sidecarOrigin } from "@/lib/sidecar-origin";
 
 const ALLOWED_PORTS = new Set(["3031"]);
-const UPSTREAM_HOST = "127.0.0.1";
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 async function proxy(req: NextRequest) {
@@ -84,7 +84,7 @@ async function proxy(req: NextRequest) {
 
   url.searchParams.delete("XTransformPort");
   const search = url.searchParams.toString();
-  const target = `http://${UPSTREAM_HOST}:${port}${url.pathname}${search ? `?${search}` : ""}`;
+  const target = `${sidecarOrigin()}${url.pathname}${search ? `?${search}` : ""}`;
 
   try {
     /* Forward the content type, and the attested identity + HMAC seal the
@@ -118,7 +118,7 @@ async function proxy(req: NextRequest) {
     /* Reading supplier, bid or audit data is itself a recordable act. The line
        is written to the same spine, attested, and never blocks the response. */
     if (req.method === "GET" && isSensitiveRead(url.pathname)) {
-      auditRead(port, session.name, session.workspaceId, url.pathname, upstream.status, traceId);
+      auditRead(session.name, session.workspaceId, url.pathname, upstream.status, traceId);
     }
 
     return new NextResponse(upstream.body, {
@@ -128,9 +128,12 @@ async function proxy(req: NextRequest) {
         "x-quorum-trace-id": upstream.headers.get("x-quorum-trace-id") ?? traceId,
       },
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("must be set to a real secret")) {
+      return NextResponse.json({ error: "The procurement gateway is not configured to authenticate service requests." }, { status: 503 });
+    }
     return NextResponse.json(
-      { error: `sidecar on :${port} not reachable` },
+      { error: "The procurement service request could not be completed. Check service availability and server configuration." },
       { status: 502 },
     );
   }
@@ -152,9 +155,9 @@ function isSensitiveRead(path: string): boolean {
 }
 
 /** Write the read to the spine. A failure is quiet here and loud in the log. */
-function auditRead(port: string, actor: string, workspaceId: string, path: string, status: number, traceId: string) {
+function auditRead(actor: string, workspaceId: string, path: string, status: number, traceId: string) {
   const ts = Date.now();
-  void fetch(`http://127.0.0.1:${port}/api/audit/read`, {
+  void fetch(`${sidecarOrigin()}/api/audit/read`, {
     method: "POST",
     headers: {
       "content-type": "application/json",

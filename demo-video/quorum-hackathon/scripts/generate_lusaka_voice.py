@@ -25,9 +25,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--scene", action="append")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--script", default="narration-script.json")
+    parser.add_argument("--output", default="assets/lusaka-narration")
+    parser.add_argument("--temperature", type=float, default=0.8)
+    parser.add_argument("--repetition-penalty", type=float, default=1.05)
     args = parser.parse_args()
-    scenes = json.loads((PROJECT / "narration-script.json").read_text())["scenes"]
-    output = PROJECT / "assets" / "lusaka-narration"
+    scenes = json.loads((PROJECT / args.script).read_text())["scenes"]
+    output = PROJECT / args.output
     output.mkdir(parents=True, exist_ok=True)
     mx.set_cache_limit(64 * 1024 * 1024)
     mx.set_memory_limit(6 * 1024 ** 3)
@@ -51,9 +55,9 @@ def main():
             ref_audio=str(PROJECT / "assets" / "lusaka-reference.wav"),
             ref_text=REFERENCE_TEXT,
             lang_code="english",
-            temperature=0.8,
+            temperature=args.temperature,
             top_p=0.95,
-            repetition_penalty=1.05,
+            repetition_penalty=args.repetition_penalty,
             max_tokens=1800,
             verbose=False,
         ))
@@ -71,6 +75,8 @@ def main():
             "duration_seconds": len(audio) / sample_rate,
             "generation_seconds": round(time.monotonic() - started, 2),
             "generated_voice": True,
+            "temperature": args.temperature,
+            "repetition_penalty": args.repetition_penalty,
         }
         destination.with_suffix(".json").write_text(json.dumps(metadata, indent=2))
         print(json.dumps(metadata), flush=True)

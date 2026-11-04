@@ -121,16 +121,24 @@
 
 <section id="problem">
   <div class="wrap">
-    <div class="kicker">The problem — known firsthand</div>
-    <h2>14,000 pages. One desk. No margin for error.</h2>
-    <p class="lead">Public-health procurement committees cross-check tender packs of hundreds of pages by hand.
-      Backlogs delay hospital supplies; thin award documentation is exactly what lets fraud go unchallenged.
-      This is a desk the builder knows firsthand — the users are named, the backlog is real, and the constraint
-      is hard: <b style="color:var(--mut)">raw procurement evidence must not leave the jurisdiction.</b></p>
+    <div class="kicker">The problem — Africa-wide, grounded in Zambia</div>
+    <h2>17% of GDP across Africa. 203 procuring entities in Zambia.</h2>
+    <p class="lead">Across Africa, public procurement averages about 17% of GDP. In Zambia, ZPPA reported 203 procuring entities and 71,102 suppliers registered on e-GP at the end of 2023. Procurement officers still have to read tender packs, check compliance and document why a recommendation is justified. Quorum helps make that review easier to follow, while leaving the award decision with the authorised committee.</p>
+    <div class="stats">
+      <div class="stat"><div class="v">17<i>%</i></div><div class="k">Africa GDP average spent on public procurement</div></div>
+      <div class="stat"><div class="v">203</div><div class="k">Zambian procuring entities registered on e-GP · 2023</div></div>
+      <div class="stat"><div class="v">71,102</div><div class="k">Suppliers registered on Zambia e-GP · 2023</div></div>
+      <div class="stat"><div class="v">13<i>/25</i></div><div class="k">Selected follow-up assessments found non-compliant</div></div>
+    </div>
+    <p class="lead" style="margin-top:12px;font-size:12px;color:var(--dim)">ZPPA’s 2023 report says none of the 25 follow-up-assessed entities were fully compliant; these visits are not a national prevalence estimate. Sources: <a href="https://blogs.worldbank.org/en/governance/expanding-role-public-procurement-africas-economic-development" target="_blank" rel="noreferrer">World Bank</a> · <a href="https://www.zppa.org.zm/documents/20182/280039/ZPPA_2023_ANNUAL_REPORT.pdf/b9d3c434-e670-4cf0-bcf3-69a8c2bcf421" target="_blank" rel="noreferrer">ZPPA 2023 Annual Report</a>.</p>
+    <div class="grid g2" style="margin-top:18px">
+      <div class="card"><h3>Africa-wide corruption estimate</h3><p>UNECA cites an estimate of <b>US$148 billion lost per year</b> to corruption across Africa. This is a broad corruption estimate, not procurement-only, and it dates to 2015. <a href="https://archive.uneca.org/stories/corruption-public-procurement-case-infrastructure-africa" target="_blank" rel="noreferrer">Read the UNECA source</a>.</p></div>
+      <div class="card"><h3>Zambia’s reported figures, in context</h3><p>FIC’s 2017 estimate of <b>US$450 million</b> covered several suspected offences; approximately <b>US$50 million</b> related to corruption. Separately, FIC analysed <b>624 suspected procurement-corruption reports</b>. Its 2022 report describes an advance exceeding <b>ZMW 85 million (approximately US$4.25 million)</b> on a February 2021 contract, using the World Bank’s 2021 annual-average rate of ZMW 20.0184866 per US$1 for scale. Another case involved <b>US$32 million paid on a US$215 million contract</b> where FIC reported no works performed. These are distinct historical estimates and case values, not a combined annual loss total. <a href="https://www.fic.gov.zm/component/attachments/download/45" target="_blank" rel="noreferrer">FIC 2017</a> · <a href="https://www.fic.gov.zm/component/attachments/download/131" target="_blank" rel="noreferrer">FIC 2022</a> · <a href="https://api.worldbank.org/v2/country/ZMB/indicator/PA.NUS.FCRF?date=2021&amp;format=json" target="_blank" rel="noreferrer">Exchange-rate source</a>.</p></div>
+    </div>
     <div class="grid g3" style="margin-top:26px">
-      <div class="card"><h3>Backlog</h3><p>Packs of hundreds of pages per tender; committees reviewing by hand delay awards for months.</p></div>
-      <div class="card"><h3>Fraud surface</h3><p>Price outliers, missing compliance documents, spec deviations — hidden in volume nobody can read.</p></div>
-      <div class="card"><h3>The constraint</h3><p>Sovereignty. Hosted calls carry only redacted evidence; the full pack stays on the desk, and the in-region Llama fallback is one failure away.</p></div>
+      <div class="card"><h3>Review workload</h3><p>Officers compare requirements, prices and supporting documents across dense tender packs.</p></div>
+      <div class="card"><h3>Evidence trail</h3><p>Each finding should point to its source so the committee can check it and record its response.</p></div>
+      <div class="card"><h3>Human authority</h3><p>Quorum prepares the file; a named, authorised committee member retains the award decision.</p></div>
     </div>
   </div>
 </section>
@@ -163,7 +171,7 @@
       <tr><th style="width:24%">Model</th><th style="width:34%">Role</th><th>Status in this repo</th></tr>
       <tr>
         <td><span class="m">Muse Spark 1.3</span><br><span style="font-size:12px">Meta Model API · hosted</span></td>
-        <td>Plans the review depth and writes every committee redline through the <code>plan_review</code> and <code>draft_redline</code> MCP tools</td>
+        <td>Plans the review depth and drafts model-generated committee redlines through the <code>plan_review</code> and <code>draft_redline</code> MCP tools</td>
         <td><b style="color:var(--mut)">Primary path.</b> Live call verified 2026-10-31; the KEMSA pack produced a model-led plan and 2 model drafts in 22.8 s. Supplier names and amounts are redacted before the hosted call.</td>
       </tr>
       <tr>
@@ -203,9 +211,9 @@
         <h2>One button the machine cannot press</h2>
         <p class="lead">Filing an award is irreversible, so the agent cannot do it. The gate refuses the operator until a
           named approver on the committee roster signs and the roll is quorate. Only then is the bundle sealed with
-          sha-256, filed to the e-GP portal, and a receipt written. The demo's most interesting moment is the refusal.</p>
+          sha-256, and a local simulation receipt written. No national e-GP transaction is made. The demo's most interesting moment is the refusal.</p>
         <div class="stats">
-          <div class="stat"><div class="v">510</div><div class="k">tests · 0 fail</div></div>
+          <div class="stat"><div class="v">509</div><div class="k">tests · 0 fail · 4 Nov</div></div>
           <div class="stat"><div class="v">5<i>+13</i></div><div class="k">MCP tools</div></div>
           <div class="stat"><div class="v">sha-256</div><div class="k">sealed filings</div></div>
           <div class="stat"><div class="v">100%</div><div class="k">findings cited</div></div>
@@ -220,21 +228,7 @@
   </div>
 </section>
 
-<section id="film">
-  <div class="wrap">
-    <div class="kicker">The demo film — regenerated with Muse Image</div>
-    <h2>Five chapters, one refusal</h2>
-    <div class="card" style="margin-top:22px">
-      <div class="chap"><div class="no">CH 01</div><div class="ti">The Stack — 14,000 pages</div><div class="be">Every page is someone's money. Nobody can read them all.</div></div>
-      <div class="chap"><div class="no">CH 02</div><div class="ti">The Read — 06:00 local</div><div class="be">The machine has been in the files since before the office wakes.</div></div>
-      <div class="chap"><div class="no">CH 03</div><div class="ti">The Evidence — page and line</div><div class="be">Every claim wired to its source. No citation, no finding.</div></div>
-      <div class="chap"><div class="no">CH 04</div><div class="ti">The Flag — the pattern breaks</div><div class="be">Where a price breaks the peer pattern, a flag goes up.</div></div>
-      <div class="chap"><div class="no">CH 05</div><div class="ti">The Gate — the human signature</div><div class="be">One button the machine cannot press. It waits.</div></div>
-    </div>
-    <p class="lead" style="margin-top:18px;font-size:14px;color:var(--dim)">Kit: <code>SUBMISSION/muse-film-kit/</code> — prompts, frame generator and assembler;
-      output drops into <code>public/film/chapter-{1..5}.mp4</code> and the landing-page cinema player picks it up unchanged.</p>
-  </div>
-</section>
+<section id="film"><div class="wrap"><div class="kicker">The recorded product demonstration</div><h2>Real interactions. A verifiable boundary.</h2><p class="lead">The three-minute edition includes 122 seconds from Part 1, Part 2 and Untitled video: supplier documents, bid-review consent and results, committee membership and evaluator records. Earlier illustrative records are labelled separately from the current production test. The final test shows unsigned 401, no-step-up 403, a pending gate without a receipt, and then a signature-verified local simulation.</p><p class="lead" style="font-size:15px;margin-top:20px">Editable source and delivery notes: <code>demo-video/quorum-recordings/</code>. Exact source ranges: <code>edit-plan.json</code>. Caption word timings and technical verification accompany the export. Human officer validation remains pending.</p></div></section>
 
 <section id="proof" style="border-bottom:0">
   <div class="wrap">
@@ -243,9 +237,9 @@
     <div class="grid g2" style="margin-top:22px">
       <div class="card"><h3>Deployed, not mocked</h3><p><b>d1n7mv5t5hn4xe.cloudfront.net</b> is the live HTTPS front door; the workspace runs on the EC2 <b>af-south-1</b> origin (nginx, systemd) — reproducible from the repo.</p></div>
       <div class="card"><h3>Measured model path</h3><p>Both paths are <b>measured in-repo</b>: a live Muse Spark run on the KEMSA pack (22.8 s, 2 model drafts, 4 redactions) and the in-region Llama fallback (token counts, cost formula, Ollama setup). The report prints the model string the endpoint actually returned.</p></div>
-      <div class="card"><h3>Safety as tests</h3><p><b>510 tests, 0 fail</b> enforce the rules: no citation, no finding; the halt-at-the-gate guarantee lives in the graph topology.</p></div>
-      <div class="card"><h3>Tamper-evident record</h3><p><b>Append-only audit JSONL</b> captures every tool call — oversight bodies see who decided what, forever.</p></div>
-      <div class="card"><h3>Eval harness</h3><p>Held-out tender packs and a pre-registered baseline protocol (<code>SUBMISSION/09-fit.md</code>) — findings are checked, not vibes.</p></div>
+      <div class="card"><h3>Safety as tests</h3><p><b>509 tests, 0 fail (4 November 2026)</b> enforce the rules: no citation, no finding; the halt-at-the-gate guarantee lives in the graph topology.</p></div>
+      <div class="card"><h3>Tamper-evident record</h3><p><b>Append-only audit JSONL</b> captures every tool call — reviewers can verify the recorded sequence and detect changes within the stated deployment controls.</p></div>
+      <div class="card"><h3>Eval harness</h3><p>Synthetic test packs and a prepared counterbalanced officer study (<code>SUBMISSION/09-fit.md</code>) — independent officer results are pending.</p></div>
       <div class="card"><h3>Sovereign by design</h3><p>Hosted calls are <b>redacted</b> (supplier names and amounts replaced), the in-region Llama fallback keeps the full evidence on the desk, and the residency policy refuses any endpoint the operator has not approved.</p></div>
     </div>
   </div>
@@ -256,8 +250,11 @@
     <div style="font-weight:800;color:var(--ink);font-size:16px">QUORUM<span style="color:var(--red)">.</span></div>
     <div>The agent prepares the file. The committee awards the tender.</div>
     <div class="footlinks">
-      <a href="https://d1n7mv5t5hn4xe.cloudfront.net">Live product</a>
-      <a href="https://github.com/CHAMA18">GitHub · CHAMA18</a>
+      <a href="https://quorum-solutions.com">Main Quorum domain</a>
+      <a href="https://quorum-solutions.com/org">Supplier portal</a>
+      <a href="https://quorum-solutions.com/admin">Admin console</a>
+      <a href="https://d1n7mv5t5hn4xe.cloudfront.net/#/login">Officer and committee sign-in</a>
+      <a href="https://github.com/CHAMA18/the-bid-box-challenge">GitHub repository</a>
       <a href="../META_HACKATHON.md">Submission brief (META_HACKATHON.md)</a>
       <a href="../README.md">Repository README</a>
     </div>

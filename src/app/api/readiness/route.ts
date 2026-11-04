@@ -1,9 +1,10 @@
+import { sidecarOrigin } from "@/lib/sidecar-origin";
 import { NextResponse, type NextRequest } from "next/server";
 import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { can, isAdminRole } from "@/lib/permissions";
 import { getSetting, listUsers, recordOversightEvent, setSetting } from "@/lib/db";
 
-const SIDECAR = process.env.QUORUM_SIDECAR_URL ?? "http://127.0.0.1:3031";
+const SIDECAR = sidecarOrigin();
 
 /**
  * Phase 9 — the launch readiness gate, computed LIVE.

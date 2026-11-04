@@ -1,0 +1,428 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-11-04T07:36:57.933Z",
+  "dataset": {
+    "id": "ZM-DEMO-2026-001",
+    "synthetic": true,
+    "jurisdiction": "ZM",
+    "currency": "ZMW",
+    "title": "Ten vaccine refrigerators - synthetic Zambia demonstration",
+    "sourceBundleSha256": "36b0cdfbea1106259e0ae5aeb3a4c720f085411dd1f7470abaff7853cd5ebc24",
+    "sourceFiles": {
+      "01-tender-notice.md": "# DEMONSTRATION TENDER NOTICE - ZM-DEMO-2026-001\n\nFictional data for an integration test. This is not a government procurement.\n\n**Buyer:** Demonstration Health Procurement Unit, Zambia\n**Subject:** Supply of ten vaccine refrigerators - synthetic demonstration\n**Budget ceiling:** ZMW 480,000\n**Published:** 01 October 2026\n**Closing:** 29 October 2026, 10:00 CAT\n**Method:** Open bidding, national\n\n## Specifications\n- The supplier SHALL deliver ten vaccine refrigerators operating at 2-8 degrees Celsius.\n- The supplier SHALL provide a signed delivery schedule committing delivery within 30 days.\n- The supplier SHALL provide an equipment maintenance plan identifying a local service team.\n\n## Eligibility checklist\n- [REQUIRED] Tax clearance certificate\n- [REQUIRED] Company registration certificate\n- [REQUIRED] Signed delivery schedule\n\n## Evaluation criteria\n| Criterion | Weight (%) | Evidence / subcriteria | Scoring method |\n| --- | ---: | --- | --- |\n| Technical capability | 60 | Refrigerator specification and a maintenance plan naming the service team | Committee scores documented specification and maintenance evidence on a 0-100 scale |\n| Delivery plan | 40 | Signed dated schedule committing delivery within 30 days | Committee scores documented milestones and delivery commitment on a 0-100 scale |\n",
+      "02-bid-demo-clinic.md": "# DEMONSTRATION BID\n\n**Bidder:** Demo Clinic Supplies\n**Bid value:** ZMW 420,000\n**Bid security:** ZMW 10,000 valid until 28 February 2027\n\nIncluded documents: Tax clearance certificate; Company registration certificate; Signed delivery schedule.\n\nThe ten vaccine refrigerators operate at 2-8 degrees Celsius.\nOur signed delivery schedule commits delivery within 30 days: dispatch on day 10, installation on day 25, and acceptance testing on day 30.\nThe maintenance plan names the local service team: Demo Technician One and Demo Technician Two, with quarterly preventive servicing.\nAll names and identifiers in this document are fictional.\n",
+      "03-bid-demo-medical.md": "# DEMONSTRATION BID\n\n**Bidder:** Demo Medical Works\n**Bid value:** ZMW 450,000\n**Bid security:** ZMW 10,000 valid until 28 February 2027\n\nIncluded documents: Company registration certificate.\n\nThe ten vaccine refrigerators operate at 2-8 degrees Celsius.\nDelivery timing will be agreed after the award. No signed delivery schedule is included.\nMaintenance support is available on request; this submission names no local service team and provides no preventive maintenance schedule.\nAll names and identifiers in this document are fictional.\n"
+    }
+  },
+  "setup": {
+    "nature": "Fictional starting state: issued criteria, two timely bids, unscored draft matrix. Test automation signs with fictional authorised accounts.",
+    "dates": {
+      "published": "2026-10-01",
+      "closed": "2026-10-29",
+      "review": "2026-11-04"
+    }
+  },
+  "run": {
+    "id": "run_1ece5c92",
+    "traceId": "9c75d3eb-eda9-430b-960a-7dfc35c71594",
+    "workspaceId": "demo",
+    "reference": "QRM-2026-001",
+    "tenderId": "ZM-DEMO-2026-001",
+    "status": "AWAITING_GATE",
+    "startedBy": "Demo Procurement Officer",
+    "startedAt": "2026-11-04T07:33:21.584Z",
+    "updatedAt": "2026-11-04T07:36:27.916Z",
+    "progress": [
+      "▸ review_graph invoked — langgraph.js · tender ZM-DEMO-2026-001",
+      "▸ review job claimed by the durable worker",
+      "▸ tender_documents_list — via server-filesystem MCP",
+      "▸ 3 documents read · 2 bidders · 0 awards · 0 OCDS records",
+      "▸ plan_review — heuristic · value parsing DEEP (markdown + OCDS) · focus OVER-BUDGET > VALUE-OUTLIER > DOC-MISSING > BID-SECURITY > SPEC-DEVIATION · maxDrafts 2",
+      "▸ evidence_review — 0 source-quoted observations retained after local citation checks",
+      "▸ extract_requirements — 3 SHALL/must clauses pinned",
+      "▸ guards — price variance >25% · checklist STANDARD · registry cross-check ON",
+      "▸ registry cross-check — 0 of 2 bidders matched on the platform register",
+      "▸ flag_finding — 1 findings flagged, each cited",
+      "▸ verify_findings — 1/1 confirmed in their cited document",
+      "▸ draft_redline — LLM drafting (muse-spark-1.3 · Meta Model API · hosted) for R-DOC-MISSING",
+      "▸ 1 redline draft(s) ready for committee (plan: maxDrafts 2, focus OVER-BUDGET, VALUE-OUTLIER, DOC-MISSING) · 1 from the model, 0 template · 1259 tokens",
+      "⏸ human gate raised (gate_a5d1a80f1683501ee15c060e677ff404) — filing blocked until a named human signs",
+      "✓ review graph complete — the graph itself stops at the gate"
+    ],
+    "requirements": [
+      {
+        "id": "REQ-01",
+        "clause": "SHALL deliver ten vaccine refrigerators operating at 2-8 degrees Celsius",
+        "page": 1
+      },
+      {
+        "id": "REQ-02",
+        "clause": "SHALL provide a signed delivery schedule committing delivery within 30 days",
+        "page": 1
+      },
+      {
+        "id": "REQ-03",
+        "clause": "SHALL provide an equipment maintenance plan identifying a local service team",
+        "page": 1
+      }
+    ],
+    "findings": [
+      {
+        "id": "F-01",
+        "rule": "R-DOC-MISSING",
+        "severity": "MEDIUM",
+        "item": "Demo Medical Works — tax clearance certificate",
+        "evidence": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+        "citation": "01-tender-notice.md, eligibility checklist"
+      }
+    ],
+    "drafts": [
+      {
+        "id": "draft_ek5bk1",
+        "findingId": "F-01",
+        "original": "Tender notice lists \"tax clearance certificate\" as REQUIRED; the bid does not reference it.",
+        "proposed": "Prior to award, the Buyer shall issue one written cure notice for any bid flagged as missing a mandatory eligibility document, requiring submission of a valid document within three (3) working days; failure to timely cure shall render the bid non-responsive and ineligible for award.",
+        "rationale": "Creates a fair and transparent cure mechanism for the missing-document flag, enforces compliance with mandatory requirements, and prevents award to a non-responsive bidder while preserving equal treatment.",
+        "model": "muse-spark-1.3",
+        "source": "llm",
+        "usage": {
+          "promptTokens": 273,
+          "completionTokens": 986
+        },
+        "redactions": 0,
+        "latencyMs": 11344
+      }
+    ],
+    "detail": {
+      "publishedDate": "2026-10-01",
+      "deadlineDate": "2026-10-29",
+      "buyer": "Demonstration Health Procurement Unit, Zambia",
+      "category": "Health equipment",
+      "currency": "ZMW",
+      "ceiling": 480000,
+      "specification": "Ten vaccine refrigerators; 2-8 degrees Celsius; signed 30-day delivery schedule; named local maintenance team.",
+      "noticeRef": "ZM-DEMO-2026-001"
+    },
+    "usage": {
+      "drafts": 1,
+      "llmDrafts": 1,
+      "promptTokens": 273,
+      "completionTokens": 986
+    },
+    "plan": {
+      "pack": {
+        "files": 3,
+        "bids": 2,
+        "bidders": 2,
+        "ocdsRecords": 0,
+        "markdownValueBids": 2,
+        "ocdsValueBids": 0
+      },
+      "parseMarkdownValues": true,
+      "focusRules": [
+        "OVER-BUDGET",
+        "VALUE-OUTLIER",
+        "DOC-MISSING",
+        "BID-SECURITY",
+        "SPEC-DEVIATION"
+      ],
+      "maxDrafts": 2,
+      "note": "heuristic: 2 markdown bid value(s) + published ceiling — deep-value parsing on · llm plan failed (The operation timed out.) — heuristic applied",
+      "source": "heuristic"
+    },
+    "modelEvidence": [],
+    "gateId": "gate_a5d1a80f1683501ee15c060e677ff404",
+    "model": {
+      "mode": "llm",
+      "planSource": "heuristic",
+      "planModel": null,
+      "draftTotal": 1,
+      "draftLlm": 1,
+      "draftTemplate": 0,
+      "models": [
+        "muse-spark-1.3"
+      ],
+      "promptTokens": 0,
+      "completionTokens": 0,
+      "redactions": 0
+    },
+    "seal": null,
+    "sealedBy": null,
+    "decidedAt": null
+  },
+  "advisory": {
+    "status": 200,
+    "overview": "Synthetic demonstration for ten vaccine refrigerators under ZM-DEMO-2026-001. Matrix matrix_demo_001 is marked DRAFT with C-01 Technical capability and C-02 Delivery plan. Two admitted bids were compared on the same documentary basis using full bid texts. Demo Clinic Supplies evidenced specification, named maintenance team, and committed schedule. Demo Medical Works evidenced specification only, with explicit gaps on maintenance team and signed schedule.",
+    "recommendation": {
+      "bidder": "Demo Clinic Supplies",
+      "basis": "On supplied documents alone, Demo Clinic Supplies is the strongest documented fit because it is the only bidder with supporting quotations for both C-01 specification plus named service team and C-02 signed 30-day schedule, while Demo Medical Works has only partial specification evidence and no evidenced delivery commitment. Advisory only; committee to verify DRAFT matrix status, originals, and apply its own decision process."
+    },
+    "bidders": [
+      {
+        "bidder": "Demo Clinic Supplies",
+        "recommendation": "Documented evidence addresses both criteria with specification, named service team, and committed 30-day schedule. Committee to verify originals, specification compliance, team capacity, and administrative documents before any further consideration.",
+        "criteria": [
+          {
+            "criterionId": "C-01",
+            "alignment": "SUPPORTED",
+            "assessment": "Supplied bid documents both the 2-8 degrees operating specification and a maintenance plan naming two local technicians with quarterly preventive servicing, matching the stated evidence for technical capability.",
+            "evidence": [
+              {
+                "citation": "02-bid-demo-clinic.md",
+                "quote": "The ten vaccine refrigerators operate at 2-8 degrees Celsius."
+              },
+              {
+                "citation": "02-bid-demo-clinic.md",
+                "quote": "The maintenance plan names the local service team: Demo Technician One and Demo Technician Two, with quarterly preventive servicing."
+              }
+            ]
+          },
+          {
+            "criterionId": "C-02",
+            "alignment": "SUPPORTED",
+            "assessment": "Supplied bid documents a signed delivery schedule expressly committing delivery within 30 days with dispatch, installation and acceptance testing milestones, matching the stated delivery evidence.",
+            "evidence": [
+              {
+                "citation": "02-bid-demo-clinic.md",
+                "quote": "Our signed delivery schedule commits delivery within 30 days: dispatch on day 10, installation on day 25, and acceptance testing on day 30."
+              }
+            ]
+          }
+        ],
+        "committeeChecks": [
+          "Verify signed dated delivery schedule original and commitment to delivery within 30 days with stated milestones.",
+          "Verify refrigerator specification of 2-8 degrees Celsius meets technical requirement for all ten units.",
+          "Verify maintenance plan, quarterly servicing, and named service team availability and credentials.",
+          "Verify supplied tax clearance, company registration, and bid security of ZMW 10,000 valid until 28 February 2027."
+        ]
+      },
+      {
+        "bidder": "Demo Medical Works",
+        "recommendation": "Documented evidence is incomplete for both criteria, with specification alone for technical capability and no evidenced signed 30-day delivery commitment. Committee to verify whether any additional evidence exists and to apply its own responsiveness process.",
+        "criteria": [
+          {
+            "criterionId": "C-01",
+            "alignment": "PARTIAL",
+            "assessment": "Supplied document states the 2-8 degrees operating specification but explicitly states it names no local service team and provides no preventive maintenance schedule, leaving maintenance evidence unaddressed.",
+            "evidence": [
+              {
+                "citation": "03-bid-demo-medical.md",
+                "quote": "The ten vaccine refrigerators operate at 2-8 degrees Celsius."
+              },
+              {
+                "citation": "03-bid-demo-medical.md",
+                "quote": "Maintenance support is available on request; this submission names no local service team and provides no preventive maintenance schedule."
+              }
+            ]
+          },
+          {
+            "criterionId": "C-02",
+            "alignment": "NOT_EVIDENCED",
+            "assessment": "No signed dated schedule committing delivery within 30 days was evidenced in the supplied document. The document indicates timing will be agreed after award and that no signed schedule is included.",
+            "evidence": []
+          }
+        ],
+        "committeeChecks": [
+          "Verify whether any signed dated delivery schedule committing delivery within 30 days exists outside the supplied document.",
+          "Verify refrigerator specification and whether any maintenance plan or named local service team can be evidenced.",
+          "Verify supplied company registration and bid security of ZMW 10,000 valid until 28 February 2027, and confirm tax clearance position from official record.",
+          "Committee to confirm status of recorded administrative non-responsiveness note using only its own formal responsiveness process."
+        ]
+      }
+    ],
+    "analysis": "Synthetic demonstration for ten vaccine refrigerators under ZM-DEMO-2026-001. Matrix matrix_demo_001 is marked DRAFT with C-01 Technical capability and C-02 Delivery plan. Two admitted bids were compared on the same documentary basis using full bid texts. Demo Clinic Supplies evidenced specification, named maintenance team, and committed schedule. Demo Medical Works evidenced specification only, with explicit gaps on maintenance team and signed schedule.",
+    "model": "muse-spark-1.3",
+    "durationMs": 28645,
+    "evidenceVerification": {
+      "policy": "exact-source-match",
+      "verifiedQuotes": 5,
+      "criteriaAssessed": 4,
+      "criteriaWithQuotes": 3
+    },
+    "evaluatedAt": "2026-11-04T07:36:57.259Z",
+    "excludedLateBidders": [],
+    "documentCount": 2
+  },
+  "boundary": {
+    "before": {
+      "gateId": "gate_a5d1a80f1683501ee15c060e677ff404",
+      "tenderId": "ZM-DEMO-2026-001",
+      "systemReference": "QRM-2026-001",
+      "status": "PENDING",
+      "approver": null,
+      "decidedAt": null,
+      "receipt": null,
+      "stepUp": null,
+      "signature": null,
+      "signatureValid": false,
+      "reason": "This gate has no receipt signature."
+    },
+    "unsigned": {
+      "status": 401,
+      "data": {
+        "error": "Unattested mutation — state-changing requests must arrive through the gateway, signed by the session that owns them. Sign in (a verified session is accepted) and retry."
+      }
+    },
+    "withoutStepUp": {
+      "status": 403,
+      "data": {
+        "error": "This gate requires a fresh step-up signature. Re-authenticate with your passphrase or authenticator and try again.",
+        "code": 403
+      }
+    },
+    "afterRefusals": {
+      "gateId": "gate_a5d1a80f1683501ee15c060e677ff404",
+      "tenderId": "ZM-DEMO-2026-001",
+      "systemReference": "QRM-2026-001",
+      "status": "PENDING",
+      "approver": null,
+      "decidedAt": null,
+      "receipt": null,
+      "stepUp": null,
+      "signature": null,
+      "signatureValid": false,
+      "reason": "This gate has no receipt signature."
+    },
+    "approval": {
+      "status": 200,
+      "data": {
+        "gate": {
+          "id": "gate_a5d1a80f1683501ee15c060e677ff404",
+          "runId": "run_1ece5c92",
+          "workspaceId": "demo",
+          "tenderId": "ZM-DEMO-2026-001",
+          "tool": "file_gate_submission",
+          "inputs": {
+            "bidder": "Demo Clinic Supplies",
+            "value": "ZMW 420,000",
+            "attachments": 3,
+            "findings": [
+              "F-01"
+            ],
+            "drafts": [
+              "draft_ek5bk1"
+            ]
+          },
+          "status": "EXECUTED",
+          "createdAt": "2026-11-04T07:36:27.914Z",
+          "approver": "Demo Accounting Officer",
+          "note": "Authorised fictional test account approves the demonstration review bundle. No real tender or national portal is affected.",
+          "decidedAt": "2026-11-04T07:36:57.459Z",
+          "stepUp": {
+            "by": "Demo Accounting Officer",
+            "method": "totp",
+            "at": "2026-11-04T07:36:57.310Z",
+            "jti": "fd37f958-ff5b-477b-9866-32266415eed4",
+            "docHash": "4942365064f6807b9046785c75854bd1"
+          },
+          "executedAt": "2026-11-04T07:36:57.496Z",
+          "receipt": {
+            "submissionId": "SIM-8E0B4DDCEAFA7502",
+            "hash": "e8a837839168758e76b0294b5f9bdb5e",
+            "portal": "e-GP sandbox (simulation only)",
+            "status": "SIMULATED",
+            "simulated": true,
+            "idempotencyKey": "quorum:filing:gate_a5d1a80f1683501ee15c060e677ff404",
+            "recordedAt": "2026-11-04T07:36:57.492Z"
+          },
+          "signature": {
+            "algorithm": "ed25519",
+            "keyId": "a5e3e06b8007239d",
+            "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAkjSp4AtweqVhmkAIy2gDcXpqjuXMcliBrzvA44G8y/I=\n-----END PUBLIC KEY-----\n",
+            "payloadHash": "fead8c58e5e74ef89098de2d0c719ee6dd388bef42f420a746995600f3bf9b8e",
+            "value": "XAOn+rWjWyS+tRj0FiV0YGVzRFW0xjxqlh72pTIy6+nvozpQS2T0X29PRVL5b4yxGmknZ3IIkSl/xFOdcze1Cg==",
+            "signedAt": "2026-11-04T07:36:57.499Z"
+          },
+          "evidential": true
+        }
+      }
+    },
+    "verified": {
+      "gateId": "gate_a5d1a80f1683501ee15c060e677ff404",
+      "tenderId": "ZM-DEMO-2026-001",
+      "systemReference": "QRM-2026-001",
+      "status": "EXECUTED",
+      "approver": "Demo Accounting Officer",
+      "decidedAt": "2026-11-04T07:36:57.459Z",
+      "receipt": {
+        "submissionId": "SIM-8E0B4DDCEAFA7502",
+        "hash": "e8a837839168758e76b0294b5f9bdb5e",
+        "portal": "e-GP sandbox (simulation only)",
+        "status": "SIMULATED",
+        "simulated": true,
+        "idempotencyKey": "quorum:filing:gate_a5d1a80f1683501ee15c060e677ff404",
+        "recordedAt": "2026-11-04T07:36:57.492Z"
+      },
+      "stepUp": {
+        "by": "Demo Accounting Officer",
+        "method": "totp",
+        "at": "2026-11-04T07:36:57.310Z",
+        "jti": "fd37f958-ff5b-477b-9866-32266415eed4",
+        "docHash": "4942365064f6807b9046785c75854bd1"
+      },
+      "signature": {
+        "algorithm": "ed25519",
+        "keyId": "a5e3e06b8007239d",
+        "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAkjSp4AtweqVhmkAIy2gDcXpqjuXMcliBrzvA44G8y/I=\n-----END PUBLIC KEY-----\n",
+        "payloadHash": "fead8c58e5e74ef89098de2d0c719ee6dd388bef42f420a746995600f3bf9b8e",
+        "value": "XAOn+rWjWyS+tRj0FiV0YGVzRFW0xjxqlh72pTIy6+nvozpQS2T0X29PRVL5b4yxGmknZ3IIkSl/xFOdcze1Cg==",
+        "signedAt": "2026-11-04T07:36:57.499Z"
+      },
+      "signatureValid": true,
+      "reason": null
+    }
+  },
+  "runtime": {
+    "fsMcp": {
+      "status": "connected",
+      "tools": [
+        "read_file",
+        "read_text_file",
+        "read_media_file",
+        "read_multiple_files",
+        "write_file",
+        "edit_file",
+        "create_directory",
+        "list_directory",
+        "list_directory_with_sizes",
+        "directory_tree",
+        "move_file",
+        "search_files",
+        "get_file_info",
+        "list_allowed_directories"
+      ]
+    },
+    "model": {
+      "configured": true,
+      "mode": "llm",
+      "model": "muse-spark-1.3",
+      "provider": "meta-model-api",
+      "providerLabel": "Meta Model API · hosted",
+      "endpoint": "https://api.meta.ai",
+      "configuredBy": "llm-env",
+      "fallback": {
+        "model": "llama3.2:3b",
+        "provider": "ollama",
+        "providerLabel": "Ollama · local",
+        "endpoint": "http://localhost:11434"
+      },
+      "residency": {
+        "residency": "HYBRID",
+        "redactOn": true
+      },
+      "lastCall": {
+        "tool": "draft_redline",
+        "model": "muse-spark-1.3",
+        "source": "llm",
+        "at": "2026-11-04T07:36:27.910Z",
+        "runId": "run_1ece5c92",
+        "redactions": 0
+      }
+    }
+  },
+  "limitations": [
+    "Synthetic demonstration; not a field pilot or independent human review.",
+    "Filing is a local simulation; no national e-GP request is made.",
+    "Exact source quotation checks do not establish semantic or legal correctness."
+  ]
+}

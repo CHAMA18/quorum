@@ -1,0 +1,19 @@
+{
+  "scene": "record",
+  "text": "This is one fictional Zambia tender for ten vaccine refrigerators. Two timely bids, prices in kwacha, and criteria issued before evaluation. Technical capability carries sixty percent; delivery carries forty. The demonstration contains no real supplier's tax record. The source documents and starting state are included so a reviewer can reproduce the result.",
+  "synthesis_text": "This is one fictional Zambia tender for ten vaccine refrigerators. Two timely bids, prices in kwacha, and criteria issued before evaluation. Technical capability carries sixty percent; delivery carries forty. The demonstration contains no real supplier's tax record. The source documents and starting state are included so a reviewer can reproduce the result.",
+  "source": "Lusaka.m4a",
+  "reference_range": [
+    31.58,
+    38.86
+  ],
+  "reference_text": "So that's what we need to understand is how best can we create content that is of value to the whole world.",
+  "model": "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-4bit",
+  "seed": 53,
+  "sample_rate": 24000,
+  "duration_seconds": 20.48,
+  "generation_seconds": 34.87,
+  "generated_voice": true,
+  "temperature": 0.65,
+  "repetition_penalty": 1.15
+}

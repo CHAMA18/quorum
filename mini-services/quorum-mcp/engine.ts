@@ -5,6 +5,7 @@
 
 import { join } from "node:path";
 import { readdir } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { Annotation, END, START, StateGraph } from "@langchain/langgraph";
 import { appendLog, attestSignature, shaOf, state, type Draft, type EvidenceObservation, type Finding, type Gate, type Office, type Requirement, type ReviewPlan, type Run } from "./store";
 import { resolveDataDir } from "./paths";
@@ -45,8 +46,8 @@ export async function initFsMcp() {
       import("@modelcontextprotocol/sdk/client/stdio.js"),
     ]);
     const transport = new StdioClientTransport({
-      command: "bun",
-      args: ["x", "@modelcontextprotocol/server-filesystem", TENDERS_DIR],
+      command: process.execPath,
+      args: [createRequire(import.meta.url).resolve("@modelcontextprotocol/server-filesystem/dist/index.js"), TENDERS_DIR],
     });
     const client = new Client({ name: "quorum-mcp", version: "1.0.0" });
     await Promise.race([

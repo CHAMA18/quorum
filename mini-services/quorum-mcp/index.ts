@@ -252,7 +252,8 @@ import { approvalOfficeFor, governanceSnapshot, recordSignoff, updateBands } fro
 import { listExceptions, raiseException, withdrawException } from "./exceptions";
 import { complianceSummary, RULE_PACKS } from "./rulepack";
 import { archiveDocument, listDocuments, noteDownload, registerDocument, reviewDocument, verifyDocument } from "./documents";
-const PORT = 3031;
+const PORT = Number(process.env.MCP_PORT || 3031);
+if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) throw new Error("MCP_PORT must be a valid local TCP port.");
 
 /* An optional string field — trims, caps, and collapses empty to undefined. */
 function strOpt(v: unknown): string | undefined {

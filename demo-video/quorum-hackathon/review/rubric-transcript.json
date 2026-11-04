@@ -1,0 +1,61 @@
+{
+  "sessionId": "voyager/transcribe/522920B301DD4734B913E45EF8170870",
+  "transcript": "The hospital cannot use equipment that is still waiting for procurement review. Across Africa, public procurement averages 17% of GDP, according to to the World Bank. In Zambia, quorum starts with the officer's desk. Read the evidence, identify the gaps, and prepare a decision that people can explain. This is one fictional Zambia tender for 10 vaccine refrigerators two timely bids prices in Kwacha and criteria issued issued before evaluation technical capability carries 60% delivery carries 40 The demonstration contains no real suppliers tax record the source source documents and starting state are included so a reviewer can reproduce the result Muse Spark on Meta Model API compares each admitted bidder against those same criteria. Here is the the actual returned review beside its source one supplier commits to delivery within 30 days and names a local service team the the other says delivery will be agreed after award Quorum checks every quotation against that bidder's documents and invented quotation is rejected missing evidence becomes a question for the committee the model advises it does not enter official scores or decide the award Now the boundary that makes this useful in a public institution the land graph review stops at a pending human gate these are captured responses from the real HTTP approval path An unsigned direct direct request is refused an authenticated request without step up verification is also also refused After both attempts the gate is still pending and there is no no filing receipt The review graph has no edge to filing changing the model's instructions cannot add one A separate authorized authorized test account now completes two-factor verification the server checks office authority committee quorum and the gate bound assertion before accepting the decision only then does the simulation produce a sealed receipt its signature verifies this is a local filing simulation on fictional data it is not a government portal transaction the accountable decision remains with authorized people people The evidence bundle includes the model response, exact source files, failed requests and verified receipt, tests cover quotation grounding, access controls and replay protection, a procurement officer study is prepared but no time saving or or money recovered is claimed before real officers measure it. The next step is a consenting procurement unit reviewing one retrospective tender built by Chungu Chama, Quorum brings Meta's models into a a reviewable procurement workflow. Explore the source and reproduce the demonstration. The agent prepares the file the authorized committee makes the decision",
+  "audioDurationMs": 180000,
+  "turns": [
+    {
+      "turnId": 0,
+      "startMs": 380,
+      "endMs": 17820,
+      "transcript": "The hospital cannot use equipment that is still waiting for procurement review. Across Africa, public procurement averages 17% of GDP, according to to the World Bank. In Zambia, quorum starts with the officer's desk. Read the evidence, identify the gaps, and prepare a decision that people can explain."
+    },
+    {
+      "turnId": 1,
+      "startMs": 22620,
+      "endMs": 42780,
+      "transcript": "This is one fictional Zambia tender for 10 vaccine refrigerators two timely bids prices in Kwacha and criteria issued issued before evaluation technical capability carries 60% delivery carries 40 The demonstration contains no real suppliers tax record the source source documents and starting state are included so a reviewer can reproduce the result"
+    },
+    {
+      "turnId": 2,
+      "startMs": 46060,
+      "endMs": 80060,
+      "transcript": "Muse Spark on Meta Model API compares each admitted bidder against those same criteria. Here is the the actual returned review beside its source one supplier commits to delivery within 30 days and names a local service team the the other says delivery will be agreed after award Quorum checks every quotation against that bidder's documents and invented quotation is rejected missing evidence becomes a question for the committee the model advises it does not enter official scores or decide the award"
+    },
+    {
+      "turnId": 3,
+      "startMs": 81740,
+      "endMs": 92140,
+      "transcript": "Now the boundary that makes this useful in a public institution the land graph review stops at a pending human gate these are captured responses from the real HTTP approval path"
+    },
+    {
+      "turnId": 4,
+      "startMs": 92620,
+      "endMs": 108060,
+      "transcript": "An unsigned direct direct request is refused an authenticated request without step up verification is also also refused After both attempts the gate is still pending and there is no no filing receipt The review graph has no edge to filing changing the model's instructions cannot add one"
+    },
+    {
+      "turnId": 5,
+      "startMs": 114540,
+      "endMs": 138940,
+      "transcript": "A separate authorized authorized test account now completes two-factor verification the server checks office authority committee quorum and the gate bound assertion before accepting the decision only then does the simulation produce a sealed receipt its signature verifies this is a local filing simulation on fictional data it is not a government portal transaction the accountable decision remains with authorized people"
+    },
+    {
+      "turnId": 6,
+      "startMs": 139020,
+      "endMs": 139020,
+      "transcript": "people"
+    },
+    {
+      "turnId": 7,
+      "startMs": 140460,
+      "endMs": 165420,
+      "transcript": "The evidence bundle includes the model response, exact source files, failed requests and verified receipt, tests cover quotation grounding, access controls and replay protection, a procurement officer study is prepared but no time saving or or money recovered is claimed before real officers measure it. The next step is a consenting procurement unit reviewing one retrospective tender"
+    },
+    {
+      "turnId": 8,
+      "startMs": 166940,
+      "endMs": 179020,
+      "transcript": "built by Chungu Chama, Quorum brings Meta's models into a a reviewable procurement workflow. Explore the source and reproduce the demonstration. The agent prepares the file the authorized committee makes the decision"
+    }
+  ]
+}

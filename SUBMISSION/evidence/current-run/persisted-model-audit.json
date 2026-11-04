@@ -1,0 +1,35 @@
+{
+  "generatedAt": "2026-11-04T08:38:59.910Z",
+  "methodology": {
+    "quoteValidity": "Cited text is locally checked against the original source; hosted redaction placeholders are matched only to corresponding supplier/amount spans.",
+    "goldOverlap": "Exact phrase overlap with covered=true entries in data/eval/gold.json. The labels have one human reviewer and the overlap is a heuristic, not a substitute for adjudication.",
+    "decisions": "No model judge is used. The model evidence map is not a finding or a procurement decision."
+  },
+  "summary": {
+    "runsWithEvidenceModelCall": 1,
+    "evidenceModelCalls": 2,
+    "successfulCalls": 1,
+    "quoteValidObservations": 0,
+    "observations": 0,
+    "quoteValidityRate": null,
+    "coveredGoldLabelHits": 0,
+    "coveredGoldLabels": 0,
+    "goldLabelOverlapRate": null,
+    "promptTokens": 905,
+    "completionTokens": 5000,
+    "medianLatencyMs": 60002
+  },
+  "runs": [
+    {
+      "runId": "run_1ece5c92",
+      "tenderId": "ZM-DEMO-2026-001",
+      "model": "muse-spark-1.3",
+      "calls": 2,
+      "successfulCalls": 1,
+      "observations": 0,
+      "quoteValid": 0,
+      "goldLabelHits": 0,
+      "goldLabels": 0
+    }
+  ]
+}

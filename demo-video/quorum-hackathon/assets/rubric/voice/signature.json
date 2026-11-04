@@ -1,0 +1,19 @@
+{
+  "scene": "signature",
+  "text": "A separate authorised test account now completes two-factor verification. The server checks office authority, committee quorum and the gate-bound assertion before accepting the decision. Only then does the simulation produce a sealed receipt. Its signature verifies. This is a local filing simulation on fictional data; it is not a government portal transaction. The accountable decision remains with authorised people.",
+  "synthesis_text": "A separate authorised test account now completes two-factor verification. The server checks office authority, committee quorum and the gate-bound assertion before accepting the decision. Only then does the simulation produce a sealed receipt. Its signature verifies. This is a local filing simulation on fictional data; it is not a government portal transaction. The accountable decision remains with authorised people.",
+  "source": "Lusaka.m4a",
+  "reference_range": [
+    31.58,
+    38.86
+  ],
+  "reference_text": "So that's what we need to understand is how best can we create content that is of value to the whole world.",
+  "model": "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-4bit",
+  "seed": 56,
+  "sample_rate": 24000,
+  "duration_seconds": 24.96,
+  "generation_seconds": 29.45,
+  "generated_voice": true,
+  "temperature": 0.65,
+  "repetition_penalty": 1.15
+}

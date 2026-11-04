@@ -1,13 +1,9 @@
 "use client";
 
+import { useReducedMotion } from "@/lib/use-reduced-motion";
+
 import type { MouseEvent, ReactNode } from "react";
-import {
-  motion,
-  useMotionValue,
-  useReducedMotion,
-  useSpring,
-  useTransform,
-} from "framer-motion";
+import { motion, useMotionValue, useSpring, useTransform,  } from "framer-motion";
 import { ArrowDown, ArrowRight, CircleDot, Landmark, PenLine } from "lucide-react";
 import { AgentRun } from "@/components/quorum/agent-run";
 import { HeroFilm } from "@/components/quorum/hero-film";

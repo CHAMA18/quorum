@@ -1,0 +1,58 @@
+[
+  {
+    "scene": "stakes",
+    "start": 0.35,
+    "end": 18.110000000000003,
+    "sourceDuration": 17.76,
+    "gain": 2.0,
+    "tempoChanged": false
+  },
+  {
+    "scene": "record",
+    "start": 22.35,
+    "end": 42.83,
+    "sourceDuration": 20.48,
+    "gain": 2.0,
+    "tempoChanged": false
+  },
+  {
+    "scene": "model",
+    "start": 45.35,
+    "end": 80.39,
+    "sourceDuration": 35.04,
+    "gain": 2.0,
+    "tempoChanged": false
+  },
+  {
+    "scene": "refusal",
+    "start": 81.35,
+    "end": 108.14999999999999,
+    "sourceDuration": 26.8,
+    "gain": 2.0,
+    "tempoChanged": false
+  },
+  {
+    "scene": "signature",
+    "start": 114.35,
+    "end": 139.31,
+    "sourceDuration": 24.96,
+    "gain": 2.0,
+    "tempoChanged": false
+  },
+  {
+    "scene": "evidence",
+    "start": 140.35,
+    "end": 165.70999999999998,
+    "sourceDuration": 25.36,
+    "gain": 2.0,
+    "tempoChanged": false
+  },
+  {
+    "scene": "close",
+    "start": 166.35,
+    "end": 179.23,
+    "sourceDuration": 12.88,
+    "gain": 2.0,
+    "tempoChanged": false
+  }
+]

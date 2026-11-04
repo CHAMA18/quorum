@@ -1,0 +1,314 @@
+[
+  {
+    "start": 0.7,
+    "end": 3.5700000000000003,
+    "text": "A hospital cannot use equipment that is still waiting for",
+    "scene": "stakes"
+  },
+  {
+    "start": 3.58,
+    "end": 6.8500000000000005,
+    "text": "procurement review. Across Africa, public procurement averages",
+    "scene": "stakes"
+  },
+  {
+    "start": 6.86,
+    "end": 9.96,
+    "text": "seventeen percent of GDP, according to the World Bank.",
+    "scene": "stakes"
+  },
+  {
+    "start": 10.4,
+    "end": 13.1,
+    "text": "In Zambia, Quorum starts with the officer's desk:",
+    "scene": "stakes"
+  },
+  {
+    "start": 13.44,
+    "end": 16.65,
+    "text": "read the evidence, identify the gaps, and prepare a decision",
+    "scene": "stakes"
+  },
+  {
+    "start": 16.66,
+    "end": 17.98,
+    "text": "that people can explain.",
+    "scene": "stakes"
+  },
+  {
+    "start": 22.42,
+    "end": 25.549999999999997,
+    "text": "This is one fictional Zambia tender for ten vaccine",
+    "scene": "record"
+  },
+  {
+    "start": 25.56,
+    "end": 29.349999999999998,
+    "text": "refrigerators. Two timely bids, prices in kwacha, and",
+    "scene": "record"
+  },
+  {
+    "start": 29.36,
+    "end": 31.08,
+    "text": "criteria issued before evaluation.",
+    "scene": "record"
+  },
+  {
+    "start": 31.28,
+    "end": 33.31,
+    "text": "Technical capability carries sixty percent;",
+    "scene": "record"
+  },
+  {
+    "start": 33.32,
+    "end": 37.15,
+    "text": "delivery carries forty. The demonstration contains no real",
+    "scene": "record"
+  },
+  {
+    "start": 37.16,
+    "end": 39.93,
+    "text": "supplier's tax record. The source documents and starting state",
+    "scene": "record"
+  },
+  {
+    "start": 39.94,
+    "end": 42.78,
+    "text": "are included so a reviewer can reproduce the result.",
+    "scene": "record"
+  },
+  {
+    "start": 45.7,
+    "end": 49.730000000000004,
+    "text": "Muse Spark on Meta Model API compares each",
+    "scene": "model"
+  },
+  {
+    "start": 49.74,
+    "end": 52.36,
+    "text": "admitted bidder against those same criteria.",
+    "scene": "model"
+  },
+  {
+    "start": 52.88,
+    "end": 56.04,
+    "text": "Here is the actual returned review, beside its source.",
+    "scene": "model"
+  },
+  {
+    "start": 56.58,
+    "end": 60.47,
+    "text": "One supplier commits to delivery within thirty days and names a",
+    "scene": "model"
+  },
+  {
+    "start": 60.48,
+    "end": 64.67,
+    "text": "local service team. The other says delivery will be agreed after",
+    "scene": "model"
+  },
+  {
+    "start": 64.68,
+    "end": 68.39,
+    "text": "award. Quorum checks every quotation against that bidder's",
+    "scene": "model"
+  },
+  {
+    "start": 68.4,
+    "end": 71.33,
+    "text": "documents. An invented quotation is rejected.",
+    "scene": "model"
+  },
+  {
+    "start": 71.34,
+    "end": 74.92,
+    "text": "Missing evidence becomes a question for the committee.",
+    "scene": "model"
+  },
+  {
+    "start": 75.54,
+    "end": 79.57,
+    "text": "The model advises; it does not enter official scores or decide",
+    "scene": "model"
+  },
+  {
+    "start": 79.58,
+    "end": 80.32,
+    "text": "the award.",
+    "scene": "model"
+  },
+  {
+    "start": 81.58,
+    "end": 85.2,
+    "text": "Now the boundary that makes this useful in a public institution.",
+    "scene": "refusal"
+  },
+  {
+    "start": 85.78,
+    "end": 88.36,
+    "text": "The LangGraph review stops at a pending human gate.",
+    "scene": "refusal"
+  },
+  {
+    "start": 88.82,
+    "end": 92.21,
+    "text": "These are captured responses from the real HTTP approval path.",
+    "scene": "refusal"
+  },
+  {
+    "start": 92.22,
+    "end": 94.75,
+    "text": "An unsigned direct request is refused.",
+    "scene": "refusal"
+  },
+  {
+    "start": 94.76,
+    "end": 98.14999999999999,
+    "text": "An authenticated request without step-up verification is also",
+    "scene": "refusal"
+  },
+  {
+    "start": 98.16,
+    "end": 101.39,
+    "text": "refused. After both attempts, the gate is still pending and",
+    "scene": "refusal"
+  },
+  {
+    "start": 101.4,
+    "end": 102.6,
+    "text": "there is no filing receipt.",
+    "scene": "refusal"
+  },
+  {
+    "start": 103.4,
+    "end": 105.52,
+    "text": "The review graph has no edge to filing.",
+    "scene": "refusal"
+  },
+  {
+    "start": 105.86,
+    "end": 108.14,
+    "text": "Changing the model's instructions cannot add one.",
+    "scene": "refusal"
+  },
+  {
+    "start": 114.84,
+    "end": 118.08999999999999,
+    "text": "A separate authorised test account now completes two-factor",
+    "scene": "signature"
+  },
+  {
+    "start": 118.1,
+    "end": 121.9,
+    "text": "verification. The server checks office authority, committee",
+    "scene": "signature"
+  },
+  {
+    "start": 122.22,
+    "end": 125.50999999999999,
+    "text": "quorum and the gate-bound assertion before accepting the",
+    "scene": "signature"
+  },
+  {
+    "start": 125.52,
+    "end": 128.65,
+    "text": "decision. Only then does the simulation produce a sealed",
+    "scene": "signature"
+  },
+  {
+    "start": 128.66,
+    "end": 130.41,
+    "text": "receipt. Its signature verifies.",
+    "scene": "signature"
+  },
+  {
+    "start": 130.42,
+    "end": 133.9,
+    "text": "This is a local filing simulation on fictional data;",
+    "scene": "signature"
+  },
+  {
+    "start": 134.34,
+    "end": 136.2,
+    "text": "it is not a government portal transaction.",
+    "scene": "signature"
+  },
+  {
+    "start": 136.8,
+    "end": 139.2,
+    "text": "The accountable decision remains with authorised people.",
+    "scene": "signature"
+  },
+  {
+    "start": 140.3,
+    "end": 144.33,
+    "text": "The evidence bundle includes the model response, exact source",
+    "scene": "evidence"
+  },
+  {
+    "start": 144.34,
+    "end": 147.04,
+    "text": "files, failed requests and verified receipt.",
+    "scene": "evidence"
+  },
+  {
+    "start": 147.82,
+    "end": 150.99,
+    "text": "Tests cover quotation grounding, access controls and replay",
+    "scene": "evidence"
+  },
+  {
+    "start": 151.0,
+    "end": 155.07000000000002,
+    "text": "protection. A procurement officer study is prepared, but no",
+    "scene": "evidence"
+  },
+  {
+    "start": 155.08,
+    "end": 158.61,
+    "text": "time saving or money recovered is claimed before real officers",
+    "scene": "evidence"
+  },
+  {
+    "start": 158.62,
+    "end": 162.79000000000002,
+    "text": "measure it. The next step is a consenting procurement",
+    "scene": "evidence"
+  },
+  {
+    "start": 162.8,
+    "end": 165.3,
+    "text": "unit reviewing one retrospective tender.",
+    "scene": "evidence"
+  },
+  {
+    "start": 167.06,
+    "end": 168.02,
+    "text": "Built by Chungu Chama.",
+    "scene": "close"
+  },
+  {
+    "start": 168.62,
+    "end": 171.65,
+    "text": "Quorum brings Meta's models into a reviewable procurement",
+    "scene": "close"
+  },
+  {
+    "start": 171.66,
+    "end": 175.08,
+    "text": "workflow. Explore the source and reproduce the demonstration.",
+    "scene": "close"
+  },
+  {
+    "start": 175.56,
+    "end": 177.04,
+    "text": "The agent prepares the file.",
+    "scene": "close"
+  },
+  {
+    "start": 177.2,
+    "end": 178.92,
+    "text": "The authorised committee makes the decision.",
+    "scene": "close"
+  }
+]

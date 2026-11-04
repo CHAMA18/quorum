@@ -1,0 +1,42 @@
+{
+  "verifiedAt": "2026-11-04",
+  "testCommand": "QUORUM_DATA_DIR=<isolated temp> npm test",
+  "tests": {
+    "passed": 509,
+    "failed": 0,
+    "files": 48,
+    "assertions": 3097
+  },
+  "productionBuild": {
+    "command": "bun run build",
+    "compiler": "webpack",
+    "typescriptChecksEnabled": true,
+    "result": "PASS",
+    "pagesGenerated": 48
+  },
+  "browser": {
+    "reducedMotion": "reduce",
+    "consoleErrors": 0,
+    "scenario": "authenticated bid-evaluation, consent, live Meta result, source gap"
+  },
+  "limitations": [
+    "Synthetic integration, not a procurement-officer study",
+    "One injection probe per configured model, not a general security proof",
+    "Build and local checks do not verify deployed production availability"
+  ],
+  "productionIntegration": {
+    "runId": "run_1ece5c92",
+    "sourceBundleSha256": "36b0cdfbea1106259e0ae5aeb3a4c720f085411dd1f7470abaff7853cd5ebc24",
+    "unsignedStatus": 401,
+    "missingStepUpStatus": 403,
+    "gateAfterRefusals": "PENDING",
+    "receiptAfterRefusals": null,
+    "approvalStatus": 200,
+    "receiptStatus": "SIMULATED",
+    "signatureValid": true,
+    "advisoryStatus": 200,
+    "model": "muse-spark-1.3",
+    "durationMs": 28645,
+    "runtimeKeys": "Ephemeral, generated per run; private material never exported"
+  }
+}

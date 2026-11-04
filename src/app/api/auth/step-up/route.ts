@@ -1,3 +1,4 @@
+import { sidecarOrigin } from "@/lib/sidecar-origin";
 import { randomUUID } from "crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { getUserFromToken, rateLimit, clientKey, SESSION_COOKIE, verifyPassword } from "@/lib/auth";
@@ -6,7 +7,7 @@ import { gateDocHash, signStepUpToken, STEP_UP_TTL_MS } from "@/lib/step-up";
 import { verifyTotp } from "@/lib/totp";
 import { isAdminRole } from "@/lib/permissions";
 
-const SIDECAR = process.env.QUORUM_SIDECAR_URL ?? "http://127.0.0.1:3031";
+const SIDECAR = sidecarOrigin();
 
 type GateShape = { id: string; inputs: unknown; status: string; tenderId: string; tool: string };
 

@@ -1,3 +1,4 @@
+import { sidecarOrigin } from "@/lib/sidecar-origin";
 import { NextResponse } from "next/server";
 import { ensureMcpSidecar } from "@/lib/mcp-boot";
 
@@ -14,7 +15,7 @@ export async function GET() {
     return NextResponse.json({ sidecar, health: null });
   }
   try {
-    const res = await fetch("http://127.0.0.1:3031/api/health", {
+    const res = await fetch(`${sidecarOrigin()}/api/health`, {
       cache: "no-store",
       signal: AbortSignal.timeout(2500),
     });

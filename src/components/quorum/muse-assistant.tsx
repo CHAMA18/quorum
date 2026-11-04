@@ -1,5 +1,7 @@
 "use client";
 
+import { useReducedMotion } from "@/lib/use-reduced-motion";
+
 /**
  * MuseAssistant — the text chat bubble for the desk screens.
  *
@@ -21,7 +23,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { Ban, Check, ChevronRight, CircleHelp, MessageSquare, Send, ShieldAlert, X } from "lucide-react";
 import type { Proposal } from "@/lib/muse-actions";

@@ -1,0 +1,19 @@
+{
+  "scene": "evidence",
+  "text": "The evidence bundle includes the model response, exact source files, failed requests and verified receipt. Tests cover quotation grounding, access controls and replay protection. A procurement officer study is prepared, but no time saving or money recovered is claimed before real officers measure it. The next step is a consenting procurement unit reviewing one retrospective tender.",
+  "synthesis_text": "The evidence bundle includes the model response, exact source files, failed requests and verified receipt. Tests cover quotation grounding, access controls and replay protection. A procurement officer study is prepared, but no time saving or money recovered is claimed before real officers measure it. The next step is a consenting procurement unit reviewing one retrospective tender.",
+  "source": "Lusaka.m4a",
+  "reference_range": [
+    31.58,
+    38.86
+  ],
+  "reference_text": "So that's what we need to understand is how best can we create content that is of value to the whole world.",
+  "model": "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-4bit",
+  "seed": 57,
+  "sample_rate": 24000,
+  "duration_seconds": 25.36,
+  "generation_seconds": 34.05,
+  "generated_voice": true,
+  "temperature": 0.65,
+  "repetition_penalty": 1.15
+}

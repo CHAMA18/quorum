@@ -36,9 +36,10 @@ describe("SAM 3.1 output", () => {
     expect("error" in page).toBe(false);
     if (!("error" in page)) {
       expect(page.mime).toBe("image/png");
-      expect(page.page).toBeUndefined();
+      expect(page.page).toBe(1);
       expect(page.bytes).toEqual(png);
     }
+    expect(await pageForVision(png, "scan.png", { page: 2 })).toEqual({ error: "Image uploads contain one page." });
     const bad = await pageForVision(new Uint8Array([1, 2]), "notes.docx");
     expect("error" in bad && bad.error).toContain("PDF or image");
   });

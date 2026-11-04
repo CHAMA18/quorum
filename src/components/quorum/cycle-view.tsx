@@ -2892,6 +2892,8 @@ type AiBidReviewResult = {
   evaluatedAt: string;
   excludedLateBidders: string[];
   documentCount: number;
+  durationMs?: number;
+  evidenceVerification?: { policy: "exact-source-match"; verifiedQuotes: number; criteriaAssessed: number; criteriaWithQuotes: number };
 };
 
 function AiBidReview({
@@ -2979,7 +2981,7 @@ function AiBidReview({
           <p className="font-code text-[9.5px] font-bold tracking-[0.1em] text-ink-500">SELECTED TENDER</p>
           <p className="mt-1 break-words text-[13px] font-semibold text-ink-950 dark:text-white">{tenderTitle}</p>
           <p className="mt-1 font-code text-[10px] text-ink-500">{systemReference ?? tenderId}</p>
-          <p className="mt-2 text-[11px] leading-relaxed text-ink-600 dark:text-ink-400">
+          <p className="mt-2 text-[11px] leading-relaxed text-ink-600">
             To review a different record, choose it from the tender selector at the top of this workflow.
           </p>
         </div>
@@ -2996,7 +2998,7 @@ function AiBidReview({
               </span>
               <span className="min-w-0">
                 <span className="block text-[10px] text-ink-500">{step.label}</span>
-                <span className="block break-words text-[11px] font-semibold text-ink-800 dark:text-ink-200">{step.value}</span>
+                <span className="block break-words text-[11px] font-semibold text-ink-800">{step.value}</span>
               </span>
             </div>
           ))}
@@ -3012,13 +3014,13 @@ function AiBidReview({
           <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
             {bidderRows.map((bid) => (
               <li key={bid.bidder} className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-ink-100 bg-paper/70 px-2.5 py-2 dark:border-white/[0.06] dark:bg-white/[0.02]">
-                <span className="min-w-0 break-words text-[11px] font-medium text-ink-800 dark:text-ink-200">{bid.bidder}</span>
+                <span className="min-w-0 break-words text-[11px] font-medium text-ink-800">{bid.bidder}</span>
                 <Chip tone={bid.late ? "warn" : "muted"}>{bid.late ? "LATE · EXCLUDED" : "ADMITTED"}</Chip>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="mt-1.5 text-[10.5px] leading-relaxed text-ink-600 dark:text-ink-400">Bidder names will appear here after bids are recorded in the opening register.</p>
+          <p className="mt-1.5 text-[10.5px] leading-relaxed text-ink-600">Bidder names will appear here after bids are recorded in the opening register.</p>
         )}
       </section>
 
@@ -3032,25 +3034,25 @@ function AiBidReview({
             {matrix.criteria.map((criterion) => (
               <li key={criterion.id} className="min-w-0 rounded-lg border border-ink-100 bg-paper/70 px-2.5 py-2 dark:border-white/[0.06] dark:bg-white/[0.02]">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="min-w-0 break-words text-[11px] font-semibold text-ink-800 dark:text-ink-200">{criterion.title}</p>
-                  <span className="shrink-0 font-code text-[10px] font-bold text-ink-600 dark:text-ink-300">{criterion.weight}%</span>
+                  <p className="min-w-0 break-words text-[11px] font-semibold text-ink-800">{criterion.title}</p>
+                  <span className="shrink-0 font-code text-[10px] font-bold text-ink-600">{criterion.weight}%</span>
                 </div>
-                {criterion.evidence ? <p className="mt-1 break-words text-[10px] leading-relaxed text-ink-600 dark:text-ink-400">Evidence: {criterion.evidence}</p> : null}
-                {criterion.scoringMethod ? <p className="mt-1 break-words text-[10px] leading-relaxed text-ink-600 dark:text-ink-400">Scoring: {criterion.scoringMethod}</p> : null}
+                {criterion.evidence ? <p className="mt-1 break-words text-[10px] leading-relaxed text-ink-600">Evidence: {criterion.evidence}</p> : null}
+                {criterion.scoringMethod ? <p className="mt-1 break-words text-[10px] leading-relaxed text-ink-600">Scoring: {criterion.scoringMethod}</p> : null}
               </li>
             ))}
           </ul>
         ) : (
-          <p className="mt-1.5 text-[10.5px] leading-relaxed text-ink-600 dark:text-ink-400">Published criteria will appear here after the evaluation matrix is built from an issued notice.</p>
+          <p className="mt-1.5 text-[10.5px] leading-relaxed text-ink-600">Published criteria will appear here after the evaluation matrix is built from an issued notice.</p>
         )}
       </section>
 
       <div className="mt-3 rounded-xl border border-brand-200/70 bg-brand-50/60 p-3 dark:border-brand-400/15 dark:bg-brand-400/[0.04]">
-        <p className="text-[11px] font-semibold text-ink-800 dark:text-ink-200">Before you run the review</p>
-        <p className="mt-1 text-[10.5px] leading-relaxed text-ink-600 dark:text-ink-400">
+        <p className="text-[11px] font-semibold text-ink-800">Before you run the review</p>
+        <p className="mt-1 text-[10.5px] leading-relaxed text-ink-600">
           Meta AI will receive admitted bidders&apos; staged bid files, portal cover notes and readable attachments, the issued criteria, and recorded evaluation entries. If any submitted file cannot be read in full, the review stops instead of skipping it. Late bid documents are excluded. The review is advisory and will not write scores or change tender records.
         </p>
-        <label className="mt-2.5 flex cursor-pointer items-start gap-2.5 text-[11px] leading-relaxed text-ink-700 dark:text-ink-300">
+        <label className="mt-2.5 flex cursor-pointer items-start gap-2.5 text-[11px] leading-relaxed text-ink-700">
           <input
             type="checkbox"
             checked={consent}
@@ -3079,32 +3081,36 @@ function AiBidReview({
       </div>
 
       {busy ? (
-        <p className="mt-3 rounded-lg border border-ink-100 bg-paper px-3 py-3 text-[11px] leading-relaxed text-ink-600 dark:border-white/[0.07] dark:text-ink-300" role="status" aria-live="polite">
+        <p className="mt-3 rounded-lg border border-ink-100 bg-paper px-3 py-3 text-[11px] leading-relaxed text-ink-600 dark:border-white/[0.07]" role="status" aria-live="polite">
           Reading the selected tender&apos;s submitted information and comparing every admitted bidder against the issued matrix. Your records remain unchanged.
         </p>
       ) : null}
-      {error ? <p role="alert" className="mt-3 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2.5 text-[11px] leading-relaxed text-brand-900 dark:border-brand-400/20 dark:bg-brand-400/[0.05] dark:text-brand-200">{error}</p> : null}
+      {error ? <p role="alert" className="mt-3 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2.5 text-[11px] leading-relaxed text-brand-900 dark:border-brand-400/20 dark:bg-brand-400/[0.05]">{error}</p> : null}
 
       {result ? (
         <div className="mt-4 space-y-3" aria-live="polite">
+          <section aria-label="AI review provenance" className="rounded-xl border border-ink-200 bg-paper p-4 dark:border-white/20 dark:bg-[#20242b]">
+            <p className="font-code text-[11px] font-bold tracking-[0.08em] text-brand-700">MODEL OUTPUT · {result.model}</p>
+            <p className="mt-2 text-[13px] leading-relaxed text-ink-900 dark:text-white">
+              {result.bidders.length} admitted bidders · {result.documentCount} source documents
+              {result.evidenceVerification ? ` · ${result.evidenceVerification.verifiedQuotes} exact source quotations verified` : ""}
+              {typeof result.durationMs === "number" ? ` · ${(result.durationMs / 1000).toFixed(1)} s` : ""}
+            </p>
+            <p className="mt-1 text-[11.5px] leading-relaxed text-ink-700">Generated {new Date(result.evaluatedAt).toLocaleString()}. Quote matching checks that the text exists in the cited bidder document; the committee still checks its meaning and relevance.</p>
+          </section>
           <section className="rounded-xl border border-brand-200 bg-white p-4 dark:border-brand-400/20 dark:bg-white/[0.025]">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
-                <p className="font-code text-[9.5px] font-bold tracking-[0.1em] text-brand-700 dark:text-brand-300">META AI RECOMMENDATION · FOR COMMITTEE CONSIDERATION</p>
+                <p className="font-code text-[11px] font-bold tracking-[0.08em] text-brand-700">ADVISORY COMPARISON · FOR COMMITTEE CONSIDERATION</p>
                 <h4 className="mt-1 text-[15px] font-bold text-ink-950 dark:text-white">
                   {result.recommendation.bidder ?? "No clear recommendation from the available evidence"}
                 </h4>
               </div>
               <Chip tone="muted">ADVISORY ONLY</Chip>
             </div>
-            <p className="mt-2 break-words text-[11.5px] leading-relaxed text-ink-700 dark:text-ink-300">{result.recommendation.basis}</p>
-            <p className="mt-2 break-words border-t border-ink-100 pt-2 text-[11px] leading-relaxed text-ink-600 dark:border-white/[0.07] dark:text-ink-400">{result.overview}</p>
+            <p className="mt-2 break-words text-[13px] leading-relaxed text-ink-800">{result.recommendation.basis}</p>
+            <p className="mt-2 break-words border-t border-ink-100 pt-2 text-[12.5px] leading-relaxed text-ink-700 dark:border-white/15">{result.overview}</p>
           </section>
-
-          <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-ink-500">
-            <span className="min-w-0 break-words">{result.bidders.length} bidders · {result.documentCount} source documents · {result.model}</span>
-            <span>Generated {new Date(result.evaluatedAt).toLocaleString()}</span>
-          </div>
 
           {result.excludedLateBidders.length ? (
             <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[10.5px] leading-relaxed text-amber-900 dark:border-amber-500/20 dark:bg-amber-500/[0.05] dark:text-amber-200">
@@ -3117,7 +3123,7 @@ function AiBidReview({
               <article key={bidder.bidder} className="min-w-0 rounded-xl border border-ink-100 bg-white p-3.5 dark:border-white/[0.07] dark:bg-white/[0.02]">
                 <header className="border-b border-ink-100 pb-2.5 dark:border-white/[0.07]">
                   <p className="break-words text-[13px] font-bold text-ink-950 dark:text-white">{bidder.bidder}</p>
-                  <p className="mt-1 break-words text-[11px] leading-relaxed text-ink-700 dark:text-ink-300">{bidder.recommendation}</p>
+                  <p className="mt-1 break-words text-[11px] leading-relaxed text-ink-700">{bidder.recommendation}</p>
                 </header>
                 <ul className="mt-2.5 space-y-2">
                   {bidder.criteria.map((assessment) => {
@@ -3125,22 +3131,22 @@ function AiBidReview({
                     return (
                       <li key={assessment.criterionId} className="rounded-lg border border-ink-100 bg-paper/70 p-2.5 dark:border-white/[0.06] dark:bg-white/[0.02]">
                         <div className="flex flex-wrap items-start justify-between gap-2">
-                          <p className="min-w-0 break-words text-[10.5px] font-semibold text-ink-800 dark:text-ink-200">
+                          <p className="min-w-0 break-words text-[12.5px] font-semibold text-ink-900 dark:text-white">
                             {criterion?.title ?? assessment.criterionId}{criterion ? ` · ${criterion.weight}%` : ""}
                           </p>
                           <Chip tone={alignmentTone(assessment.alignment)}>{assessment.alignment.replace(/_/g, " ")}</Chip>
                         </div>
-                        <p className="mt-1.5 text-[10.5px] leading-relaxed text-ink-700 dark:text-ink-300">{assessment.assessment}</p>
+                        <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-800">{assessment.assessment}</p>
                         {assessment.evidence.length ? (
                           <ul className="mt-2 space-y-1.5">
                             {assessment.evidence.map((item, index) => (
                               <li key={`${item.citation}-${index}`} className="border-l-2 border-brand-300 pl-2.5">
-                                <blockquote className="break-words text-[10px] leading-relaxed text-ink-700 dark:text-ink-300">“{item.quote}”</blockquote>
-                                <p className="mt-0.5 break-words font-code text-[9px] text-ink-500">{item.citation}</p>
+                                <blockquote className="break-words text-[12.5px] leading-relaxed text-ink-800">“{item.quote}”</blockquote>
+                                <p className="mt-1 break-words font-code text-[11px] text-ink-700">{item.citation}</p>
                               </li>
                             ))}
                           </ul>
-                        ) : <p className="mt-1.5 text-[10px] text-ink-500">No source quotation returned for this criterion.</p>}
+                        ) : <p className="mt-1.5 text-[12px] text-ink-700">No supporting source quotation for this criterion. The committee must resolve the gap.</p>}
                       </li>
                     );
                   })}
@@ -3156,8 +3162,8 @@ function AiBidReview({
               </article>
             ))}
           </div>
-          <p className="rounded-lg border border-ink-100 bg-paper px-3 py-2.5 text-[10px] leading-relaxed text-ink-600 dark:border-white/[0.07] dark:text-ink-400">
-            The AI assessment does not score, rank, determine responsiveness, or award the tender. Verify each cited source. The evaluation committee records its scores and the authorized officer makes the award decision.
+          <p className="rounded-lg border border-ink-100 bg-paper px-3 py-2.5 text-[10px] leading-relaxed text-ink-600 dark:border-white/[0.07]">
+            The AI may offer a qualitative recommendation for committee consideration. It does not change recorded scores, create the committee&apos;s formal ranking, determine responsiveness, or award the tender. The evaluation committee records its assessment and the authorized officer makes the award decision.
           </p>
         </div>
       ) : null}

@@ -1,5 +1,7 @@
 "use client";
 
+import { useReducedMotion } from "@/lib/use-reduced-motion";
+
 /**
  * WorkspacePalette — the desk's command line.
  *
@@ -13,7 +15,7 @@
 import type { ReactNode } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Command } from "cmdk";
-import { useReducedMotion } from "framer-motion";
+import {  } from "framer-motion";
 import { CornerDownLeft, Search, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 

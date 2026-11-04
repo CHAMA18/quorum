@@ -1,0 +1,8 @@
+.hyperframes/
+*.mp4
+assets/*.mp4
+assets/*.wav
+assets/*.ffconcat
+review/*.png
+review/*.jpg
+renders/

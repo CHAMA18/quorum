@@ -1,0 +1,68 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 3840
+PlayResY: 2160
+WrapStyle: 0
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Caption,Montserrat,76,&H00FFFFFF,&H00FFFFFF,&H00100C0A,&H00100C0A,0,0,0,0,100,100,0,0,3,18,0,2,280,280,70,1
+Style: Label,Montserrat,54,&H00FFFFFF,&H00FFFFFF,&H00171210,&H00171210,0,0,0,0,100,100,0,0,3,16,0,9,140,140,76,1
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 2,0:00:00.20,0:00:03.43,Caption,,0,0,0,,A hospital cannot use equipment that is still waiting for
+Dialogue: 2,0:00:03.44,0:00:06.69,Caption,,0,0,0,,procurement review. Across Africa, public procurement averages
+Dialogue: 2,0:00:06.70,0:00:09.80,Caption,,0,0,0,,seventeen percent of GDP, according to the World Bank.
+Dialogue: 2,0:00:10.26,0:00:13.00,Caption,,0,0,0,,In Zambia, Quorum starts with the officer's desk:
+Dialogue: 2,0:00:13.28,0:00:16.49,Caption,,0,0,0,,read the evidence, identify the gaps, and prepare a decision
+Dialogue: 2,0:00:16.50,0:00:17.82,Caption,,0,0,0,,that people can explain.
+Dialogue: 2,0:00:20.20,0:00:22.54,Caption,,0,0,0,,Here is the actual supplier workflow.
+Dialogue: 2,0:00:22.90,0:00:25.36,Caption,,0,0,0,,Required documents stay together in one checklist.
+Dialogue: 2,0:00:25.92,0:00:29.21,Caption,,0,0,0,,The supplier opens a supporting file and requests an AI document
+Dialogue: 2,0:00:29.22,0:00:33.23,Caption,,0,0,0,,check. The findings appear beside the source, so the reviewer
+Dialogue: 2,0:00:33.24,0:00:36.16,Caption,,0,0,0,,can compare them. This helps prepare the submission;
+Dialogue: 2,0:00:36.42,0:00:39.16,Caption,,0,0,0,,it does not decide whether the supplier qualifies.
+Dialogue: 2,0:00:45.20,0:00:47.34,Caption,,0,0,0,,Now the recorded officer workspace.
+Dialogue: 2,0:00:48.16,0:00:50.83,Caption,,0,0,0,,The team moves from the tender notice through opening and
+Dialogue: 2,0:00:50.84,0:00:53.13,Caption,,0,0,0,,evaluation. Published criteria govern the review.
+Dialogue: 2,0:00:53.14,0:00:56.89,Caption,,0,0,0,,Officers can inspect the matrix, compare the admitted bids, and
+Dialogue: 2,0:00:56.90,0:00:58.28,Caption,,0,0,0,,trace the supporting file.
+Dialogue: 2,0:00:58.84,0:01:01.32,Caption,,0,0,0,,These earlier recordings use illustrative records;
+Dialogue: 2,0:01:01.80,0:01:04.72,Caption,,0,0,0,,their fields vary. The committee enters its own scores.
+Dialogue: 2,0:01:05.34,0:01:08.22,Caption,,0,0,0,,Quorum keeps the review and the accountable decision connected.
+Dialogue: 2,0:01:12.20,0:01:16.36,Caption,,0,0,0,,The officer opens the AI-assisted bid review,
+Dialogue: 2,0:01:16.50,0:01:19.37,Caption,,0,0,0,,confirms permission to share the documents, and starts the
+Dialogue: 2,0:01:19.38,0:01:23.33,Caption,,0,0,0,,assessment. Every admitted bidder is considered against the same
+Dialogue: 2,0:01:23.34,0:01:26.03,Caption,,0,0,0,,issued criteria. Watch what happens when the submitted
+Dialogue: 2,0:01:26.04,0:01:28.30,Caption,,0,0,0,,information does not establish a requirement:
+Dialogue: 2,0:01:28.72,0:01:30.73,Caption,,0,0,0,,the result says, not evidenced.
+Dialogue: 2,0:01:30.74,0:01:34.61,Caption,,0,0,0,,The AI leaves the gap visible and gives the committee questions
+Dialogue: 2,0:01:34.62,0:01:38.39,Caption,,0,0,0,,to resolve. It can offer an advisory comparison, but it cannot
+Dialogue: 2,0:01:38.40,0:01:40.19,Caption,,0,0,0,,turn missing evidence into a pass.
+Dialogue: 2,0:01:40.20,0:01:44.09,Caption,,0,0,0,,Muse Spark on Meta Model API also returned the separately
+Dialogue: 2,0:01:44.10,0:01:47.32,Caption,,0,0,0,,verified source-linked assessment included with this submission.
+Dialogue: 2,0:01:50.20,0:01:54.33,Caption,,0,0,0,,The original recording also shows the people who make the
+Dialogue: 2,0:01:54.34,0:01:58.09,Caption,,0,0,0,,decision. Here is the committee panel, followed by member
+Dialogue: 2,0:01:58.10,0:02:01.93,Caption,,0,0,0,,registration. Each officer has an identity, role and recorded
+Dialogue: 2,0:02:01.94,0:02:05.41,Caption,,0,0,0,,position. Evaluator sheets, score differences and committee
+Dialogue: 2,0:02:05.42,0:02:07.34,Caption,,0,0,0,,consensus remain part of the file.
+Dialogue: 2,0:02:08.08,0:02:10.83,Caption,,0,0,0,,The AI's recommendation is advice for consideration;
+Dialogue: 2,0:02:10.84,0:02:14.23,Caption,,0,0,0,,official scores, formal ranking and the award remain with
+Dialogue: 2,0:02:14.24,0:02:17.62,Caption,,0,0,0,,authorised people. Quorum keeps that distinction visible.
+Dialogue: 2,0:02:22.20,0:02:25.31,Caption,,0,0,0,,We also tested the approval boundary against the production
+Dialogue: 2,0:02:25.32,0:02:28.51,Caption,,0,0,0,,build. An unsigned request returns four oh one.
+Dialogue: 2,0:02:28.52,0:02:31.67,Caption,,0,0,0,,A signed-in request without step-up verification returns four oh
+Dialogue: 2,0:02:31.68,0:02:34.24,Caption,,0,0,0,,three. The gate remains pending with no receipt.
+Dialogue: 2,0:02:34.80,0:02:37.27,Caption,,0,0,0,,A separate authorised fictional account then completes
+Dialogue: 2,0:02:37.28,0:02:40.95,Caption,,0,0,0,,two-factor verification, and the local simulation produces a
+Dialogue: 2,0:02:40.96,0:02:44.95,Caption,,0,0,0,,signature-verified receipt. This is test evidence, not a
+Dialogue: 2,0:02:44.96,0:02:46.30,Caption,,0,0,0,,government portal transaction.
+Dialogue: 2,0:02:50.00,0:02:53.14,Caption,,0,0,0,,Quorum. Built by Chungu Chama.
+Dialogue: 2,0:02:53.74,0:02:55.04,Caption,,0,0,0,,The agent prepares the file.
+Dialogue: 2,0:02:55.34,0:02:57.54,Caption,,0,0,0,,The authorised committee makes the decision.
+Dialogue: 2,0:02:57.90,0:02:59.84,Caption,,0,0,0,,Explore the source and join the pilot.
+Dialogue: 1,0:00:20.00,0:00:45.00,Label,,0,0,76,,PART 1 · RECORDED SUPPLIER WORKFLOW
+Dialogue: 1,0:00:45.00,0:01:12.00,Label,,0,0,76,,EARLIER RECORDING · ILLUSTRATIVE FIELDS VARY
+Dialogue: 1,0:01:12.00,0:01:50.00,Label,,0,0,76,,PART 2 · READ-ONLY BID REVIEW
+Dialogue: 1,0:01:50.00,0:02:14.00,Label,,0,0,76,,UNTITLED VIDEO · COMMITTEE + MEMBER REGISTRATION
+Dialogue: 1,0:02:14.00,0:02:22.00,Label,,0,0,76,,PART 2 · EVALUATION INTEGRITY
+Dialogue: 1,0:01:45.00,0:01:50.00,Label,,0,0,190,,SEPARATE LIVE CHECK: MUSE-SPARK-1.3 · SOURCE QUOTES VERIFIED

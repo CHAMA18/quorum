@@ -30,3 +30,14 @@ review/*.ffconcat
 review/*.log
 review/**/*.png
 review/**/*.jpg
+
+# Local narration masters for the separate rubric edition
+/assets/rubric/*.wav
+/assets/rubric/voice/*.wav
+/review/lusaka-generation-error.txt
+
+/assets/recordings-led/*.wav
+/assets/recordings-led/voice/*.wav
+/Part 1.mp4
+/Part 2.mp4
+/Untitled video.mp4

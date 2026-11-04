@@ -3,22 +3,23 @@
   "version": "0.2.9",
   "private": true,
   "license": "MIT",
-  "llamaLicense": "Llama 3.2 Community License — see NOTICE",
+  "llamaLicense": "Llama 3.2 Community License \u2014 see NOTICE",
   "scripts": {
-    "dev": "next dev -p 3000 2>&1 | tee /tmp/quorum-dev.log",
+    "dev": "next dev --webpack -p 3000 2>&1 | tee /tmp/quorum-dev.log",
     "mcp": "bun mini-services/quorum-mcp/index.ts",
-    "db:push": "echo '[db] Quorum uses a JSON file store (db/) — no database to push.'",
-    "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
+    "db:push": "echo '[db] Quorum uses a JSON file store (db/) \u2014 no database to push.'",
+    "build": "next build --webpack && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint .",
-    "test": "bun test mini-services/quorum-mcp/ src/lib/gate-receipts.test.ts src/lib/quorum-knowledge.test.ts src/lib/quorum-nav.test.ts src/lib/tender-extract.test.ts src/lib/sam.test.ts src/lib/tender-access.test.ts src/lib/audit-export.test.ts src/lib/tender-local-store.test.ts src/lib/supplier-pulse.test.ts src/app/api/public/summary/route.test.ts workers/quorum-edge/http-range.test.ts workers/quorum-edge/worker.test.ts",
+    "test": "bun test mini-services/quorum-mcp/ src/lib/sidecar-origin.test.ts src/lib/bid-review-grounding.test.ts src/lib/gate-receipts.test.ts src/lib/quorum-knowledge.test.ts src/lib/quorum-nav.test.ts src/lib/tender-extract.test.ts src/lib/sam.test.ts src/lib/tender-access.test.ts src/lib/audit-export.test.ts src/lib/tender-local-store.test.ts src/lib/supplier-pulse.test.ts src/app/api/public/summary/route.test.ts workers/quorum-edge/http-range.test.ts workers/quorum-edge/worker.test.ts",
     "eval:model": "bun mini-services/quorum-mcp/model-eval.ts",
     "eval:model:challenge": "bun mini-services/quorum-mcp/model-eval.ts --challenge",
     "eval:review:prepare": "bun mini-services/quorum-mcp/independent-review.ts prepare",
     "eval:review:score": "bun mini-services/quorum-mcp/independent-review.ts score",
     "test:edge": "bash -c 'set -a; [ -f .env.local ] && . ./.env.local; set +a; bun test workers/quorum-edge/ \"src/app/api/tenders/[ref]/docs/route.test.ts\"'",
     "desktop:icons": "node scripts/desktop-icons.mjs",
-    "desktop:build": "npm run desktop:icons && electron-builder --publish never"
+    "desktop:build": "npm run desktop:icons && electron-builder --publish never",
+    "demo:judge": "bun scripts/judge-proof.ts --keep-server"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -29,6 +30,7 @@
     "@langchain/langgraph": "^1.5.0",
     "@mdxeditor/editor": "^3.39.1",
     "@modelcontextprotocol/sdk": "^1.32.1",
+    "@modelcontextprotocol/server-filesystem": "2.1.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-aspect-ratio": "^1.1.7",
@@ -103,7 +105,10 @@
       "app": "desktop",
       "output": "release"
     },
-    "files": ["main.cjs", "package.json"],
+    "files": [
+      "main.cjs",
+      "package.json"
+    ],
     "mac": {
       "category": "public.app-category.business",
       "target": [
@@ -154,6 +159,7 @@
     "eslint-config-next": "^16.1.1",
     "exceljs": "^4.4.0",
     "pdf-lib": "^1.17.1",
+    "playwright": "1.58.2",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.5",
     "typescript": "^5"
