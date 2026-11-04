@@ -22,21 +22,28 @@ export default function DocsPage() {
     <div className="flex min-h-screen flex-col bg-paper">
       {/* Reading header — the way back to the workspace, kept one click away. */}
       <header className="sticky top-0 z-50 border-b border-ink-100 bg-paper/85 backdrop-blur-xl">
-        <div className="mx-auto flex h-[68px] w-full max-w-6xl items-center justify-between gap-4 px-5">
+        <div className="mx-auto flex h-[68px] w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <a href="/" aria-label="Quorum — back to the site" className="shrink-0">
               <QuorumLogo tagline={false} />
             </a>
-            <span className="hidden font-code text-[10px] font-bold tracking-[0.12em] text-ink-500 sm:inline">
-              · DOCUMENTATION
+            <span className="hidden h-7 w-px bg-ink-200 sm:inline-block" aria-hidden="true" />
+            <span className="hidden font-code text-[10px] font-bold tracking-[0.12em] text-ink-600 sm:inline">
+              FIELD GUIDE
             </span>
           </div>
           <div className="flex items-center gap-2">
             <a
-              href="/"
-              className="hidden min-h-11 items-center rounded-xl border border-ink-200 bg-white px-4 font-code text-[10px] font-bold tracking-[0.08em] text-ink-600 transition-colors hover:border-ink-950 hover:text-ink-950 sm:inline-flex"
+              href="/org"
+              className="hidden min-h-11 items-center rounded-xl px-3 font-code text-[9px] font-bold tracking-[0.07em] text-ink-600 transition-colors hover:text-ink-950 md:inline-flex"
             >
-              BACK TO SITE
+              SUPPLIER PORTAL
+            </a>
+            <a
+              href="/api"
+              className="hidden min-h-11 items-center rounded-xl px-3 font-code text-[9px] font-bold tracking-[0.07em] text-ink-600 transition-colors hover:text-ink-950 sm:inline-flex"
+            >
+              API REFERENCE
             </a>
             <a
               href="/#/dashboard"
@@ -50,18 +57,18 @@ export default function DocsPage() {
       </header>
 
       {/* The handbook */}
-      <main className="mx-auto w-full max-w-6xl flex-1 px-5 py-10 sm:py-12">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-7 sm:px-6 sm:py-10">
         <DocumentationView />
       </main>
 
       {/* Footer — the rule, one last time. */}
       <footer className="border-t border-ink-100">
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-6">
+        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-6 sm:px-6">
           <p className="font-code text-[10px] tracking-[0.08em] text-ink-500">
             QUORUM · PROCUREMENT REVIEW HANDBOOK
           </p>
           <p className="font-code text-[10px] tracking-[0.08em] text-ink-500">
-            REVIEW SUPPORT · COMMITTEE AUTHORITY
+            SOURCE-LED · HUMAN-DECIDED
           </p>
         </div>
       </footer>
