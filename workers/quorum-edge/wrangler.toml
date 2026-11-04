@@ -2,9 +2,13 @@ name = "quorum-edge"
 main = "src/index.ts"
 compatibility_date = "2026-10-28"
 workers_dev = true
+routes = [
+  { pattern = "quorum-solutions.com/admin*", zone_name = "quorum-solutions.com" },
+]
 
 [vars]
 ORIGIN_URL = "https://quorum-api-tgw2.onrender.com"
+ADMIN_PORTAL_URL = "https://d1n7mv5t5hn4xe.cloudfront.net"
 
 [[r2_buckets]]
 binding = "TENDERS"
