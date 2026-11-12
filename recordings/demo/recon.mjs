@@ -5,6 +5,12 @@ const BASE = "http://localhost:3000";
 const OUT = "recordings/demo/recon";
 mkdirSync(OUT, { recursive: true });
 
+const OWNER_EMAIL = process.env.QUORUM_OWNER_EMAIL;
+const OWNER_PASSWORD = process.env.QUORUM_OWNER_PASSWORD;
+if (!OWNER_EMAIL || !OWNER_PASSWORD) {
+  throw new Error("Set QUORUM_OWNER_EMAIL and QUORUM_OWNER_PASSWORD before recording.");
+}
+
 const file = (name, text) => writeFileSync(`${OUT}/${name}.txt`, text, "utf8");
 
 const browser = await chromium.launch({ headless: true });
@@ -40,8 +46,8 @@ async function dump(name) {
 await page.goto(`${BASE}/#/login`, { waitUntil: "networkidle" });
 await dump("01-login");
 
-await page.fill('input[type="email"]', "chungu424@gmail.com");
-await page.fill('input[type="password"]', "REDACTED");
+await page.fill('input[type="email"]', OWNER_EMAIL);
+await page.fill('input[type="password"]', OWNER_PASSWORD);
 await page.getByRole("button", { name: /sign in/i }).first().click();
 await page.waitForTimeout(2500);
 await dump("02-dashboard");
