@@ -2,6 +2,10 @@
 
 **Status:** 2026-10-28 · Indie developer track · submission due 2026-11-04, 9:00 PM ET
 **Revision:** 2026-10-28 — added the seven workstream specifications in §10 (A1–A7).
+**Historical note (2026-11-12):** §2.3 and gap row 3 describe the pre-submission state.
+The upload → extract → stage → run path now ships (PDF/DOCX/XLSX/text, with bounded
+local Tesseract OCR for scans); read those entries as history, not current behaviour.
+Current detail: README and [`SUBMISSION/05-agent-architecture.md`](../SUBMISSION/05-agent-architecture.md).
 **Thesis:** Quorum is already technically stronger than most hackathon entries. The risk is not a shortage of features — it is that a judge's path breaks before they reach the best parts. Fix proof-of-work first; then deepen the Meta-native AI; then add governance.
 
 ---
@@ -502,7 +506,7 @@ These are the "other serious gaps" promoted to explicit workstreams. Each card g
 **Current state.** `src/lib/db.ts` holds the entire web store in one JSON file, writes synchronously, and assumes a single process. The sidecar keeps its own JSON state. This is fine for a demo and a single reviewer; it is not safe for concurrent officers, multiple instances, or a real pilot.
 
 **Build.**
-1. Postgres (Neon/Supabase/RDS) + Drizzle or Prisma; schema for users, sessions, invites, organizations, org sessions, contacts, committee members, meetings, notifications, audit views, model config, tenants, retention.
+1. Postgres (Neon/Supabase/RDS) + Drizzle; schema for users, sessions, invites, organizations, org sessions, contacts, committee members, meetings, notifications, audit views, model config, tenants, retention.
 2. Object storage (S3/R2) for uploaded documents; signed URLs with short expiry; malware scan hook; size/type limits; retention.
 3. Job queue (BullMQ/Redis or pg-boss) for ingestion, OCR, notifications, PDF export; retries and idempotency keys.
 4. Migrations, seed, backup/restore, health checks; a repository interface so the JSON adapter remains for local/demo.

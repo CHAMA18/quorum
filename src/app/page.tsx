@@ -74,7 +74,8 @@ export default function Home() {
   }, [view, authMode]);
 
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [authReady, setAuthReady] = useState(false);
+  /* A static landing host has no /api runtime, so auth is settled at mount. */
+  const [authReady, setAuthReady] = useState(STATIC_EXPORT);
   const officerFirstName = user?.name?.trim().split(/\s+/)[0] || undefined;
   const [toast, setToast] = useState<string | null>(null);
   const scrollYRef = useRef(0);
@@ -83,10 +84,7 @@ export default function Home() {
 
   /* The server-verified httpOnly session is the sole source of identity. */
   useEffect(() => {
-    if (STATIC_EXPORT) {
-      setAuthReady(true);
-      return;
-    }
+    if (STATIC_EXPORT) return;
     let alive = true;
     fetch("/api/auth/me", { cache: "no-store" })
       .then((r) => {

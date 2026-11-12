@@ -44,8 +44,9 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "no-useless-escape": "off",
   },
 }, {
-  // These entry points intentionally use CommonJS for Electron and VS Code.
-  files: ["desktop/**/*.cjs", "vscode-extension/**/*.js"],
+  // These entry points intentionally use CommonJS for Electron, VS Code and
+  // the Playwright capture scripts.
+  files: ["desktop/**/*.cjs", "vscode-extension/**/*.js", "recordings/**/*.cjs"],
   rules: {
     "@typescript-eslint/no-require-imports": "off",
   },

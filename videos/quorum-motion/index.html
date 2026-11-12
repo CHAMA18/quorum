@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en" data-resolution="landscape">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920, height=1080" />
+<script src="assets/gsap.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1920px;height:1080px;overflow:hidden;background:#08090c}
+#root{position:relative;width:1920px;height:1080px;overflow:hidden;background:#08090c}
+.scene-host{position:absolute;inset:0}
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="24" data-width="1920" data-height="1080">
+  <div id="host-kinetic" class="scene-host clip" data-composition-id="kinetic" data-composition-src="compositions/kinetic.html" data-start="0" data-duration="4" data-track-index="1" data-width="1920" data-height="1080" data-track-kind="graphics"></div>
+  <div id="host-stat" class="scene-host clip" data-composition-id="stat" data-composition-src="compositions/stat.html" data-start="4" data-duration="4" data-track-index="2" data-width="1920" data-height="1080" data-track-kind="graphics"></div>
+  <div id="host-chart" class="scene-host clip" data-composition-id="chart" data-composition-src="compositions/chart.html" data-start="8" data-duration="4" data-track-index="3" data-width="1920" data-height="1080" data-track-kind="graphics"></div>
+  <div id="host-gate" class="scene-host clip" data-composition-id="gate" data-composition-src="compositions/gate.html" data-start="12" data-duration="4" data-track-index="4" data-width="1920" data-height="1080" data-track-kind="graphics"></div>
+  <div id="host-map" class="scene-host clip" data-composition-id="map" data-composition-src="compositions/map.html" data-start="16" data-duration="4" data-track-index="5" data-width="1920" data-height="1080" data-track-kind="graphics"></div>
+  <div id="host-logo" class="scene-host clip" data-composition-id="logo" data-composition-src="compositions/logo.html" data-start="20" data-duration="4" data-track-index="6" data-width="1920" data-height="1080" data-track-kind="graphics"></div>
+</div>
+<script>
+window.__timelines = window.__timelines || {};
+window.__timelines["main"] = gsap.timeline({ paused: true });
+</script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 import type { OrganizationRow } from "@/lib/db";
-import { museChat, museConfigFromEnv } from "@/lib/muse";
+import { kiraConfigFromEnv, museChat } from "@/lib/muse";
 import { orgActor } from "@/lib/org-auth";
 import { sidecarFetch } from "@/lib/org-sidecar";
 
@@ -169,7 +169,7 @@ export async function orgAssistantReply(
   const facts = await orgAssistantFacts(org, message);
   const toolsRead = ["org_profile", ...(facts.contracts.length ? ["org_contract"] : [])];
   const fallback = deterministicReply(facts, message);
-  const cfg = museConfigFromEnv();
+  const cfg = kiraConfigFromEnv();
   if (!cfg) return { reply: fallback, toolsRead };
 
   try {

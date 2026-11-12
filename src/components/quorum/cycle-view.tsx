@@ -52,6 +52,12 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trapTabFocus } from "@/lib/a11y";
+import { buildPriceRows, formatAmount, median, reconcileFinancial } from "@/lib/bid-prices";
+import { browserOutboxStorage, enqueue } from "@/lib/outbox";
+import { collusionSignals } from "@/lib/evaluation-depth";
+import { buildBenchmarks } from "@/lib/price-history";
+import { buildSupplierHistory } from "@/lib/supplier-history";
+import { expiryStatus, LIGHT_COLOR, supplierLights } from "@/lib/supplier-lights";
 import { isSystemReference, systemReferenceLabel } from "@/lib/system-reference";
 import {
   REQUIRED_DOCUMENT_GROUPS,
@@ -2327,6 +2333,16 @@ function TenderCompare({
 }) {
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
+  const [cloneNote, setCloneNote] = useState("");
+  const cloneTender = async (t: { ref: string; title: string }) => {
+    const newRef = `${t.ref}-TMPL`;
+    const res = await fetch(`/api/tenders/${encodeURIComponent(newRef)}/notices/draft`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ buyer: "Template — set the buyer before publication", subject: `${t.title} (template)`, method: "Open tender" }),
+    }).catch(() => null);
+    setCloneNote(res?.ok ? `Template drafted as ${newRef}. Open it from the tender register to finish the buyer, budget and closing date.` : `Clone failed for ${t.ref} — sign in and try again.`);
+  };
   const [compareTab, setCompareTab] = useState<"bidders" | "tenders">("bidders");
   const dialogId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -2338,6 +2354,29 @@ function TenderCompare({
   const currentCycle = cycles.find((cycle) => cycle.tenderId === current);
   const currentMatrix = currentCycle?.matrix;
   const bidderCount = currentMatrix?.bids.length || currentCycle?.opening?.rows.length || 0;
+  const priceRows = buildPriceRows(currentCycle?.opening?.rows ?? []);
+  const priceMedian = median(priceRows.map((r) => r.amount).filter((a): a is number => a !== null));
+  const benchmarks = buildBenchmarks(
+    cycles.flatMap((c) => (c.matrix?.bids ?? []).flatMap((b) => (b.priceSignals ?? []).map((s) => ({ ...s, tenderId: c.tenderId })))),
+    current,
+  );
+  const supplierHistory = buildSupplierHistory(cycles);
+  const winnerHistory = supplierHistory.find((h) => h.supplier === currentCycle?.awardReport?.recommendation);
+  const [speaking, setSpeaking] = useState(false);
+  const speakSummary = async () => {
+    const leader = [...(currentMatrix?.bids ?? [])].sort((a, b) => (b.total ?? 0) - (a.total ?? 0))[0];
+    const text = `Tender ${current}. ${bidderCount} bidders compared. ${leader ? `Leading bidder ${leader.bidder}.` : "No leader yet."} ${priceMedian !== null ? `Peer median price ${formatAmount(priceMedian, null)}.` : ""} The committee makes the final decision.`;
+    setSpeaking(true);
+    try {
+      const res = await fetch("/api/muse/speak", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const audio = new Audio(URL.createObjectURL(blob));
+      await audio.play().catch(() => undefined);
+    } finally {
+      setSpeaking(false);
+    }
+  };
 
   useEffect(() => {
     if (!open) {
@@ -2645,7 +2684,7 @@ function TenderCompare({
                           </button>
                         </div>
                         <p className="mt-3 rounded-lg border border-brand-200/70 bg-brand-50/60 px-3 py-2 text-[10.5px] leading-relaxed text-ink-700 dark:border-brand-400/15 dark:bg-brand-400/[0.04] dark:text-ink-300">
-                          AI reviews that read the complete bidder submissions are started in Bid evaluation, where document sharing is disclosed and confirmed before Meta AI is called.
+                          AI reviews that read the complete bidder submissions are started in Bid evaluation, where document sharing is disclosed and confirmed before Kira is called.
                         </p>
 
                         {currentMatrix?.bids.length ? (
@@ -2696,6 +2735,76 @@ function TenderCompare({
                             <p className="mt-2 text-[10px] leading-relaxed text-ink-500 dark:text-ink-400">
                               Scores and outcomes are shown as recorded in the {currentMatrix.status === "CERTIFIED" ? "certified" : "draft"} matrix. Missing scores remain unscored; they are not treated as zero.
                             </p>
+                            {(() => {
+                              const signals = collusionSignals(priceRows.filter((r) => r.amount !== null).map((r) => ({ bidder: r.bidder, total: r.amount as number })));
+                              return signals.length ? (
+                                <div className="mt-4 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2.5 dark:border-amber-500/30 dark:bg-amber-500/10">
+                                  <p className="font-code text-[9px] font-bold tracking-[0.06em] text-amber-800 dark:text-amber-300">COLLUSION SIGNALS — INVESTIGATE, NOT PROOF</p>
+                                  <ul className="mt-1 list-disc space-y-0.5 pl-4 text-[11px] text-amber-900 dark:text-amber-200">
+                                    {signals.map((s, i) => (
+                                      <li key={i}>{s.bidders.join(" + ")} — {s.reason.replace(/_/g, " ")}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ) : null;
+                            })()}
+                            {(currentMatrix?.bids ?? []).some((b) => b.financial) ? (
+                              <div className="mt-4">
+                                <p className="font-code text-[9px] font-bold tracking-[0.06em] text-ink-600">TOTALS RECONCILIATION · STATED → CORRECTED → EVALUATED</p>
+                                <ul className="mt-1.5 space-y-1 text-[11px] text-ink-700 dark:text-ink-300">
+                                  {(currentMatrix?.bids ?? []).filter((b) => b.financial).map((b) => {
+                                    const r = reconcileFinancial(b.financial as Parameters<typeof reconcileFinancial>[0]);
+                                    return (
+                                      <li key={b.bidder} className="flex flex-wrap gap-x-2">
+                                        <span className="font-semibold">{b.bidder}</span>
+                                        <span className="tabular">{formatAmount(r.stated, null)} → {formatAmount(r.corrected, null)} → {formatAmount(r.evaluated, null)}</span>
+                                        {r.status !== "OK" ? <span className={r.status === "CORRECTED" ? "font-code text-[9px] font-bold text-emerald-700" : "font-code text-[9px] font-bold text-brand-700"}>{r.status.replace(/_/g, " ")}</span> : null}
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                              </div>
+                            ) : null}
+                            <div className="mt-4 flex flex-wrap items-center gap-2">
+                              <button type="button" onClick={() => void speakSummary()} disabled={speaking} className="focus-brand inline-flex min-h-9 items-center rounded-md border border-ink-200 px-2.5 font-code text-[9px] font-bold tracking-[0.05em] text-ink-700 hover:border-brand-400 disabled:opacity-40">
+                                {speaking ? "SPEAKING…" : "LISTEN — SUMMARIZE THIS TENDER"}
+                              </button>
+                              {winnerHistory ? (
+                                <span className="text-[11px] text-ink-600">
+                                  Winner history: {winnerHistory.awards} award(s) · {winnerHistory.completed} completed{winnerHistory.avgRating !== null ? ` · rated ${winnerHistory.avgRating}/5` : ""}
+                                </span>
+                              ) : null}
+                            </div>
+                            {benchmarks.length ? (
+                              <div className="mt-4">
+                                <p className="font-code text-[9px] font-bold tracking-[0.06em] text-ink-600">HISTORICAL BENCHMARKS · OTHER TENDERS</p>
+                                <ul className="mt-1.5 space-y-1 text-[11px] text-ink-700 dark:text-ink-300">
+                                  {benchmarks.slice(0, 6).map((b) => (
+                                    <li key={b.item} className="flex flex-wrap gap-x-2">
+                                      <span className="font-semibold">{b.item}</span>
+                                      <span className="tabular">median {formatAmount(b.medianOfMedians, b.currency)} · range {formatAmount(b.low, null)}–{formatAmount(b.high, null)} · {b.tenders} tender(s)</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ) : null}
+                            {priceRows.length > 1 ? (
+                              <div className="mt-4">
+                                <p className="font-code text-[9px] font-bold tracking-[0.06em] text-ink-600">BID PRICES · LOW TO HIGH{priceMedian !== null ? ` · PEER MEDIAN ${formatAmount(priceMedian, priceRows[0]?.currency ?? null)}` : ""}</p>
+                                <table className="mt-2 w-full border-collapse text-left text-[10.5px]">
+                                  <tbody>
+                                    {priceRows.map((row) => (
+                                      <tr key={row.bidder} className="border-b border-ink-100/70 last:border-0 dark:border-white/[0.05]">
+                                        <td className="px-2 py-1.5 font-semibold text-ink-800 dark:text-ink-200">{row.bidder}</td>
+                                        <td className="px-2 py-1.5 tabular text-ink-700 dark:text-ink-300">{formatAmount(row.amount, row.currency)}</td>
+                                        <td className="px-2 py-1.5 tabular text-ink-500">{row.ratioToMedian !== null ? `${row.ratioToMedian}× median` : "no price read"}</td>
+                                        <td className="px-2 py-1.5">{row.outlier ? <span className="font-code text-[9px] font-bold text-brand-700 dark:text-brand-300">{row.outlier} OUTLIER</span> : null}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ) : null}
                           </div>
                         ) : currentCycle?.opening?.rows.length ? (
                           <p className="mt-3 rounded-lg border border-ink-100 bg-paper px-3 py-3 text-[11px] leading-relaxed text-ink-600 dark:border-white/[0.07]">
@@ -2727,8 +2836,8 @@ function TenderCompare({
                             const on = picked.includes(t.ref);
                             const full = !on && picked.length >= 4;
                             return (
+                              <span key={t.ref} className="inline-flex items-center gap-1">
                               <button
-                                key={t.ref}
                                 type="button"
                                 onClick={() => toggle(t.ref)}
                                 aria-pressed={on}
@@ -2748,12 +2857,23 @@ function TenderCompare({
                                 />
                                 {tenderReferenceLabel(t)}
                               </button>
+                              <button
+                                type="button"
+                                title={`Clone ${t.ref} as a template`}
+                                aria-label={`Clone ${t.ref} as a template`}
+                                onClick={() => void cloneTender(t)}
+                                className="focus-brand grid h-8 w-8 place-items-center rounded-full border border-ink-200 text-ink-500 hover:border-brand-400 hover:text-brand-700"
+                              >
+                                <Copy className="h-3 w-3" aria-hidden="true" />
+                              </button>
+                              </span>
                             );
                           })}
                           <span aria-live="polite" className="ml-auto text-[10.5px] font-semibold text-ink-600">
                             {picked.length} selected
                           </span>
                         </div>
+                        {cloneNote ? <p role="status" className="mt-2 text-[11px] text-ink-600">{cloneNote}</p> : null}
                       </section>
 
                       {rows.length === 0 ? (
@@ -2954,11 +3074,11 @@ function AiBidReview({
       });
       const data = await response.json().catch(() => ({})) as AiBidReviewResult & { error?: string };
       if (!response.ok || !Array.isArray(data.bidders)) {
-        throw new Error(data.error ?? "Meta AI could not complete this tender review.");
+        throw new Error(data.error ?? "Kira could not complete this tender review.");
       }
       setResult(data);
     } catch (reviewError) {
-      setError(reviewError instanceof Error ? reviewError.message : "Meta AI could not complete this tender review.");
+      setError(reviewError instanceof Error ? reviewError.message : "Kira could not complete this tender review.");
     } finally {
       setBusy(false);
     }
@@ -2970,7 +3090,7 @@ function AiBidReview({
   return (
     <Card
       title="AI-assisted bid review"
-      sub="META AI · ISSUED CRITERIA · ALL ADMITTED BID DOCUMENTS"
+      sub="KIRA · ISSUED CRITERIA · ALL ADMITTED BID DOCUMENTS"
       workflow
       busy={busy}
       actionLabel="Review bidder submissions"
@@ -3050,7 +3170,7 @@ function AiBidReview({
       <div className="mt-3 rounded-xl border border-brand-200/70 bg-brand-50/60 p-3 dark:border-brand-400/15 dark:bg-brand-400/[0.04]">
         <p className="text-[11px] font-semibold text-ink-800">Before you run the review</p>
         <p className="mt-1 text-[10.5px] leading-relaxed text-ink-600">
-          Meta AI will receive admitted bidders&apos; staged bid files, portal cover notes and readable attachments, the issued criteria, and recorded evaluation entries. If any submitted file cannot be read in full, the review stops instead of skipping it. Late bid documents are excluded. The review is advisory and will not write scores or change tender records.
+          Kira will receive admitted bidders&apos; staged bid files, portal cover notes and readable attachments, the issued criteria, and recorded evaluation entries. If any submitted file cannot be read in full, the review stops instead of skipping it. Late bid documents are excluded. The review is advisory and will not write scores or change tender records.
         </p>
         <label className="mt-2.5 flex cursor-pointer items-start gap-2.5 text-[11px] leading-relaxed text-ink-700">
           <input
@@ -3060,7 +3180,7 @@ function AiBidReview({
             disabled={!canReviewBids}
             className="mt-0.5 size-4 shrink-0 accent-brand-600"
           />
-          <span>I am authorised to send these tender documents to Meta AI for a read-only assessment.</span>
+          <span>I am authorised to send these tender documents to Kira for a read-only assessment.</span>
         </label>
       </div>
 
@@ -3168,6 +3288,46 @@ function AiBidReview({
         </div>
       ) : null}
     </Card>
+  );
+}
+
+const CONTRACT_PACK_ITEMS = ["Signed award report", "Contract agreement", "Performance security", "Insurance certificates", "Tax clearance", "Milestone schedule", "Retention terms"];
+
+/** Tickable contract-pack state, persisted per tender through the checklist API. */
+function ContractChecklist({ tenderRef }: { tenderRef: string }) {
+  const [items, setItems] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    if (!tenderRef) return;
+    let alive = true;
+    fetch(`/api/tenders/${encodeURIComponent(tenderRef)}/checklist`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (alive && d?.items) setItems(d.items as Record<string, boolean>); })
+      .catch(() => undefined);
+    return () => { alive = false; };
+  }, [tenderRef]);
+  const toggle = (label: string, value: boolean) => {
+    const next = { ...items, [label]: value };
+    setItems(next);
+    const url = `/api/tenders/${encodeURIComponent(tenderRef)}/checklist`;
+    void fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: next }) })
+      .then((r) => { if (!r.ok) throw new Error("save failed"); })
+      .catch(() => enqueue(browserOutboxStorage(), url, { items: next }));
+  };
+  const done = CONTRACT_PACK_ITEMS.filter((i) => items[i]).length;
+  return (
+    <div className="mt-4">
+      <p className="font-code text-[9px] font-bold tracking-[0.06em] text-ink-600">PACK CHECKLIST · {done} OF {CONTRACT_PACK_ITEMS.length} ON FILE</p>
+      <ul className="mt-2 grid gap-1 sm:grid-cols-2">
+        {CONTRACT_PACK_ITEMS.map((label) => (
+          <li key={label}>
+            <label className="flex cursor-pointer items-center gap-2 text-[12px] text-ink-700 dark:text-ink-300">
+              <input type="checkbox" checked={items[label] === true} onChange={(e) => toggle(label, e.target.checked)} className="h-3.5 w-3.5 accent-[#b52b22]" />
+              {label}
+            </label>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -6121,6 +6281,28 @@ export function CycleView({
   /* ── Tab: award (G6/G7) ──────────────────────────────────────────────────── */
 
   const draftAwardReport = () => act(`/api/tenders/${ref}/award-report`, {}, "Award report drafted and submitted for accounting officer approval.").then((ok) => ok && refreshCycle());
+  const downloadAwardPdf = async () => {
+    const res = await fetch("/api/cycle/award-report-pdf", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        tenderId: ref,
+        recommendation: cycle?.awardReport?.recommendation,
+        signedBy: cycle?.awardReport?.signedBy,
+        signedAt: cycle?.awardReport?.signedAt,
+        sha: cycle?.awardReport?.sha,
+        bids: (cycle?.matrix?.bids ?? []).map((b) => ({ bidder: b.bidder, total: b.total, verdict: b.verdict })),
+        findings: (cycle?.findings ?? []).slice(0, 40).map((f) => ({ rule: f.rule, severity: f.severity, item: f.item })),
+      }),
+    });
+    if (!res.ok) { onToast("PDF FAILED — SIGN IN AND TRY AGAIN"); return; }
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `award-report-${ref}.pdf`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
   const recordMethod = () =>
     act(
       `/api/tenders/${ref}/method`,
@@ -6412,6 +6594,16 @@ export function CycleView({
               ) : null}
             </div>
             {cycle.assurance.verification ? (
+              <div className="flex flex-wrap gap-x-4 gap-y-1.5" aria-label="Supplier assurance by domain">
+                {supplierLights(cycle.assurance.verification).map((light) => (
+                  <span key={light.key} className="inline-flex items-center gap-1.5 text-[11px] text-ink-700 dark:text-ink-300">
+                    <span aria-hidden="true" className="h-2 w-2 rounded-full" style={{ backgroundColor: LIGHT_COLOR[light.state] }} />
+                    {light.label}: {light.detail}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            {cycle.assurance.verification ? (
               <>
                 <p className="text-[10px] leading-relaxed text-ink-600">
                   Checked {fmtDate(cycle.assurance.verification.checkedAt)} by {cycle.assurance.verification.checkedBy} · expires {fmtDate(cycle.assurance.verification.expiresAt)}
@@ -6444,6 +6636,15 @@ export function CycleView({
                           .join(" · ")
                       : "none attached"}
                   </li>
+                  {cycle.assurance.verification.documents.length ? (
+                    <li>
+                      Certificate tracker:{" "}
+                      {cycle.assurance.verification.documents.map((doc) => {
+                        const s = expiryStatus(doc.expiresAt);
+                        return `${doc.kind} — ${s.label}`;
+                      }).join(" · ")}
+                    </li>
+                  ) : null}
                 </ul>
                 {cycle.assurance.failures.length ? (
                   <ul className="list-disc space-y-1 pl-4 text-[11.5px] text-amber-700 dark:text-amber-300">
@@ -6482,6 +6683,9 @@ export function CycleView({
                 <FileSignature className="h-3.5 w-3.5" aria-hidden="true" /> Re-draft with current dispositions
               </Btn>
             ) : null}
+            <Btn variant="ghost" onClick={downloadAwardPdf} disabled={!ref}>
+              <Download className="h-3.5 w-3.5" aria-hidden="true" /> Download PDF
+            </Btn>
           </div>
         ) : (
           <Btn onClick={draftAwardReport} disabled={busy || !ref}>
@@ -7072,6 +7276,7 @@ export function CycleView({
           <Btn onClick={preparePack} disabled={busy || !ref || !cycle.awardReport?.signedAt || !budgetLines.length || !(d.budgetLine || budgetLines[0]?.id)}>
             <FileSignature className="h-3.5 w-3.5" aria-hidden="true" /> Prepare contract documents
           </Btn>
+          <ContractChecklist tenderRef={ref} />
           {!cycle.awardReport?.signedAt ? <p className="mt-3 text-[11.5px] text-ink-400">The award report must be signed first.</p> : null}
           {!budgetLines.length ? <p className="mt-3 text-[11.5px] text-amber-700 dark:text-amber-300">Create a budget line first — the award must commit money.</p> : null}
         </Card>

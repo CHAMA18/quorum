@@ -7,6 +7,8 @@ import { FirebaseAnalytics } from "@/components/quorum/firebase-analytics";
 import { ThemeProvider } from "@/components/quorum/theme-toggle";
 import { MuseAssistantGate } from "@/components/quorum/muse-assistant-gate";
 import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
+import { LocaleProvider } from "@/components/quorum/locale-provider";
+import { LOCALE_COOKIE, resolveLocale } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: "Quorum — Public procurement review workspace",
@@ -53,14 +55,16 @@ export default async function RootLayout({
   /* The officer's first name rides to the bubble when a session exists — the
      agent greets by it and signs nothing under it; the gavel stays theirs. */
   let firstName: string | undefined;
+  let locale = resolveLocale(undefined);
   if (process.env.STATIC_EXPORT !== "1") {
     const jar = await cookies();
+    locale = resolveLocale(jar.get(LOCALE_COOKIE)?.value);
     const officer = await getUserFromToken(jar.get(SESSION_COOKIE)?.value).catch(() => null);
     firstName = officer?.name?.trim().split(/\s+/)[0] || undefined;
   }
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://api.fontshare.com" />
         <link rel="preconnect" href="https://cdn.fontshare.com" crossOrigin="anonymous" />
@@ -75,7 +79,7 @@ export default async function RootLayout({
       >
         <ThemeProvider>
           <MotionConfig reducedMotion="user">
-            {children}
+            <LocaleProvider initial={locale}>{children}</LocaleProvider>
             {/* The assistant is for working areas and docs, not sign-in screens. */}
             <MuseAssistantGate name={firstName} />
             <FirebaseAnalytics />

@@ -4,11 +4,11 @@ import { toolLog, type Run } from "./store";
  * Model attribution — one vocabulary for the demo, the API and the report.
  *
  * The drafting path is deliberately provider-agnostic: any OpenAI-compatible
- * endpoint works. The hackathon build leads with **Muse Spark 1.3** through
- * Meta Model API, and keeps **Llama 3.2** through Ollama as the in-region
- * fallback. Attribution is not inferred from the env value alone — every draft
- * records the `model` string the endpoint actually returned, and the report
- * prints it.
+ * endpoint works. Quorum's primary is **Kira**, the configured open-weight
+ * model (local Ollama with Llama 3.2 by default), with a separate in-region
+ * fallback when one is configured. Attribution is not inferred from the env
+ * value alone — every draft records the `model` string the endpoint actually
+ * returned, and the report prints it.
  *
  * The two paths are not equivalent on data handling: the hosted path sends
  * redacted evidence (supplier names and amounts replaced) through the model
@@ -16,7 +16,7 @@ import { toolLog, type Run } from "./store";
  * which path answered and how many spans were redacted.
  */
 
-export type ModelProvider = "ollama" | "meta-model-api" | "openai-compatible";
+export type ModelProvider = "ollama" | "meta-model-api" | "kira" | "openai-compatible";
 export type ModelProviderOrTemplate = ModelProvider | "template";
 export type ModelMode = "llm" | "template";
 
@@ -25,7 +25,7 @@ export interface LlmConfig {
   model: string;
   apiKey?: string;
   provider: ModelProvider;
-  configuredBy: "llm-env" | "meta-model-api";
+  configuredBy: "llm-env" | "meta-model-api" | "kira-env";
 }
 
 export interface ModelStatus {
@@ -72,6 +72,7 @@ export interface RunModelAttribution {
 export function providerLabel(provider: ModelProviderOrTemplate): string {
   if (provider === "ollama") return "Ollama · local";
   if (provider === "meta-model-api") return "Meta Model API · hosted";
+  if (provider === "kira") return "Kira · open weights";
   if (provider === "openai-compatible") return "OpenAI-compatible endpoint";
   return "Template fallback";
 }
@@ -106,6 +107,7 @@ export function modelProvider(baseUrl: string, model: string): ModelProvider {
     return "meta-model-api";
   }
   if (raw.includes("11434") || raw.includes("ollama")) return "ollama";
+  if (model.toLowerCase().startsWith("kira")) return "kira";
   return "openai-compatible";
 }
 
@@ -113,20 +115,36 @@ export function modelProvider(baseUrl: string, model: string): ModelProvider {
  * Resolve the drafting endpoint.
  *
  * Precedence:
- *   1. LLM_BASE_URL + LLM_MODEL — the explicit endpoint (Llama via Ollama,
- *      Meta Model API, or any OpenAI-compatible service). This is what the
- *      live demo sets in .env.local.
- *   2. No LLM endpoint at all, but a Meta/Muse key — Meta Model API at
- *      https://api.meta.ai/v1 with META_MODEL / MUSE_MODEL.
- *   3. Nothing — template fallback.
+ *   1. KIRA_BASE_URL / KIRA_MODEL — Quorum's open-weight model. The local
+ *      default is Ollama at http://localhost:11434/v1 with llama3.2:3b.
+ *   2. LLM_BASE_URL + LLM_MODEL — the legacy explicit endpoint (any
+ *      OpenAI-compatible service). Kept for existing deployments.
+ *   3. No endpoint at all, but a Meta/Muse key — Meta Model API with
+ *      META_MODEL / MUSE_MODEL (legacy voice/vision deployments).
+ *   4. Nothing — template fallback.
  *
- * A half-configured LLM_* pair returns null rather than silently sending
- * procurement data to a different provider.
+ * A half-configured pair returns null rather than silently sending procurement
+ * data to a different provider.
  */
 export function llmConfigFromEnv(env: Record<string, string | undefined> = process.env): LlmConfig | null {
+  const sharedKey = env.LLM_API_KEY?.trim() || env.META_MODEL_API_KEY?.trim() || env.MUSE_API_KEY?.trim() || undefined;
+  const kiraBase = env.KIRA_BASE_URL?.trim();
+  const kiraModel = env.KIRA_MODEL?.trim();
+  const kiraKey = env.KIRA_API_KEY?.trim() || sharedKey;
+  if (kiraBase || kiraModel) {
+    const baseUrl = kiraBase || env.LLM_BASE_URL?.trim() || "http://localhost:11434/v1";
+    const model = kiraModel || "llama3.2:3b";
+    return {
+      baseUrl,
+      model,
+      apiKey: kiraKey,
+      provider: modelProvider(baseUrl, model),
+      configuredBy: "kira-env",
+    };
+  }
+
   const baseUrl = env.LLM_BASE_URL?.trim();
   const model = env.LLM_MODEL?.trim();
-  const sharedKey = env.LLM_API_KEY?.trim() || env.META_MODEL_API_KEY?.trim() || env.MUSE_API_KEY?.trim() || undefined;
 
   if (baseUrl && model) {
     return {
@@ -172,11 +190,23 @@ export function fallbackConfigFromEnv(env: Record<string, string | undefined> = 
 }
 
 /**
- * The drafting chain, in order: the configured primary (Muse Spark by
- * default in the hackathon build) and then the in-region Llama fallback.
+ * The drafting chain, in order: Kira, the configured primary, and then the
+ * separate in-region fallback.
  * Duplicate endpoints are collapsed so a single-endpoint deployment does not
  * pay for the same call twice.
  */
+/* Runtime model preference set from the desk (Settings → Model). Session-scoped:
+   a restart returns to the env-configured chain. */
+let runtimeModelOverride: "primary" | "fallback" | null = null;
+
+export function setRuntimeModelOverride(mode: "primary" | "fallback" | null): void {
+  runtimeModelOverride = mode;
+}
+
+export function getRuntimeModelOverride(): "primary" | "fallback" | null {
+  return runtimeModelOverride;
+}
+
 export function llmConfigChainFromEnv(env: Record<string, string | undefined> = process.env): LlmConfig[] {
   const chain: LlmConfig[] = [];
   const primary = llmConfigFromEnv(env);
@@ -185,6 +215,7 @@ export function llmConfigChainFromEnv(env: Record<string, string | undefined> = 
   if (fallback && !chain.some((c) => c.baseUrl === fallback.baseUrl && c.model === fallback.model)) {
     chain.push(fallback);
   }
+  if (runtimeModelOverride === "fallback" && chain.length > 1) return [chain[1], chain[0]];
   return chain;
 }
 

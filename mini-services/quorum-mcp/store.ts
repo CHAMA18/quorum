@@ -1668,7 +1668,7 @@ export function normalizeDeployment(raw: unknown, connector?: ConnectorRegistrat
   };
 }
 
-export const SIMULATED_PORTAL = "e-GP portal (simulated — no transmission)";
+export const SIMULATED_PORTAL = "Local record (no external publication)";
 
 export const DEFAULT_DEPLOYMENT: Deployment = {
   mode: "RECORD_ONLY",
@@ -1806,8 +1806,8 @@ export function registeredConnector(
 ): ConnectorRegistration {
   return {
     id: `con_${randomUUID().slice(0, 10)}`,
-    name: "e-GP portal connector",
-    endpoint: "https://egp.gov.zm/api",
+    name: "External publication connector",
+    endpoint: "",
     operator: "System Administrator",
     registeredAt: new Date().toISOString(),
     active: true,
@@ -1822,7 +1822,7 @@ export const FEATURE_FLAGS = [
   { key: "recordOnlyEnforcement", label: "Record-only enforcement", description: "Refuse contracts and payments while no external publication is connected.", phase: "Phase 0", default: true, locked: true },
   { key: "truthInLabeling", label: "Truth-in-labeling", description: "Label simulated notices, receipts and exports as simulations.", phase: "Phase 0", default: true, locked: true },
   { key: "liveRuleCatalogue", label: "Live rule catalogue", description: "Generate the published rule register from the live guard values.", phase: "Phase 0", default: true, locked: true },
-  { key: "connectedPublication", label: "Connected e-GP publication", description: "Allow CONNECTED deployment after a verified portal receipt exists.", phase: "WS0", default: false },
+  { key: "connectedPublication", label: "Connected publication", description: "Allow CONNECTED deployment after a verified portal receipt exists.", phase: "WS0", default: false },
   { key: "sealedBids", label: "Sealed bid vault", description: "Encrypt bid payloads until the certified opening reveal.", phase: "WS1", default: true },
   { key: "bidLifecycle", label: "Bid withdrawal and amendment", description: "Offer receipts, withdrawal and amendment before closing.", phase: "WS1", default: true },
   { key: "jurisdictionClock", label: "Jurisdiction clocks", description: "Compute statutory periods against a signed holiday/timezone pack.", phase: "WS2", default: true },

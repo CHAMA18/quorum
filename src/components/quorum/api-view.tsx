@@ -15,6 +15,10 @@ const INITIAL_CHECKS: ApiCheck[] = [
   { id: "readiness", label: "Web service health", state: "checking", detail: "Checking the web service" },
   { id: "session", label: "Workspace session", state: "checking", detail: "Resolving your Quorum session" },
   { id: "gateway", label: "Authenticated API access", state: "checking", detail: "Checking access to protected API actions" },
+  { id: "ollama", label: "Ollama (Llama, in-region)", state: "checking", detail: "Checking the local model fallback" },
+  { id: "resend", label: "Resend email", state: "checking", detail: "Checking email delivery" },
+  { id: "whatsapp", label: "WhatsApp alerts", state: "checking", detail: "Checking WhatsApp delivery" },
+  { id: "r2", label: "Document storage (R2)", state: "checking", detail: "Checking stored documents" },
 ];
 
 const QUICKSTART = [
@@ -88,6 +92,15 @@ export function ApiView() {
       hasSession && runtimeOk ? getJson("/api/tools?XTransformPort=3031") : Promise.resolve(null),
     ]);
 
+    const [notif, docsList] = await Promise.all([
+      getJson("/api/notifications?limit=1"),
+      hasSession ? getJson("/api/tenders/KE-MOH-2026-117/docs") : Promise.resolve(null),
+    ]);
+    const channels = asRecord(notif.body?.channels);
+    const modelInfo = asRecord(health?.model);
+    const fallbackInfo = asRecord(modelInfo?.fallback);
+    const docObjects = docsList?.body?.objects;
+
     const healthOk = readiness.ok && readiness.body?.ok === true;
     const toolList = gateway ? gateway.body?.tools : null;
     const gatewayOk = Boolean(gateway?.ok && Array.isArray(toolList));
@@ -132,6 +145,30 @@ export function ApiView() {
               : gateway
                 ? responseError(gateway, "Could not check access to the procurement API")
                 : "Gateway check was skipped",
+      },
+      {
+        id: "ollama",
+        label: "Ollama (Llama, in-region)",
+        state: fallbackInfo ? "online" : "warning",
+        detail: fallbackInfo ? `Fallback ${String(fallbackInfo.model ?? "llama")} at ${String(fallbackInfo.endpoint ?? "localhost")}` : "No local fallback configured — hosted model only",
+      },
+      {
+        id: "resend",
+        label: "Resend email",
+        state: channels?.email === true ? "online" : "warning",
+        detail: channels?.email === true ? "Email delivery configured" : "Email not configured — notifications stay in-app",
+      },
+      {
+        id: "whatsapp",
+        label: "WhatsApp alerts",
+        state: channels?.whatsapp === true ? "online" : "warning",
+        detail: channels?.whatsapp === true ? "WhatsApp delivery configured" : "WhatsApp not configured — sends are logged SKIPPED, never silent",
+      },
+      {
+        id: "r2",
+        label: "Document storage (R2)",
+        state: docsList?.ok ? "online" : "warning",
+        detail: docsList?.ok ? `${Array.isArray(docObjects) ? docObjects.length : 0} stored object(s) listed for the sample tender` : "Document listing needs a signed-in session",
       },
     ]);
     setLastChecked(new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }));

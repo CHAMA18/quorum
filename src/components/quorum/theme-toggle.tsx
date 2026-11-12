@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -75,6 +75,41 @@ export function ThemeModeRow({ className, collapsed = false }: { className?: str
         </span>
       ) : null}
     </button>
+  );
+}
+
+/** Accessibility row: larger text and high contrast, persisted per browser. */
+export function A11yModeRow() {
+  const [large, setLarge] = useState(false);
+  const [contrast, setContrast] = useState(false);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("quorum-a11y");
+      if (raw) {
+        const p = JSON.parse(raw) as { large?: boolean; contrast?: boolean };
+        setLarge(p.large === true);
+        setContrast(p.contrast === true);
+      }
+    } catch { /* private mode: toggles still apply for the session */ }
+  }, []);
+  useEffect(() => {
+    document.documentElement.dataset.a11yText = large ? "large" : "";
+    document.documentElement.dataset.a11yContrast = contrast ? "high" : "";
+    try { localStorage.setItem("quorum-a11y", JSON.stringify({ large, contrast })); } catch { /* session only */ }
+  }, [large, contrast]);
+  const row = "focus-brand flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-ink-200 bg-white/70 px-3 py-2.5 dark:border-white/10 dark:bg-white/[0.03]";
+  const lbl = "font-code text-[11px] font-semibold tracking-[0.08em] text-ink-700 dark:text-ink-300";
+  return (
+    <div className="space-y-2">
+      <button type="button" role="switch" aria-checked={large} onClick={() => setLarge((v) => !v)} className={row}>
+        <span className={lbl}>Larger text</span>
+        <span aria-hidden="true" className={large ? "font-code text-[10px] font-bold text-brand-600" : "font-code text-[10px] text-ink-400"}>{large ? "ON" : "OFF"}</span>
+      </button>
+      <button type="button" role="switch" aria-checked={contrast} onClick={() => setContrast((v) => !v)} className={row}>
+        <span className={lbl}>High contrast</span>
+        <span aria-hidden="true" className={contrast ? "font-code text-[10px] font-bold text-brand-600" : "font-code text-[10px] text-ink-400"}>{contrast ? "ON" : "OFF"}</span>
+      </button>
+    </div>
   );
 }
 

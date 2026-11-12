@@ -7,11 +7,10 @@
   "scripts": {
     "dev": "next dev --webpack -p 3000 2>&1 | tee /tmp/quorum-dev.log",
     "mcp": "bun mini-services/quorum-mcp/index.ts",
-    "db:push": "echo '[db] Quorum uses a JSON file store (db/) \u2014 no database to push.'",
     "build": "next build --webpack && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint .",
-    "test": "bun test mini-services/quorum-mcp/ src/lib/sidecar-origin.test.ts src/lib/bid-review-grounding.test.ts src/lib/gate-receipts.test.ts src/lib/quorum-knowledge.test.ts src/lib/quorum-nav.test.ts src/lib/tender-extract.test.ts src/lib/sam.test.ts src/lib/tender-access.test.ts src/lib/audit-export.test.ts src/lib/tender-local-store.test.ts src/lib/supplier-pulse.test.ts src/app/api/public/summary/route.test.ts workers/quorum-edge/http-range.test.ts workers/quorum-edge/worker.test.ts",
+    "test": "bun test mini-services/quorum-mcp/ src/lib/sidecar-origin.test.ts src/lib/db-store-isolation.test.ts src/lib/bid-review-grounding.test.ts src/lib/napster.test.ts src/lib/muse.test.ts src/lib/gate-receipts.test.ts src/lib/quorum-knowledge.test.ts src/lib/quorum-nav.test.ts src/lib/tender-extract.test.ts src/lib/sam.test.ts src/lib/tender-access.test.ts src/lib/audit-export.test.ts src/lib/tender-local-store.test.ts src/lib/supplier-pulse.test.ts src/lib/rule-packs.test.ts src/lib/evaluation-depth.test.ts src/lib/connectors.test.ts src/lib/platform-features.test.ts src/lib/persisted-features.test.ts src/lib/email-template.test.ts src/lib/bid-prices.test.ts src/lib/award-pdf.test.ts src/lib/phase1.test.ts src/lib/phase2.test.ts src/lib/phase3.test.ts src/lib/notifications-copy.test.ts src/app/api/public/summary/route.test.ts workers/quorum-edge/http-range.test.ts workers/quorum-edge/worker.test.ts",
     "eval:model": "bun mini-services/quorum-mcp/model-eval.ts",
     "eval:model:challenge": "bun mini-services/quorum-mcp/model-eval.ts --challenge",
     "eval:review:prepare": "bun mini-services/quorum-mcp/independent-review.ts prepare",

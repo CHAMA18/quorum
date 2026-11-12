@@ -82,7 +82,7 @@ import { normalizeDeployment, registeredConnector } from "./store";
 import { disabledPortalIds, loadPortalState, setPortalsEnabled } from "./portal-state";
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { loadPack, TENDERS_DIR } from "./engine";
-import { modelAttributionForRun, modelStatus } from "./model";
+import { getRuntimeModelOverride, modelAttributionForRun, modelStatus, setRuntimeModelOverride } from "./model";
 import { residencyFromEnv } from "./model-gateway";
 import { parseClosingDate } from "./cycle";
 import {
@@ -231,6 +231,8 @@ import {
   fsMcp,
   initFsMcp,
   listTenderDocs,
+  mcpCheckBidSecurityExpiry,
+  mcpCheckDeliveryCompliance,
   mcpDraftRedline,
   mcpExtractRequirements,
   mcpFlagFinding,
@@ -410,6 +412,10 @@ async function callOwnTool(name: string, args: Record<string, unknown>, runId?: 
     }
     case "extract_requirements":
       return mcpExtractRequirements(args, runId);
+    case "check_bid_security_expiry":
+      return mcpCheckBidSecurityExpiry(args, runId);
+    case "check_delivery_compliance":
+      return mcpCheckDeliveryCompliance(args, runId);
     case "flag_finding":
       return mcpFlagFinding({ ...args, runId: args.runId ?? runId });
     case "draft_redline":
@@ -1106,6 +1112,13 @@ Bun.serve({
     }
 
     if (path === "/api/tools") return json({ tools: TOOLS });
+
+    if (path === "/api/model/mode" && req.method === "POST") {
+      const body = (await req.json().catch(() => ({}))) as { mode?: string };
+      if (body.mode !== "primary" && body.mode !== "fallback") return json({ error: "mode must be primary or fallback" }, 422);
+      setRuntimeModelOverride(body.mode);
+      return json({ override: getRuntimeModelOverride(), status: modelStatus() });
+    }
 
     if (path === "/api/architecture") {
       const model = modelStatus();
@@ -1825,19 +1838,9 @@ Bun.serve({
       return json({ ZM: ZAMBIA_METHODS });
     }
 
-    /* ── Published procurement records are read-only; no authenticated e-GP write API is configured. ── */
-    if (path === "/api/egp-status") {
-      return json({
-        available: false,
-        mode: "read-only-demo",
-        message: "Authenticated e-GP submission and publication are unavailable. Portal actions in this demo create local simulated records only.",
-        configuredWriteConnectors: [],
-      });
-    }
-
     /* ── The ZPPA roll — the published e-GP record, read in at intake ───── */
     if (path === "/api/zppa-roll") {
-      return json({ source: ZPPA_SOURCE, roll: ZPPA_ROLL, writeAccess: { available: false, statusUrl: "/api/egp-status" } });
+      return json({ source: ZPPA_SOURCE, roll: ZPPA_ROLL });
     }
 
     /* ── OCDS records already staged in a tender pack, exposed read-only. ── */
@@ -1857,7 +1860,6 @@ Bun.serve({
             lastRetrieved: dataset.lastRetrieved,
             stale: dataset.stale,
           })),
-          writeAccess: { available: false, statusUrl: "/api/egp-status" },
         });
       }
       if (!/^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$/.test(ref)) return json({ error: "invalid tender reference" }, 422);
@@ -1870,7 +1872,7 @@ Bun.serve({
         bids: { details: record.bids.map((bid) => ({ tenderers: [{ name: bid.bidder }], value: bid.value === undefined ? undefined : { amount: bid.value, currency: bid.currency }, documents: bid.text ? [{ title: bid.text }] : [], _source: bid.source, _ref: bid.ref })) },
         awards: record.awards.map((award) => ({ suppliers: [{ name: award.supplier }], value: { amount: award.value, currency: award.currency }, _ref: award.ref })),
       }));
-      return json({ standard: "OCDS 1.1", ref, records, sourceFiles: files.filter((file) => file.endsWith(".json")), writeAccess: { available: false, statusUrl: "/api/egp-status" } });
+      return json({ standard: "OCDS 1.1", ref, records, sourceFiles: files.filter((file) => file.endsWith(".json")) });
     }
 
     /* ── The OCP Data Registry — Africa first, the world beside it ───────── */

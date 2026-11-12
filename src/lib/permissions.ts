@@ -144,7 +144,7 @@ export function canReadSidecar(role: WorkspaceRole | null | undefined, path: str
      role. Unknown sidecar paths are refused until explicitly classified. */
   if ([
     "/api/health", "/api/tools", "/api/architecture", "/api/sample-tenders",
-    "/api/methods", "/api/egp-status", "/api/zppa-roll", "/api/ocds-feed",
+    "/api/methods", "/api/zppa-roll", "/api/ocds-feed",
     "/api/ocp-africa", "/api/marketplace", "/api/rulepacks",
   ].some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) return can(role, "read_documents");
   if ([
@@ -170,6 +170,7 @@ export function canMutateSidecar(
   if (method === "GET" || method === "HEAD" || method === "OPTIONS") return true;
 
   if (/^\/api\/agent-mode$/.test(path)) return can(role, "manage_rules");
+  if (/^\/api\/model\/mode$/.test(path)) return can(role, "manage_rules");
   if (/^\/api\/gates\/[^/]+\/decision$/.test(path)) return can(role, "sign_gates");
   /* Exceptions are requested by the desk; approval itself is a gate decision
      for the accounting officer (the sidecar enforces the office). */

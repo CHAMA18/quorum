@@ -20,6 +20,7 @@ import {
   parseOcdsBids,
   parseOcdsRecords,
   planFromPack,
+  providerLabel,
   repairFinding,
   runAwardRules,
   runRules,
@@ -176,6 +177,29 @@ describe("drafting model: OpenAI-compatible LLM endpoint", () => {
     });
     expect(llmConfigFromEnv({ LLM_BASE_URL: "http://llama.internal:8000/v1" })).toBeNull();
     expect(llmConfigFromEnv({})).toBeNull();
+  });
+
+  test("prefers the Kira open-weight endpoint over legacy model wiring", () => {
+    const kira = llmConfigFromEnv({
+      KIRA_BASE_URL: "http://localhost:11434/v1",
+      KIRA_MODEL: "llama3.2:3b",
+      LLM_BASE_URL: "https://api.meta.ai/v1",
+      LLM_MODEL: "muse-spark-1.3",
+      LLM_API_KEY: "legacy-key",
+    });
+    expect(kira).toMatchObject({
+      baseUrl: "http://localhost:11434/v1",
+      model: "llama3.2:3b",
+      provider: "ollama",
+      configuredBy: "kira-env",
+    });
+    const custom = llmConfigFromEnv({
+      KIRA_BASE_URL: "https://kira.example/v1",
+      KIRA_MODEL: "kira-procurement-1",
+      KIRA_API_KEY: "k",
+    });
+    expect(custom).toMatchObject({ provider: "kira", configuredBy: "kira-env" });
+    expect(providerLabel("kira")).toBe("Kira · open weights");
   });
 
   test("recognises the live Llama 3.2 path and the Meta Model API fallback", () => {

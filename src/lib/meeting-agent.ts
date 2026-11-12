@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { museChat, museConfigFromEnv } from "@/lib/muse";
+import { kiraConfigFromEnv, museChat } from "@/lib/muse";
 import { draftMinutes, type MeetingForNotes, type MeetingMinutes } from "@/lib/meeting-minutes";
 
 /**
- * The meeting clerk — Meta's model reading a transcript into minutes.
+ * The meeting clerk — Kira reading a transcript into minutes.
  *
  * The transcript is untrusted data: the prompt says so, and the reply is
  * validated against a strict schema before anything is stored. Any failure
@@ -64,7 +64,7 @@ function parseModelJson(text: string): unknown {
 
 export interface MinutesDraftResult {
   minutes: MeetingMinutes;
-  provider: "meta" | "local";
+  provider: "kira" | "meta" | "local";
   model: string;
   fallbackReason?: string;
 }
@@ -77,7 +77,7 @@ export async function composeMinutes(transcript: string, meeting: MeetingForNote
     ...(fallbackReason ? { fallbackReason } : {}),
   });
 
-  const config = museConfigFromEnv();
+  const config = kiraConfigFromEnv();
   if (!config) return local();
 
   const when = new Date(meeting.startsAt).toLocaleString("en-GB", {
@@ -125,11 +125,11 @@ ${transcript.slice(0, 30_000)}`,
     );
 
     const parsed = MinutesSchema.safeParse(parseModelJson(reply.text));
-    if (!parsed.success) return local("Meta AI returned minutes outside the required schema.");
-    return { minutes: parsed.data, provider: "meta", model: reply.model };
+    if (!parsed.success) return local("Kira returned minutes outside the required schema.");
+    return { minutes: parsed.data, provider: "kira", model: reply.model };
   } catch (error) {
     return local(
-      error instanceof Error ? `Meta AI did not answer: ${error.message.slice(0, 200)}` : "Meta AI did not answer.",
+      error instanceof Error ? `Kira did not answer: ${error.message.slice(0, 200)}` : "Kira did not answer.",
     );
   }
 }

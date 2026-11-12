@@ -226,7 +226,15 @@ function isMetaModelCall(entry: LogEntry): boolean {
   const inputs = recordValue(entry.inputs);
   const provider = textValue(inputs.provider).toLowerCase();
   const model = textValue(inputs.model).toLowerCase();
-  return entry.server === "meta-api" || provider.includes("meta") || model.startsWith("muse-");
+  return (
+    entry.server === "meta-api" ||
+    entry.server === "model-gateway" ||
+    provider.includes("meta") ||
+    provider.includes("ollama") ||
+    provider.includes("kira") ||
+    model.startsWith("muse-") ||
+    model.startsWith("llama")
+  );
 }
 
 function initialsOf(name: string): string {
@@ -500,6 +508,31 @@ function OfficerSelect({
 }
 
 /* ── main view ───────────────────────────────────────────────────────────── */
+
+/** Drafting-model preference + isolated judge demo, both admin-gated server-side. */
+function ModelControls({ onToast }: { onToast: (msg: string) => void }) {
+  const [note, setNote] = useState("");
+  const setMode = async (mode: "primary" | "fallback") => {
+    const res = await fetch(`${SVC}/model/mode?XTransformPort=3031`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ mode }) }).catch(() => null);
+    setNote(res?.ok ? (mode === "fallback" ? "Drafting now prefers Llama (in-region). New runs will say so in their attribution." : "Drafting now prefers the hosted frontier model.") : "Model switch refused — sign in as an administrator.");
+    if (res?.ok) onToast(mode === "fallback" ? "MODEL — LLAMA IN-REGION" : "MODEL — FRONTIER HOSTED");
+  };
+  const judge = async () => {
+    const res = await fetch("/api/admin/judge-reset", { method: "POST" }).catch(() => null);
+    const d = (await res?.json().catch(() => null)) as { url?: string } | null;
+    setNote(res?.ok && d?.url ? `Judge demo starting at ${d.url} (isolated store, seeded accounts). Your live workspace is untouched.` : "Judge demo refused — administrator access required.");
+  };
+  return (
+    <div className="mt-3">
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => void setMode("fallback")} className="focus-brand inline-flex min-h-9 items-center rounded-md border border-ink-200 px-2.5 font-code text-[9px] font-bold tracking-[0.05em] text-ink-700 hover:border-brand-400">DRAFT WITH LLAMA (IN-REGION)</button>
+        <button type="button" onClick={() => void setMode("primary")} className="focus-brand inline-flex min-h-9 items-center rounded-md border border-ink-200 px-2.5 font-code text-[9px] font-bold tracking-[0.05em] text-ink-700 hover:border-brand-400">DRAFT WITH FRONTIER (HOSTED)</button>
+        <button type="button" onClick={() => void judge()} className="focus-brand inline-flex min-h-9 items-center rounded-md border border-brand-300 px-2.5 font-code text-[9px] font-bold tracking-[0.05em] text-brand-700 hover:border-brand-500">JUDGE MODE — RESET DEMO</button>
+      </div>
+      {note ? <p role="status" className="mt-1.5 text-[11px] text-ink-500">{note}</p> : null}
+    </div>
+  );
+}
 
 export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
   const [health, setHealth] = useState<Health | null>(null);
@@ -1050,6 +1083,7 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                     {((lastRun.model.promptTokens ?? 0) + (lastRun.model.completionTokens ?? 0)).toLocaleString()} TOKENS
                   </p>
                 )}
+                <ModelControls onToast={onToast} />
                 {(lastRun.modelEvidence ?? []).slice(0, 4).map((item, index) => (
                   <div key={`${lastRun.id}-evidence-${index}`} className="mt-3 rounded-lg border border-ink-100 bg-paper px-3 py-2.5">
                     <p className="font-code text-[10px] font-semibold uppercase tracking-[0.05em] text-brand-700">{item.category.replaceAll("_", " ")} · {item.confidence}</p>

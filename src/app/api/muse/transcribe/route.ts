@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { museConfigFromEnv, museTranscribe } from "@/lib/muse";
+import { museTranscribe, museVoiceConfigFromEnv } from "@/lib/muse";
 
 /**
  * POST /api/muse/transcribe — the assistant's ears.
@@ -32,12 +32,12 @@ function edgeConfig(): { url: string; secret: string } | null {
 }
 
 export async function GET() {
-  const provider = museConfigFromEnv() ? "meta" : edgeConfig() ? "edge" : "browser";
+  const provider = museVoiceConfigFromEnv() ? "meta" : edgeConfig() ? "edge" : "browser";
   return NextResponse.json({ provider });
 }
 
 export async function POST(request: NextRequest) {
-  const cfg = museConfigFromEnv();
+  const cfg = museVoiceConfigFromEnv();
 
   let form: FormData;
   try {

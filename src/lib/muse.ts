@@ -1,52 +1,86 @@
 /**
- * Muse — the client for Meta's Model API (https://dev.meta.ai), used by the
- * desk assistant and other model-assisted workflows:
+ * Kira — Quorum's open-weight model client, used by the desk assistant and
+ * the model-assisted review workflows.
  *
- *   · Muse Spark          — the chat/agent model behind the assistant bubble;
- *   · Muse Voice Transcribe — speech-to-text for the mic button.
+ * Kira is served through an OpenAI-compatible endpoint. The local development
+ * default is Ollama at http://localhost:11434/v1 with llama3.2:3b; a deployed
+ * or customized open-weight model can be selected with KIRA_BASE_URL and
+ * KIRA_MODEL without changing any caller. Meta's API is still supported when
+ * the base URL points at api.meta.ai; those calls use Responses with encrypted
+ * reasoning replay and storage disabled.
  *
- * Meta agent calls use Responses with encrypted reasoning replay and storage
- * disabled. Local OpenAI-compatible endpoints retain Chat Completions. Voice
- * transcription uses the dedicated ASR route.
+ * Voice remains a separate Meta model: Muse Voice Transcribe is the
+ * speech-to-text path behind the mic button. It has its own endpoint and key
+ * so switching Kira never silently moves audio to the Kira host.
  *
- * Nothing here is required to boot: with no key the routes answer with a
- * labelled "not configured" notice and the product is otherwise unaffected —
- * the same contract the redline template fallback keeps.
+ * Nothing here is required to boot: with no Kira endpoint configured, the
+ * assistant uses its deterministic local brain and review drafting uses the
+ * template fallback.
  *
  * ── Environment ────────────────────────────────────────────────────────────
- *   MUSE_API_KEY      bearer token from the Meta developer console
- *                     (falls back to LLM_API_KEY, which the hackathon wiring
- *                     already uses for the hosted Meta endpoint)
- *   MUSE_BASE_URL     default https://api.meta.ai/v1
- *   MUSE_MODEL        default muse-spark-1.3   (chat)
- *   MUSE_VOICE_MODEL  default muse-voice-transcribe-1.0
+ *   KIRA_BASE_URL     default http://localhost:11434/v1 (Ollama)
+ *   KIRA_API_KEY      optional bearer token; local Ollama needs none
+ *   KIRA_MODEL        default llama3.2:3b (open weights)
+ *   KIRA_REASONING_EFFORT  minimal|low|medium|high (Meta Responses only)
+ *
+ *   MUSE_VOICE_BASE_URL  default https://api.meta.ai/v1
+ *   MUSE_VOICE_API_KEY   falls back to MUSE_API_KEY / LLM_API_KEY
+ *   MUSE_VOICE_MODEL     default muse-voice-transcribe-1.0
  */
 
-const DEFAULT_BASE = "https://api.meta.ai/v1";
+const DEFAULT_KIRA_BASE = "http://localhost:11434/v1";
+const DEFAULT_VOICE_BASE = "https://api.meta.ai/v1";
+const DEFAULT_KIRA_MODEL = "llama3.2:3b";
+const DEFAULT_VOICE_MODEL = "muse-voice-transcribe-1.0";
 
-export interface MuseConfig {
+export interface KiraConfig {
   baseUrl: string;
   apiKey: string;
   model: string;
-  voiceModel: string;
   reasoningEffort: "minimal" | "low" | "medium" | "high";
 }
 
+export interface MuseVoiceConfig {
+  baseUrl: string;
+  apiKey: string;
+  voiceModel: string;
+}
+
 /**
- * The key may live under its own name or reuse the Meta hosting token the
- * repo already documents in .env.example — one console key, two jobs.
+ * Resolve the open-weight Kira endpoint. KIRA_ variables are authoritative;
+ * the older LLM_ and MUSE_ names remain a migration fallback so an existing
+ * deployment does not lose its model on upgrade. Local Ollama is the final
+ * default and is deliberately keyless.
  */
-export function museConfigFromEnv(env: NodeJS.ProcessEnv = process.env): MuseConfig | null {
-  const baseUrl = (env.MUSE_BASE_URL?.trim() || env.LLM_BASE_URL?.trim() || DEFAULT_BASE).replace(/\/+$/, "");
-  const apiKey = env.MUSE_API_KEY?.trim() || env.LLM_API_KEY?.trim() || "";
-  if (!apiKey) return null;
-  const configuredEffort = env.MUSE_REASONING_EFFORT?.trim().toLowerCase();
+export function kiraConfigFromEnv(env: Record<string, string | undefined> = process.env): KiraConfig | null {
+  const explicitKiraBase = env.KIRA_BASE_URL?.trim();
+  const configuredBase = explicitKiraBase || env.LLM_BASE_URL?.trim() || env.MUSE_BASE_URL?.trim();
+  const configuredModel = env.KIRA_MODEL?.trim() || env.LLM_MODEL?.trim() || env.MUSE_MODEL?.trim();
+  /* No model wiring at all means the deterministic local brain, not a silent
+     attempt to reach a developer's Ollama instance in production. */
+  if (!configuredBase && !configuredModel) return null;
+  const baseUrl = (configuredBase || DEFAULT_KIRA_BASE).replace(/\/+$/, "");
+  const apiKey = env.KIRA_API_KEY?.trim() || env.LLM_API_KEY?.trim() || env.MUSE_API_KEY?.trim() || "";
+  const isLocal = /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1])(?::\d+)?(?:\/|$)/i.test(baseUrl);
+  if (!apiKey && !isLocal) return null;
+  const configuredEffort = (env.KIRA_REASONING_EFFORT ?? env.MUSE_REASONING_EFFORT)?.trim().toLowerCase();
   return {
     baseUrl,
     apiKey,
-    model: env.MUSE_MODEL?.trim() || "muse-spark-1.3",
-    voiceModel: env.MUSE_VOICE_MODEL?.trim() || "muse-voice-transcribe-1.0",
+    model: env.KIRA_MODEL?.trim() || (explicitKiraBase ? DEFAULT_KIRA_MODEL : configuredModel || DEFAULT_KIRA_MODEL),
     reasoningEffort: configuredEffort === "minimal" || configuredEffort === "low" || configuredEffort === "high" ? configuredEffort : "medium",
+  };
+}
+
+/** Resolve the separate Meta voice endpoint; never reuse Kira's host. */
+export function museVoiceConfigFromEnv(env: Record<string, string | undefined> = process.env): MuseVoiceConfig | null {
+  const baseUrl = (env.MUSE_VOICE_BASE_URL?.trim() || env.MUSE_BASE_URL?.trim() || DEFAULT_VOICE_BASE).replace(/\/+$/, "");
+  const apiKey = env.MUSE_VOICE_API_KEY?.trim() || env.MUSE_API_KEY?.trim() || env.LLM_API_KEY?.trim() || "";
+  if (!apiKey) return null;
+  return {
+    baseUrl,
+    apiKey,
+    voiceModel: env.MUSE_VOICE_MODEL?.trim() || DEFAULT_VOICE_MODEL,
   };
 }
 
@@ -100,7 +134,7 @@ export interface MuseGenerationOptions {
   useChatCompletions?: boolean;
 }
 
-export function museUsesResponses(cfg: MuseConfig): boolean {
+export function museUsesResponses(cfg: Pick<KiraConfig, "baseUrl">): boolean {
   try {
     const host = new URL(cfg.baseUrl).hostname.toLowerCase();
     return host === "api.meta.ai" || host.endsWith(".api.meta.ai");
@@ -123,7 +157,7 @@ export function museResponsesInput(messages: MuseMessage[]): unknown[] {
 }
 
 export async function museChat(
-  cfg: MuseConfig,
+  cfg: KiraConfig,
   messages: MuseMessage[],
   tools: { name: string; description: string; parameters: Record<string, unknown> }[],
   continuationInput?: unknown[],
@@ -150,11 +184,11 @@ export async function museChat(
     });
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
-      throw new Error(`Muse Responses failed (HTTP ${res.status})${detail ? `: ${detail.slice(0, 200)}` : ""}`);
+      throw new Error(`Kira Responses failed (HTTP ${res.status})${detail ? `: ${detail.slice(0, 200)}` : ""}`);
     }
     const data = (await res.json().catch(() => null)) as { model?: string; output_text?: string; output?: unknown[]; status?: string } | null;
-    if (data?.status && data.status !== "completed") throw new Error(`Muse Responses finished with status ${data.status}`);
-    if (!data || !Array.isArray(data.output)) throw new Error("Muse Responses returned no output items");
+    if (data?.status && data.status !== "completed") throw new Error(`Kira Responses finished with status ${data.status}`);
+    if (!data || !Array.isArray(data.output)) throw new Error("Kira Responses returned no output items");
     const calls: MuseToolCall[] = [];
     const rawCalls: MuseRawToolCall[] = [];
     const outputText: string[] = [];
@@ -222,11 +256,11 @@ export async function museChat(
   });
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
-    throw new Error(`Muse chat failed (HTTP ${res.status})${detail ? `: ${detail.slice(0, 200)}` : ""}`);
+    throw new Error(`Kira chat failed (HTTP ${res.status})${detail ? `: ${detail.slice(0, 200)}` : ""}`);
   }
   const data = (await res.json().catch(() => null)) as { model?: string; choices?: { finish_reason?: string; message?: { content?: string | null; tool_calls?: unknown[] } }[] } | null;
   const choice = data?.choices?.[0];
-  if (!choice) throw new Error("Muse chat returned no choices");
+  if (!choice) throw new Error("Kira chat returned no choices");
   const calls = toolCallsOf(choice.message);
   return { text: (choice.message?.content ?? "").trim(), toolCalls: calls.parsed, rawToolCalls: calls.raw, finish: choice.finish_reason ?? "stop", model: data?.model ?? cfg.model };
 }
@@ -245,7 +279,7 @@ export interface MuseTranscript {
  * form, but a bare transcript body is accepted too.
  */
 export async function museTranscribe(
-  cfg: MuseConfig,
+  cfg: MuseVoiceConfig,
   audio: Blob,
   filename: string
 ): Promise<MuseTranscript> {

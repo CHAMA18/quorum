@@ -68,6 +68,21 @@ export function NotificationBell({
   const [inboxError, setInboxError] = useState("");
   const [actionError, setActionError] = useState("");
   const [channels, setChannels] = useState({ email: false, whatsapp: false });
+  const [prefs, setPrefs] = useState({ email: true, whatsapp: true });
+
+  useEffect(() => {
+    if (!open) return;
+    void fetch("/api/notifications/preferences", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.prefs) setPrefs({ email: d.prefs.email !== false, whatsapp: d.prefs.whatsapp !== false }); })
+      .catch(() => undefined);
+  }, [open ]);
+
+  const savePref = (key: "email" | "whatsapp", value: boolean) => {
+    const next = { ...prefs, [key]: value };
+    setPrefs(next);
+    void fetch("/api/notifications/preferences", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(next) }).catch(() => undefined);
+  };
   const [showLog, setShowLog] = useState(false);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [logLoading, setLogLoading] = useState(false);
@@ -339,6 +354,15 @@ export function NotificationBell({
               <button type="button" onClick={loadLog} className="focus-brand inline-flex min-h-11 items-center rounded-md px-2 font-code text-[10px] font-bold tracking-[0.05em] text-brand-700 hover:underline">
                 {showLog ? "HIDE LOG" : "DELIVERY LOG"}
               </button>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-4 text-[11px] text-ink-600">
+              <span className="font-code text-[9px] font-bold tracking-[0.06em] text-ink-400">NOTIFY ME BY</span>
+              <label className="inline-flex cursor-pointer items-center gap-1.5">
+                <input type="checkbox" checked={prefs.email} onChange={(e) => savePref("email", e.target.checked)} className="h-3.5 w-3.5 accent-[#b52b22]" /> Email
+              </label>
+              <label className="inline-flex cursor-pointer items-center gap-1.5">
+                <input type="checkbox" checked={prefs.whatsapp} onChange={(e) => savePref("whatsapp", e.target.checked)} className="h-3.5 w-3.5 accent-[#b52b22]" /> WhatsApp
+              </label>
             </div>
             {showLog ? (
               <div className="mt-2 max-h-[150px] space-y-1 overflow-y-auto rounded-md border border-ink-200 bg-white p-2">

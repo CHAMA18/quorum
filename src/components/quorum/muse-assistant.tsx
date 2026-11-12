@@ -13,7 +13,7 @@ import { useReducedMotion } from "@/lib/use-reduced-motion";
  *     runs an agentic loop: reads (runs, approvals, deadlines, the committee
  *     register, one tender's record) execute at once, and a review assignment
  *     comes back as an HMAC-signed proposal card. A full LLM brain answers
- *     whenever Meta Muse is configured, with
+ *     whenever Kira is configured, with
  *     a deterministic local brain otherwise — the panel never shows a setup notice.
  *   · acting   — a proposal card waits for the signed-in user. The server
  *     checks their role and confirmation before it assigns a review. Final
@@ -25,10 +25,11 @@ import { useReducedMotion } from "@/lib/use-reduced-motion";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
-import { Ban, Check, ChevronRight, CircleHelp, MessageSquare, Send, ShieldAlert, X } from "lucide-react";
+import { Ban, Check, ChevronRight, CircleHelp, MessageSquare, Send, ShieldAlert, Sparkles, X } from "lucide-react";
 import type { Proposal } from "@/lib/muse-actions";
 import { cn } from "@/lib/utils";
 import { nextRovingTabIndex } from "@/lib/a11y";
+import { useNapsterBarry } from "./use-napster-barry";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -59,6 +60,23 @@ const SUGGESTIONS = [
   "What can you investigate for me?",
 ];
 
+const BARRY_INTRO =
+  "I'm Barry, your procurement agent. I can read the live desk — approvals, deadlines, the committee register, a tender's file — investigate what you ask, and prepare actions for your approval. Tell me what to take on.";
+
+const BARRY_ACTIONS = [
+  "What needs approval?",
+  "Review a tender pack",
+  "What deadlines are overdue?",
+  "Check committee attendance",
+];
+
+const NAPSTER_PROMPTS = [
+  "How should I prepare a tender pack?",
+  "What does the human gate require?",
+  "How do I handle a late bid?",
+  "Explain the standstill period.",
+];
+
 type AssistantSection = "chat" | "support";
 
 /* ── The bubble ───────────────────────────────────────────────────────────── */
@@ -81,6 +99,30 @@ export function MuseAssistant({ name }: { name?: string }) {
   const [supportMessage, setSupportMessage] = useState("");
   const [supportError, setSupportError] = useState<string | null>(null);
   const [supportNotice, setSupportNotice] = useState<string | null>(null);
+  const [agentPrompts, setAgentPrompts] = useState(false);
+  const [transport, setTransport] = useState<"muse" | "napster">("muse");
+  const napster = useNapsterBarry();
+  const { connect: connectNapster, send: sendNapster, close: closeNapster } = napster;
+
+  const chatTurns: Turn[] =
+    transport === "napster"
+      ? napster.messages.map((message) => ({
+          id: message.id,
+          role: message.role,
+          text: message.text,
+        }))
+      : turns;
+  const composerBusy =
+    busy || (transport === "napster" && (napster.status !== "live" || napster.busy));
+  const showTyping = busy || (transport === "napster" && napster.busy);
+  const headerStatus =
+    transport !== "napster"
+      ? "Barry is here to help"
+      : napster.status === "connecting"
+        ? "Connecting to Napster…"
+        : napster.status === "live"
+          ? "Live on Napster"
+          : "Napster session ended";
 
   const assistantSections: AssistantSection[] = ["chat", "support"];
   const handleAssistantTabKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
@@ -105,7 +147,7 @@ export function MuseAssistant({ name }: { name?: string }) {
       top: scrollerRef.current.scrollHeight,
       behavior: reduce ? "auto" : "smooth",
     });
-  }, [turns, busy, open, reduce]);
+  }, [turns, napster.messages, busy, napster.busy, open, reduce, agentPrompts, transport]);
 
   useEffect(() => {
     if (open) {
@@ -128,7 +170,10 @@ export function MuseAssistant({ name }: { name?: string }) {
     return () => window.clearTimeout(timer);
   }, [open, reduce]);
 
-  const shut = useCallback(() => setOpen(false), []);
+  const shut = useCallback(() => {
+    closeNapster();
+    setOpen(false);
+  }, [closeNapster]);
 
   /* Esc closes the panel. */
   useEffect(() => {
@@ -206,6 +251,7 @@ export function MuseAssistant({ name }: { name?: string }) {
       const text = raw.trim();
       if (!text || busy) return;
       setDraft("");
+      setAgentPrompts(false);
       const mine: Turn = { id: nextId(), role: "user", text };
       const history = turns.slice(-6).map((t) => ({ role: t.role, content: t.text }));
       setTurns((prev) => [...prev, mine]);
@@ -244,6 +290,19 @@ export function MuseAssistant({ name }: { name?: string }) {
     },
     [busy, turns]
   );
+
+  /* Findings ask "Why was this flagged?" — open and answer in place. */
+  useEffect(() => {
+    const onWhy = (e: Event) => {
+      const question = (e as CustomEvent<{ question?: string }>).detail?.question;
+      if (!question) return;
+      setOpen(true);
+      setSection("chat");
+      void ask(question);
+    };
+    window.addEventListener("quorum:why", onWhy);
+    return () => window.removeEventListener("quorum:why", onWhy);
+  }, [ask]);
 
   /* ── Acting: consent first, always ───────────────────────────────────── */
 
@@ -315,6 +374,49 @@ export function MuseAssistant({ name }: { name?: string }) {
     [patchTurn, say]
   );
 
+  /* "Speak to Barry" opens a live Napster text session. Napster is a
+     conversational channel with no Quorum tools, so it cannot read the desk
+     or stage actions. If it cannot start, the panel falls back to the Quorum
+     desk agent and says why. */
+  const startBarry = useCallback(async () => {
+    setSection("chat");
+    setAgentPrompts(false);
+    setTransport("napster");
+
+    const result = await connectNapster();
+    if (result.ok) {
+      requestAnimationFrame(() => inputRef.current?.focus());
+      return;
+    }
+    if (result.cancelled) return;
+
+    const reason = result.error ?? "Napster did not start a session.";
+    setTransport("muse");
+    setAgentPrompts(true);
+    setTurns((prev) => {
+      const note: Turn = {
+        id: nextId(),
+        role: "assistant",
+        text: `${reason} Continuing in Quorum chat.`,
+      };
+      return prev.length
+        ? [...prev, note]
+        : [note, { id: nextId(), role: "assistant", text: BARRY_INTRO }];
+    });
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, [connectNapster]);
+
+  const useQuorumChat = useCallback(() => {
+    closeNapster();
+    setTransport("muse");
+    setAgentPrompts(false);
+    setSection("chat");
+    setTurns((prev) =>
+      prev.length ? prev : [{ id: nextId(), role: "assistant", text: BARRY_INTRO }],
+    );
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, [closeNapster]);
+
   /* ── Render ─────────────────────────────────────────────────────────────── */
 
   return (
@@ -375,8 +477,16 @@ export function MuseAssistant({ name }: { name?: string }) {
                 <div className="min-w-0">
                   <p className="truncate text-[15px] font-semibold tracking-[-0.01em]">Quorum</p>
                   <p className="mt-0.5 flex items-center gap-1.5 truncate text-[11px] text-white/75">
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-300" aria-hidden="true" />
-                    Barry is here to help
+                    <span
+                      className={cn(
+                        "h-1.5 w-1.5 shrink-0 rounded-full",
+                        transport === "napster" && napster.status !== "live"
+                          ? "bg-amber-300"
+                          : "bg-emerald-300",
+                      )}
+                      aria-hidden="true"
+                    />
+                    {headerStatus}
                   </p>
                 </div>
               </div>
@@ -399,7 +509,83 @@ export function MuseAssistant({ name }: { name?: string }) {
             >
               {section === "chat" ? (
                 <div id="barry-panel-chat" role="tabpanel" aria-labelledby="barry-tab-chat" className="space-y-5">
-                  {turns.length === 0 && (
+                  {transport === "napster" ? (
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-200/80 bg-brand-50/70 px-3 py-2 dark:border-brand-500/25 dark:bg-brand-500/10">
+                      <span className="flex items-center gap-1.5 text-[11px] font-medium text-brand-900 dark:text-brand-200">
+                        <span
+                          className={cn(
+                            "h-1.5 w-1.5 rounded-full",
+                            napster.status === "live" ? "bg-emerald-500" : "bg-amber-500",
+                          )}
+                          aria-hidden="true"
+                        />
+                        {napster.status === "live"
+                          ? "Napster · live text session"
+                          : napster.status === "connecting"
+                            ? "Connecting to Napster…"
+                            : "Napster session ended"}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        {napster.status !== "live" && napster.status !== "connecting" ? (
+                          <button
+                            type="button"
+                            onClick={() => void startBarry()}
+                            className="focus-brand inline-flex min-h-8 items-center rounded-lg px-2 text-[10.5px] font-semibold text-brand-900 hover:bg-white/70 dark:text-brand-200 dark:hover:bg-white/[0.06]"
+                          >
+                            Start again
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={useQuorumChat}
+                          className="focus-brand inline-flex min-h-8 items-center rounded-lg px-2 text-[10.5px] font-semibold text-brand-900 hover:bg-white/70 dark:text-brand-200 dark:hover:bg-white/[0.06]"
+                        >
+                          Use Quorum chat
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {transport === "napster" && (napster.error || napster.notice) ? (
+                    <p
+                      role="status"
+                      className="rounded-xl border border-amber-200/80 bg-amber-50/70 px-3 py-2 text-[11px] leading-relaxed text-amber-900 dark:border-amber-500/20 dark:bg-amber-500/[0.07] dark:text-amber-200"
+                    >
+                      {napster.error ?? napster.notice}
+                    </p>
+                  ) : null}
+
+                  {chatTurns.length === 0 && transport === "napster" ? (
+                    <div className="flex items-start gap-2.5">
+                      <Image
+                        src="/logo.svg"
+                        width={32}
+                        height={32}
+                        alt=""
+                        aria-hidden="true"
+                        unoptimized
+                        className="mt-1 h-8 w-8 shrink-0 rounded-[10px] shadow-sm"
+                      />
+                      <div className="min-w-0 rounded-2xl rounded-tl-md border border-[#e8e9ec] bg-white px-4 py-3.5 shadow-[0_1px_2px_rgba(20,25,35,0.04)] dark:border-white/10 dark:bg-[#14161b]">
+                        <p className="text-[13px] font-semibold leading-snug text-[#25272b] dark:text-white">
+                          {napster.status === "connecting"
+                            ? "Opening a Napster session…"
+                            : napster.status === "live"
+                              ? "Barry is connected on Napster."
+                              : "This Napster session has ended."}
+                        </p>
+                        <p className="mt-1 text-[11.5px] leading-relaxed text-[#62666e] dark:text-ink-600">
+                          {napster.status === "connecting"
+                            ? "The server is minting a short-lived session. Barry will greet you when it opens."
+                            : napster.status === "live"
+                              ? "Ask a procurement question below. For live desk records or an action, switch to Quorum chat."
+                              : "Start again, or switch to Quorum chat for live desk reads and consent-gated actions."}
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {chatTurns.length === 0 && transport === "muse" && (
                     <div className="space-y-5">
                       <div className="flex items-start gap-2.5">
                         <Image
@@ -442,7 +628,7 @@ export function MuseAssistant({ name }: { name?: string }) {
                     </div>
                   )}
 
-                  {turns.map((t) => (
+                  {chatTurns.map((t) => (
                     <div key={t.id} className={cn("flex items-end gap-2", t.role === "user" ? "justify-end" : "justify-start")}>
                       {t.role === "assistant" && (
                         <Image
@@ -523,7 +709,48 @@ export function MuseAssistant({ name }: { name?: string }) {
                     </div>
                   ))}
 
-              {busy && (
+                  {agentPrompts && transport === "muse" && !busy ? (
+                    <div className="pl-[42px]">
+                      <p className="mb-2 text-[11px] font-medium text-[#858991] dark:text-ink-500">Give Barry a task</p>
+                      <div className="flex flex-wrap gap-2">
+                        {BARRY_ACTIONS.map((action) => (
+                          <button
+                            key={action}
+                            type="button"
+                            onClick={() => void ask(action)}
+                            className="focus-brand min-h-9 rounded-full border border-brand-200 bg-white px-3 text-[11px] font-medium text-brand-900 transition-colors hover:border-brand-400 hover:bg-brand-50 dark:border-brand-500/30 dark:bg-[#14161b] dark:text-brand-200 dark:hover:bg-brand-500/10"
+                          >
+                            {action}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {transport === "napster" &&
+                  napster.status === "live" &&
+                  !napster.busy &&
+                  !chatTurns.some((turn) => turn.role === "user") ? (
+                    <div className="pl-[42px]">
+                      <p className="mb-2 text-[11px] font-medium text-[#858991] dark:text-ink-500">Ask Barry on Napster</p>
+                      <div className="flex flex-wrap gap-2">
+                        {NAPSTER_PROMPTS.map((action) => (
+                          <button
+                            key={action}
+                            type="button"
+                            onClick={() => {
+                              if (sendNapster(action)) setDraft("");
+                            }}
+                            className="focus-brand min-h-9 rounded-full border border-brand-200 bg-white px-3 text-[11px] font-medium text-brand-900 transition-colors hover:border-brand-400 hover:bg-brand-50 dark:border-brand-500/30 dark:bg-[#14161b] dark:text-brand-200 dark:hover:bg-brand-500/10"
+                          >
+                            {action}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+              {showTyping && (
                 <div className="flex items-end gap-2">
                   <Image src="/logo.svg" width={28} height={28} alt="" aria-hidden="true" unoptimized className="h-7 w-7 rounded-[9px] shadow-sm" />
                   <div className="flex items-center gap-2 rounded-2xl rounded-bl-md border border-[#e8e9ec] bg-white px-3.5 py-3 shadow-[0_1px_2px_rgba(20,25,35,0.05)] dark:border-white/10">
@@ -552,6 +779,23 @@ export function MuseAssistant({ name }: { name?: string }) {
                       Find a quick answer or start a conversation with Barry.
                     </p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => void startBarry()}
+                    className="group flex w-full items-center gap-3 rounded-2xl border border-brand-200 bg-gradient-to-br from-brand-50 via-white to-white p-4 text-left shadow-[0_1px_2px_rgba(20,25,35,0.04)] transition-colors hover:border-brand-400 dark:border-brand-500/30 dark:from-brand-500/10 dark:via-[#14161b] dark:to-[#14161b] dark:hover:border-brand-400/60"
+                  >
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-700 text-white shadow-sm dark:bg-brand-600">
+                      <Sparkles className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-2">
+                        <span className="text-[12px] font-semibold text-[#30343a] dark:text-ink-800">Speak to Barry</span>
+                        <span className="rounded-full bg-brand-700 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-white dark:bg-brand-600">Live</span>
+                      </span>
+                      <span className="mt-0.5 block text-[11px] text-[#777c84] dark:text-ink-500">Napster text agent — procurement guidance</span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-[#9a9ea5] transition-transform group-hover:translate-x-0.5 group-hover:text-brand-700 dark:text-ink-500 dark:group-hover:text-brand-300" aria-hidden="true" />
+                  </button>
                   <a
                     href="/docs"
                     className="group flex items-center gap-3 rounded-2xl border border-[#e6e8eb] bg-white p-4 shadow-[0_1px_2px_rgba(20,25,35,0.04)] transition-colors hover:border-brand-300 dark:border-white/10 dark:bg-[#14161b] dark:hover:border-brand-500/40"
@@ -567,7 +811,7 @@ export function MuseAssistant({ name }: { name?: string }) {
                   </a>
                   <button
                     type="button"
-                    onClick={() => setSection("chat")}
+                    onClick={useQuorumChat}
                     className="group flex w-full items-center gap-3 rounded-2xl border border-[#e6e8eb] bg-white p-4 text-left shadow-[0_1px_2px_rgba(20,25,35,0.04)] transition-colors hover:border-brand-300 dark:border-white/10 dark:bg-[#14161b] dark:hover:border-brand-500/40"
                   >
                     <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-800 dark:bg-brand-500/10 dark:text-brand-300">
@@ -675,7 +919,7 @@ export function MuseAssistant({ name }: { name?: string }) {
                     )}
                   </section>
                   <p className="px-1 pt-1 text-[11px] leading-relaxed text-[#777c84] dark:text-ink-500">
-                    Barry can prepare actions for review. You always approve them before anything changes.
+                    Message Barry reads the live desk and can prepare actions for review. You always approve them before anything changes. Speak to Barry is conversational and cannot change records.
                   </p>
                 </section>
               ) : null}
@@ -686,6 +930,10 @@ export function MuseAssistant({ name }: { name?: string }) {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
+                  if (transport === "napster") {
+                    if (sendNapster(draft)) setDraft("");
+                    return;
+                  }
                   void ask(draft);
                 }}
                 className="flex items-center gap-2"
@@ -694,14 +942,14 @@ export function MuseAssistant({ name }: { name?: string }) {
                   ref={inputRef}
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
-                  placeholder="Write a message…"
-                  disabled={busy}
+                  placeholder={transport === "napster" ? "Ask Barry on Napster…" : "Write a message…"}
+                  disabled={composerBusy}
                   maxLength={2000}
                   className="h-11 min-w-0 flex-1 rounded-full border border-[#e6e8eb] bg-[#f7f8fa] px-4 text-base text-[#26292e] outline-none transition-colors placeholder:text-ink-400 focus:border-brand-400 focus:bg-white disabled:opacity-60 dark:border-white/10 dark:bg-[#0c0d10] dark:text-ink-800 dark:placeholder:text-ink-500 dark:focus:border-brand-400 dark:focus:bg-[#14161b] sm:text-[13px]"
                 />
                 <button
                   type="submit"
-                  disabled={busy || !draft.trim()}
+                  disabled={composerBusy || !draft.trim()}
                   aria-label="Send the question"
                   className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-700 text-white shadow-sm transition-colors hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-40"
                 >

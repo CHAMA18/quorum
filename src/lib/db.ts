@@ -230,7 +230,7 @@ export interface ScheduledMeetingRow {
   seriesCount?: number;
 }
 
-/* A meeting note is the Meta agent's minutes for one scheduled meeting: the
+/* A meeting note is Kira's minutes for one scheduled meeting: the
    transcript it heard, the structured minutes it filed, and who filed them.
    Notes are append-only evidence — correcting one means filing a new note. */
 export interface MeetingMinutesRow {
@@ -250,7 +250,7 @@ export interface MeetingNoteRow {
   createdBy: string;
   createdById: string;
   createdAt: Date;
-  provider: "meta" | "local";
+  provider: "kira" | "meta" | "local";
   model: string;
   transcript: string;
   minutes: MeetingMinutesRow;
@@ -411,7 +411,16 @@ function resolveStoreFile(): string {
 }
 
 const FILE = resolveStoreFile();
-const LEGACY_FILE = path.join(process.cwd(), "db", "quorum-store.json");
+/**
+ * Only the standalone migration may read a legacy store. When
+ * QUORUM_STORE_PATH is set (tests, the judge proof, a second deployment) the
+ * configured location is authoritative: it must start from an empty store,
+ * never from the live workspace's accounts, sessions or organizations.
+ */
+const LEGACY_FILE =
+  !process.env.QUORUM_STORE_PATH && process.cwd().includes(`${path.sep}.next${path.sep}standalone`)
+    ? path.join(process.cwd(), "db", "quorum-store.json")
+    : null;
 const DATE_FIELDS = ["createdAt", "updatedAt", "expiresAt", "claimedAt", "usedAt", "readAt", "decidedAt", "respondedAt", "emailDeliveryAttemptedAt"] as const;
 
 function revive<T>(rows: unknown): T[] {
@@ -516,7 +525,7 @@ function reviveMeetingNotes(rows: unknown): MeetingNoteRow[] {
         createdBy: String(r.createdBy ?? "unknown officer"),
         createdById: String(r.createdById ?? ""),
         createdAt: asDate(r.createdAt) ?? new Date(),
-        provider: r.provider === "meta" ? "meta" : "local",
+        provider: r.provider === "meta" || r.provider === "kira" ? r.provider : "local",
         model: String(r.model ?? "deterministic"),
         transcript: typeof r.transcript === "string" ? r.transcript : "",
         minutes: {
@@ -563,7 +572,7 @@ function load(): StoreShape {
     /* One-time migration: a pre-fix build kept the store inside
        .next/standalone/db (wiped on every rebuild). Rescue it to the
        durable location so accounts, sessions and receipts survive. */
-    if (FILE !== LEGACY_FILE && existsSync(LEGACY_FILE)) {
+    if (LEGACY_FILE && FILE !== LEGACY_FILE && existsSync(LEGACY_FILE)) {
       try {
         mkdirSync(path.dirname(FILE), { recursive: true });
         const legacy = JSON.parse(readFileSync(LEGACY_FILE, "utf8"));
@@ -1089,6 +1098,10 @@ export function getSetting(key: string): string | undefined {
 export function setSetting(key: string, value: string): void {
   store.settings[key] = value;
   persist();
+}
+
+export function listSettingKeys(prefix = ""): string[] {
+  return Object.keys(store.settings).filter((k) => k.startsWith(prefix));
 }
 
 /* ── Workspace invites ──────────────────────────────────────────────────── */

@@ -26,6 +26,9 @@ jobs:
         working-directory: mini-services/quorum-mcp
         run: bun test
 
+      - name: Test (web store isolation)
+        run: bun test src/lib/db-store-isolation.test.ts
+
       - name: Evaluation harness (regression + mutation detection)
         working-directory: mini-services/quorum-mcp
         run: bun eval.ts --runs 3

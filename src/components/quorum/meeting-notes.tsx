@@ -7,8 +7,8 @@
  * browser or paste one in; configured AI can draft minutes from that text.
  * Both the transcript and minutes are saved with the meeting record.
  *
- * Speech recognition is provided by the browser. When Meta AI is configured,
- * the transcript is sent to Meta to draft minutes; otherwise a local draft is
+ * Speech recognition is provided by the browser. When Kira is configured,
+ * the transcript is sent to Kira to draft minutes; otherwise a local draft is
  * created and identified as such.
  */
 
@@ -433,9 +433,9 @@ export function MeetingNotes({
       setCapture(null);
       setViewing(data.note);
       onToast(
-        data.note.provider === "meta"
-          ? "MEETING MINUTES SAVED — DRAFTED WITH META AI"
-          : "MEETING MINUTES SAVED — BASIC LOCAL DRAFT",
+        data.note.provider === "local"
+          ? "MEETING MINUTES SAVED — BASIC LOCAL DRAFT"
+          : "MEETING MINUTES SAVED — DRAFTED WITH KIRA",
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Quorum could not draft the minutes. Please try again.");
@@ -482,8 +482,8 @@ export function MeetingNotes({
             </h2>
             <p className="mt-1 max-w-[78ch] text-[12.5px] leading-relaxed text-ink-500 dark:text-ink-400">
               Capture or paste a transcript to create meeting minutes with a summary, decisions and action items. When
-              Meta AI is enabled, Quorum sends the transcript to Meta to draft the minutes; otherwise it creates a basic
-              local draft. Check saved notes against the transcript before relying on them.
+              Kira is enabled, Quorum sends the transcript to the configured open-weight model to draft the minutes;
+              otherwise it creates a basic local draft. Check saved notes against the transcript before relying on them.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -574,12 +574,12 @@ export function MeetingNotes({
                       <span
                         className={cn(
                           "shrink-0 rounded-full px-2 py-0.5 font-code text-[10px] font-bold tracking-[0.12em]",
-                          note.provider === "meta"
+                          note.provider !== "local"
                           ? "bg-brand-50 text-brand-700 dark:bg-brand-500/12 dark:text-brand-300"
                             : "bg-ink-100 text-ink-500 dark:bg-white/[0.06] dark:text-ink-300",
                         )}
                       >
-                        {note.provider === "meta" ? "META AI" : "LOCAL DRAFT"}
+                        {note.provider !== "local" ? "KIRA" : "LOCAL DRAFT"}
                       </span>
                     </span>
                     <span className="mt-1 block font-code text-[10px] tracking-[0.1em] text-ink-400">
@@ -803,7 +803,7 @@ export function MeetingNotes({
                   <p className="mt-1 flex flex-wrap items-center gap-2 text-[11.5px] text-ink-500 dark:text-ink-400">
                     {whenOf(viewing.meetingStartsAt)} · recorded by {viewing.createdBy}
                     <span className="rounded-full bg-ink-100 px-2 py-0.5 font-code text-[10px] font-bold tracking-[0.12em] text-ink-500 dark:bg-white/[0.06] dark:text-ink-300">
-                      {viewing.provider === "meta" ? "DRAFTED WITH META AI" : "BASIC LOCAL DRAFT"}
+                      {viewing.provider !== "local" ? `DRAFTED WITH KIRA${viewing.model ? ` · ${viewing.model}` : ""}` : "BASIC LOCAL DRAFT"}
                     </span>
                   </p>
                 </div>

@@ -150,6 +150,57 @@ const EXCEPTION_STATUS_LABEL: Record<ExceptionRow["status"], string> = {
 
 const card = "rounded-[12px] panel overflow-hidden";
 
+interface CustomRule { id: string; name: string; keyword: string; severity: "HIGH" | "MEDIUM" | "LOW"; enabled: boolean }
+
+/** Workspace compliance rules: keyword rules the desk adds without a deploy. */
+function CustomRulesPanel({ corpus, onToast }: { corpus: string; onToast: (msg: string) => void }) {
+  const [rules, setRules] = useState<CustomRule[]>([]);
+  const [form, setForm] = useState({ name: "", keyword: "", severity: "MEDIUM" as CustomRule["severity"] });
+  const load = useCallback(async () => {
+    const res = await fetch("/api/settings/rules", { cache: "no-store" }).catch(() => null);
+    if (res?.ok) setRules(((await res.json()) as { rules?: CustomRule[] }).rules ?? []);
+  }, []);
+  useEffect(() => { void load(); }, [load]);
+  const add = async () => {
+    const res = await fetch("/api/settings/rules", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(form) });
+    if (!res.ok) { onToast("RULE REFUSED — CHECK THE NAME, KEYWORD AND YOUR ACCESS"); return; }
+    setForm({ name: "", keyword: "", severity: "MEDIUM" });
+    await load();
+    onToast("RULE ADDED — IT NOW SCREENS THIS WORKSPACE");
+  };
+  const remove = async (id: string) => {
+    await fetch(`/api/settings/rules?id=${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => null);
+    await load();
+  };
+  const matches = (keyword: string) => (corpus.toLowerCase().split(keyword.toLowerCase()).length - 1);
+  return (
+    <section className="mt-6 rounded-[12px] border border-ink-200 bg-white p-4 dark:border-white/10 dark:bg-white/[0.03]" aria-label="Custom compliance rules">
+      <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">CUSTOM RULES · YOUR DESK, NO DEPLOY</p>
+      <div className="mt-3 flex flex-wrap items-end gap-2">
+        <label className="text-[11px] text-ink-600">Name<input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="focus-brand mt-1 block h-10 rounded-md border border-ink-200 px-2.5 text-[13px]" placeholder="e.g. Local content" /></label>
+        <label className="text-[11px] text-ink-600">Keyword<input value={form.keyword} onChange={(e) => setForm((f) => ({ ...f, keyword: e.target.value }))} className="focus-brand mt-1 block h-10 rounded-md border border-ink-200 px-2.5 text-[13px]" placeholder="e.g. local content" /></label>
+        <label className="text-[11px] text-ink-600">Severity
+          <select value={form.severity} onChange={(e) => setForm((f) => ({ ...f, severity: e.target.value as CustomRule["severity"] }))} className="focus-brand mt-1 block h-10 rounded-md border border-ink-200 px-2 text-[13px]">
+            <option>HIGH</option><option>MEDIUM</option><option>LOW</option>
+          </select>
+        </label>
+        <button type="button" onClick={() => void add()} disabled={form.name.trim().length < 2 || form.keyword.trim().length < 2} className="focus-brand inline-flex min-h-10 items-center rounded-md bg-ink-950 px-3 font-code text-[10px] font-bold tracking-[0.05em] text-white disabled:opacity-40">ADD RULE</button>
+      </div>
+      {rules.length ? (
+        <ul className="mt-3 space-y-1.5">
+          {rules.map((r) => (
+            <li key={r.id} className="flex flex-wrap items-center gap-2 text-[12px] text-ink-700">
+              <span className="font-semibold">{r.name}</span>
+              <span className="font-code text-[10px]">“{r.keyword}” · {r.severity} · {matches(r.keyword)} match(es) on this page</span>
+              <button type="button" onClick={() => void remove(r.id)} className="font-code text-[9px] font-bold text-brand-700 hover:underline">DELETE</button>
+            </li>
+          ))}
+        </ul>
+      ) : <p className="mt-2 text-[11.5px] text-ink-500">No custom rules yet. Built-in packs still apply.</p>}
+    </section>
+  );
+}
+
 export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToast: (msg: string) => void }) {
   const [pack, setPack] = useState<RulePack | null>(null);
   const [exceptions, setExceptions] = useState<ExceptionRow[]>([]);
@@ -270,6 +321,7 @@ export function ComplianceView({ user, onToast }: { user: AuthUser | null; onToa
   return (
     <div>
       <SpecBar index="CMP" label="Administration" meta="Compliance checks" />
+      <CustomRulesPanel corpus={JSON.stringify({ exceptions, docs })} onToast={onToast} />
       <div className="mt-6 flex flex-wrap items-end justify-between gap-5">
         <div className="min-w-0">
           <h1 className="type-display text-[30px] text-ink-950 sm:text-[38px]">

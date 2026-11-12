@@ -1,0 +1,19 @@
+<template>
+<style>
+#root{position:absolute;inset:0;background:#08090c;color:#f3e3cf;font-family:Arial,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center}
+#l-hero{font-size:170px;font-weight:800;letter-spacing:6px}
+#l-rule{width:620px;height:8px;background:#e8382a;margin:28px auto}
+#l-url{font-size:36px;color:#9a958c;letter-spacing:3px}
+#l-sub{font-size:30px;color:#9a958c;margin-top:16px}
+</style>
+<div id="root" data-composition-id="logo" data-width="1920" data-height="1080">
+  <div id="l-hero">QUORUM</div><div id="l-rule"></div><div id="l-url">QUORUM-SOLUTIONS.COM</div><div id="l-sub">The agent prepares the file. The committee awards the tender.</div>
+</div>
+<script>
+window.__timelines=window.__timelines||{};
+const tlo=gsap.timeline({paused:true,defaults:{ease:"power3.out"}});
+gsap.set("#l-hero",{y:60,opacity:0});gsap.set("#l-rule",{scaleX:0});gsap.set(["#l-url","#l-sub"],{y:24,opacity:0});
+tlo.to("#l-hero",{y:0,opacity:1,duration:.7},.3).to("#l-rule",{scaleX:1,duration:.7},.9).to("#l-url",{y:0,opacity:1,duration:.5},1.5).to("#l-sub",{y:0,opacity:1,duration:.5},1.9);
+window.__timelines["logo"]=tlo;
+</script>
+</template>

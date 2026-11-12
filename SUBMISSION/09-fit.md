@@ -99,8 +99,10 @@ A pilot pack is reviewed exactly like the samples: its documents are staged in t
 tender directory the sandboxed filesystem MCP server reads. The upload gate stores
 the original bytes in Cloudflare R2 behind the edge secret, and the server extracts
 PDF/DOCX/XLSX text into that same directory through the sidecar — so an uploaded pack
-follows the same review path as a sample, not a second code path. Scanned PDFs are
-reported as needing OCR rather than silently dropped.
+follows the same review path as a sample, not a second code path. A scanned PDF with no
+embedded text gets bounded local OCR (Poppler + Tesseract), page-marked and flagged for
+human verification; if the OCR tools are absent it is reported as needing OCR rather than
+silently dropped.
 
 ## 5. Honest boundaries of the fit claim
 

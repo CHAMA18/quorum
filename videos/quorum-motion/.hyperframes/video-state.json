@@ -1,0 +1,532 @@
+{
+  "version": 1,
+  "historyId": "2daa6966-93cd-431f-8f2d-947a9c8b7ece",
+  "currentRevision": "800522a4-0856-431d-acf2-e2e50f031af5",
+  "pendingChanges": false,
+  "files": {
+    "INFO.md": {
+      "hash": "0e018fa157979733a09cd851b6b9f0f1817a4054aa4223ee34afde67bd1232fa",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/0e/0e018fa157979733a09cd851b6b9f0f1817a4054aa4223ee34afde67bd1232fa"
+    },
+    "assets/gsap.min.js": {
+      "hash": "c174bfce53a729418d57a8ad8625e7247c793a22fef8e2851e3cfa3de9cd8280",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/c1/c174bfce53a729418d57a8ad8625e7247c793a22fef8e2851e3cfa3de9cd8280"
+    },
+    "compositions/chart.html": {
+      "hash": "e53cd16f6df7cef5f17b584ca507a8d365b6f8411ace7273e2ff19cd2dcf7f74",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/e5/e53cd16f6df7cef5f17b584ca507a8d365b6f8411ace7273e2ff19cd2dcf7f74"
+    },
+    "compositions/gate.html": {
+      "hash": "dc2e22503dc5d8b2e1fa9ee336a40251a97d893841f7440cd9fcaeacf475c525",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/dc/dc2e22503dc5d8b2e1fa9ee336a40251a97d893841f7440cd9fcaeacf475c525"
+    },
+    "compositions/kinetic.html": {
+      "hash": "417f23f371259af64da22f31a811a07ba2eb4fc037a13f9715dde5028402bfa5",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/41/417f23f371259af64da22f31a811a07ba2eb4fc037a13f9715dde5028402bfa5"
+    },
+    "compositions/logo.html": {
+      "hash": "c86c1cb5dd7c4106a4baedecaa069a323bf4f6a37fa6e4327371bdac489e0fdd",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/c8/c86c1cb5dd7c4106a4baedecaa069a323bf4f6a37fa6e4327371bdac489e0fdd"
+    },
+    "compositions/map.html": {
+      "hash": "1e88620b212ebe6a0ae899d6293f697a0a6c5dee5f90276026a3bd394e5825da",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/1e/1e88620b212ebe6a0ae899d6293f697a0a6c5dee5f90276026a3bd394e5825da"
+    },
+    "compositions/stat.html": {
+      "hash": "1b090da6304c99ab88326a3666cfb1997c3d52083ee9aff0776c905a11ec3458",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/1b/1b090da6304c99ab88326a3666cfb1997c3d52083ee9aff0776c905a11ec3458"
+    },
+    "hyperframes.json": {
+      "hash": "aa551e138d0b96c053689ee2c7978644df84387c0db29ad1a8f99e19ba3e8484",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/aa/aa551e138d0b96c053689ee2c7978644df84387c0db29ad1a8f99e19ba3e8484"
+    },
+    "index.html": {
+      "hash": "f2e32f53879ba57f0a5c80b030748a297f2388af8732d85042bc8d378431437b",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/f2/f2e32f53879ba57f0a5c80b030748a297f2388af8732d85042bc8d378431437b"
+    },
+    "shot-plan.json": {
+      "hash": "df3d0c0e7550ce2b33b3b467b9fd61da916106aff3194bdd2cd0dea5879b526f",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/df/df3d0c0e7550ce2b33b3b467b9fd61da916106aff3194bdd2cd0dea5879b526f"
+    },
+    "snapshots/contact-sheet.jpg": {
+      "hash": "032462c98d4f0b7a97eb90a0af1bf37424bc25014917e5861175e40893d53018",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/03/032462c98d4f0b7a97eb90a0af1bf37424bc25014917e5861175e40893d53018"
+    },
+    "snapshots/frame-00-at-2s.png": {
+      "hash": "508f682ae0b7c993c65daee2b7cb429cb0f7efbfef1aa7de3a759b4506bef80c",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/50/508f682ae0b7c993c65daee2b7cb429cb0f7efbfef1aa7de3a759b4506bef80c"
+    },
+    "snapshots/frame-01-at-6s.png": {
+      "hash": "bdc9845929a13261cedbd884486f314936709e3580be313b3940835cac8b77e2",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/bd/bdc9845929a13261cedbd884486f314936709e3580be313b3940835cac8b77e2"
+    },
+    "snapshots/frame-02-at-10s.png": {
+      "hash": "f39b504167e89ec0575895518c3c6ca95bf8b1834bef81431e84ef0849eacd36",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/f3/f39b504167e89ec0575895518c3c6ca95bf8b1834bef81431e84ef0849eacd36"
+    },
+    "snapshots/frame-03-at-14s.png": {
+      "hash": "43d3d517ce99311403c2fe952be3b2602119ef380577534316cc6580eff1671d",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/43/43d3d517ce99311403c2fe952be3b2602119ef380577534316cc6580eff1671d"
+    },
+    "snapshots/frame-04-at-18s.png": {
+      "hash": "3c78af31215b9dc6841db9a40afd86eedab773896f1e2f89d49989e7aff83752",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/3c/3c78af31215b9dc6841db9a40afd86eedab773896f1e2f89d49989e7aff83752"
+    },
+    "snapshots/frame-05-at-22s.png": {
+      "hash": "1d47d10a68de99030c4cc958bf71add2bf8e4891743bb5b4391f7fcbba12570b",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/1d/1d47d10a68de99030c4cc958bf71add2bf8e4891743bb5b4391f7fcbba12570b"
+    },
+    "snapshots/frame-06-at-23.75s.png": {
+      "hash": "3745be0dcb22b4f2c112609521b36843ef69dd6572a572d8e39b43cc33c337b8",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/37/3745be0dcb22b4f2c112609521b36843ef69dd6572a572d8e39b43cc33c337b8"
+    },
+    "snapshots/final/frame-00-at-3.5s.png": {
+      "hash": "c59686f6d8e64b24923c86dc085b372cf9a325383fe6bda4a32c3a99fb5d9922",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/c5/c59686f6d8e64b24923c86dc085b372cf9a325383fe6bda4a32c3a99fb5d9922"
+    },
+    "snapshots/final/frame-01-at-7.5s.png": {
+      "hash": "9ea2c7902d718d9cbed5dac485ef3c8ec19beef3e00ba410dab976c266a9199e",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/9e/9ea2c7902d718d9cbed5dac485ef3c8ec19beef3e00ba410dab976c266a9199e"
+    },
+    "snapshots/final/frame-02-at-11.5s.png": {
+      "hash": "5be086224c466a0b94d7d06076449b89182455ae1b1b7b9afeb0a167dea03f87",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/5b/5be086224c466a0b94d7d06076449b89182455ae1b1b7b9afeb0a167dea03f87"
+    },
+    "snapshots/final/frame-03-at-15.5s.png": {
+      "hash": "83485f0198c9a3ba5be9f176457e10c80e0dd9994d5e136a4e5d57e7f2bbb562",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/83/83485f0198c9a3ba5be9f176457e10c80e0dd9994d5e136a4e5d57e7f2bbb562"
+    },
+    "snapshots/final/frame-04-at-19.5s.png": {
+      "hash": "872489ad0053923b3118b132056bf6a0c43a890324033b004531940d2b6a2fc2",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/87/872489ad0053923b3118b132056bf6a0c43a890324033b004531940d2b6a2fc2"
+    },
+    "snapshots/final/frame-05-at-23.5s.png": {
+      "hash": "717b50309bb0e5246b075a139f718f3384c67d6a3e5ccc5ac9a66634cddbda31",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/71/717b50309bb0e5246b075a139f718f3384c67d6a3e5ccc5ac9a66634cddbda31"
+    },
+    "snapshots/final/frame-06-at-23.75s.png": {
+      "hash": "717b50309bb0e5246b075a139f718f3384c67d6a3e5ccc5ac9a66634cddbda31",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/71/717b50309bb0e5246b075a139f718f3384c67d6a3e5ccc5ac9a66634cddbda31"
+    },
+    "snapshots/final/contact-sheet.jpg": {
+      "hash": "0c52466e979427df32426c51b7280dc87d1ccc8e5c95356509ac946422400311",
+      "content": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/0c/0c52466e979427df32426c51b7280dc87d1ccc8e5c95356509ac946422400311"
+    }
+  },
+  "revisions": {
+    "c3c25642-9437-4491-8bef-0d31e0e31e37": {
+      "actor": {
+        "kind": "outside",
+        "name": "Outside"
+      },
+      "label": "Changed outside the app",
+      "startedAt": 1794429998383,
+      "endedAt": 1794429998404,
+      "files": {
+        "snapshots/contact-sheet.jpg": {
+          "before": null,
+          "after": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/03/032462c98d4f0b7a97eb90a0af1bf37424bc25014917e5861175e40893d53018"
+        },
+        "snapshots/frame-00-at-2s.png": {
+          "before": null,
+          "after": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/50/508f682ae0b7c993c65daee2b7cb429cb0f7efbfef1aa7de3a759b4506bef80c"
+        },
+        "snapshots/frame-01-at-6s.png": {
+          "before": null,
+          "after": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/bd/bdc9845929a13261cedbd884486f314936709e3580be313b3940835cac8b77e2"
+        },
+        "snapshots/frame-02-at-10s.png": {
+          "before": null,
+          "after": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/f3/f39b504167e89ec0575895518c3c6ca95bf8b1834bef81431e84ef0849eacd36"
+        },
+        "snapshots/frame-03-at-14s.png": {
+          "before": null,
+          "after": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/43/43d3d517ce99311403c2fe952be3b2602119ef380577534316cc6580eff1671d"
+        },
+        "snapshots/frame-04-at-18s.png": {
+          "before": null,
+          "after": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/3c/3c78af31215b9dc6841db9a40afd86eedab773896f1e2f89d49989e7aff83752"
+        },
+        "snapshots/frame-05-at-22s.png": {
+          "before": null,
+          "after": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/1d/1d47d10a68de99030c4cc958bf71add2bf8e4891743bb5b4391f7fcbba12570b"
+        },
+        "snapshots/frame-06-at-23.75s.png": {
+          "before": null,
+          "after": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/37/3745be0dcb22b4f2c112609521b36843ef69dd6572a572d8e39b43cc33c337b8"
+        }
+      }
+    },
+    "800522a4-0856-431d-acf2-e2e50f031af5": {
+      "actor": {
+        "kind": "outside",
+        "name": "Outside"
+      },
+      "label": "Changed outside the app",
+      "startedAt": 1794430128539,
+      "endedAt": 1794430128574,
+      "files": {
+        "snapshots/final/contact-sheet.jpg": {
+          "before": null,
+          "after": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/0c/0c52466e979427df32426c51b7280dc87d1ccc8e5c95356509ac946422400311"
+        },
+        "snapshots/final/frame-00-at-3.5s.png": {
+          "before": null,
+          "after": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/c5/c59686f6d8e64b24923c86dc085b372cf9a325383fe6bda4a32c3a99fb5d9922"
+        },
+        "snapshots/final/frame-01-at-7.5s.png": {
+          "before": null,
+          "after": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/9e/9ea2c7902d718d9cbed5dac485ef3c8ec19beef3e00ba410dab976c266a9199e"
+        },
+        "snapshots/final/frame-02-at-11.5s.png": {
+          "before": null,
+          "after": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/5b/5be086224c466a0b94d7d06076449b89182455ae1b1b7b9afeb0a167dea03f87"
+        },
+        "snapshots/final/frame-03-at-15.5s.png": {
+          "before": null,
+          "after": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/83/83485f0198c9a3ba5be9f176457e10c80e0dd9994d5e136a4e5d57e7f2bbb562"
+        },
+        "snapshots/final/frame-04-at-19.5s.png": {
+          "before": null,
+          "after": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/87/872489ad0053923b3118b132056bf6a0c43a890324033b004531940d2b6a2fc2"
+        },
+        "snapshots/final/frame-05-at-23.5s.png": {
+          "before": null,
+          "after": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/71/717b50309bb0e5246b075a139f718f3384c67d6a3e5ccc5ac9a66634cddbda31"
+        },
+        "snapshots/final/frame-06-at-23.75s.png": {
+          "before": null,
+          "after": "/Users/chunguchama/.cache/hyperframes/history/2daa6966-93cd-431f-8f2d-947a9c8b7ece/blobs/71/717b50309bb0e5246b075a139f718f3384c67d6a3e5ccc5ac9a66634cddbda31"
+        }
+      }
+    }
+  },
+  "checks": {
+    "latest": {
+      "revision": null,
+      "id": "2f0c31f9-0851-488a-8513-7f966eadcc63"
+    },
+    "revisions": {},
+    "unversioned": [
+      {
+        "id": "2f0c31f9-0851-488a-8513-7f966eadcc63",
+        "scope": "project",
+        "report": "/Users/chunguchama/Downloads/Board Vision Documentation/videos/quorum-motion/.hyperframes/artifacts/checks/2f0c31f9-0851-488a-8513-7f966eadcc63.json",
+        "metadata": {
+          "ok": false,
+          "browserSkipped": true,
+          "options": {
+            "samples": 9,
+            "atTransitions": false,
+            "maxIssues": 80,
+            "collapseStatic": true,
+            "tolerance": 2,
+            "timeout": 45000,
+            "cache": true,
+            "contrast": true,
+            "craft": true,
+            "strict": false,
+            "snapshots": false,
+            "browserGpuMode": "auto",
+            "includeUnmounted": false
+          }
+        },
+        "createdAt": 1794429658864,
+        "contentHash": "ee2d84956bd9b7375092de3eb920b9d7a91a1a72f94fb48c098bda93f9a5546d",
+        "revision": null,
+        "inputFingerprint": "fa92bf89ffef42c480aeead128883c50c6c14149eed5cda0846a463250948f19",
+        "inputScope": "local-project-files",
+        "attribution": "unversioned"
+      }
+    ]
+  },
+  "snapshots": {
+    "latest": {
+      "revision": null,
+      "id": "102a70b5-ee6b-406b-a0a8-647e3cd1152d-6"
+    },
+    "revisions": {},
+    "unversioned": [
+      {
+        "scope": "full",
+        "id": "7dbffff6-dcab-40a2-8691-906731da5810-0",
+        "image": "/Users/chunguchama/Downloads/Board Vision Documentation/videos/quorum-motion/snapshots/frame-00-at-2s.png",
+        "time": 2,
+        "metadata": {
+          "width": 1920,
+          "height": 1080,
+          "zoomScale": 1,
+          "browserGpuMode": "auto",
+          "warnings": [],
+          "partial": false
+        },
+        "createdAt": 1794429964075,
+        "contentHash": "508f682ae0b7c993c65daee2b7cb429cb0f7efbfef1aa7de3a759b4506bef80c",
+        "revision": null,
+        "inputFingerprint": "fa92bf89ffef42c480aeead128883c50c6c14149eed5cda0846a463250948f19",
+        "inputScope": "local-project-files",
+        "attribution": "inputs-changed"
+      },
+      {
+        "scope": "full",
+        "id": "7dbffff6-dcab-40a2-8691-906731da5810-1",
+        "image": "/Users/chunguchama/Downloads/Board Vision Documentation/videos/quorum-motion/snapshots/frame-01-at-6s.png",
+        "time": 6,
+        "metadata": {
+          "width": 1920,
+          "height": 1080,
+          "zoomScale": 1,
+          "browserGpuMode": "auto",
+          "warnings": [],
+          "partial": false
+        },
+        "createdAt": 1794429964075,
+        "contentHash": "bdc9845929a13261cedbd884486f314936709e3580be313b3940835cac8b77e2",
+        "revision": null,
+        "inputFingerprint": "fa92bf89ffef42c480aeead128883c50c6c14149eed5cda0846a463250948f19",
+        "inputScope": "local-project-files",
+        "attribution": "inputs-changed"
+      },
+      {
+        "scope": "full",
+        "id": "7dbffff6-dcab-40a2-8691-906731da5810-2",
+        "image": "/Users/chunguchama/Downloads/Board Vision Documentation/videos/quorum-motion/snapshots/frame-02-at-10s.png",
+        "time": 10,
+        "metadata": {
+          "width": 1920,
+          "height": 1080,
+          "zoomScale": 1,
+          "browserGpuMode": "auto",
+          "warnings": [],
+          "partial": false
+        },
+        "createdAt": 1794429964075,
+        "contentHash": "f39b504167e89ec0575895518c3c6ca95bf8b1834bef81431e84ef0849eacd36",
+        "revision": null,
+        "inputFingerprint": "fa92bf89ffef42c480aeead128883c50c6c14149eed5cda0846a463250948f19",
+        "inputScope": "local-project-files",
+        "attribution": "inputs-changed"
+      },
+      {
+        "scope": "full",
+        "id": "7dbffff6-dcab-40a2-8691-906731da5810-3",
+        "image": "/Users/chunguchama/Downloads/Board Vision Documentation/videos/quorum-motion/snapshots/frame-03-at-14s.png",
+        "time": 14,
+        "metadata": {
+          "width": 1920,
+          "height": 1080,
+          "zoomScale": 1,
+          "browserGpuMode": "auto",
+          "warnings": [],
+          "partial": false
+        },
+        "createdAt": 1794429964075,
+        "contentHash": "43d3d517ce99311403c2fe952be3b2602119ef380577534316cc6580eff1671d",
+        "revision": null,
+        "inputFingerprint": "fa92bf89ffef42c480aeead128883c50c6c14149eed5cda0846a463250948f19",
+        "inputScope": "local-project-files",
+        "attribution": "inputs-changed"
+      },
+      {
+        "scope": "full",
+        "id": "7dbffff6-dcab-40a2-8691-906731da5810-4",
+        "image": "/Users/chunguchama/Downloads/Board Vision Documentation/videos/quorum-motion/snapshots/frame-04-at-18s.png",
+        "time": 18,
+        "metadata": {
+          "width": 1920,
+          "height": 1080,
+          "zoomScale": 1,
+          "browserGpuMode": "auto",
+          "warnings": [],
+          "partial": false
+        },
+        "createdAt": 1794429964075,
+        "contentHash": "3c78af31215b9dc6841db9a40afd86eedab773896f1e2f89d49989e7aff83752",
+        "revision": null,
+        "inputFingerprint": "fa92bf89ffef42c480aeead128883c50c6c14149eed5cda0846a463250948f19",
+        "inputScope": "local-project-files",
+        "attribution": "inputs-changed"
+      },
+      {
+        "scope": "full",
+        "id": "7dbffff6-dcab-40a2-8691-906731da5810-5",
+        "image": "/Users/chunguchama/Downloads/Board Vision Documentation/videos/quorum-motion/snapshots/frame-05-at-22s.png",
+        "time": 22,
+        "metadata": {
+          "width": 1920,
+          "height": 1080,
+          "zoomScale": 1,
+          "browserGpuMode": "auto",
+          "warnings": [],
+          "partial": false
+        },
+        "createdAt": 1794429964076,
+        "contentHash": "1d47d10a68de99030c4cc958bf71add2bf8e4891743bb5b4391f7fcbba12570b",
+        "revision": null,
+        "inputFingerprint": "fa92bf89ffef42c480aeead128883c50c6c14149eed5cda0846a463250948f19",
+        "inputScope": "local-project-files",
+        "attribution": "inputs-changed"
+      },
+      {
+        "scope": "full",
+        "id": "7dbffff6-dcab-40a2-8691-906731da5810-6",
+        "image": "/Users/chunguchama/Downloads/Board Vision Documentation/videos/quorum-motion/snapshots/frame-06-at-23.75s.png",
+        "time": 23.75,
+        "metadata": {
+          "width": 1920,
+          "height": 1080,
+          "zoomScale": 1,
+          "browserGpuMode": "auto",
+          "warnings": [],
+          "partial": false
+        },
+        "createdAt": 1794429964076,
+        "contentHash": "3745be0dcb22b4f2c112609521b36843ef69dd6572a572d8e39b43cc33c337b8",
+        "revision": null,
+        "inputFingerprint": "fa92bf89ffef42c480aeead128883c50c6c14149eed5cda0846a463250948f19",
+        "inputScope": "local-project-files",
+        "attribution": "inputs-changed"
+      },
+      {
+        "scope": "full",
+        "id": "102a70b5-ee6b-406b-a0a8-647e3cd1152d-0",
+        "image": "/Users/chunguchama/Downloads/Board Vision Documentation/videos/quorum-motion/snapshots/final/frame-00-at-3.5s.png",
+        "time": 3.5,
+        "metadata": {
+          "width": 1920,
+          "height": 1080,
+          "zoomScale": 1,
+          "browserGpuMode": "auto",
+          "warnings": [],
+          "partial": false
+        },
+        "createdAt": 1794430000791,
+        "contentHash": "c59686f6d8e64b24923c86dc085b372cf9a325383fe6bda4a32c3a99fb5d9922",
+        "revision": null,
+        "inputFingerprint": "bbc80f5bbb1eda2cfb6164cae2448fda8b5d027a568c477f89ea244593705ce7",
+        "inputScope": "local-project-files",
+        "attribution": "inputs-changed"
+      },
+      {
+        "scope": "full",
+        "id": "102a70b5-ee6b-406b-a0a8-647e3cd1152d-1",
+        "image": "/Users/chunguchama/Downloads/Board Vision Documentation/videos/quorum-motion/snapshots/final/frame-01-at-7.5s.png",
+        "time": 7.5,
+        "metadata": {
+          "width": 1920,
+          "height": 1080,
+          "zoomScale": 1,
+          "browserGpuMode": "auto",
+          "warnings": [],
+          "partial": false
+        },
+        "createdAt": 1794430000791,
+        "contentHash": "9ea2c7902d718d9cbed5dac485ef3c8ec19beef3e00ba410dab976c266a9199e",
+        "revision": null,
+        "inputFingerprint": "bbc80f5bbb1eda2cfb6164cae2448fda8b5d027a568c477f89ea244593705ce7",
+        "inputScope": "local-project-files",
+        "attribution": "inputs-changed"
+      },
+      {
+        "scope": "full",
+        "id": "102a70b5-ee6b-406b-a0a8-647e3cd1152d-2",
+        "image": "/Users/chunguchama/Downloads/Board Vision Documentation/videos/quorum-motion/snapshots/final/frame-02-at-11.5s.png",
+        "time": 11.5,
+        "metadata": {
+          "width": 1920,
+          "height": 1080,
+          "zoomScale": 1,
+          "browserGpuMode": "auto",
+          "warnings": [],
+          "partial": false
+        },
+        "createdAt": 1794430000791,
+        "contentHash": "5be086224c466a0b94d7d06076449b89182455ae1b1b7b9afeb0a167dea03f87",
+        "revision": null,
+        "inputFingerprint": "bbc80f5bbb1eda2cfb6164cae2448fda8b5d027a568c477f89ea244593705ce7",
+        "inputScope": "local-project-files",
+        "attribution": "inputs-changed"
+      },
+      {
+        "scope": "full",
+        "id": "102a70b5-ee6b-406b-a0a8-647e3cd1152d-3",
+        "image": "/Users/chunguchama/Downloads/Board Vision Documentation/videos/quorum-motion/snapshots/final/frame-03-at-15.5s.png",
+        "time": 15.5,
+        "metadata": {
+          "width": 1920,
+          "height": 1080,
+          "zoomScale": 1,
+          "browserGpuMode": "auto",
+          "warnings": [],
+          "partial": false
+        },
+        "createdAt": 1794430000791,
+        "contentHash": "83485f0198c9a3ba5be9f176457e10c80e0dd9994d5e136a4e5d57e7f2bbb562",
+        "revision": null,
+        "inputFingerprint": "bbc80f5bbb1eda2cfb6164cae2448fda8b5d027a568c477f89ea244593705ce7",
+        "inputScope": "local-project-files",
+        "attribution": "inputs-changed"
+      },
+      {
+        "scope": "full",
+        "id": "102a70b5-ee6b-406b-a0a8-647e3cd1152d-4",
+        "image": "/Users/chunguchama/Downloads/Board Vision Documentation/videos/quorum-motion/snapshots/final/frame-04-at-19.5s.png",
+        "time": 19.5,
+        "metadata": {
+          "width": 1920,
+          "height": 1080,
+          "zoomScale": 1,
+          "browserGpuMode": "auto",
+          "warnings": [],
+          "partial": false
+        },
+        "createdAt": 1794430000791,
+        "contentHash": "872489ad0053923b3118b132056bf6a0c43a890324033b004531940d2b6a2fc2",
+        "revision": null,
+        "inputFingerprint": "bbc80f5bbb1eda2cfb6164cae2448fda8b5d027a568c477f89ea244593705ce7",
+        "inputScope": "local-project-files",
+        "attribution": "inputs-changed"
+      },
+      {
+        "scope": "full",
+        "id": "102a70b5-ee6b-406b-a0a8-647e3cd1152d-5",
+        "image": "/Users/chunguchama/Downloads/Board Vision Documentation/videos/quorum-motion/snapshots/final/frame-05-at-23.5s.png",
+        "time": 23.5,
+        "metadata": {
+          "width": 1920,
+          "height": 1080,
+          "zoomScale": 1,
+          "browserGpuMode": "auto",
+          "warnings": [],
+          "partial": false
+        },
+        "createdAt": 1794430000791,
+        "contentHash": "717b50309bb0e5246b075a139f718f3384c67d6a3e5ccc5ac9a66634cddbda31",
+        "revision": null,
+        "inputFingerprint": "bbc80f5bbb1eda2cfb6164cae2448fda8b5d027a568c477f89ea244593705ce7",
+        "inputScope": "local-project-files",
+        "attribution": "inputs-changed"
+      },
+      {
+        "scope": "full",
+        "id": "102a70b5-ee6b-406b-a0a8-647e3cd1152d-6",
+        "image": "/Users/chunguchama/Downloads/Board Vision Documentation/videos/quorum-motion/snapshots/final/frame-06-at-23.75s.png",
+        "time": 23.75,
+        "metadata": {
+          "width": 1920,
+          "height": 1080,
+          "zoomScale": 1,
+          "browserGpuMode": "auto",
+          "warnings": [],
+          "partial": false
+        },
+        "createdAt": 1794430000791,
+        "contentHash": "717b50309bb0e5246b075a139f718f3384c67d6a3e5ccc5ac9a66634cddbda31",
+        "revision": null,
+        "inputFingerprint": "bbc80f5bbb1eda2cfb6164cae2448fda8b5d027a568c477f89ea244593705ce7",
+        "inputScope": "local-project-files",
+        "attribution": "inputs-changed"
+      }
+    ]
+  }
+}

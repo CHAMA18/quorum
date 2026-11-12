@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getUserFromToken, rateLimit, SESSION_COOKIE } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { extractTenderText } from "@/lib/tender-extract";
-import { museChat, museConfigFromEnv } from "@/lib/muse";
+import { kiraConfigFromEnv, museChat } from "@/lib/muse";
 import { attestSignature } from "@/lib/sidecar-attest";
 
 export const runtime = "nodejs";
@@ -59,13 +59,13 @@ function parseModelJson(text: string): unknown {
   const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
   const start = cleaned.indexOf("{");
   const end = cleaned.lastIndexOf("}");
-  if (start < 0 || end < start) throw new Error("Meta AI returned no structured extraction.");
+  if (start < 0 || end < start) throw new Error("Kira returned no structured extraction.");
   return JSON.parse(cleaned.slice(start, end + 1)) as unknown;
 }
 
-async function recordMetaRun(
+async function recordModelRun(
   user: { name: string; workspaceId: string },
-  entry: { model: string; durationMs: number; outcome: "OK" | "ERROR"; responseStatus?: number },
+  entry: { model: string; endpoint: string; durationMs: number; outcome: "OK" | "ERROR"; responseStatus?: number },
 ) {
   const timestamp = Date.now();
   const path = "/api/audit/model-call";
@@ -82,7 +82,7 @@ async function recordMetaRun(
       body: JSON.stringify({
         model: entry.model,
         purpose: "tender_notice_extraction",
-        endpoint: "api.meta.ai",
+        endpoint: entry.endpoint,
         durationMs: entry.durationMs,
         outcome: entry.outcome,
         ...(entry.responseStatus ? { responseStatus: entry.responseStatus } : {}),
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Choose a non-empty tender notice to analyze." }, { status: 422 });
   }
   if (form?.get("metaConsent") !== "true") {
-    return NextResponse.json({ error: "Confirm that extracted document text may be sent to Meta AI before analysis." }, { status: 400 });
+    return NextResponse.json({ error: "Confirm that extracted document text may be sent to Kira before analysis." }, { status: 400 });
   }
   if (file.size > MAX_BYTES) {
     return NextResponse.json({ error: "The document must be 10 MB or smaller." }, { status: 413 });
@@ -129,10 +129,10 @@ export async function POST(request: NextRequest) {
     }, { status: 422 });
   }
 
-  const config = museConfigFromEnv();
+  const config = kiraConfigFromEnv();
   if (!config) {
     return NextResponse.json({
-      error: "Meta AI is not configured on this deployment. The document was read locally, but no fields were sent or guessed. Enter the details manually or ask an administrator to configure MUSE_API_KEY.",
+      error: "Kira is not configured on this deployment. The document was read locally, but no fields were sent or guessed. Enter the details manually or ask an administrator to configure KIRA_BASE_URL.",
       extractionNote: extracted.note,
     }, { status: 503 });
   }
@@ -162,25 +162,27 @@ Use null and confidence 0 when a fact is absent or ambiguous. For office, only s
       maxOutputTokens: 1800,
     });
     const parsed = ExtractionSchema.safeParse(parseModelJson(reply.text));
-    await recordMetaRun(user, {
+    await recordModelRun(user, {
       model: reply.model,
+      endpoint: new URL(config.baseUrl).hostname,
       durationMs: Math.round(performance.now() - startedAt),
       outcome: parsed.success ? "OK" : "ERROR",
       responseStatus: 200,
     });
     if (!parsed.success) {
-      return NextResponse.json({ error: "Meta AI returned an incomplete extraction. No fields were applied; you can enter the tender details manually." }, { status: 502 });
+      return NextResponse.json({ error: "Kira returned an incomplete extraction. No fields were applied; you can enter the tender details manually." }, { status: 502 });
     }
 
     return NextResponse.json({
       model: reply.model,
-      provider: "meta",
+      provider: "kira",
       extractionNote: extracted.note,
       fields: parsed.data,
     }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
-    await recordMetaRun(user, {
+    await recordModelRun(user, {
       model: config.model,
+      endpoint: new URL(config.baseUrl).hostname,
       durationMs: Math.round(performance.now() - startedAt),
       outcome: "ERROR",
       ...(error instanceof Error && /HTTP \d{3}/.test(error.message)
@@ -189,8 +191,8 @@ Use null and confidence 0 when a fact is absent or ambiguous. For office, only s
     });
     return NextResponse.json({
       error: error instanceof Error
-        ? `Meta AI could not analyze this document: ${error.message.slice(0, 240)}`
-        : "Meta AI could not analyze this document.",
+        ? `Kira could not analyze this document: ${error.message.slice(0, 240)}`
+        : "Kira could not analyze this document.",
       extractionNote: extracted.note,
     }, { status: 502 });
   }

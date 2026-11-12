@@ -9,6 +9,7 @@ import {
   type StoredTenderDocument,
 } from "@/lib/tender-upload";
 import { cn } from "@/lib/utils";
+import { diffLines, diffSummary, type DiffLine } from "@/lib/text-diff";
 
 /**
  * Every R2 object stored under one tender's prefix — not only the files staged
@@ -134,6 +135,46 @@ export function StoredDocsBrowser({
     return sorted;
   }, [objects, query, sort]);
 
+  const [compareKeys, setCompareKeys] = useState<string[]>([]);
+  const [diff, setDiff] = useState<{ lines: DiffLine[]; note: string } | null>(null);
+
+  const downloadZip = async () => {
+    setActionError("");
+    const res = await fetch(`/api/tenders/${encodeURIComponent(ref)}/documents-zip`, { cache: "no-store" });
+    if (!res.ok) {
+      const d = (await res.json().catch(() => ({}))) as { error?: string };
+      setActionError(d.error ?? "ZIP download failed.");
+      return;
+    }
+    const blob = await res.blob();
+    const anchor = document.createElement("a");
+    anchor.href = URL.createObjectURL(blob);
+    anchor.download = `tender-${ref}-documents.zip`;
+    anchor.click();
+    URL.revokeObjectURL(anchor.href);
+  };
+
+  const toggleCompare = (key: string) => {
+    setDiff(null);
+    setCompareKeys((cur) => (cur.includes(key) ? cur.filter((k) => k !== key) : [...cur.slice(-1), key]));
+  };
+
+  const runCompare = async () => {
+    if (compareKeys.length !== 2) return;
+    const texts: string[] = [];
+    for (const key of compareKeys) {
+      const url = await signedTenderDownloadUrl(ref, key);
+      if (!url) { setDiff({ lines: [], note: "A signed link could not be minted for one document." }); return; }
+      const res = await fetch(url);
+      const text = await res.text();
+      if (text.length > 220_000 || text.includes("�")) { setDiff({ lines: [], note: "One document is binary — diffing works on text documents (MD, TXT, CSV, JSON)." }); return; }
+      texts.push(text);
+    }
+    const lines = diffLines(texts[0], texts[1]);
+    const s = diffSummary(lines);
+    setDiff({ lines: lines.slice(0, 240), note: `${s.added} added · ${s.removed} removed · ${s.unchanged} unchanged (first 240 lines shown)` });
+  };
+
   const download = async (doc: StoredTenderDocument) => {
     setActionError("");
     setNotice("");
@@ -190,17 +231,39 @@ export function StoredDocsBrowser({
             {summary}
           </p>
         </div>
-        <button
-          type="button"
-          aria-label="Refresh stored documents"
-          title="Read the tender's prefix in R2 again"
-          onClick={refresh}
-          disabled={loading}
-          className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-md text-ink-500 transition-colors hover:bg-ink-50 hover:text-ink-800 disabled:opacity-40"
-        >
-          <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} aria-hidden="true" />
-        </button>
+        <span className="flex shrink-0 items-center gap-1">
+          <button type="button" onClick={() => void downloadZip()} className="focus-brand inline-flex min-h-11 items-center rounded-md px-2 font-code text-[9px] font-bold tracking-[0.05em] text-ink-600 hover:text-brand-700">
+            ZIP ALL
+          </button>
+          <button type="button" onClick={() => void runCompare()} disabled={compareKeys.length !== 2} className="focus-brand inline-flex min-h-11 items-center rounded-md px-2 font-code text-[9px] font-bold tracking-[0.05em] text-ink-600 hover:text-brand-700 disabled:opacity-40">
+            COMPARE ({compareKeys.length}/2)
+          </button>
+          <button
+            type="button"
+            aria-label="Refresh stored documents"
+            title="Read the tender's prefix in R2 again"
+            onClick={refresh}
+            disabled={loading}
+            className="focus-brand grid h-11 w-11 shrink-0 place-items-center rounded-md text-ink-500 transition-colors hover:bg-ink-50 hover:text-ink-800 disabled:opacity-40"
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} aria-hidden="true" />
+          </button>
+        </span>
       </div>
+      {diff ? (
+        <div className="border-b border-ink-100 px-3.5 py-2.5">
+          <p className="font-code text-[10px] font-bold tracking-[0.05em] text-ink-600">{diff.note}</p>
+          {diff.lines.length ? (
+            <pre className="mt-2 max-h-56 overflow-auto rounded-md bg-ink-950 p-2.5 font-mono text-[10px] leading-relaxed text-ink-100">
+              {diff.lines.map((l, i) => (
+                <span key={i} className={l.kind === "add" ? "block text-emerald-300" : l.kind === "del" ? "block text-red-300" : "block opacity-70"}>
+                  {l.kind === "add" ? "+ " : l.kind === "del" ? "− " : "  "}{l.text}
+                </span>
+              ))}
+            </pre>
+          ) : null}
+        </div>
+      ) : null}
 
       {!error && objects.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 border-b border-ink-100 px-3.5 py-2">
@@ -257,6 +320,10 @@ export function StoredDocsBrowser({
                     {bytesLabel(doc.bytes)} · {stampLabel(doc.uploaded)} · {doc.contentType}
                   </span>
                 </span>
+                <label className="inline-flex shrink-0 cursor-pointer items-center gap-1 text-[10px] font-semibold text-ink-500">
+                  <input type="checkbox" checked={compareKeys.includes(doc.key)} onChange={() => toggleCompare(doc.key)} aria-label={`Select ${doc.filename} for comparison`} className="h-3.5 w-3.5 accent-[#b52b22]" />
+                  DIFF
+                </label>
                 <button
                   type="button"
                   aria-label={`Download ${doc.filename}`}

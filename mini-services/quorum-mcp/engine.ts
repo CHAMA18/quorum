@@ -9,12 +9,12 @@ import { createRequire } from "node:module";
 import { Annotation, END, START, StateGraph } from "@langchain/langgraph";
 import { appendLog, attestSignature, shaOf, state, type Draft, type EvidenceObservation, type Finding, type Gate, type Office, type Requirement, type ReviewPlan, type Run } from "./store";
 import { resolveDataDir } from "./paths";
-import { bidSecurityFindings, debarmentFindings, parseBidSecurity, parseClosingDate } from "./cycle";
+import { BID_SECURITY_VALIDITY_MARGIN_DAYS, bidSecurityFindings, calendarDaysBetween, debarmentFindings, parseBidSecurity, parseClosingDate } from "./cycle";
 import { DEBARMENT_LIST } from "./debarment";
 import { TENDER_REF_RE } from "./marketplace";
 import { llmConfigChainFromEnv, llmConfigFromEnv, modelAttributionForRun, modelStatus, providerLabel, type LlmConfig } from "./model";
 import { callModel } from "./model-gateway";
-import { createEgpAdapter } from "./egp-adapter";
+import { createLocalApprovalAdapter } from "./local-approval";
 export { llmConfigFromEnv, modelAttributionForRun, modelStatus, providerLabel };
 export type { LlmConfig, ModelStatus, RunModelAttribution } from "./model";
 export type { Finding } from "./store";
@@ -591,6 +591,28 @@ export const TOOLS = [
     inputSchema: { type: "object", properties: { tenderId: { type: "string" } }, required: ["tenderId"] },
   },
   {
+    name: "check_bid_security_expiry",
+    kind: "READ" as const,
+    description:
+      "Checks every bid's security line against the tender closing date: valid-until, days of margin beyond closing (28 required), expired or missing securities. Read-only.",
+    inputSchema: {
+      type: "object",
+      properties: { tenderId: { type: "string" }, asOf: { type: "string" } },
+      required: ["tenderId"],
+    },
+  },
+  {
+    name: "check_delivery_compliance",
+    kind: "READ" as const,
+    description:
+      "Checks delivery-schedule and cold-chain compliance per bid against the notice: temperature range, delivery days, shelf life and recall reporting. Read-only.",
+    inputSchema: {
+      type: "object",
+      properties: { tenderId: { type: "string" } },
+      required: ["tenderId"],
+    },
+  },
+  {
     name: "draft_redline",
     kind: "WRITES" as const,
     description:
@@ -694,7 +716,7 @@ export const TOOLS = [
     name: "publish_award_notice",
     kind: "IRREVERSIBLE" as const,
     description:
-      "Publishes the notice of award to the e-GP portal (simulated stub, labelled as such) and starts the standstill clock (10 working days). Held at a gate for the accounting officer.",
+      "Records a draft notice of award and a rehearsal standstill clock (10 working days). Held at a gate for the accounting officer. No external publication occurs.",
     inputSchema: { type: "object", properties: { tenderId: { type: "string" } }, required: ["tenderId"] },
   },
   {
@@ -1604,7 +1626,7 @@ export interface EngineRefs {
 }
 
 let refs: EngineRefs;
-const egpAdapter = createEgpAdapter();
+const approvalRecords = createLocalApprovalAdapter();
 export function bindEngine(r: EngineRefs) {
   refs = r;
 }
@@ -1860,6 +1882,96 @@ export async function mcpExtractRequirements(args: Record<string, unknown>, runI
     durationMs: Math.round(performance.now() - t0),
   });
   return { tenderId, requirements };
+}
+
+export type BidSecurityStatus = "OK" | "EXPIRING_SOON" | "EXPIRED" | "MISSING" | "UNSPECIFIED" | "NOT_REQUIRED";
+
+/** Pure expiry check behind check_bid_security_expiry (exported for tests). */
+export function checkBidSecurities(
+  bids: { bidder: string; text: string; source: string }[],
+  closingDate: string | undefined,
+  opts: { required?: boolean; asOf?: string } = {},
+): { bidder: string; source: string; validUntil?: string; daysBeyondClosing?: number; status: BidSecurityStatus }[] {
+  const asOf = opts.asOf ?? closingDate ?? new Date().toISOString().slice(0, 10);
+  return bids.map((bid) => {
+    const sec = parseBidSecurity(bid.text);
+    if (!sec?.stated) return { bidder: bid.bidder, source: bid.source, status: (opts.required ? "MISSING" : "NOT_REQUIRED") as BidSecurityStatus };
+    if (!sec.validUntil) return { bidder: bid.bidder, source: bid.source, status: "UNSPECIFIED" as BidSecurityStatus };
+    const daysBeyondClosing = closingDate ? calendarDaysBetween(closingDate, sec.validUntil) : undefined;
+    const status: BidSecurityStatus =
+      sec.validUntil < asOf ? "EXPIRED" : daysBeyondClosing !== undefined && daysBeyondClosing < BID_SECURITY_VALIDITY_MARGIN_DAYS ? "EXPIRING_SOON" : "OK";
+    return { bidder: bid.bidder, source: bid.source, validUntil: sec.validUntil, daysBeyondClosing, status };
+  });
+}
+
+/* check_bid_security_expiry (READ): per-bid security validity against the closing date. */
+export async function mcpCheckBidSecurityExpiry(args: Record<string, unknown>, runId?: string) {
+  const t0 = performance.now();
+  const tenderId = str(args.tenderId);
+  if (!SAFE_REF.test(tenderId)) throw new Error(`invalid tenderId: "${tenderId}"`);
+  const { files, sources } = await tenderSources(tenderId, runId);
+  const pack = buildPack(files, sources);
+  const noticeText = pack.notices.map((n) => n.text).join("\n");
+  const closingDate = parseClosingDate(noticeText);
+  const required = /bid security/i.test(noticeText);
+  const securities = checkBidSecurities(pack.bids, closingDate, { required, asOf: str(args.asOf) || undefined });
+  appendLog({
+    actor: "external-mcp-client",
+    server: "quorum-mcp",
+    tool: "check_bid_security_expiry",
+    kind: "READ",
+    runId,
+    inputs: { tenderId },
+    outputs: { count: securities.length, attention: securities.filter((s) => s.status !== "OK" && s.status !== "NOT_REQUIRED").length },
+    status: "OK",
+    durationMs: Math.round(performance.now() - t0),
+  });
+  return { tenderId, closingDate: closingDate ?? null, marginDays: BID_SECURITY_VALIDITY_MARGIN_DAYS, securities };
+}
+
+export interface DeliveryRequirement { key: string; label: string; pattern: RegExp }
+
+/** Delivery/cold-chain requirements the notice can impose, checked per bid. */
+export const DELIVERY_REQUIREMENTS: DeliveryRequirement[] = [
+  { key: "cold-chain", label: "Cold-chain temperature", pattern: /2\s*[–-]\s*8\s*°?\s*C|cold[- ]chain/i },
+  { key: "delivery-days", label: "Delivery window", pattern: /deliver\w*[^.\n]{0,60}?(\d{1,3})\s*days|within\s+(\d{1,3})\s*days/i },
+  { key: "shelf-life", label: "Shelf life at delivery", pattern: /shelf life[^.\n]{0,40}?(\d{1,2})\s*months|(\d{1,2})\s*months[^.\n]{0,30}shelf/i },
+  { key: "recall", label: "Recall reporting", pattern: /recall[^.\n]{0,60}?(24|twenty-four)\s*hours/i },
+];
+
+/** Pure delivery-compliance check behind check_delivery_compliance (exported for tests). */
+export function checkDeliveryCompliance(noticeText: string, bids: { bidder: string; text: string; source: string }[]) {
+  const required = DELIVERY_REQUIREMENTS.filter((r) => r.pattern.test(noticeText));
+  return {
+    required: required.map((r) => r.key),
+    bids: bids.map((bid) => ({
+      bidder: bid.bidder,
+      source: bid.source,
+      checks: required.map((r) => ({ key: r.key, label: r.label, stated: r.pattern.test(bid.text) })),
+    })),
+  };
+}
+
+/* check_delivery_compliance (READ): delivery schedule + cold-chain per bid. */
+export async function mcpCheckDeliveryCompliance(args: Record<string, unknown>, runId?: string) {
+  const t0 = performance.now();
+  const tenderId = str(args.tenderId);
+  if (!SAFE_REF.test(tenderId)) throw new Error(`invalid tenderId: "${tenderId}"`);
+  const { files, sources } = await tenderSources(tenderId, runId);
+  const pack = buildPack(files, sources);
+  const result = checkDeliveryCompliance(pack.notices.map((n) => n.text).join("\n"), pack.bids);
+  appendLog({
+    actor: "external-mcp-client",
+    server: "quorum-mcp",
+    tool: "check_delivery_compliance",
+    kind: "READ",
+    runId,
+    inputs: { tenderId },
+    outputs: { required: result.required.length, bids: result.bids.length },
+    status: "OK",
+    durationMs: Math.round(performance.now() - t0),
+  });
+  return { tenderId, ...result };
 }
 
 /* flag_finding (WRITES): a finding is kept only if its citation names a document in the tender AND its anchor text is in that document. */
@@ -2546,7 +2658,7 @@ async function nodeSeal(s: typeof FileState.State) {
 async function nodeTransmit(s: typeof FileState.State) {
   const gate = refs.gates.find((g) => g.id === s.gateId);
   if (!gate || !gate.approver || !gate.decidedAt) throw new Error("filing requires a gate with a recorded human approval");
-  const receipt = await egpAdapter.submit({
+  const receipt = await approvalRecords.submit({
     idempotencyKey: `quorum:filing:${gate.id}`,
     gateId: gate.id,
     tenderId: gate.tenderId,

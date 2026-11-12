@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import type { AuthUser } from "@/lib/auth-types";
-import { museChat, museConfigFromEnv, museResponsesInput, museUsesResponses, type MuseMessage } from "@/lib/muse";
+import { kiraConfigFromEnv, museChat, museResponsesInput, museUsesResponses, type MuseMessage } from "@/lib/muse";
 import { canReadDeskTool, DESK_TOOLS, runDeskTool, type DeskToolContext } from "@/lib/muse-desk-tools";
 import { ACTION_TOOLS, buildProposal, explicitReviewAssignment, isActionTool, proposalStagedNote, type Proposal } from "@/lib/muse-actions";
 import { localAgent } from "@/lib/muse-local-brain";
@@ -25,10 +25,10 @@ import { SYSTEM_MAP } from "@/lib/quorum-knowledge";
  *     run_reviews can request it. A signed proposal is shown to the user and
  *     the run starts only after explicit confirmation. The agent has no tool
  *     for approving, rejecting, awarding or signing a procurement decision.
- *   · With no Meta key set, the deterministic local brain
+ *   · With no Kira endpoint configured, the deterministic local brain
  *     (muse-local-brain) answers with the same reads and consent-staged
  *     proposals. There is no setup notice: the product never depends on a
- *     secret to be useful.
+ *     remote model to be useful.
  */
 
 const MAX_ROUNDS = 5;
@@ -36,7 +36,7 @@ const MAX_HISTORY = 12;
 
 export async function GET(request: NextRequest) {
   const user = await getUserFromToken(request.cookies.get(SESSION_COOKIE)?.value);
-  const config = museConfigFromEnv();
+  const config = kiraConfigFromEnv();
   if (!user) {
     /* The bubble is mounted over the organization console too. A supplier is
        told it is their own assistant, not that the desk is closed to them. */
@@ -44,9 +44,9 @@ export async function GET(request: NextRequest) {
     if (!org) return NextResponse.json({ error: "Sign in to use the assistant." }, { status: 401 });
     return NextResponse.json(
       {
-        metaAvailable: Boolean(config),
-        metaModel: config?.model ?? null,
-        automaticLabel: config ? "Meta Muse" : "Quorum AI",
+        modelAvailable: Boolean(config),
+        model: config?.model ?? null,
+        automaticLabel: config ? "Kira" : "Quorum AI",
         supplier: true,
       },
       { headers: { "cache-control": "no-store" } },
@@ -54,9 +54,9 @@ export async function GET(request: NextRequest) {
   }
   return NextResponse.json(
     {
-      metaAvailable: Boolean(config),
-      metaModel: config?.model ?? null,
-      automaticLabel: config ? "Meta Muse" : "Quorum AI",
+      modelAvailable: Boolean(config),
+      model: config?.model ?? null,
+      automaticLabel: config ? "Kira" : "Quorum AI",
     },
     { headers: { "cache-control": "no-store" } },
   );
@@ -78,7 +78,10 @@ function toolsForUser(user: AuthUser) {
 }
 
 function safetyIdentifier(user: AuthUser): string | undefined {
-  const key = process.env.MUSE_SAFETY_IDENTIFIER_SECRET?.trim() || process.env.GATE_SIGNING_KEY?.trim();
+  const key =
+    process.env.KIRA_SAFETY_IDENTIFIER_SECRET?.trim() ||
+    process.env.MUSE_SAFETY_IDENTIFIER_SECRET?.trim() ||
+    process.env.GATE_SIGNING_KEY?.trim();
   if (!key) return undefined;
   return createHmac("sha256", key).update(user.id).digest("hex");
 }
@@ -135,18 +138,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(await orgAssistantReply(org, message));
   }
   if (!user) return NextResponse.json({ error: "Sign in to use the assistant." }, { status: 401 });
-  const cfg = museConfigFromEnv();
+  const cfg = kiraConfigFromEnv();
   if (cfg) {
     return NextResponse.json(await modelLoop(cfg, message, history, user));
   }
-  /* No Meta key: the deterministic local brain answers. */
+  /* No Kira endpoint: the deterministic local brain answers. */
   return NextResponse.json(await localLoop(message, { user }));
 }
 
-/* ── The model loop — Muse Spark with reads + consent-staged actions ─────── */
+/* ── The model loop — Kira with reads + consent-staged actions ───────────── */
 
 async function modelLoop(
-  cfg: NonNullable<ReturnType<typeof museConfigFromEnv>>,
+  cfg: NonNullable<ReturnType<typeof kiraConfigFromEnv>>,
   message: string,
   history: { role: "user" | "assistant"; content: string }[],
   user: AuthUser,

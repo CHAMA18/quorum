@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createContactMessage } from "@/lib/db";
+import { escapeEmailHtml, renderEmailHtml, renderEmailText, type EmailModel } from "@/lib/email-template";
 import { clientKey, rateLimit } from "@/lib/auth";
 
 const PILOT_REQUEST_INBOX = "chungu424@gmail.com";
@@ -16,16 +17,6 @@ const ContactSchema = z.object({
   message: z.string().max(4000).optional(),
 });
 
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;",
-  })[character] ?? character);
-}
-
 async function sendPilotRequestEmail(input: {
   name: string;
   email: string;
@@ -37,26 +28,29 @@ async function sendPilotRequestEmail(input: {
 
   const from = process.env.RESEND_FROM?.trim() || "Quorum <onboarding@resend.dev>";
   const notes = input.notes || "No additional notes supplied.";
-  const text = [
-    "New Quorum pilot request",
-    "",
-    `Name: ${input.name}`,
-    `Work email: ${input.email}`,
-    `Institution: ${input.company || "Not specified"}`,
-    "",
-    "Notes:",
-    notes,
-  ].join("\n");
-  const html = `<!doctype html><html><body style="margin:0;background:#f6f3ed;color:#17181b;font-family:Arial,sans-serif">
-    <main style="max-width:620px;margin:32px auto;padding:28px;background:#fffdfb;border:1px solid #e4e0d8;border-radius:14px">
-      <p style="margin:0 0 18px;font-size:11px;font-weight:700;letter-spacing:.14em;color:#b52e20">QUORUM · PILOT REQUEST</p>
-      <p style="margin:0 0 8px"><strong>Name:</strong> ${escapeHtml(input.name)}</p>
-      <p style="margin:0 0 8px"><strong>Work email:</strong> <a href="mailto:${escapeHtml(input.email)}">${escapeHtml(input.email)}</a></p>
-      <p style="margin:0 0 18px"><strong>Institution:</strong> ${escapeHtml(input.company || "Not specified")}</p>
-      <p style="margin:0 0 8px"><strong>Notes</strong></p>
-      <pre style="margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.6 Arial,sans-serif">${escapeHtml(notes)}</pre>
-    </main>
-  </body></html>`;
+  const appUrl = (process.env.QUORUM_APP_URL ?? "http://127.0.0.1:3000").replace(/\/$/, "");
+  const model: EmailModel = {
+    preheader: `${input.name} from ${input.company || "an institution"} requested a Quorum pilot.`,
+    kicker: "Pilot request",
+    headline: "New pilot request",
+    intro: "A new pilot request arrived from the Quorum site. Reply directly to continue the conversation.",
+    tone: "info",
+    facts: [
+      { label: "Name", value: input.name },
+      { label: "Work email", value: input.email },
+      { label: "Institution", value: input.company || "Not specified" },
+    ],
+    bodyHtml: `<p style="margin:26px 0 8px;font:700 10px/14px ui-monospace,Menlo,Consolas,monospace;letter-spacing:1.8px;color:#7c7f87;">NOTES</p><table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="width:100%;background:#faf9f6;border:1px solid #e7e3dc;border-radius:10px;"><tr><td style="padding:16px 18px;font:14px/23px Arial,Helvetica,sans-serif;color:#34363b;">${escapeEmailHtml(notes).replace(/\n/g, "<br>")}</td></tr></table>`,
+    bodyText: `Notes: ${notes}`,
+    ctaLabel: "Reply by email",
+    ctaUrl: `mailto:${input.email}`,
+    footerNote: "Sent from the Quorum pilot-request form. The request is also saved in the workspace records.",
+    recipient: PILOT_REQUEST_INBOX,
+    appUrl,
+    logoUrl: `${appUrl}/images/quorum-email-mark.png`,
+  };
+  const text = renderEmailText(model);
+  const html = renderEmailHtml(model);
 
   try {
     const response = await fetch("https://api.resend.com/emails", {

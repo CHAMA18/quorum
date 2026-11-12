@@ -15,6 +15,15 @@ import { readLogEntries } from "./store";
 const TENDER = "ZM-SIT-001";
 const NOW = new Date("2026-11-02T09:00:00.000Z");
 
+/* Sittings in the future must stay in the future: a fixed date turns this
+   suite red the day the calendar passes it, because createSitting refuses a
+   normal sitting scheduled in the past. */
+const FUTURE = (() => {
+  const at = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  at.setUTCSeconds(0, 0);
+  return at.toISOString();
+})();
+
 function sittingBase(overrides: Partial<Sitting> = {}): Sitting {
   return normalizeSitting({
     id: "sit_test_1",
@@ -228,7 +237,7 @@ describe("the sitting routes", () => {
   });
 
   test("a sitting needs a real scheduled time and a known tender", () => {
-    const missingTender = createSitting({ tenderIds: [TENDER], scheduledAt: "2026-11-10T09:00:00Z" }, "Officer");
+    const missingTender = createSitting({ tenderIds: [TENDER], scheduledAt: FUTURE }, "Officer");
     expect(missingTender.code).toBe(422);
     expect(JSON.stringify(missingTender.body)).toContain("the record does not know");
 
@@ -244,7 +253,7 @@ describe("the sitting routes", () => {
   test("creating a sitting issues the notice in one act and writes the audit line", async () => {
     state.pipeline.push({ ref: TENDER, title: "x", createdAt: NOW.toISOString(), updatedAt: NOW.toISOString(), createdById: "u1", stage: "REVIEW", currency: "ZMW", budgetEstimate: 1_000_000 } as never);
     const out = createSitting(
-      { tenderIds: [TENDER], scheduledAt: "2026-11-10T09:00:00Z", location: "Committee Room 2", quorumRequired: 3 },
+      { tenderIds: [TENDER], scheduledAt: FUTURE, location: "Committee Room 2", quorumRequired: 3 },
       "Procurement Officer",
     );
     expect(out.code).toBe(201);
@@ -273,7 +282,7 @@ describe("the sitting routes", () => {
     /* The sandbox audit file persists across runs — judge growth, not total. */
     const before = (await readLogEntries()).filter((l) => l.tool === "record_attendance").length;
     state.pipeline.push({ ref: TENDER, title: "x", createdAt: NOW.toISOString(), updatedAt: NOW.toISOString(), createdById: "u1", stage: "REVIEW", currency: "ZMW", budgetEstimate: 1_000_000 } as never);
-    createSitting({ tenderIds: [TENDER], scheduledAt: "2026-11-10T09:00:00Z" }, "Clerk");
+    createSitting({ tenderIds: [TENDER], scheduledAt: FUTURE }, "Clerk");
     const id = state.sittings[0].id;
     const admitted = recordAttendance(id, { name: "Alice Mwale" }, "Clerk");
     expect(admitted.code).toBe(200);
@@ -289,7 +298,7 @@ describe("the sitting routes", () => {
 
   test("ending the sitting closes attendance and the quorum with it", async () => {
     state.pipeline.push({ ref: TENDER, title: "x", createdAt: NOW.toISOString(), updatedAt: NOW.toISOString(), createdById: "u1", stage: "REVIEW", currency: "ZMW", budgetEstimate: 1_000_000 } as never);
-    createSitting({ tenderIds: [TENDER], scheduledAt: "2026-11-10T09:00:00Z" }, "Clerk");
+    createSitting({ tenderIds: [TENDER], scheduledAt: FUTURE }, "Clerk");
     const id = state.sittings[0].id;
     recordAttendance(id, { name: "Alice Mwale" }, "Clerk");
     const quit = recordAttendance(id, { name: "Alice Mwale" }, "Clerk");

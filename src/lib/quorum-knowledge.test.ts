@@ -21,6 +21,10 @@ describe("Quorum's assistant operating manual", () => {
     const limits = readSystemGuide("limits");
     expect(limits).toContain("Not yet real");
     expect(limits).toContain("live OCDS feed");
-    expect(limits).toContain("PDF/DOCX/XLSX/OCR");
+    /* Extraction and OCR ship; the manual must say so and keep the caveats. */
+    const documents = readSystemGuide("documents");
+    expect(documents).toContain("upload path is live");
+    expect(documents).toContain("Poppler + Tesseract");
+    expect(documents).toContain("JSON and ZIP");
   });
 });

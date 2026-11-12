@@ -5,9 +5,9 @@
  * It does not any more: this deterministic brain reads the same desk tools
  * and stages the same signed proposals, so the assistant can investigate live
  * records and assign reviews while final gate decisions stay with a named
- * human. When the Meta model key is configured,
- * the same loop hands over to Muse Spark and this file becomes the silent
- * fallback it always was.
+ * human. When the Kira endpoint is configured,
+ * the same loop hands over to Kira and this file becomes the silent fallback
+ * it always was.
  *
  * It is intentionally narrow: keyword intents over the live record, sharp
  * one-paragraph answers, and action proposals that go through exactly the
@@ -182,7 +182,7 @@ function answerGuide(text: string): BrainAnswer {
     [/supplier|bidder|vendor|org portal/i, "suppliers"],
     [/notif|clock|deadline|inbox|email|whatsapp/i, "notifications"],
     [/upload|document|pack|pdf|ocr/i, "documents"],
-    [/model|muse|spark|voice|provenance|llm/i, "models"],
+    [/model|kira|muse|spark|voice|provenance|llm/i, "models"],
     [/security|injection|safe|prompt/i, "security"],
     [/deploy|hosting|worker|ec2|storage/i, "deployment"],
     [/roadmap|not yet|limit|real|honest/i, "limits"],

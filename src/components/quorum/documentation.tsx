@@ -375,7 +375,7 @@ const DOC_CHAPTERS: DocChapter[] = [
         head: ["LAYER", "WHAT IT DOES", "WHAT YOU STILL VERIFY"],
         rows: [
           ["Rule checks", "Apply recorded checks for requirements such as missing documents, budget limits and specified thresholds.", "Confirm the rule matches the tender and the extracted values are correct."],
-          ["Muse Spark 1.3, when configured", "Can assist with planning, bidder comparison and drafting a committee redline.", "Check the run report, source documents and the exact claim before using the draft."],
+          ["Kira, when configured", "The open-weight model that can assist with planning, bidder comparison and drafting a committee redline.", "Check the run report, source documents and the exact claim before using the draft."],
           ["Fallback path", "A configured in-region model may answer when the hosted service is unavailable; a deterministic template may be used if model calls fail.", "Read the report's model source. A template is not a model analysis."],
           ["Quote matching", "Can confirm that quoted text appears in the selected source document.", "A text match does not prove the passage supports the conclusion or legal interpretation."],
           ["Human review", "An officer verifies findings; an authorised committee member records the decision.", "Check authority, applicable rules and the full procurement file."],

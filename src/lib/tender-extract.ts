@@ -99,16 +99,25 @@ async function extractScannedPdf(bytes: Uint8Array, totalPages: number): Promise
       maxBuffer: 1024 * 1024,
     });
     const pageTexts: string[] = [];
+    let retriedPages = 0;
+    const ocrPage = async (pngPath: string, psm: string, timeoutMs: number): Promise<string> => {
+      const { stdout } = await execFileAsync("tesseract", [pngPath, "stdout", "-l", process.env.QUORUM_OCR_LANG?.trim() || "eng", "--psm", psm], {
+        timeout: timeoutMs,
+        maxBuffer: 2 * 1024 * 1024,
+      });
+      return cleanText(stdout);
+    };
     for (let page = 1; page <= pagesToProcess; page += 1) {
       const remainingMs = deadline - Date.now();
       if (remainingMs <= 0) break;
       const pngPath = `${outputPrefix}-${page}.png`;
       try {
-        const { stdout } = await execFileAsync("tesseract", [pngPath, "stdout", "-l", process.env.QUORUM_OCR_LANG?.trim() || "eng", "--psm", "3"], {
-          timeout: Math.min(OCR_PAGE_TIMEOUT_MS, remainingMs),
-          maxBuffer: 2 * 1024 * 1024,
-        });
-        const text = cleanText(stdout);
+        let text = await ocrPage(pngPath, "3", Math.min(OCR_PAGE_TIMEOUT_MS, remainingMs)).catch(() => "");
+        if (!text && Date.now() < deadline) {
+          /* One bounded retry with a sparser page-segmentation mode. */
+          retriedPages += 1;
+          text = await ocrPage(pngPath, "6", Math.min(OCR_PAGE_TIMEOUT_MS, Math.max(1, deadline - Date.now()))).catch(() => "");
+        }
         if (text) pageTexts.push(`[Page ${page}]\n${text}`);
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code === "ENOENT") {
@@ -122,7 +131,7 @@ async function extractScannedPdf(bytes: Uint8Array, totalPages: number): Promise
     const truncatedPages = totalPages > OCR_MAX_PAGES || processedPages < pagesToProcess;
     return {
       text: pageTexts.join("\n\n"),
-      note: truncatedPages ? `Local OCR recovered ${processedPages} pages (maximum ${OCR_MAX_PAGES} of ${totalPages}); upload smaller page ranges for the remainder.` : "Text recovered with local OCR (Tesseract). Verify OCR text and citations against the original scan.",
+      note: (truncatedPages ? `Local OCR recovered ${processedPages} pages (maximum ${OCR_MAX_PAGES} of ${totalPages}); upload smaller page ranges for the remainder.` : "Text recovered with local OCR (Tesseract). Verify OCR text and citations against the original scan.") + (retriedPages ? ` ${retriedPages} page(s) needed a second OCR pass.` : ""),
     };
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;

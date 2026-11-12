@@ -11,11 +11,11 @@ import { composeMinutes } from "@/lib/meeting-agent";
 import type { MeetingNotePayload } from "@/lib/meeting-minutes";
 
 /**
- * Meeting notes — the Meta agent's minutes.
+ * Meeting notes — Kira's minutes.
  *
  * GET  → every filed note, newest first; `?meetingId=` narrows to one meeting.
- * POST → { meetingId, transcript } reads the meeting from the diary, asks the
- *        Meta model for structured minutes (deterministic fallback when it is
+ * POST → { meetingId, transcript } reads the meeting from the diary, asks
+ *        Kira for structured minutes (deterministic fallback when it is
  *        unavailable) and files the note against that meeting.
  *
  * The meeting is looked up server-side: the client cannot attach minutes to a

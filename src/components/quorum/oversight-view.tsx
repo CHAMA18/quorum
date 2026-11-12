@@ -17,6 +17,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { OversightMetricsPanel } from "@/components/quorum/oversight-metrics-panel";
 import { SpecBar } from "@/components/quorum/reveal";
 import { TeamInviteDeliveryActions } from "@/components/quorum/team-invite-delivery-actions";
 import { trapTabFocus } from "@/lib/a11y";
@@ -544,6 +545,8 @@ export function OversightView({
               </div>
             ))}
           </section>
+
+          <OversightMetricsPanel />
 
           {readOnly && (
             <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3.5 text-[12px] leading-relaxed text-emerald-900">

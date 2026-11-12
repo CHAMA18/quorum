@@ -19,6 +19,7 @@ import {
   REQUIRED_DOCUMENT_GROUPS,
 } from "@/lib/required-bid-documents";
 import { cn } from "@/lib/utils";
+import { documentTick, TICK_LABEL } from "@/lib/document-tick";
 import { fmtDate } from "./supplier-data";
 import { SupplierDocumentInspector } from "./supplier-document-inspector";
 
@@ -206,7 +207,7 @@ export function SupplierDocumentsSection({
 
       <div className="mt-3 space-y-2.5">
         {REQUIRED_DOCUMENT_GROUPS.map((group, groupIndex) => {
-          const onRecord = group.documents.filter((document) => documentByRequirement.has(document)).length;
+          const onRecord = group.documents.filter((document) => documentTick(documentByRequirement.get(document)) === "verified").length;
           const complete = onRecord === group.documents.length;
           return (
             <section
@@ -240,7 +241,7 @@ export function SupplierDocumentsSection({
                     complete ? "text-emerald-700 dark:text-emerald-300" : "text-ink-500 dark:text-ink-400",
                   )}
                 >
-                  {onRecord} OF {group.documents.length}
+                  {onRecord} OF {group.documents.length} VERIFIED
                   {complete ? " · COMPLETE" : ""}
                 </span>
               </span>
@@ -258,11 +259,13 @@ export function SupplierDocumentsSection({
                   >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex min-w-0 items-start gap-1.5">
-                          {uploaded ? (
+                          {documentTick(uploaded) === "verified" ? (
                             <CircleCheck
                               className="mt-0.5 h-3 w-3 shrink-0 text-emerald-600 dark:text-emerald-400"
                               aria-hidden="true"
                             />
+                          ) : uploaded ? (
+                            <CircleAlert className="mt-0.5 h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
                           ) : (
                             <FileText className="mt-0.5 h-3 w-3 shrink-0 text-ink-400" aria-hidden="true" />
                           )}
@@ -273,7 +276,7 @@ export function SupplierDocumentsSection({
                                 className="mt-0.5 truncate text-[10.5px] text-emerald-700 dark:text-emerald-300"
                                 title={`${uploaded.filename} · ${fmtDate(uploaded.uploadedAt)}`}
                               >
-                                {uploaded.filename}
+                                {uploaded.filename} · {TICK_LABEL[documentTick(uploaded)]}
                               </p>
                             ) : null}
                           </div>

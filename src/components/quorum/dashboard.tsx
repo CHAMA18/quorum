@@ -107,9 +107,12 @@ import { signedTenderDownloadUrl, uploadTenderDocument } from "@/lib/tender-uplo
 import { StoredDocsBrowser } from "@/components/quorum/stored-docs-browser";
 import { HorizontalScrollRegion } from "@/components/quorum/horizontal-scroll-region";
 import { preferredScrollBehavior, trapTabFocus } from "@/lib/a11y";
+import { sortGateQueue, type GateSortMode } from "@/lib/gate-queue";
+import { browserOutboxStorage, enqueue, flushOutbox } from "@/lib/outbox";
+import { buildHeatmap, HEAT_COLOR } from "@/lib/risk-heatmap";
 import { systemReferenceLabel } from "@/lib/system-reference";
 import { cn } from "@/lib/utils";
-import { ThemeModeRow } from "@/components/quorum/theme-toggle";
+import { A11yModeRow, ThemeModeRow } from "@/components/quorum/theme-toggle";
 import { gateFact, type GateInputs } from "@/components/quorum/gate-facts";
 
 /**
@@ -710,6 +713,7 @@ type AgentHealth = {
   fsMcp: { status: string; tools: string[] };
   graphs: string[];
   counts: { toolCalls: number; runs: number; gates: number; pendingGates: number };
+  model?: { model: string; providerLabel: string; residency?: { residency: string; redactOn: boolean } } | null;
 };
 
 type AgentStatus = { sidecar: string | null; health: AgentHealth | null };
@@ -789,6 +793,63 @@ function AgentStatusBadge({ mode, className, darkSurface = false }: { mode: Agen
         />
       </span>
       {label}
+    </span>
+  );
+}
+
+/** Where the drafting model lives and whether supplier data was redacted. */
+function ResidencyBadge({ health, className }: { health: AgentHealth | null; className?: string }) {
+  const model = health?.model;
+  if (!model?.residency) return null;
+  return (
+    <span className={cn("inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full border border-ink-200 bg-white px-3 type-micro text-ink-600 dark:border-white/10 dark:bg-white/[0.04]", className)}>
+      {model.residency.residency.replace(/_/g, " ")} · {model.residency.redactOn ? "REDACTED" : "UNREDACTED"} · {model.model.toUpperCase()}
+    </span>
+  );
+}
+
+/** Queued offline writes, flushed when the connection returns. */
+function OutboxChip({ className }: { className?: string }) {
+  const [pending, setPending] = useState(0);
+  useEffect(() => {
+    const storage = browserOutboxStorage();
+    const sync = async () => {
+      await flushOutbox(storage, async (url, body) => {
+        const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body });
+        return res.ok;
+      }).catch(() => 0);
+      setPending(storage.read().length);
+    };
+    void sync();
+    const id = setInterval(sync, 30_000);
+    window.addEventListener("online", sync);
+    return () => { clearInterval(id); window.removeEventListener("online", sync); };
+  }, []);
+  if (!pending) return null;
+  return (
+    <span className={cn("inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full border border-amber-300 bg-amber-50 px-3 type-micro text-amber-800", className)}>
+      {pending} QUEUED — WILL SYNC
+    </span>
+  );
+}
+
+/** 26 committee days against the measured agent clock (sidecar bench file). */
+function TimeSavedChip({ className }: { className?: string }) {
+  const [benchMs, setBenchMs] = useState<number | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/eval/summary?XTransformPort=3031", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (alive && typeof d?.bench?.medianMs === "number") setBenchMs(d.bench.medianMs); })
+      .catch(() => undefined);
+    return () => { alive = false; };
+  }, []);
+  if (benchMs === null) return null;
+  const agentMin = benchMs / 60_000;
+  const saved = Math.max(0, Math.round((1 - agentMin / (26 * 24 * 60)) * 100));
+  return (
+    <span className={cn("inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full border border-ink-200 bg-white px-3 type-micro text-ink-600 dark:border-white/10 dark:bg-white/[0.04]", className)}>
+      26 DAYS → {agentMin < 1 ? `${Math.round(benchMs / 1000)} SEC` : `${agentMin.toFixed(1)} MIN`} · {saved}% SAVED
     </span>
   );
 }
@@ -2172,6 +2233,9 @@ function SidebarContent({
         <div>
           <ThemeModeRow />
         </div>
+        <div className="mt-2">
+          <A11yModeRow />
+        </div>
 
         <div className="mt-3 flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.03] px-2.5 py-2">
           <span
@@ -2809,13 +2873,15 @@ export function GateQueue({
   const q = query ?? localQ;
   const setQ = onQuery ?? setLocalQ;
   const needle = q.trim().toLowerCase();
-  const visible = needle
+  const [sortMode, setSortMode] = useState<GateSortMode>("queue");
+  const filtered = needle
     ? queue.filter((g) =>
         `${g.tender} ${g.title} ${g.supplier} ${GATE_TOOL_LABEL[g.tool] ?? g.tool} ${g.firstApprover ?? ""} ${g.status}`
           .toLowerCase()
           .includes(needle),
       )
     : queue;
+  const visible = sortGateQueue(filtered, sortMode);
   /* The same term reads the ledger below the queue. */
   const visibleLedger = needle
     ? ledger.filter((row) =>
@@ -2896,6 +2962,19 @@ export function GateQueue({
               CLEAR
             </button>
           )}
+          <label className="inline-flex shrink-0 items-center gap-1.5 font-code text-[9px] font-bold tracking-[0.06em] text-ink-500">
+            SORT
+            <select
+              value={sortMode}
+              onChange={(e) => setSortMode(e.target.value as GateSortMode)}
+              aria-label="Sort approvals"
+              className="focus-brand min-h-9 rounded-md border border-ink-200 bg-white px-2 text-[11px] font-semibold text-ink-800"
+            >
+              <option value="queue">Queue order</option>
+              <option value="risk">Highest risk</option>
+              <option value="urgency">Most urgent</option>
+            </select>
+          </label>
           <span
             aria-live="polite"
             className="ml-auto shrink-0 font-code text-[10px] font-bold tracking-[0.06em] text-ink-600 tabular"
@@ -3969,6 +4048,32 @@ function FindingStatusChip({ status }: { status: FindingStatus }) {
 
 function FindingsView({ rows, onOpenRun }: { rows: FindingRow[]; onOpenRun: () => void }) {
   const [f, setF] = useState<"ALL" | FindingStatus>("ALL");
+  const [metaFor, setMetaFor] = useState<FindingRow | null>(null);
+  const [meta, setMeta] = useState<{ assignee: string; due: string; comments: { by: string; at: string; text: string }[] }>({ assignee: "", due: "", comments: [] });
+  const [commentDraft, setCommentDraft] = useState("");
+  const openMeta = (row: FindingRow) => {
+    setMetaFor(row);
+    setMeta({ assignee: "", due: "", comments: [] });
+    setCommentDraft("");
+    void fetch(`/api/findings/meta?run=${encodeURIComponent(row.run)}&finding=${encodeURIComponent(row.id)}`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.meta) setMeta({ assignee: d.meta.assignee ?? "", due: d.meta.due ?? "", comments: d.meta.comments ?? [] }); })
+      .catch(() => undefined);
+  };
+  const saveMeta = (withComment: boolean) => {
+    if (!metaFor) return;
+    const payload = { runId: metaFor.run, findingId: metaFor.id, assignee: meta.assignee, due: meta.due, ...(withComment && commentDraft.trim() ? { comment: commentDraft } : {}) };
+    void (async () => {
+      try {
+        const res = await fetch("/api/findings/meta", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+        if (!res.ok) throw new Error("save failed");
+        const d = (await res.json()) as { meta?: typeof meta };
+        if (d?.meta) { setMeta({ assignee: d.meta.assignee ?? "", due: d.meta.due ?? "", comments: d.meta.comments ?? [] }); setCommentDraft(""); }
+      } catch {
+        enqueue(browserOutboxStorage(), "/api/findings/meta", payload);
+      }
+    })();
+  };
   const filtered = f === "ALL" ? rows : rows.filter((r) => r.status === f);
   const open = rows.filter((r) => r.status === "OPEN").length;
   const classCounts = rows.reduce<Record<string, number>>((acc, r) => {
@@ -4011,6 +4116,21 @@ function FindingsView({ rows, onOpenRun }: { rows: FindingRow[]; onOpenRun: () =
                 ))}
               </div>
             </header>
+            {(() => {
+              const heat = buildHeatmap(rows);
+              return heat.cells.length ? (
+                <div className="border-b border-ink-100 px-5 py-3">
+                  <p className="font-code text-[9px] font-bold tracking-[0.08em] text-ink-500">RISK HEATMAP · TENDER × CATEGORY (OPEN FINDINGS)</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {heat.cells.map((c) => (
+                      <span key={`${c.tender}-${c.category}`} title={`${c.tender} · ${c.category}: ${c.open} open of ${c.count}`} className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-code text-[9px] font-bold text-ink-800" style={{ backgroundColor: HEAT_COLOR[c.intensity] }}>
+                        {c.tender.split("-").slice(0, 2).join("-")} · {c.category} · {c.open}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null;
+            })()}
             <HorizontalScrollRegion
               label="Findings table"
               hint="Swipe or scroll the table to see source and run details."
@@ -4022,7 +4142,7 @@ function FindingsView({ rows, onOpenRun }: { rows: FindingRow[]; onOpenRun: () =
                 <caption className="sr-only">Findings — every flag with its class, status and source</caption>
                 <thead className="sticky top-0 z-10 bg-paper/95 backdrop-blur">
                   <tr className="border-b border-ink-100">
-                    {["FINDING", "CLASS", "STATUS", "SOURCE", "RUN"].map((h) => (
+                    {["FINDING", "CLASS", "STATUS", "SOURCE", "RUN", "WHY", "ASSIGN"].map((h) => (
                       <th
                         key={h}
                         scope="col"
@@ -4062,6 +4182,27 @@ function FindingsView({ rows, onOpenRun }: { rows: FindingRow[]; onOpenRun: () =
                       </td>
                       <td className="px-4 font-code text-[10px] tracking-[0.04em] text-ink-600">{row.src}</td>
                       <td className="py-3.5 pr-5 font-code text-[10px] font-bold tracking-[0.04em] text-ink-950">{row.run}</td>
+                      <td className="py-3.5 pr-5">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.dispatchEvent(new CustomEvent("quorum:why", { detail: { question: `Why was this flagged? ${row.note} (${row.cls}, tender ${row.tender}, source ${row.src || "not stated"})` } }));
+                          }}
+                          className="focus-brand inline-flex min-h-8 items-center rounded-md border border-ink-200 px-2 font-code text-[9px] font-bold tracking-[0.06em] text-ink-700 hover:border-brand-400 hover:text-brand-700"
+                        >
+                          WHY?
+                        </button>
+                      </td>
+                      <td className="py-3.5 pr-5">
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); openMeta(row); }}
+                          className="focus-brand inline-flex min-h-8 items-center rounded-md border border-ink-200 px-2 font-code text-[9px] font-bold tracking-[0.06em] text-ink-700 hover:border-brand-400 hover:text-brand-700"
+                        >
+                          ASSIGN
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {filtered.length === 0 && (
@@ -4074,6 +4215,33 @@ function FindingsView({ rows, onOpenRun }: { rows: FindingRow[]; onOpenRun: () =
                 </tbody>
               </table>
             </HorizontalScrollRegion>
+            {metaFor ? (
+              <div className="border-t border-ink-100 px-5 py-4">
+                <p className="font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">ASSIGNMENT · {metaFor.note}</p>
+                <div className="mt-3 flex flex-wrap items-end gap-2">
+                  <label className="text-[11px] text-ink-600">Named officer
+                    <input value={meta.assignee} onChange={(e) => setMeta((m) => ({ ...m, assignee: e.target.value }))} placeholder="e.g. Mwansa Chalwe" className="focus-brand mt-1 block h-10 rounded-md border border-ink-200 px-2.5 text-[13px] text-ink-900" />
+                  </label>
+                  <label className="text-[11px] text-ink-600">Due date
+                    <input type="date" value={meta.due} onChange={(e) => setMeta((m) => ({ ...m, due: e.target.value }))} className="focus-brand mt-1 block h-10 rounded-md border border-ink-200 px-2.5 text-[13px] text-ink-900" />
+                  </label>
+                  <button type="button" onClick={() => saveMeta(false)} className="focus-brand inline-flex min-h-10 items-center rounded-md bg-ink-950 px-3 font-code text-[10px] font-bold tracking-[0.05em] text-white">SAVE ASSIGNMENT</button>
+                </div>
+                {meta.comments.length ? (
+                  <ul className="mt-3 space-y-1.5">
+                    {meta.comments.map((c, i) => (
+                      <li key={i} className="text-[12px] text-ink-700"><span className="font-semibold">{c.by}</span> <span className="text-ink-400">{c.at.slice(0, 10)}</span> — {c.text}</li>
+                    ))}
+                  </ul>
+                ) : null}
+                <div className="mt-3 flex flex-wrap items-end gap-2">
+                  <label className="min-w-[240px] flex-1 text-[11px] text-ink-600">Comment
+                    <textarea value={commentDraft} onChange={(e) => setCommentDraft(e.target.value)} rows={2} placeholder="Record how this finding was handled…" className="focus-brand mt-1 block w-full rounded-md border border-ink-200 px-2.5 py-2 text-[13px] text-ink-900" />
+                  </label>
+                  <button type="button" onClick={() => saveMeta(true)} disabled={!commentDraft.trim()} className="focus-brand inline-flex min-h-10 items-center rounded-md border border-ink-300 px-3 font-code text-[10px] font-bold tracking-[0.05em] text-ink-800 disabled:opacity-40">ADD COMMENT</button>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
         <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
@@ -10294,7 +10462,7 @@ export function Dashboard({
               label: "Open Bid evaluation",
               icon: Scale,
               hint: "TENDER WORKFLOW",
-              keywords: "bid evaluation bidder Meta AI tender workflow",
+              keywords: "bid evaluation bidder Kira AI tender workflow",
               run: openBidEvaluation,
             }]
           : []),
@@ -10853,6 +11021,9 @@ export function Dashboard({
                 <span className="text-ink-300">·</span> Local
               </p>
               <AgentStatusBadge mode={agentMode} className="hidden lg:inline-flex" />
+              <ResidencyBadge health={agent.health} className="hidden xl:inline-flex" />
+              <TimeSavedChip className="hidden xl:inline-flex" />
+              <OutboxChip className="hidden xl:inline-flex" />
               <NotificationBell
                 onNavigate={(section) => switchTo(section as SectionId)}
                 onToast={onToast}

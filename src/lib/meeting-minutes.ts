@@ -1,7 +1,7 @@
 /**
  * Meeting minutes — the shapes and the honest fallback.
  *
- * The Meta agent drafts the minutes; this module holds the contract and the
+ * Kira drafts the minutes; this module holds the contract and the
  * deterministic draft that runs when no model is configured or the model's
  * reply cannot be trusted. Both paths read only the transcript that was
  * captured — nothing here invents a decision, an owner or a deadline.
@@ -39,7 +39,7 @@ export interface MeetingNotePayload {
   agenda: string | null;
   createdBy: string;
   createdAt: string;
-  provider: "meta" | "local";
+  provider: "kira" | "meta" | "local";
   model: string;
   transcript: string;
   minutes: MeetingMinutes;
@@ -172,7 +172,7 @@ export function minutesMarkdown(note: MeetingNotePayload): string {
     `- **Meeting:** ${whenOf(note.meetingStartsAt)}`,
     `- **Recorded by:** ${note.createdBy}`,
     `- **Filed:** ${whenOf(note.createdAt)}`,
-    `- **Agent:** ${note.provider === "meta" ? note.model : "deterministic local draft (no Meta AI configured)"}`,
+    `- **Agent:** ${note.provider === "local" ? "deterministic local draft (no Kira model configured)" : note.model}`,
     ...(note.agenda ? [`- **Agenda:** ${note.agenda}`] : []),
     "",
     "## Summary",

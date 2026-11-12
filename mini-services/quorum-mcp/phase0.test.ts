@@ -169,7 +169,7 @@ describe("deployment truth", () => {
     const deployment = normalizeDeployment(undefined);
     expect(deployment.mode).toBe("RECORD_ONLY");
     expect(deployment.publication.mode).toBe("SIMULATED");
-    expect(deployment.publication.portal).toContain("simulated");
+    expect(deployment.publication.portal).toContain("no external publication");
   });
 
   test("a claimed CONNECTED state without a receipt collapses to RECORD_ONLY", () => {

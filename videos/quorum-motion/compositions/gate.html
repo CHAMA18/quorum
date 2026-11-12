@@ -1,0 +1,23 @@
+<template>
+<style>
+#root{position:absolute;inset:0;background:#08090c;color:#f3e3cf;font-family:Arial,sans-serif}
+#g-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+#g-kicker{font-size:28px;letter-spacing:8px;color:#e8382a;font-weight:700}
+#g-line{font-size:64px;font-weight:700;margin-top:18px;text-align:center}
+#g-stamp{position:absolute;right:140px;top:300px;border:8px solid #e8382a;color:#e8382a;font-size:64px;font-weight:800;padding:18px 30px;transform:rotate(-8deg)}
+#g-lower{position:absolute;left:96px;bottom:110px;width:1500px;background:#121317;border-left:10px solid #e8382a;padding:34px 40px}
+#g-lower h3{font-size:44px}#g-lower p{font-size:28px;color:#9a958c;margin-top:8px}
+</style>
+<div id="root" data-composition-id="gate" data-width="1920" data-height="1080">
+  <div id="g-center"><div id="g-kicker">THE HUMAN GATE</div><div id="g-line">One button the machine cannot press. It waits.</div></div>
+  <div id="g-stamp">403 REFUSED</div>
+  <div id="g-lower"><h3>HUMAN GATE — PENDING</h3><p>gate_753w2e · Unsigned filing is refused · The committee decides</p></div>
+</div>
+<script>
+window.__timelines=window.__timelines||{};
+const tg=gsap.timeline({paused:true,defaults:{ease:"power3.out"}});
+gsap.set("#g-lower",{x:-80,opacity:0});gsap.set("#g-stamp",{scale:2.2,opacity:0});gsap.set(["#g-kicker","#g-line"],{y:30,opacity:0});
+tg.to("#g-kicker",{y:0,opacity:1,duration:.4},.2).to("#g-line",{y:0,opacity:1,duration:.5},.5).to("#g-lower",{x:0,opacity:1,duration:.6},1.2).to("#g-stamp",{scale:1,opacity:1,duration:.35,ease:"power4.in"},2.2);
+window.__timelines["gate"]=tg;
+</script>
+</template>

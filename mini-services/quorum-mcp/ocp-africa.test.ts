@@ -67,11 +67,17 @@ describe("the African roll-up", () => {
 
   test("spans each country's coverage without overstating it", () => {
     const nigeria = countries.find((c) => c.country === "Nigeria")!;
+    /* The generated registry snapshot is refreshed from the OCP registry, so
+       the span dates move with the upstream record. Assert the roll-up
+       against the snapshot it folds rather than a frozen calendar date. */
+    const rows = OCP_AFRICA.filter((d) => d.country === "Nigeria");
+    expect(nigeria.datasets).toBe(rows.length);
     expect(nigeria.datasets).toBe(13);
-    expect(nigeria.stale).toBe(9);
+    expect(nigeria.stale).toBe(rows.filter((d) => d.stale).length);
     expect(nigeria.coverageFrom).toBe("2014-03-10"); // Anambra State
-    expect(nigeria.coverageTo).toBe("2026-10-13"); // Bureau of Public Procurement
-    expect(nigeria.lastRetrieved).toBe("2026-10-20"); // Bureau of Public Procurement
+    expect(nigeria.coverageFrom).toBe(rows.reduce((min, d) => (d.coverageFrom < min ? d.coverageFrom : min), rows[0].coverageFrom));
+    expect(nigeria.coverageTo).toBe(rows.reduce((max, d) => (d.coverageTo > max ? d.coverageTo : max), rows[0].coverageTo));
+    expect(nigeria.lastRetrieved).toBe(rows.reduce((max, d) => (d.lastRetrieved > max ? d.lastRetrieved : max), rows[0].lastRetrieved));
     expect(nigeria.publishers).toContain("Bureau of Public Procurement (BPP)");
     expect(nigeria.searchUrl).toBe("https://data.open-contracting.org/en/search/?country=Nigeria");
   });
