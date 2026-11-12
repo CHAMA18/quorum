@@ -4,6 +4,16 @@ import { mkdirSync, writeFileSync } from "node:fs";
 const BASE = "http://localhost:3000";
 const OUT = "recordings/demo/recon";
 mkdirSync(OUT, { recursive: true });
+
+const OWNER_EMAIL = process.env.QUORUM_OWNER_EMAIL;
+const OWNER_PASSWORD = process.env.QUORUM_OWNER_PASSWORD;
+const SUPPLIER_EMAIL = process.env.QUORUM_SUPPLIER_EMAIL;
+const SUPPLIER_PASSWORD = process.env.QUORUM_SUPPLIER_PASSWORD;
+if (!OWNER_EMAIL || !OWNER_PASSWORD || !SUPPLIER_EMAIL || !SUPPLIER_PASSWORD) {
+  throw new Error(
+    "Set QUORUM_OWNER_EMAIL, QUORUM_OWNER_PASSWORD, QUORUM_SUPPLIER_EMAIL and QUORUM_SUPPLIER_PASSWORD before recording."
+  );
+}
 const file = (name, text) => writeFileSync(`${OUT}/${name}.txt`, text, "utf8");
 
 const browser = await chromium.launch({ headless: true });
@@ -37,8 +47,8 @@ async function dump(name) {
 }
 
 await page.goto(`${BASE}/#/login`, { waitUntil: "networkidle" });
-await page.fill('input[type="email"]', "chungu424@gmail.com");
-await page.fill('input[type="password"]', "REDACTED");
+await page.fill('input[type="email"]', OWNER_EMAIL);
+await page.fill('input[type="password"]', OWNER_PASSWORD);
 await page.locator('input[type="password"]').press("Enter");
 await page.waitForTimeout(3000);
 await dump("02-dashboard");
@@ -60,8 +70,8 @@ await page.goto(`${BASE}/org`, { waitUntil: "networkidle" });
 await page.getByRole("button", { name: /^Sign in$/i }).first().click().catch(() => {});
 await page.waitForTimeout(800);
 await dump("04-org-login");
-await page.fill('input[type="email"]', "e2e.savanna@example.com");
-await page.fill('input[type="password"]', "REDACTED");
+await page.fill('input[type="email"]', SUPPLIER_EMAIL);
+await page.fill('input[type="password"]', SUPPLIER_PASSWORD);
 await page.locator('input[type="password"]').press("Enter");
 await page.waitForTimeout(3500);
 await dump("05-org-dashboard");

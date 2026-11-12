@@ -433,9 +433,9 @@ interface AuthScreenProps {
 export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, onClose }: AuthScreenProps) {
   const [values, setValues] = useState({
     name: "",
-    email: "chungu424@gmail.com",
+    email: "",
     organization: "",
-    password: "REDACTED",
+    password: "",
   });
   const [inviteCodeDraft, setInviteCodeDraft] = useState<string | null>(null);
   const linkedInviteCode = useSyncExternalStore(subscribeInviteLink, inviteCodeSnapshot, serverInviteCodeSnapshot);
