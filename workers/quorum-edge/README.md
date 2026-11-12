@@ -24,6 +24,14 @@ current production origin is `https://quorum-api-tgw2.onrender.com`; Wrangler's
 - **Real voice** at `/__edge/tts`: Deepgram Aura-2 through the Workers AI
   binding, with MeloTTS as a server-side fallback. Requires the same
   `x-quorum-edge-key`; `/api/muse/speak` calls it server-to-server.
+- **Kira at `/v1/chat/completions`**. Quorum's open-weight model is served by
+  the Workers AI binding as `@cf/meta/llama-3.2-3b-instruct` behind an
+  OpenAI-compatible chat-completions route. It accepts `EDGE_SHARED_SECRET`
+  as a bearer token (or `x-quorum-edge-key`) and answers plain text only —
+  streaming, tool calls and tool roles are refused rather than approximated.
+  Point the app at `https://quorum-edge.chungu424.workers.dev/v1` with
+  `KIRA_MODEL=@cf/meta/llama-3.2-3b-instruct`; Cloudflare is a hosted
+  network, so that deployment needs `MODEL_RESIDENCY=HOSTED` or `HYBRID`.
 - **Health** at `/__edge/health`.
 
 The Bun sidecar, JSON/Postgres state and filesystem MCP server remain separate

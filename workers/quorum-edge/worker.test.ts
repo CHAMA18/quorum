@@ -323,3 +323,90 @@ describe("quorum-edge R2 gate ranges", () => {
     expect(await res.text()).toBe("");
   });
 });
+
+describe("quorum-edge Kira chat completions", () => {
+  type RunInput = { messages: { role: string; content: string }[] };
+
+  function envWithAI(answer = "Kira is ready.", calls: { model: string; input: RunInput }[] = []) {
+    return {
+      ORIGIN_URL: "http://origin.test",
+      EDGE_SHARED_SECRET: SECRET,
+      AI: {
+        async run(model: string, input: RunInput) {
+          calls.push({ model, input });
+          return { response: answer };
+        },
+      },
+    } as unknown as EnvArg;
+  }
+
+  function chat(env: EnvArg, init: RequestInit = {}) {
+    return worker.fetch(
+      new Request("https://edge.test/v1/chat/completions", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...(init.headers as Record<string, string> | undefined) },
+        body: JSON.stringify({ model: "llama3.2:3b", messages: [{ role: "user", content: "Is the gate clear?" }] }),
+        ...init,
+      }),
+      env,
+    );
+  }
+
+  test("answers in the OpenAI chat-completions shape with the gated Kira model", async () => {
+    const calls: { model: string; input: RunInput }[] = [];
+    const res = await chat(envWithAI("  The gate is clear.  ", calls), { headers: { "x-quorum-edge-key": SECRET } });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      object: string;
+      model: string;
+      choices: { message: { role: string; content: string }; finish_reason: string }[];
+    };
+    expect(body.object).toBe("chat.completion");
+    expect(body.model).toBe("@cf/meta/llama-3.2-3b-instruct");
+    expect(body.choices[0].message).toEqual({ role: "assistant", content: "The gate is clear." });
+    expect(body.choices[0].finish_reason).toBe("stop");
+    expect(calls).toHaveLength(1);
+    expect(calls[0].model).toBe("@cf/meta/llama-3.2-3b-instruct");
+    expect(calls[0].input.messages).toEqual([{ role: "user", content: "Is the gate clear?" }]);
+  });
+
+  test("accepts the edge secret as a bearer token and refuses a missing one", async () => {
+    const bearer = await chat(envWithAI(), { headers: { authorization: `Bearer ${SECRET}` } });
+    expect(bearer.status).toBe(200);
+    const anonymous = await chat(envWithAI());
+    expect(anonymous.status).toBe(401);
+  });
+
+  test("refuses non-POST, streaming, tool roles and oversized conversations", async () => {
+    const env = envWithAI();
+    const get = await worker.fetch(
+      new Request("https://edge.test/v1/chat/completions", { headers: { "x-quorum-edge-key": SECRET } }),
+      env,
+    );
+    expect(get.status).toBe(405);
+
+    const streaming = await chat(env, {
+      headers: { "x-quorum-edge-key": SECRET },
+      body: JSON.stringify({ stream: true, messages: [{ role: "user", content: "hi" }] }),
+    });
+    expect(streaming.status).toBe(400);
+
+    const toolRole = await chat(env, {
+      headers: { "x-quorum-edge-key": SECRET },
+      body: JSON.stringify({ messages: [{ role: "tool", content: "result" }] }),
+    });
+    expect(toolRole.status).toBe(422);
+
+    const huge = await chat(env, {
+      headers: { "x-quorum-edge-key": SECRET },
+      body: JSON.stringify({ messages: [{ role: "user", content: "x".repeat(120_001) }] }),
+    });
+    expect(huge.status).toBe(413);
+
+    const empty = await chat(env, {
+      headers: { "x-quorum-edge-key": SECRET },
+      body: JSON.stringify({ messages: [] }),
+    });
+    expect(empty.status).toBe(422);
+  });
+});

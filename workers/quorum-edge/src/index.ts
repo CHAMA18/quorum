@@ -104,6 +104,116 @@ function isAuthorised(request: Request, env: Env): boolean {
   return expected.length > 0 && constantTimeEqual(supplied, expected);
 }
 
+/* ── Kira — the open-weight model on Workers AI ───────────────────────────
+   Quorum's web app talks to Kira through an OpenAI-compatible endpoint. This
+   route is that endpoint: it accepts a chat-completions body, reads it with
+   the Workers AI binding, and answers in the same shape. The model id is
+   fixed here so a caller cannot spend the binding on an arbitrary Workers AI
+   model. Only plain text is returned; tool calls and streaming are refused
+   rather than silently approximated. */
+
+const KIRA_MODEL = "@cf/meta/llama-3.2-3b-instruct";
+const KIRA_MAX_BODY = 512_000;
+const KIRA_MAX_CHARS = 120_000;
+const KIRA_ROLES = new Set(["system", "user", "assistant"]);
+
+function isKiraAuthorised(request: Request, env: Env): boolean {
+  const bearer = (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  const expected = env.EDGE_SHARED_SECRET ?? "";
+  if (!expected) return false;
+  return constantTimeEqual(bearer, expected) || isAuthorised(request, env);
+}
+
+/** Reduce OpenAI content (string or text parts) to the text Kira can read. */
+function kiraText(content: unknown): string | null {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return null;
+  const parts: string[] = [];
+  for (const part of content) {
+    if (!part || typeof part !== "object") return null;
+    const text = (part as { text?: unknown }).text;
+    if (typeof text !== "string") return null;
+    parts.push(text);
+  }
+  return parts.join("\n");
+}
+
+async function kiraChat(request: Request, env: Env): Promise<Response> {
+  if (!isKiraAuthorised(request, env)) {
+    return json({ error: { message: "unauthorised", type: "invalid_request_error" } }, 401);
+  }
+  if (!env.AI) {
+    return json({ error: { message: "Workers AI is not bound to this worker", type: "server_error" } }, 503);
+  }
+  if (request.method !== "POST") {
+    return json({ error: { message: "use POST", type: "invalid_request_error" } }, 405, { allow: "POST" });
+  }
+
+  const raw = await request.text();
+  if (raw.length > KIRA_MAX_BODY) {
+    return json({ error: { message: "request body is too large", type: "invalid_request_error" } }, 413);
+  }
+  let body: { messages?: unknown; max_completion_tokens?: unknown; max_tokens?: unknown; temperature?: unknown; stream?: unknown };
+  try {
+    body = (JSON.parse(raw) as typeof body) ?? {};
+  } catch {
+    return json({ error: { message: "expected JSON { messages }", type: "invalid_request_error" } }, 400);
+  }
+  if (body.stream === true) {
+    return json({ error: { message: "streaming is not supported on this endpoint", type: "invalid_request_error" } }, 400);
+  }
+  if (!Array.isArray(body.messages) || body.messages.length === 0 || body.messages.length > 100) {
+    return json({ error: { message: "messages must be a non-empty array", type: "invalid_request_error" } }, 422);
+  }
+
+  const messages: { role: string; content: string }[] = [];
+  let chars = 0;
+  for (const item of body.messages) {
+    if (!item || typeof item !== "object") {
+      return json({ error: { message: "each message must be an object", type: "invalid_request_error" } }, 422);
+    }
+    const role = (item as { role?: unknown }).role;
+    if (typeof role !== "string" || !KIRA_ROLES.has(role)) {
+      return json({ error: { message: "only system, user and assistant roles are supported", type: "invalid_request_error" } }, 422);
+    }
+    const text = kiraText((item as { content?: unknown }).content);
+    if (text === null) {
+      return json({ error: { message: "message content must be text", type: "invalid_request_error" } }, 422);
+    }
+    chars += text.length;
+    if (chars > KIRA_MAX_CHARS) {
+      return json({ error: { message: "conversation is too long for Kira", type: "invalid_request_error" } }, 413);
+    }
+    messages.push({ role, content: text });
+  }
+
+  const requestedMax = Number(body.max_completion_tokens ?? body.max_tokens ?? 0);
+  const maxTokens = Number.isFinite(requestedMax) && requestedMax > 0 ? Math.min(Math.floor(requestedMax), 4096) : 1024;
+  const rawTemp = Number(body.temperature);
+  const temperature = Number.isFinite(rawTemp) ? Math.min(Math.max(rawTemp, 0), 2) : 0.3;
+
+  try {
+    const result = (await env.AI.run(KIRA_MODEL, { messages, max_tokens: maxTokens, temperature })) as { response?: unknown } | null;
+    const text = typeof result?.response === "string" ? result.response.trim() : "";
+    if (!text) {
+      return json({ error: { message: "Kira returned no text", type: "server_error" } }, 502);
+    }
+    return json({
+      id: `chatcmpl-${crypto.randomUUID()}`,
+      object: "chat.completion",
+      created: Math.floor(Date.now() / 1000),
+      model: KIRA_MODEL,
+      choices: [{ index: 0, message: { role: "assistant", content: text }, finish_reason: "stop" }],
+      usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+    });
+  } catch (err) {
+    return json(
+      { error: { message: "Kira could not answer", detail: (err as Error).message.slice(0, 240), type: "server_error" } },
+      502
+    );
+  }
+}
+
 function safeKey(raw: string | null): string | null {
   if (!raw) return null;
   const key = raw.replace(/^\/+/, "").trim();
@@ -686,6 +796,8 @@ const worker = {
         headers: { location: destination.toString(), "cache-control": "no-store" },
       });
     }
+
+    if (url.pathname === "/v1/chat/completions") return kiraChat(request, env);
 
     if (url.pathname === "/__edge/health") {
       return json({
