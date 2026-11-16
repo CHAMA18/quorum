@@ -1,0 +1,13 @@
+# Health-watch image.
+#
+# The watchdog is one script that imports nothing but Node builtins, so it gets
+# its own image: a cron run must not pay for the Next.js build that the app
+# Dockerfile carries. Only the script is copied, so a change anywhere else in
+# the repo leaves this image untouched.
+FROM oven/bun:1-slim
+
+WORKDIR /app
+COPY scripts/health-watch.ts ./scripts/health-watch.ts
+
+# Render passes the run command itself; this is what a manual `docker run` does.
+CMD ["bun", "scripts/health-watch.ts"]
