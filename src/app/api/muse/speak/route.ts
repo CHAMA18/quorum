@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { clientKey, rateLimit } from "@/lib/auth";
+import { actorLimitKey, requestActor } from "@/lib/request-auth";
 
 /**
  * POST /api/muse/speak — the assistant's real voice.
@@ -30,6 +32,15 @@ function edgeConfig(): { url: string; secret: string } | null {
 }
 
 export async function POST(request: NextRequest) {
+  const actor = await requestActor(request);
+  if (!actor) return NextResponse.json({ error: "Sign in to use the assistant voice." }, { status: 401 });
+  if (
+    !rateLimit(actorLimitKey("muse-speak", actor), 20, 5 * 60_000) ||
+    !rateLimit(clientKey(request, "muse-speak"), 40, 5 * 60_000)
+  ) {
+    return NextResponse.json({ error: "Too many voice requests. Wait a few minutes and try again." }, { status: 429 });
+  }
+
   const cfg = edgeConfig();
   if (!cfg) {
     return NextResponse.json(

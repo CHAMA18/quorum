@@ -29,8 +29,9 @@ try {
   });
   check("org created", Boolean(org.id));
 
-  const session = db.createOrgSession(org.id, new Date(Date.now() + 86_400_000), `sess_${Date.now()}`);
-  check("session findable by token", db.findOrgSessionWithOrg(session.token)?.org.id === org.id);
+  const sessionToken = `sess_${Date.now()}`;
+  db.createOrgSession(org.id, new Date(Date.now() + 86_400_000), sessionToken);
+  check("session findable by token", db.findOrgSessionWithOrg(sessionToken)?.org.id === org.id);
 
   const code = auth.generateResetCode();
   check("code shape XXXX-XXXX", /^[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(code));
@@ -57,7 +58,7 @@ try {
   const updated = db.updateOrganizationPassword(org.id, "new-passphrase-9");
   check("password updated", updated?.password === "new-passphrase-9");
   check("one session revoked", db.deleteOrgSessionsByOrg(org.id) === 1);
-  check("revoked session is gone", db.findOrgSessionWithOrg(session.token) === null);
+  check("revoked session is gone", db.findOrgSessionWithOrg(sessionToken) === null);
 
   const expiredHash = auth.hashResetCode("ZZZZ-9999");
   db.createOrgPasswordReset(org.id, expiredHash, new Date(Date.now() - 1000));

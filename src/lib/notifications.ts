@@ -229,8 +229,16 @@ type GateLite = {
 /** Pull pending gates and deadlines; used as a fallback when events could not reach us. */
 export async function syncNotificationsForUser(user: UserRow): Promise<void> {
   const [gatesRes, deadlinesRes] = await Promise.allSettled([
-    fetch(`${SIDECAR}/api/gates`, { cache: "no-store", signal: AbortSignal.timeout(1800) }),
-    fetch(`${SIDECAR}/api/cycle/deadlines`, { cache: "no-store", signal: AbortSignal.timeout(1800) }),
+    fetch(`${SIDECAR}/api/gates`, {
+      cache: "no-store",
+      headers: { "x-quorum-workspace": user.workspaceId },
+      signal: AbortSignal.timeout(1800),
+    }),
+    fetch(`${SIDECAR}/api/cycle/deadlines`, {
+      cache: "no-store",
+      headers: { "x-quorum-workspace": user.workspaceId },
+      signal: AbortSignal.timeout(1800),
+    }),
   ]);
   if (gatesRes.status === "fulfilled" && gatesRes.value.ok) {
     const data = (await gatesRes.value.json().catch(() => ({}))) as { gates?: GateLite[] };
@@ -282,7 +290,7 @@ export async function fanOutGateEvent(event: {
   outcome?: string;
   note?: string;
 }): Promise<number> {
-  const users = listUsers().filter((u) => u.emailVerified);
+  const users = listUsers().filter((u) => u.emailVerified && u.status === "ACTIVE");
   let created = 0;
   for (const user of users) {
     const waiting = event.type === "GATE_WAITING";

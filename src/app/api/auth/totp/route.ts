@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { clientKey, getUserFromToken, rateLimit, SESSION_COOKIE, verifyPassword } from "@/lib/auth";
-import { setUserTotp } from "@/lib/db";
+import { getUserTotpSecret, setUserTotp } from "@/lib/db";
 import { generateTotpSecret, otpauthUrl, verifyTotp } from "@/lib/totp";
 
 /**
@@ -50,13 +50,14 @@ export async function PUT(req: NextRequest) {
   }
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   const code = typeof body?.code === "string" ? body.code.replace(/\s+/g, "") : "";
-  if (!user.totpSecret) return NextResponse.json({ error: "Start enrolment first." }, { status: 409 });
-  if (!verifyTotp(user.totpSecret, code)) {
+  const totpSecret = getUserTotpSecret(user.id);
+  if (!totpSecret) return NextResponse.json({ error: "Start enrolment first." }, { status: 409 });
+  if (!verifyTotp(totpSecret, code)) {
     return NextResponse.json({ error: "That code is not valid. Check the authenticator clock and try the current code." }, { status: 401 });
   }
   /* Keep the just-verified secret: clearing it here would leave the account
      marked enabled with no key to verify future codes against. */
-  setUserTotp(user.id, user.totpSecret, true);
+  setUserTotp(user.id, totpSecret, true);
   return NextResponse.json({ enabled: true });
 }
 
@@ -67,7 +68,8 @@ export async function DELETE(req: NextRequest) {
   const password = typeof body?.password === "string" ? body.password : "";
   const code = typeof body?.code === "string" ? body.code.replace(/\s+/g, "") : "";
   const passwordOk = password ? await verifyPassword(password, user.password) : false;
-  const codeOk = code && user.totpSecret ? verifyTotp(user.totpSecret, code) : false;
+  const totpSecret = getUserTotpSecret(user.id);
+  const codeOk = code && totpSecret ? verifyTotp(totpSecret, code) : false;
   if (!passwordOk && !codeOk) {
     return NextResponse.json({ error: "Confirm with your passphrase or a current authenticator code." }, { status: 401 });
   }

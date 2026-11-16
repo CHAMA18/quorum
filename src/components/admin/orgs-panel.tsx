@@ -30,10 +30,14 @@ import {
 } from "@/components/admin/kit";
 import type { PanelProps } from "@/components/admin/types";
 
-type Dialog = { kind: "suspend"; org: AdminOrganization } | { kind: "reinstate"; org: AdminOrganization } | null;
+type Dialog =
+  | { kind: "suspend"; org: AdminOrganization }
+  | { kind: "reinstate"; org: AdminOrganization }
+  | { kind: "approve"; org: AdminOrganization }
+  | null;
 
 export function OrganizationsPanel({ data, refresh, notify, query, setQuery, now }: PanelProps) {
-  const [status, setStatus] = useState<"ALL" | "ACTIVE" | "SUSPENDED">("ALL");
+  const [status, setStatus] = useState<"ALL" | "PENDING" | "ACTIVE" | "SUSPENDED">("ALL");
   const [dialog, setDialog] = useState<Dialog>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -66,7 +70,9 @@ export function OrganizationsPanel({ data, refresh, notify, query, setQuery, now
       notify(
         next === "SUSPENDED"
           ? `${org.name} suspended · ${fmtNum(body.revokedSessions ?? 0)} portal session(s) revoked.`
-          : `${org.name} reinstated.`,
+          : org.status === "PENDING"
+            ? `${org.name} verified — bidding is now open.`
+            : `${org.name} reinstated.`,
         "ok",
       );
       setDialog(null);
@@ -125,8 +131,9 @@ export function OrganizationsPanel({ data, refresh, notify, query, setQuery, now
         }
         lede={
           <>
-            Manage supplier accounts, bidding access and appeals. Suspending an organization ends active sessions and
-            prevents new submissions. Suspended suppliers can appeal, and an assigned reviewer records the decision.
+            Review new supplier accounts before they can bid. Organizations register as pending and stay that way
+            until the desk verifies their identity and statutory record. Suspending an active organization ends its
+            sessions and prevents new submissions.
           </>
         }
         actions={
@@ -138,9 +145,14 @@ export function OrganizationsPanel({ data, refresh, notify, query, setQuery, now
         }
       />
 
-      <div className="panel grid grid-cols-2 divide-x divide-y divide-ink-100 overflow-hidden rounded-2xl sm:grid-cols-4 dark:divide-white/8">
+      <div className="panel grid grid-cols-2 divide-x divide-y divide-ink-100 overflow-hidden rounded-2xl sm:grid-cols-5 dark:divide-white/8">
         {[
           { label: "Organizations", value: fmtNum(data.organizations.length), note: "on the register" },
+          {
+            label: "Pending review",
+            value: fmtNum(data.organizations.filter((org) => org.status === "PENDING").length),
+            note: "signed in, not yet cleared to bid",
+          },
           {
             label: "Active",
             value: fmtNum(data.organizations.filter((org) => org.status === "ACTIVE").length),
@@ -188,6 +200,7 @@ export function OrganizationsPanel({ data, refresh, notify, query, setQuery, now
                 className={selectCls}
               >
                 <option value="ALL">ANY STATUS</option>
+                <option value="PENDING">PENDING</option>
                 <option value="ACTIVE">ACTIVE</option>
                 <option value="SUSPENDED">SUSPENDED</option>
               </select>
@@ -212,7 +225,9 @@ export function OrganizationsPanel({ data, refresh, notify, query, setQuery, now
                           "grid h-9 w-9 shrink-0 place-items-center rounded-lg border font-code text-[10px] font-bold",
                           org.status === "SUSPENDED"
                             ? "border-red-200 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
-                            : "border-ink-200 bg-paper-2 text-ink-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-300",
+                            : org.status === "PENDING"
+                              ? "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+                              : "border-ink-200 bg-paper-2 text-ink-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-300",
                         )}
                         aria-hidden="true"
                       >
@@ -221,7 +236,7 @@ export function OrganizationsPanel({ data, refresh, notify, query, setQuery, now
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-1.5">
                           <p className="truncate text-[12.5px] font-semibold text-ink-950">{org.name}</p>
-                          <Chip tone={org.status === "ACTIVE" ? "emerald" : "red"} dot>{org.status}</Chip>
+                          <Chip tone={org.status === "ACTIVE" ? "emerald" : org.status === "PENDING" ? "amber" : "red"} dot>{org.status}</Chip>
                         </div>
                         <p className="mt-0.5 truncate text-[10.5px] text-ink-600">
                           {org.registrationNo} · {org.country}
@@ -243,7 +258,11 @@ export function OrganizationsPanel({ data, refresh, notify, query, setQuery, now
                     </div>
                     <div className="flex items-center justify-end gap-1.5">
                       {canManage ? (
-                        org.status === "ACTIVE" ? (
+                        org.status === "PENDING" ? (
+                          <Button size="sm" variant="brand" onClick={() => setDialog({ kind: "approve", org })}>
+                            <ShieldCheck className="h-3 w-3" aria-hidden="true" /> VERIFY
+                          </Button>
+                        ) : org.status === "ACTIVE" ? (
                           <Button
                             size="sm"
                             variant="danger"
@@ -364,6 +383,7 @@ export function OrganizationsPanel({ data, refresh, notify, query, setQuery, now
             </div>
             <ul className="mt-2 space-y-1.5 text-[10.5px] leading-relaxed text-ink-500">
               <li>Registration numbers are unique across the register.</li>
+              <li>New organizations stay PENDING, able to sign in but not bid, until the desk verifies them.</li>
               <li>A suspension records a reason and revokes every live portal session.</li>
               <li>One open appeal per organization; a decision is final until a fresh suspension.</li>
               <li>Late bids and duplicate bids are refused by the portal, not by this console.</li>
@@ -371,6 +391,41 @@ export function OrganizationsPanel({ data, refresh, notify, query, setQuery, now
           </div>
         </div>
       </div>
+
+      <Modal
+        open={dialog?.kind === "approve"}
+        onClose={() => setDialog(null)}
+        eyebrow="Open the supplier door"
+        title={`Verify ${dialog?.kind === "approve" ? dialog.org.name : "organization"}?`}
+        footer={
+          <>
+            <Button onClick={() => setDialog(null)}>CANCEL</Button>
+            <Button
+              variant="brand"
+              disabled={busy !== null}
+              onClick={() => {
+                if (dialog?.kind === "approve") {
+                  void updateOrg(dialog.org, "ACTIVE", "Identity and statutory record verified in administration");
+                }
+              }}
+            >
+              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />}
+              VERIFY &amp; OPEN BIDDING
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3 text-[12px] leading-relaxed text-ink-600">
+          <p>
+            Confirm that the organization&apos;s legal name, registration number and statutory record have been checked
+            against the documents it supplied. Verification is written to the governance log under your name.
+          </p>
+          <p>
+            The account may sign in immediately. Filing stays closed until this step, so a newly registered supplier
+            cannot put a bid on a procurement record before the desk has reviewed it.
+          </p>
+        </div>
+      </Modal>
 
       <Modal
         open={dialog?.kind === "suspend"}

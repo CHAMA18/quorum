@@ -371,6 +371,11 @@
   }
   html {
     scroll-behavior: smooth;
+    /* framer-motion's scroll-linked hooks measure a target against
+       document.scrollingElement. A static <html> makes that offset
+       unreliable and logs a development warning, so the page root is
+       positioned. */
+    position: relative;
   }
   body {
     @apply bg-background text-foreground;

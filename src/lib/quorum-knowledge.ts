@@ -58,7 +58,7 @@ The plan decides review depth for that pack: whether deep value parsing runs, wh
     title: "The human gate",
     body: `Approvals is the irreversible boundary. The agent's file_gate_submission tool can only create a PENDING gate; it can never execute an award. A gate shows the tender, the tool it corresponds to, status (PENDING, APPROVED, REJECTED/RETURNED, EXECUTED), when it was filed, who signed and when.
 
-A decision is refused unless the approver is a present member of the committee roster with the office the gate requires, or the signed-in officer acting as the gavel. If the roster cannot be read, the decision fails closed with a 503 rather than guessing. A quorum-short roll is refused. Gate decisions require a fresh step-up: a password or a TOTP code enrolled to the account. Replay is blocked by a server-side ledger.
+A decision is refused unless the approver is a present member of the committee roster with the office the gate requires. The signed-in officer may act as the gavel only when the workspace explicitly enables 'gavelOffice'. If the roster cannot be read, the decision fails closed with a 503 rather than guessing. A quorum-short roll is refused. Gate decisions require a fresh step-up: a password or a TOTP code enrolled to the account. Replay is blocked by a server-side ledger.
 
 An APPROVE runs the filing graph: seal the bundle with SHA-256, submit, write the receipt, flip the run to FILED. A REJECT returns the file to the agent for clarification. Every signed decision also writes an Ed25519 receipt whose public key is embedded, so the decision can be verified later without trusting the database. Receipt and gate verification endpoints exist under /api/gates/:id/verify and /api/receipts/:id/verify. The gavel never swings on a model's word: the assistant can stage a decision, but the card must be confirmed by the officer and signed with step-up before anything executes.`,
   },
@@ -74,7 +74,7 @@ The assistant can read recent audit entries and verify claims about them, but it
   {
     id: "roles",
     title: "Roles and permissions",
-    body: `Workspace roles are OWNER, ADMIN, OFFICER, COMMITTEE and AUDITOR. OWNER can do everything, including transferring ownership. ADMIN runs the desk and governance but cannot remove the owner. OFFICER prepares evaluations, manages suppliers and can sign as the gavel. COMMITTEE reads the file and signs gates they are rostered and officed for. AUDITOR has read-only oversight: people, organizations and the audit trail.
+    body: `Workspace roles are OWNER, ADMIN, OFFICER, COMMITTEE and AUDITOR. OWNER can do everything, including transferring ownership. ADMIN runs the desk and governance but cannot remove the owner. OFFICER prepares evaluations and manages suppliers; office gates still require the matching roster office unless the workspace enables 'gavelOffice'. COMMITTEE reads the file and signs gates they are rostered and officed for. AUDITOR has read-only oversight: people, organizations and the audit trail.
 
 Capabilities are enforced on mutation routes and on the same-origin sidecar gateway, not only by hiding buttons. Committee offices are separate from workspace roles: procurement unit, evaluation committee, accounting officer and oversight. A committee member without the gate's office is refused even if their workspace role is COMMITTEE. The supplier portal is a separate identity space with its own organization session and cookie; suppliers do not get workspace roles.
 
@@ -163,11 +163,11 @@ Gate decisions require step-up and are signed with Ed25519 receipts. The replay 
   {
     id: "deployment",
     title: "Deployment and data",
-    body: `The production app is a Next.js 16 web app plus a Bun sidecar (quorum-mcp) on an EC2 t4g.small in af-south-1, behind nginx and systemd. The web app and sidecar share a flat JSON store; the sidecar also keeps append-only tool-log.jsonl and sealed submissions. The sidecar boots with the Next server and self-heals via /api/mcp-ensure.
+    body: `The production app is a Next.js 16 web app plus a Bun sidecar (quorum-mcp) on an EC2 t4g.small in af-south-1, behind nginx and systemd. The web app keeps its workspace record in PostgreSQL and the sidecar keeps run state, append-only tool-log.jsonl and sealed submissions. The sidecar boots with the Next server and self-heals via /api/mcp-ensure.
 
 The public HTTPS entry point is https://quorum-solutions.com. The full workspace runs on the EC2 origin in af-south-1. The quorum-edge Cloudflare Worker is the stateless front door for Workers AI text-to-speech and the private R2 upload gate: the quorum-tenders bucket is bound as TENDERS, and /__edge/upload and /__edge/object require the server-to-server x-quorum-edge-key. When the Worker is deployed against a live origin it can also proxy the app; the sidecar and its files stay on the persistent host.
 
-The app uses Firebase Auth, Storage and Analytics only — not Firebase Functions. Postgres/Drizzle and a full multi-tenant data layer are not in the deployed build.`,
+Accounts, sessions, passwords and one-time links are Quorum's own, stored in PostgreSQL; there is no hosted identity provider in the sign-in path. Multi-tenancy is still single-workspace by default, and the store is one document rather than a normalised schema.`,
   },
   {
     id: "limits",

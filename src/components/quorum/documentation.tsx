@@ -550,7 +550,7 @@ const DOC_CHAPTERS: DocChapter[] = [
         title: "From organization profile to application",
         items: [
           "Open the supplier portal and register the organization with its legal identity, registration details and contact person.",
-          "Complete the profile with the statutory documents and capabilities requested by the portal.",
+          "Complete the profile with the statutory documents and capabilities requested by the portal, then wait for the procurement desk to verify the account. A pending account can sign in and prepare its profile but cannot file a bid.",
           "Review published opportunities, their requirements and closing dates before preparing an application.",
           "Submit one complete application for the tender before its closing time, then keep the receipt for your records.",
           "Return to the portal to follow the application's status and respond to permitted follow-up requests.",
@@ -563,7 +563,7 @@ const DOC_CHAPTERS: DocChapter[] = [
         rows: [
           ["Closing time", "Late applications are refused.", "Allow time to upload files and submit before the published deadline."],
           ["One application per tender", "A second application for the same organization and tender is refused.", "Review the complete application before sending it."],
-          ["Organization status", "Suspended or excluded organizations cannot submit new applications.", "Contact the procuring entity about the status shown in the portal."],
+          ["Organization status", "Pending organizations can sign in but cannot file. Suspended or excluded organizations cannot submit new applications.", "Complete the profile and wait for verification; contact the procuring entity about a suspension or exclusion."],
           ["Application receipt", "A submitted application is recorded against the organization account.", "Save the receipt and reference for your procurement records."],
         ],
       },

@@ -25,7 +25,7 @@ import { useReducedMotion } from "@/lib/use-reduced-motion";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
-import { Ban, Check, ChevronRight, CircleHelp, MessageSquare, Send, ShieldAlert, Sparkles, X } from "lucide-react";
+import { ArrowUpRight, Ban, Check, ChevronRight, CircleHelp, MessageSquare, Send, ShieldAlert, Sparkles, X } from "lucide-react";
 import type { Proposal } from "@/lib/muse-actions";
 import { cn } from "@/lib/utils";
 import { nextRovingTabIndex } from "@/lib/a11y";
@@ -84,7 +84,15 @@ type AssistantSection = "chat" | "support";
 let turnSeq = 0;
 const nextId = () => `t${++turnSeq}`;
 
-export function MuseAssistant({ name }: { name?: string }) {
+export function MuseAssistant({
+  name,
+  onOpenDesk,
+}: {
+  name?: string;
+  /** Present on the workspace: the Overview composer is the same agent, and
+   *  this bubble stands down there. */
+  onOpenDesk?: () => void;
+}) {
   const reduce = useReducedMotion();
   const [open, setOpen] = useState(false);
   const [section, setSection] = useState<AssistantSection>("chat");
@@ -491,6 +499,21 @@ export function MuseAssistant({ name }: { name?: string }) {
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-1">
+                {onOpenDesk ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onOpenDesk();
+                      shut();
+                    }}
+                    aria-label="Open the desk composer on the Overview"
+                    title="Open the desk composer on the Overview"
+                    className="focus-brand inline-flex h-9 items-center gap-1 rounded-full bg-white/10 px-2.5 text-[11px] font-semibold text-white/90 transition-colors hover:bg-white/20 hover:text-white"
+                  >
+                    <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span className="hidden sm:inline">Desk</span>
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={shut}

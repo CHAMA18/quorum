@@ -103,14 +103,31 @@ describe("preApprovalCheck fail-closed", () => {
     expect(reason).toContain("no office on the committee register");
   });
 
-  test("the signed-in officer (the gavel) may sign", () => {
+  test("being signed in does not substitute for the statutory office by default", () => {
     const reason = preApprovalCheck(
       officeGate("ACCOUNTING_OFFICER"),
       "Verify Officer",
       [],
       "Verify Officer",
     );
-    expect(reason).toBeNull();
+    expect(reason).toContain("not on the committee register");
+    expect(reason).toContain("accounting officer");
+  });
+
+  test("the gavel may sign only when the desk explicitly enables gavelOffice", () => {
+    const previous = state.features.gavelOffice;
+    state.features.gavelOffice = true;
+    try {
+      const reason = preApprovalCheck(
+        officeGate("ACCOUNTING_OFFICER"),
+        "Verify Officer",
+        [],
+        "Verify Officer",
+      );
+      expect(reason).toBeNull();
+    } finally {
+      state.features.gavelOffice = previous;
+    }
   });
 
   test("a member holding the exact required office may sign", () => {

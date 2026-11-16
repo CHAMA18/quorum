@@ -9,13 +9,11 @@ import { MasterSwitcher } from "@/components/quorum/master-switcher";
 import { StoryShowcase } from "@/components/quorum/story-showcase";
 import type { AuthMode, AuthUser } from "@/lib/auth-types";
 import {
-  completeGoogleRedirect,
-  getVerifiedIdToken,
-  signInWithGooglePopup,
-  startEmailVerification,
-  syncFirebaseIdentity,
-  type GoogleSignInDenial,
-} from "@/lib/firebase";
+  googleDenialFromLocation,
+  resendVerificationEmail,
+  startGoogleSignIn,
+  type GoogleDenial,
+} from "@/lib/identity";
 import { cn } from "@/lib/utils";
 
 /*
@@ -53,25 +51,30 @@ function serverInviteCodeSnapshot(): string {
 }
 
 /*
- * Google sign-in denials, spelled out. The Firebase popup can fail for very
- * different reasons — the deployment's origin not being on the project's
- * authorised-domain list (the usual case for fresh deployments), the Google
- * provider being switched off in the console, a browser blocking the popup,
- * or plain cancellations — and each deserves its own honest message instead
+ * Google sign-in denials, spelled out. Quorum talks to Google directly now, so
+ * each refusal has a different cause and a different fix — an unconfigured
+ * client, a stale state cookie, an unverified Google address, an invitation
+ * that does not match — and each deserves its own honest message instead
  * of one generic "unavailable".
  */
-const GOOGLE_DENIALS: Record<GoogleSignInDenial, string> = {
-  "unauthorized-domain":
-    "Google sign-in can't run from this address yet — this deployment's domain isn't on the Firebase project's authorised list. It's a one-step console fix (Authentication → Settings → Authorised domains — see README); locally and after that, it works. Until then, sign in with your email and password.",
-  "provider-disabled":
-    "Google sign-in is switched off in the Firebase console (Authentication → Sign-in method). Use your email and password.",
-  "popup-blocked":
-    "Your browser blocked the sign-in window. Allow popups for this site and try again, or use your email and password.",
-  "popup-closed": "Google sign-in was cancelled before it finished. Try again when ready.",
-  timeout: "Google sign-in didn't finish in time. Try again, or use your email and password.",
+const GOOGLE_DENIALS: Record<GoogleDenial, string> = {
+  unconfigured:
+    "Google sign-in isn't configured on this deployment (GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET). Use your email and passphrase.",
+  cancelled: "Google sign-in was cancelled before it finished. Try again when ready.",
+  state: "Google sign-in couldn't be confirmed in this browser. Start again.",
+  code: "Google didn't return an authorisation code. Try again.",
+  exchange: "Google sign-in could not be completed. Try again, or use your email.",
+  token: "Google's response could not be verified. Try again.",
+  unverified:
+    "That Google account's address isn't verified with Google, so it can't open a Quorum account.",
+  invite:
+    "This invitation is not valid for that Google account. Ask the workspace owner to invite its email.",
+  exists:
+    "This email already has a Quorum account. Sign in with it, or ask the workspace owner to review the invitation.",
+  "invitation-only": "This Quorum workspace is invitation-only. Ask the workspace owner to invite your email.",
+  suspended: "This workspace account is suspended. Ask the workspace owner or an admin to restore it.",
   network:
-    "Google sign-in couldn't reach the network. Check your connection, or use your email and password.",
-  unknown: "Google sign-in is unavailable right now. Use your email and password.",
+    "Google sign-in couldn't reach the network. Check your connection, or use your email and passphrase.",
 };
 
 function deriveName(email: string): string {
@@ -448,7 +451,7 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
   const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
   const [verifyNote, setVerifyNote] = useState<string | null>(null);
   const [verifyBusy, setVerifyBusy] = useState(false);
-  /* Credentials kept in memory only, so "Resend" can re-open the Firebase identity. */
+  /* Credentials kept in memory only, so "Resend" can ask for a fresh link. */
   const pendingRef = useRef<{ name: string; email: string; password: string } | null>(null);
   const [granted, setGranted] = useState<AuthUser | null>(null);
   const [googleFlow, setGoogleFlow] = useState(false);
@@ -456,7 +459,7 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
   const [resetEmail, setResetEmail] = useState("");
   const [resetStatus, setResetStatus] = useState<"idle" | "sending" | "sent">("idle");
   const [resetError, setResetError] = useState<string | null>(null);
-  const redirectHandled = useRef(false);
+  const googleDenialChecked = useRef(false);
   const shake = useAnimationControls();
 
   const pwScore = PW_CHECKS.filter((c) => c.test(values.password)).length;
@@ -510,89 +513,57 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
     onSuccess(u);
   }
 
-  /* Exchange a Google identity (popup or redirect) for a product session. */
-  async function exchangeGoogleIdentity(idToken: string): Promise<boolean> {
-    try {
-      const inviteCode = mode === "register" ? (inviteCodeDraft ?? linkedInviteCode).trim() : "";
-      const res = await fetch("/api/auth/google", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken, ...(inviteCode ? { inviteCode } : {}) }),
-      });
-      const data = (await res.json().catch(() => null)) as
-        | { user?: AuthUser; error?: string }
-        | null;
-      if (res.ok && data?.user) {
-        grant(data.user);
-        return true;
-      }
-      setFormError(
-        data?.error ?? "Google sign-in could not be confirmed. Try again or use your email."
-      );
-    } catch {
-      setFormError("Cannot reach the server. Check your connection and try again.");
-    }
-    return false;
-  }
-
-  /* A Google sign-in that completed via the redirect flow (popup blocked,
-   * then redirected) lands here after Google bounces back and the page
-   * reloads. Nothing to consume on every normal load. */
+  /* Google redirects back with a reason when it refuses; say which one. */
   useEffect(() => {
-    if (redirectHandled.current) return;
-    redirectHandled.current = true;
-    void (async () => {
-      const result = await completeGoogleRedirect();
-      if (!result || result.status !== "ok") return;
-      setGoogleFlow(true);
-      setStatus("sending");
-      const ok = await exchangeGoogleIdentity(result.identity.idToken);
-      setGoogleFlow(false);
-      if (!ok) setStatus("form");
-    })();
+    if (googleDenialChecked.current) return;
+    googleDenialChecked.current = true;
+    const denial = googleDenialFromLocation(window.location.search);
+    if (!denial) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("google");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    /* The message is a reaction to an external value (the URL), applied after
+       the effect body so it never cascades a render in the same pass. */
+    queueMicrotask(() => {
+      setFormError(GOOGLE_DENIALS[denial]);
+      setStatus("form");
+    });
   }, []);
 
-  /* Send (or re-send) the Firebase verification email, then show the verify step. */
+  /* Send (or re-send) the confirmation link from Quorum's own mailer. */
   async function beginVerification(creds: { name: string; email: string; password: string }) {
     pendingRef.current = creds;
     setVerifyEmail(creds.email);
     setVerifyNote(null);
     setVerifyBusy(true);
     setStatus("verify");
-    const state = await startEmailVerification(creds);
+    const result = await resendVerificationEmail(creds.email);
     setVerifyNote(
-      state === null
-        ? "We couldn't reach Firebase to send the verification email. Use Resend in a moment."
-        : state.verified
-          ? "This email is already verified. Continue to finish signing in."
-          : `Verification link sent to ${creds.email}.`
+      result.verified
+        ? "This email is already confirmed. Go back and sign in."
+        : !result.sent
+          ? result.error ?? "The confirmation link could not be sent. Try again in a moment."
+          : result.verificationUrl
+            ? `No mail relay is configured here, so the link cannot arrive. Open this development link: ${result.verificationUrl}`
+            : `Confirmation link sent to ${creds.email}.`
     );
     setVerifyBusy(false);
   }
 
-  /* Reload the Firebase user; once verified, the server checks the token and opens the session. */
+  /* The emailed link opens the session itself; this button checks whether it
+     already did in this browser, and is the fallback if the tab stayed open. */
   async function completeVerification() {
     setVerifyBusy(true);
     setVerifyNote(null);
-    const idToken = await getVerifiedIdToken();
-    if (!idToken) {
-      setVerifyNote("Not verified yet. Open the link in the email from Quorum, then press the button again.");
-      setVerifyBusy(false);
-      return;
-    }
     try {
-      const res = await fetch("/api/auth/verify-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken }),
-      });
-      const data = (await res.json().catch(() => null)) as { user?: AuthUser; error?: string } | null;
+      const res = await fetch("/api/auth/me", { cache: "no-store" });
+      const data = (await res.json().catch(() => null)) as { user?: AuthUser } | null;
       if (res.ok && data?.user) {
         pendingRef.current = null;
         grant(data.user);
         return;
       }
-      setVerifyNote(data?.error ?? "Verification could not be confirmed. Try again.");
+      setVerifyNote("Not confirmed yet. Open the link in the email from Quorum, then press the button again.");
     } catch {
       setVerifyNote("Cannot reach the server. Check your connection and try again.");
     }
@@ -642,7 +613,6 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
           | { user?: AuthUser; error?: string; code?: string }
           | null;
         if (res.ok && data?.user) {
-          void syncFirebaseIdentity({ name: data.user.name, email, password, mode: "login" });
           grant(data.user);
           return;
         }
@@ -704,34 +674,21 @@ export function AuthScreen({ mode, onModeChange, onSuccess, onEnterWorkspace, on
   }
 
   /*
-   * Google sign-in — the real Firebase popup first (project "public-tender").
-   * A successful popup grants the Google identity and mirrors it into the
-   * product's own account stack. When Google denies, the message says
-   * precisely why (unauthorised origin / provider off / popup blocked) —
-   * no fallback identity is ever granted.
+   * Google sign-in — a full-page redirect to Google through Quorum's own OAuth
+   * routes. The callback verifies the ID token, opens the session and returns
+   * to the workspace; a refusal comes back as `?google=reason` and is spelled
+   * out above. No fallback identity is ever granted.
    */
-  async function signInWithGoogle() {
+  function signInWithGoogle() {
     if (status !== "form") return;
     setFormError(null);
     setGoogleFlow(true);
     setStatus("sending");
-
-    const result = await signInWithGooglePopup();
-    if (result.status === "ok") {
-      const ok = await exchangeGoogleIdentity(result.identity.idToken);
-      if (ok) return;
-      setGoogleFlow(false);
-      setStatus("form");
-      return;
-    }
-
-    /* Google denied — say exactly why; no fallback identity is ever granted. */
-    setGoogleFlow(false);
-    setFormError(GOOGLE_DENIALS[result.reason]);
-    setStatus("form");
+    const inviteCode = mode === "register" ? (inviteCodeDraft ?? linkedInviteCode).trim() : "";
+    startGoogleSignIn(inviteCode);
   }
 
-  /* Self-service passphrase reset — Firebase emails the link itself. */
+  /* Self-service passphrase reset — Quorum emails its own one-time link. */
   async function requestPasswordReset() {
     const email = resetEmail.trim();
     if (!EMAIL_RE.test(email)) {

@@ -42,7 +42,7 @@ export type AdminOrganization = {
   country: string;
   legalForm: string | null;
   categories: string[];
-  status: "ACTIVE" | "SUSPENDED";
+  status: "PENDING" | "ACTIVE" | "SUSPENDED";
   sessions: number;
   createdAt: string;
 };

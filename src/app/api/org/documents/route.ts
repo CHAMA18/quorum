@@ -14,7 +14,7 @@ import {
 } from "@/lib/supplier-profile-documents";
 import {
   supplierBidFileType,
-  verifiedSupplierFirebaseIdentity,
+  verifiedSupplierOwner,
 } from "@/lib/supplier-bid-documents";
 
 export const runtime = "nodejs";
@@ -32,10 +32,10 @@ export async function GET(req: NextRequest) {
   if (!org) {
     return NextResponse.json({ error: "Sign in as an organization to view your bid documents." }, { status: 401 });
   }
-  const identity = await verifiedSupplierFirebaseIdentity(req.headers.get("authorization"), org);
+  const identity = await verifiedSupplierOwner(org);
   if (!identity.ok) return NextResponse.json({ error: identity.error }, { status: identity.status });
   try {
-    const documents = await listSupplierProfileDocuments({ org, firebaseUid: identity.identity.uid });
+    const documents = await listSupplierProfileDocuments({ org, ownerId: identity.identity.uid });
     return NextResponse.json(
       { documents, maxFileBytes: MAX_SUPPLIER_BID_FILE_BYTES },
       { headers: { "cache-control": "no-store" } },
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
   if (!rateLimit(clientKey(req, "org-profile-docs"), 60, 15 * 60_000)) {
     return NextResponse.json({ error: "Too many document uploads. Wait a few minutes and try again." }, { status: 429 });
   }
-  const identity = await verifiedSupplierFirebaseIdentity(req.headers.get("authorization"), org);
+  const identity = await verifiedSupplierOwner(org);
   if (!identity.ok) return NextResponse.json({ error: identity.error }, { status: identity.status });
 
   const form = await req.formData().catch(() => null);
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
 
   let usage;
   try {
-    usage = await getSupplierProfileDocumentUsage({ orgId: org.id, firebaseUid: identity.identity.uid });
+    usage = await getSupplierProfileDocumentUsage({ orgId: org.id, ownerId: identity.identity.uid });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Cloudflare R2 could not check the current upload limits." },
@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
   try {
     const document = await putSupplierProfileDocument({
       org,
-      firebaseUid: identity.identity.uid,
+      ownerId: identity.identity.uid,
       requirement,
       filename: rawFile.name,
       contentType: fileType.contentType,
@@ -131,7 +131,7 @@ export async function DELETE(req: NextRequest) {
   if (!rateLimit(clientKey(req, "org-profile-doc-delete"), 40, 15 * 60_000)) {
     return NextResponse.json({ error: "Too many document changes. Wait a few minutes and try again." }, { status: 429 });
   }
-  const identity = await verifiedSupplierFirebaseIdentity(req.headers.get("authorization"), org);
+  const identity = await verifiedSupplierOwner(org);
   if (!identity.ok) return NextResponse.json({ error: identity.error }, { status: identity.status });
   const body = await req.json().catch(() => null) as Record<string, unknown> | null;
   const key = typeof body?.key === "string" ? body.key : "";
@@ -140,7 +140,7 @@ export async function DELETE(req: NextRequest) {
   try {
     const removed = await deleteSupplierProfileDocument({
       org,
-      firebaseUid: identity.identity.uid,
+      ownerId: identity.identity.uid,
       key,
     });
     if (!removed.ok) return NextResponse.json({ error: removed.error }, { status: removed.status });

@@ -53,14 +53,17 @@ export async function PATCH(req: NextRequest) {
   const actor = await requireUser(req);
   if (!actor) return NextResponse.json({ error: "Sign in to manage organizations." }, { status: 401 });
   if (!can(actor.role, "manage_orgs")) {
-    return NextResponse.json({ error: "Only owners and admins can suspend an organization." }, { status: 403 });
+    return NextResponse.json({ error: "Only owners and admins can manage an organization." }, { status: 403 });
   }
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   if (!body) return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
 
   const orgId = typeof body.orgId === "string" ? body.orgId : "";
-  const status = body.status === "ACTIVE" || body.status === "SUSPENDED" ? body.status : null;
+  const status =
+    body.status === "PENDING" || body.status === "ACTIVE" || body.status === "SUSPENDED"
+      ? body.status
+      : null;
   const reason = typeof body.reason === "string" ? body.reason.trim().slice(0, 400) : "";
   if (!orgId || !status) {
     return NextResponse.json({ error: "Provide an organization and a status." }, { status: 422 });
@@ -75,17 +78,30 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ organization: orgView(org), revokedSessions: 0 });
   }
 
+  const wasPending = org.status === "PENDING";
   const updated = setOrganizationStatus(org.id, status) ?? org;
   const revokedSessions = status === "SUSPENDED" ? deleteOrgSessionsByOrg(org.id) : 0;
+  const action =
+    status === "SUSPENDED"
+      ? "ORG_SUSPENDED"
+      : wasPending && status === "ACTIVE"
+        ? "ORG_VERIFIED"
+        : "ORG_REACTIVATED";
+  const fallbackDetail =
+    status === "SUSPENDED"
+      ? "Suspended by the desk"
+      : wasPending && status === "ACTIVE"
+        ? "Identity and statutory record verified by the desk"
+        : "Reinstated by the desk";
 
   recordOversightEvent({
     actorId: actor.id,
     actorName: actor.name,
-    action: status === "SUSPENDED" ? "ORG_SUSPENDED" : "ORG_REACTIVATED",
+    action,
     targetType: "ORGANIZATION",
     targetId: org.id,
     targetName: org.name,
-    detail: `${reason || (status === "SUSPENDED" ? "Suspended by the desk" : "Reinstated by the desk")}${
+    detail: `${reason || fallbackDetail}${
       revokedSessions ? ` · ${revokedSessions} session${revokedSessions === 1 ? "" : "s"} revoked` : ""
     }`,
   });

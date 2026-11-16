@@ -26,7 +26,6 @@ import { StoryShowcase } from "@/components/quorum/story-showcase";
 import { SearchSelect, type SelectOption } from "@/components/quorum/org/search-select";
 import { COUNTRIES, SUGGESTED_COUNTRIES, findCountry, type Country } from "@/lib/countries";
 import { LEGAL_FORM_GROUPS, LEGAL_FORM_OTHER } from "@/lib/legal-forms";
-import { ensureOrgFirebaseIdentity } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
 
 /**
@@ -300,7 +299,6 @@ function RegisterWizard({
         if (j.errors?.name || j.errors?.registrationNo || j.errors?.country) setStep(1);
         return;
       }
-      await ensureOrgFirebaseIdentity({ name: form.name, email: form.email, password: form.password });
       onRegistered(j.org.name);
     } catch {
       setBanner("The portal is unreachable — try again shortly.");
@@ -680,10 +678,11 @@ function OnTheRegister({ orgName, onEnter }: { orgName: string; onEnter: () => v
 
       <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.34, ease: EASE }}>
         <h2 className="type-display mt-7 text-[24px] text-ink-950 dark:text-white">
-          Your supplier account is ready.
+          Your supplier profile is with the desk.
         </h2>
         <p className="mx-auto mt-2.5 max-w-sm text-[13.5px] leading-relaxed text-ink-600 dark:text-ink-300">
-          Your profile is saved. Open the supplier portal to find tenders and manage your applications.
+          Your profile is saved. The procurement desk will review your organization&apos;s identity before bidding
+          opens. Open the portal now to complete your details and browse tenders.
         </p>
 
         <button
@@ -811,7 +810,6 @@ function SignIn({ onDone }: { onDone: () => void }) {
         setSuspended(res.status === 403);
         return;
       }
-      await ensureOrgFirebaseIdentity({ email, password });
       setSuspended(false);
       onDone();
     } catch {
@@ -861,27 +859,20 @@ function SignIn({ onDone }: { onDone: () => void }) {
         body: JSON.stringify({ email: resetEmail }),
       });
       const j = (await res.json().catch(() => ({}))) as {
-        issued?: boolean;
-        code?: string;
-        expiresAt?: string;
+        sent?: boolean;
         error?: string;
         errors?: Record<string, string>;
       };
       if (!res.ok) {
         setResetFieldErrors(j.errors ?? {});
-        setResetError(j.error ?? "The reset could not be issued — try again.");
+        setResetError(j.error ?? "The reset request could not be sent — try again.");
         return;
       }
-      if (!j.issued || !j.code || !j.expiresAt) {
-        setResetError("No organization account holds that address — check the spelling, or register the organization first.");
+      if (!j.sent) {
+        setResetError("The reset service did not confirm the request. Please try again shortly.");
         return;
       }
-      setIssuedCode(j.code);
-      setExpiresAt(Date.parse(j.expiresAt));
-      setResetCode(j.code); // issued here, seconds ago — save the retyping
-      setNewPass("");
-      setConfirmPass("");
-      setFlow("issued");
+      setFlow("done");
     } catch {
       setResetError("The portal is unreachable — try again shortly.");
     } finally {
@@ -1085,10 +1076,11 @@ function SignIn({ onDone }: { onDone: () => void }) {
         >
           <div className="flex items-center justify-between">
             <p className="font-code text-[10px] font-semibold tracking-[0.1em] text-brand-700 dark:text-brand-400">Reset access</p>
-            <p className="font-code text-[10px] tracking-[0.05em] text-ink-600 dark:text-ink-300">ONE-TIME CODE · 15 MIN</p>
+            <p className="font-code text-[10px] tracking-[0.05em] text-ink-600 dark:text-ink-300">EMAIL LINK · 15 MIN</p>
           </div>
           <p className="text-[13px] leading-relaxed text-ink-500 dark:text-ink-400">
-            A one-time reset code will appear here. It will not be sent by email, and it expires after fifteen minutes.
+            Enter the organization email. If it matches an account, Quorum will send a reset code to that inbox.
+            The link expires after fifteen minutes and signs out every open session when the password changes.
           </p>
           <Field label="Organization email" error={resetFieldErrors.email}>
             <input autoFocus className={inputCls} type="email" autoComplete="email" placeholder="bids@organization.example" value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} />
@@ -1100,7 +1092,7 @@ function SignIn({ onDone }: { onDone: () => void }) {
             className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-ink-950 text-[14px] font-semibold text-white shadow-[0_8px_20px_rgba(11,12,15,0.18)] transition-all hover:bg-brand-600 disabled:opacity-60"
           >
             {resetBusy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <KeyRound className="h-4 w-4" aria-hidden="true" />}
-            Issue a reset code
+            Email a reset link
           </button>
           <button
             type="button"
@@ -1225,12 +1217,13 @@ function SignIn({ onDone }: { onDone: () => void }) {
             transition={{ type: "spring", stiffness: 240, damping: 16, delay: 0.12 }}
             className="mx-auto inline-block rounded-lg border-[3px] border-brand-600 px-5 py-2.5 shadow-[0_16px_40px_rgba(217,38,22,0.24)]"
           >
-            <p className="type-display text-[16px] tracking-[0.1em] text-brand-600">PASSWORD REPLACED</p>
+            <p className="type-display text-[16px] tracking-[0.1em] text-brand-600">CHECK YOUR EMAIL</p>
           </motion.div>
           <p className="text-[13.5px] leading-relaxed text-ink-600 dark:text-ink-300">
-            The new password is live on the register and every open session for{" "}
-            <span className="font-semibold text-ink-950 dark:text-white">{resetEmail}</span> was signed out —
-            including any that was not yours.
+            If an organization account exists for{" "}
+            <span className="font-semibold text-ink-950 dark:text-white">{resetEmail}</span>, a password-reset link is
+            on its way. Open the link from that inbox and choose a new password. The link expires after fifteen
+            minutes.
           </p>
           <button
             type="button"
@@ -1238,7 +1231,7 @@ function SignIn({ onDone }: { onDone: () => void }) {
             className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-ink-950 text-[14px] font-semibold text-white shadow-[0_8px_20px_rgba(11,12,15,0.18)] transition-all hover:bg-brand-600"
           >
             <UserRound className="h-4 w-4" aria-hidden="true" />
-            Sign in with the new password
+            Back to sign in
           </button>
         </motion.div>
       )}

@@ -245,10 +245,12 @@ function initialsOf(name: string): string {
 /* ── the approving officer, chosen from the committee register ────────────
 
    The gate signs with a NAME, and the sidecar enforces whose names count:
-   an APPROVE is refused unless the name is the signed-in officer (the gavel)
-   or a PRESENT member of the committee roster it reads from /api/committee.
-   The dropdown therefore offers exactly those people — nothing free-text that
-   the record would refuse. Excused seats stay visible but cannot sign. */
+   an APPROVE is refused unless the name is a PRESENT member of the committee
+   roster it reads from /api/committee with the office the gate requires. The
+   signed-in officer is offered as the gavel, but the sidecar accepts that
+   seat only when the workspace enables `gavelOffice`. The dropdown therefore
+   offers exactly those people — nothing free-text that the record would
+   refuse. Excused seats stay visible but cannot sign. */
 
 const OFFICE_SHORT: Record<string, string> = {
   PROCUREMENT_UNIT: "PROCUREMENT UNIT",

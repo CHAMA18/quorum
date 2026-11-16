@@ -102,6 +102,7 @@ import {
   type ScheduledMeeting,
 } from "@/components/quorum/schedule-meeting";
 import { WorkspacePalette, type PaletteGroup } from "@/components/quorum/workspace-palette";
+import { DeskAgent, onDeskComposerRequest } from "@/components/quorum/desk-agent";
 import type { AuthUser } from "@/lib/auth-types";
 import { signedTenderDownloadUrl, uploadTenderDocument } from "@/lib/tender-upload";
 import { StoredDocsBrowser } from "@/components/quorum/stored-docs-browser";
@@ -10264,11 +10265,15 @@ export function Dashboard({
   onSignOut,
   onToast,
   onExit,
+  onSectionChange,
 }: {
   user: AuthUser | null;
   onSignOut: () => void;
   onToast: (message: string) => void;
   onExit: () => void;
+  /** Lets the shell know which section is on screen, e.g. to stand down the
+   *  floating assistant while the Overview composer is the agent surface. */
+  onSectionChange?: (id: SectionId) => void;
 }) {
   const mission = useMissionData();
   const { runs, queue, ledger, verdicts, findings, notes: notesMap, committee, refresh, reachable } = mission;
@@ -10390,6 +10395,23 @@ export function Dashboard({
     window.addEventListener("hashchange", apply);
     return () => window.removeEventListener("hashchange", apply);
   }, [user]);
+
+  /* Report the visible section to the shell. */
+  useEffect(() => {
+    onSectionChange?.(active);
+  }, [active, onSectionChange]);
+
+  /* Barry's bubble asks for the composer: bring the Overview on screen. */
+  useEffect(
+    () =>
+      onDeskComposerRequest(() => {
+        setActive("mc-overview");
+        requestAnimationFrame(() =>
+          window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" }),
+        );
+      }),
+    [reduceMotion],
+  );
 
   /* ⌘K / Ctrl+K opens the command line from anywhere in the workspace. The
      launch wizard owns the desk while it is open, so the chord is inert then. */
@@ -11091,6 +11113,21 @@ export function Dashboard({
                 </button>
               </div>
             </div>
+
+            {/* The agentic command surface: ask the live desk, or generate a
+                draft. Reads run against the sidecar; a review assignment comes
+                back as a signed proposal the officer must confirm. */}
+            <DeskAgent
+              roleLabel={user?.role ? ROLE_LABELS[user.role] : "Workspace"}
+              counts={{ runs: activeRuns, gates: queue.length, findings: findingsTotal }}
+              canRun={canDo(user?.role, "run_reviews")}
+              onNewRun={openNewRun}
+              onNavigate={switchTo}
+              onExecuted={() => {
+                void refresh();
+              }}
+              onToast={onToast}
+            />
 
             {/* Stats — the editorial band in light mode, quiet surfaced cards in dark mode */}
             <div

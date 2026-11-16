@@ -153,6 +153,15 @@ export function rateLimit(key: string, limit: number, windowMs: number): boolean
   return allowed;
 }
 
+/* A successful sign-in clears the account's failure budget, so honest users
+   who mistype twice are not locked out for the rest of the window. */
+export function clearRateLimit(key: string): void {
+  const store = loadBuckets();
+  if (!(key in store)) return;
+  delete store[key];
+  saveBuckets(store);
+}
+
 export function clientKey(req: Request, scope: string): string {
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??

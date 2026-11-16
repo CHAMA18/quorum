@@ -28,7 +28,7 @@ Workspace roles (web store, enforced per-route in code):
 | --- | --- | --- |
 | OWNER | Everything, including transferring ownership | Unique; cannot be removed by an ADMIN |
 | ADMIN | Runs the desk and its governance | Cannot grant/remove OWNER or ADMIN |
-| OFFICER | Prepares evaluations, manages suppliers, signs as the gavel | Not a people manager |
+| OFFICER | Prepares evaluations, manages suppliers; signs office gates only with the matching roster office (the gavel exemption is explicit and off by default) | Not a people manager |
 | COMMITTEE | Reads the file; signs gates they are rostered and officed for | Office comes from the register |
 | AUDITOR | Read-only oversight: people, organizations, audit trail | Holds no write capability anywhere |
 

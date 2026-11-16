@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { findOrganizationByEmail, updateOrganizationPassword } from "@/lib/db";
+import { findOrganizationByEmail, flushStore } from "@/lib/db";
 import {
   clientKey,
   createOrgSessionToken,
@@ -7,11 +7,8 @@ import {
   publicOrg,
   rateLimit,
   sessionCookieOptions,
-  hashPassword,
   verifyPassword,
 } from "@/lib/org-auth";
-import { verifyFirebaseIdToken } from "@/lib/firebase-identity";
-import { firebaseRestSignInWithPassword } from "@/lib/firebase-rest";
 
 /**
  * POST /api/org/auth/login — verify ORGANIZATION credentials and open an
@@ -46,24 +43,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Check the highlighted fields.", errors }, { status: 400 });
   }
 
-  let org = findOrganizationByEmail(email);
-  let authed = org ? await verifyPassword(password, org.password) : false;
-
-  /* Password drift after an emailed reset: the new passphrase lives at
-   * Firebase. Accept it only for an organization already on the register,
-   * and only when Firebase has verified the address (the owner clicked the
-   * link) — an unverified, attacker-created Firebase account grants nothing. */
-  if (org && !authed) {
-    const fb = await firebaseRestSignInWithPassword(email, password);
-    if (fb.ok) {
-      const identity = await verifyFirebaseIdToken(fb.value.idToken);
-      if (identity && identity.email === email && identity.emailVerified) {
-        const passwordHash = await hashPassword(password);
-        org = updateOrganizationPassword(org.id, passwordHash) ?? org;
-        authed = true;
-      }
-    }
-  }
+  const org = findOrganizationByEmail(email);
+  const authed = org ? await verifyPassword(password, org.password) : false;
 
   if (!authed || !org) {
     return NextResponse.json(
@@ -83,6 +64,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { token, expiresAt } = await createOrgSessionToken(org.id, body.remember !== false);
+  await flushStore();
   const res = NextResponse.json({ org: publicOrg(org) });
   res.cookies.set(ORG_SESSION_COOKIE, token, sessionCookieOptions(expiresAt));
   return res;

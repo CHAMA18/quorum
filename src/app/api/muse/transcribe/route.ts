@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { museTranscribe, museVoiceConfigFromEnv } from "@/lib/muse";
+import { clientKey, rateLimit } from "@/lib/auth";
+import { actorLimitKey, requestActor } from "@/lib/request-auth";
 
 /**
  * POST /api/muse/transcribe — the assistant's ears.
@@ -37,6 +39,15 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const actor = await requestActor(request);
+  if (!actor) return NextResponse.json({ error: "Sign in to use the assistant microphone." }, { status: 401 });
+  if (
+    !rateLimit(actorLimitKey("muse-transcribe", actor), 20, 5 * 60_000) ||
+    !rateLimit(clientKey(request, "muse-transcribe"), 40, 5 * 60_000)
+  ) {
+    return NextResponse.json({ error: "Too many transcription requests. Wait a few minutes and try again." }, { status: 429 });
+  }
+
   const cfg = museVoiceConfigFromEnv();
 
   let form: FormData;

@@ -3,7 +3,6 @@ import { cookies } from "next/headers";
 import { MotionConfig } from "framer-motion";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
-import { FirebaseAnalytics } from "@/components/quorum/firebase-analytics";
 import { ThemeProvider } from "@/components/quorum/theme-toggle";
 import { MuseAssistantGate } from "@/components/quorum/muse-assistant-gate";
 import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
@@ -82,7 +81,6 @@ export default async function RootLayout({
             <LocaleProvider initial={locale}>{children}</LocaleProvider>
             {/* The assistant is for working areas and docs, not sign-in screens. */}
             <MuseAssistantGate name={firstName} />
-            <FirebaseAnalytics />
             <Toaster />
           </MotionConfig>
         </ThemeProvider>

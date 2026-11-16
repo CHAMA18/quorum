@@ -1,77 +1,45 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createUser, findClaimedWorkspaceMembership, findUserByEmail, markUserVerified } from "@/lib/db";
+import { consumeEmailVerification, findUserById, flushStore, markUserVerified } from "@/lib/db";
 import {
   clientKey,
   createSession,
-  publicUser,
   rateLimit,
   sessionCookieOptions,
   SESSION_COOKIE,
 } from "@/lib/auth";
-import { verifyFirebaseIdToken } from "@/lib/firebase-identity";
+import { appOrigin, hashAuthToken } from "@/lib/auth-email";
 
 /**
- * POST /api/auth/verify-email — the user clicked the Firebase verification link.
- * Body: { idToken } (fresh Firebase ID token for the verified address)
- * 200 → { user } + httpOnly session cookie
- * 401 → token rejected  403 → address not verified yet
+ * GET /api/auth/verify-email?token=… — the link in the confirmation email.
  *
- * If the verified address has no local account — e.g. the store was rebuilt
- * while the Firebase identity survived — the account is restored here: the
- * ID token is Firebase-vouched proof of inbox control, which is exactly the
- * bar registration's verify gate enforces. The local passphrase field gets
- * a non-hashable marker (verifyPassword rejects it) until the next
- * passphrase sign-in re-syncs the hash via Firebase.
+ * The token is single-use, expires in 24 hours, and is matched against a
+ * stored SHA-256 digest. A good token marks the address verified, opens the
+ * session and lands the browser on the workspace; a bad one says so on the
+ * sign-in screen instead of pretending.
  */
-export async function POST(req: NextRequest) {
+export async function GET(req: NextRequest) {
+  const origin = appOrigin(req.url);
   if (!rateLimit(clientKey(req, "verify-email"), 20, 15 * 60_000)) {
-    return NextResponse.json({ error: "Too many checks. Wait a few minutes." }, { status: 429 });
+    return NextResponse.redirect(new URL("/?verified=throttled#/login", origin));
   }
 
-  const body = (await req.json().catch(() => null)) as { idToken?: unknown } | null;
-  const idToken = typeof body?.idToken === "string" ? body.idToken : "";
-  const identity = await verifyFirebaseIdToken(idToken);
-  if (!identity) {
-    return NextResponse.json(
-      { error: "We could not confirm your session. Sign in again and retry." },
-      { status: 401 }
-    );
-  }
-  if (!identity.emailVerified) {
-    return NextResponse.json(
-      { code: "NOT_VERIFIED", error: "Your email isn't verified yet. Open the link we sent, then try again." },
-      { status: 403 }
-    );
-  }
-  const email = identity.email.trim().toLowerCase();
+  const token = req.nextUrl.searchParams.get("token") ?? "";
+  if (!token) return NextResponse.redirect(new URL("/?verified=invalid#/login", origin));
 
-  let user = findUserByEmail(email);
-  if (!user) {
-    /* Verified at Firebase but missing locally (store rebuild): restore.
-     * The password placeholder is intentionally NOT a valid scrypt hash —
-     * the real passphrase is re-synced by the login fallback. */
-    const membership = findClaimedWorkspaceMembership(email);
-    user = createUser({
-      name: identity.name.trim() || email.split("@")[0],
-      email,
-      password: "firebase:verified",
-      emailVerified: true,
-      ...(membership ?? {}),
-    });
-  }
-  if (!user.emailVerified) {
-    user = markUserVerified(user.id) ?? user;
-  }
+  const row = consumeEmailVerification(hashAuthToken(token));
+  if (!row) return NextResponse.redirect(new URL("/?verified=expired#/login", origin));
 
+  const user = findUserById(row.userId);
+  if (!user) return NextResponse.redirect(new URL("/?verified=missing#/login", origin));
   if (user.status === "SUSPENDED") {
-    return NextResponse.json(
-      { code: "ACCOUNT_SUSPENDED", error: "This workspace account is suspended." },
-      { status: 403 }
-    );
+    return NextResponse.redirect(new URL("/?verified=suspended#/login", origin));
   }
 
-  const { token, expiresAt } = await createSession(user.id, true);
-  const res = NextResponse.json({ user: publicUser(user) });
-  res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions(expiresAt));
+  if (!user.emailVerified) markUserVerified(user.id);
+  const { token: sessionToken, expiresAt } = await createSession(user.id, true);
+  await flushStore();
+
+  const res = NextResponse.redirect(new URL("/#/dashboard", origin));
+  res.cookies.set(SESSION_COOKIE, sessionToken, sessionCookieOptions(expiresAt));
   return res;
 }

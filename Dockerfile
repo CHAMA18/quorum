@@ -1,12 +1,12 @@
-FROM node:22-bookworm-slim AS build
+FROM oven/bun:1.4.0 AS build
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 
 COPY . .
-RUN npm run build
+RUN bun run build
 
 FROM node:22-bookworm-slim AS runtime
 
@@ -20,6 +20,10 @@ ENV NODE_ENV=production \
     QUORUM_DATA_DIR=/var/data/mcp \
     QUORUM_STORE_PATH=/var/data/quorum-store.json
 
+RUN useradd --system --uid 1001 quorum \
+    && mkdir -p /var/data/mcp \
+    && chown -R quorum:quorum /var/data
+
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public
@@ -30,6 +34,8 @@ COPY --from=build /app/mini-services/quorum-mcp/data/tenders ./deploy-seed/tende
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/tsconfig.json ./tsconfig.json
 COPY --from=build /app/scripts/start-render-api.sh ./scripts/start-render-api.sh
+
+USER quorum
 
 EXPOSE 10000
 

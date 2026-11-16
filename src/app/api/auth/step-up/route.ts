@@ -2,7 +2,7 @@ import { sidecarOrigin } from "@/lib/sidecar-origin";
 import { randomUUID } from "crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { getUserFromToken, rateLimit, clientKey, SESSION_COOKIE, verifyPassword } from "@/lib/auth";
-import { getSetting, recordStepUpIssued } from "@/lib/db";
+import { getSetting, getUserTotpSecret, recordStepUpIssued } from "@/lib/db";
 import { gateDocHash, signStepUpToken, STEP_UP_TTL_MS } from "@/lib/step-up";
 import { verifyTotp } from "@/lib/totp";
 import { isAdminRole } from "@/lib/permissions";
@@ -85,13 +85,14 @@ export async function POST(req: NextRequest) {
 
   let method: "password" | "totp" | null = null;
   if (code) {
-    if (!user.totpEnabled || !user.totpSecret) {
+    const totpSecret = getUserTotpSecret(user.id);
+    if (!user.totpEnabled || !totpSecret) {
       return NextResponse.json(
         { error: "No authenticator is enrolled for this account.", totpRequired: true },
         { status: 422 },
       );
     }
-    if (!verifyTotp(user.totpSecret, code)) {
+    if (!verifyTotp(totpSecret, code)) {
       return NextResponse.json({ error: "That authenticator code is not valid. Try the current code." }, { status: 401 });
     }
     method = "totp";

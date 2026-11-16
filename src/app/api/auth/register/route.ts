@@ -3,11 +3,14 @@ import {
   createUser,
   findInviteByCode,
   findUserByEmail,
+  flushStore,
+  selfServeWorkspaceCreationOpen,
   updateInvite,
 } from "@/lib/db";
 import { clientKey, hashPassword, publicUser, rateLimit } from "@/lib/auth";
 import { isAssignableRole } from "@/lib/permissions";
 import { validateRegistrationInvite } from "@/lib/role-assignment";
+import { appOrigin, sendVerificationEmail } from "@/lib/auth-email";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -67,6 +70,12 @@ export async function POST(req: NextRequest) {
   if (usableInvite && !isAssignableRole(usableInvite.role)) {
     return NextResponse.json({ error: "This invitation does not contain a valid workspace role." }, { status: 409 });
   }
+  if (!usableInvite && !selfServeWorkspaceCreationOpen()) {
+    return NextResponse.json(
+      { error: "This Quorum workspace is invitation-only. Ask the workspace owner to invite your email." },
+      { status: 403 }
+    );
+  }
 
   const passwordHash = await hashPassword(password);
 
@@ -104,9 +113,21 @@ export async function POST(req: NextRequest) {
     claimedInvite = { code: usableInvite.code, role: usableInvite.role };
   }
 
-  /* No session yet: the account opens only after the Firebase verification link is confirmed. */
+  /* No session yet: the account opens only after the emailed link is spent. */
+  const verification = await sendVerificationEmail({ user, origin: appOrigin(req.url) });
+  await flushStore();
   return NextResponse.json(
-    { user: publicUser(user), invite: claimedInvite, verification: "required" },
+    {
+      user: publicUser(user),
+      invite: claimedInvite,
+      verification: "required",
+      delivery: { status: verification.status, detail: verification.detail },
+      /* Local development without a mail relay: hand the link back so the
+         account can be confirmed. Never in production. */
+      ...(verification.status === "SKIPPED" && process.env.NODE_ENV !== "production"
+        ? { verificationUrl: verification.url }
+        : {}),
+    },
     { status: 201 }
   );
 }

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { clientKey, getOrgFromToken, ORG_SESSION_COOKIE, rateLimit } from "@/lib/org-auth";
-import { verifiedSupplierFirebaseIdentity } from "@/lib/supplier-bid-documents";
+import { verifiedSupplierOwner } from "@/lib/supplier-bid-documents";
 import { readSupplierProfileDocument } from "@/lib/supplier-profile-documents";
 
 export const runtime = "nodejs";
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
   if (!rateLimit(clientKey(req, "org-profile-doc-content"), 240, 15 * 60_000)) {
     return NextResponse.json({ error: "Too many document reads. Wait a few minutes and try again." }, { status: 429 });
   }
-  const identity = await verifiedSupplierFirebaseIdentity(req.headers.get("authorization"), org);
+  const identity = await verifiedSupplierOwner(org);
   if (!identity.ok) return NextResponse.json({ error: identity.error }, { status: identity.status });
 
   const key = req.nextUrl.searchParams.get("key") ?? "";
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
   try {
     file = await readSupplierProfileDocument({
       org,
-      firebaseUid: identity.identity.uid,
+      ownerId: identity.identity.uid,
       key,
     });
   } catch (error) {

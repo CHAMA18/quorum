@@ -1,8 +1,7 @@
 import "server-only";
 
 import { createHash, randomUUID } from "node:crypto";
-import { bindOrganizationFirebaseUid, type OrganizationRow } from "@/lib/db";
-import { verifyFirebaseIdToken, type VerifiedFirebaseIdentity } from "@/lib/firebase-identity";
+import type { OrganizationRow } from "@/lib/db";
 import { sidecarFetch, sidecarError } from "@/lib/org-sidecar";
 import {
   MAX_SUPPLIER_BID_FILE_BYTES,
@@ -29,7 +28,7 @@ export type VerifiedBidDocument = {
   bytes: number;
   contentType: string;
   sha256: string;
-  firebaseUid: string;
+  ownerId: string;
   uploadedAt: string;
 };
 
@@ -74,22 +73,24 @@ export async function publishedTenderRequirements(tenderRef: string): Promise<
   return { ok: true, requiredDocuments };
 }
 
-export async function verifiedSupplierFirebaseIdentity(
-  authorization: string | null,
+/**
+ * Who owns a supplier's stored documents.
+ *
+ * The organization session cookie is the authorisation: `getOrgFromToken`
+ * resolved it to this row before any route reaches here, and the organization
+ * id is the owner segment in Cloudflare R2. Quorum no longer asks a second
+ * identity provider to vouch for the same person.
+ */
+export function verifiedSupplierOwner(
   org: OrganizationRow,
-): Promise<{ ok: true; identity: VerifiedFirebaseIdentity } | { ok: false; status: 401 | 403; error: string }> {
-  const token = /^Bearer\s+(.+)$/i.exec(authorization ?? "")?.[1]?.trim() ?? "";
-  if (!token) {
-    return { ok: false, status: 401, error: "Reconnect your Firebase account to upload bid documents." };
-  }
-  const identity = await verifyFirebaseIdToken(token);
-  if (!identity || identity.email !== org.email.trim().toLowerCase()) {
-    return { ok: false, status: 403, error: "The Firebase identity must use this organization's sign-in email." };
-  }
-  if (!bindOrganizationFirebaseUid(org.id, identity.uid)) {
-    return { ok: false, status: 403, error: "This organization is already linked to a different Firebase identity." };
-  }
-  return { ok: true, identity };
+): { ok: true; identity: { uid: string } } | { ok: false; status: 401 | 403; error: string } {
+  return { ok: true, identity: { uid: org.id } };
+}
+
+/* Objects uploaded before the owner segment was renamed carry `firebaseuid`
+   metadata; read it as a fallback so existing evidence still verifies. */
+function metadataOwner(meta: Record<string, string>): string {
+  return meta.ownerid ?? meta.firebaseuid ?? "";
 }
 
 export function supplierBidFileType(filename: string, bytes: Uint8Array): { contentType: string; extension: string } | null {
@@ -122,7 +123,7 @@ function edgeConfig(): { edge: string; secret: string } | null {
 export async function putSupplierBidObject(args: {
   tenderRef: string;
   org: OrganizationRow;
-  firebaseUid: string;
+  ownerId: string;
   requirement: string;
   filename: string;
   contentType: string;
@@ -134,10 +135,10 @@ export async function putSupplierBidObject(args: {
   const filename = safeSupplierFilename(args.filename);
   const sha256 = createHash("sha256").update(args.bytes).digest("hex");
   const reqHash = requirementHash(args.requirement);
-  const key = `tenders/${args.tenderRef}/supplier-bids/${args.org.id}/${args.firebaseUid}/${reqHash}/${Date.now()}-${randomUUID()}-${filename}`;
+  const key = `tenders/${args.tenderRef}/supplier-bids/${args.org.id}/${args.ownerId}/${reqHash}/${Date.now()}-${randomUUID()}-${filename}`;
   const metadata = {
     organizationid: args.org.id,
-    firebaseuid: args.firebaseUid,
+    ownerid: args.ownerId,
     tenderref: args.tenderRef,
     requirementhash: reqHash,
     requirement: args.requirement.slice(0, 180),
@@ -165,7 +166,7 @@ export async function putSupplierBidObject(args: {
   if (!response.ok) {
     throw new Error(response.status === 503 ? "Cloudflare R2 is unavailable. The document has not been uploaded." : "Cloudflare R2 refused this document upload.");
   }
-  return { requirement: args.requirement, key, filename, bytes: args.bytes.byteLength, contentType: args.contentType, sha256, firebaseUid: args.firebaseUid, uploadedAt };
+  return { requirement: args.requirement, key, filename, bytes: args.bytes.byteLength, contentType: args.contentType, sha256, ownerId: args.ownerId, uploadedAt };
 }
 
 export async function getSupplierBidObjectHead(key: string): Promise<EdgeObjectHead | null> {
@@ -196,11 +197,11 @@ export async function getSupplierBidObjectHead(key: string): Promise<EdgeObjectH
 export async function getSupplierBidStorageUsage(args: {
   tenderRef: string;
   org: OrganizationRow;
-  firebaseUid: string;
+  ownerId: string;
 }): Promise<SupplierBidStorageUsage> {
   const config = edgeConfig();
   if (!config) throw new Error("Cloudflare R2 storage is not configured for supplier documents.");
-  const prefix = `tenders/${args.tenderRef}/supplier-bids/${args.org.id}/${args.firebaseUid}/`;
+  const prefix = `tenders/${args.tenderRef}/supplier-bids/${args.org.id}/${args.ownerId}/`;
   const query = new URLSearchParams({ prefix, limit: String(MAX_SUPPLIER_BID_FILES + 1) });
   let response: Response;
   try {
@@ -243,12 +244,12 @@ export async function deleteSupplierBidObject(key: string): Promise<void> {
 export async function listSupplierBidObjects(args: {
   tenderRef: string;
   org: OrganizationRow;
-  firebaseUid: string;
+  ownerId: string;
   requiredDocuments: string[];
 }): Promise<VerifiedBidDocument[]> {
   const config = edgeConfig();
   if (!config) throw new Error("Cloudflare R2 storage is not configured for supplier documents.");
-  const prefix = `tenders/${args.tenderRef}/supplier-bids/${args.org.id}/${args.firebaseUid}/`;
+  const prefix = `tenders/${args.tenderRef}/supplier-bids/${args.org.id}/${args.ownerId}/`;
   const query = new URLSearchParams({ prefix, limit: String(MAX_SUPPLIER_BID_FILES) });
   let response: Response;
   try {
@@ -275,7 +276,7 @@ export async function listSupplierBidObjects(args: {
       if (
         !requirementByHash.has(requirementHash(requirement)) ||
         meta.organizationid !== args.org.id ||
-        meta.firebaseuid !== args.firebaseUid ||
+        metadataOwner(meta) !== args.ownerId ||
         meta.tenderref !== args.tenderRef ||
         meta.requirementhash !== requirementHash(requirement) ||
         meta.contenttype !== head.contentType ||
@@ -291,7 +292,7 @@ export async function listSupplierBidObjects(args: {
         bytes: head.size,
         contentType: head.contentType,
         sha256: meta.sha256.toLowerCase(),
-        firebaseUid: args.firebaseUid,
+        ownerId: args.ownerId,
         uploadedAt: meta.uploadedat,
       });
     }
@@ -302,7 +303,7 @@ export async function listSupplierBidObjects(args: {
 export async function verifySubmittedSupplierBidDocuments(args: {
   tenderRef: string;
   org: OrganizationRow;
-  firebaseUid: string;
+  ownerId: string;
   requiredDocuments: string[];
   rawDocuments: unknown;
 }): Promise<{ ok: true; documents: VerifiedBidDocument[] } | { ok: false; status: number; error: string }> {
@@ -322,8 +323,8 @@ export async function verifySubmittedSupplierBidDocuments(args: {
     }
     if (seenKeys.has(key)) return { ok: false, status: 422, error: "A document cannot be attached more than once." };
     seenKeys.add(key);
-    const prefix = `tenders/${args.tenderRef}/supplier-bids/${args.org.id}/${args.firebaseUid}/${requirementHash(requirement)}/`;
-    if (!key.startsWith(prefix)) return { ok: false, status: 403, error: "A document is not owned by this supplier, Firebase identity and tender." };
+    const prefix = `tenders/${args.tenderRef}/supplier-bids/${args.org.id}/${args.ownerId}/${requirementHash(requirement)}/`;
+    if (!key.startsWith(prefix)) return { ok: false, status: 403, error: "A document is not owned by this supplier account and tender." };
     canonical.push({ requirement, key });
   }
 
@@ -350,7 +351,7 @@ export async function verifySubmittedSupplierBidDocuments(args: {
       const meta = head.customMetadata;
       if (
         meta.organizationid !== args.org.id ||
-        meta.firebaseuid !== args.firebaseUid ||
+        metadataOwner(meta) !== args.ownerId ||
         meta.tenderref !== args.tenderRef ||
         meta.requirementhash !== requirementHash(doc.requirement) ||
         meta.requirement !== doc.requirement ||
@@ -369,7 +370,7 @@ export async function verifySubmittedSupplierBidDocuments(args: {
         bytes: head.size,
         contentType: head.contentType,
         sha256: meta.sha256.toLowerCase(),
-        firebaseUid: args.firebaseUid,
+        ownerId: args.ownerId,
         uploadedAt: meta.uploadedat,
       });
     }

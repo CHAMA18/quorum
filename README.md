@@ -486,7 +486,7 @@ The maintained policy is in [`docs/governance-policy.md`](docs/governance-policy
 | Agent protocol | **MCP** — own JSON-RPC 2.0/HTTP server + the official `@modelcontextprotocol/server-filesystem` over stdio | Protocol-native tool registry; battle-tested, path-jailed document reads |
 | LLM | **Kira**, the configured open-weight model (`KIRA_BASE_URL`/`KIRA_MODEL`; local default **Llama 3.2 3B** through Ollama); a separate in-region fallback; deterministic template last | Open weights keep procurement text in-region by default. If a hosted Kira endpoint is used, calls carry redacted evidence only. The chain and the redaction count are recorded per draft, not asserted. |
 | Storage | Atomic JSON store for the web workspace; file-backed run state and append-only hash-chained audit log for the sidecar; Cloudflare R2 for tender documents | Inspectable demo storage; no multi-instance transaction layer |
-| Identity & access | Firebase identity mirror with local scrypt-backed sessions as fallback; server-side role checks; separate supplier organization sessions | Authentication and access controls are enforced on routes and the sidecar gateway |
+| Identity & access | First-party accounts in PostgreSQL: scrypt passphrases, opaque session digests, TOTP, emailed one-time verification and reset links, direct Google OAuth; server-side role checks; separate supplier organization sessions | No hosted identity provider sits in the sign-in path; access controls are enforced on routes and the sidecar gateway |
 | Rate limits | Upstash Redis REST with an atomic fixed-window counter on protected requisition writes | Distributed limit; the endpoint fails closed if Redis is not configured or available |
 | Documents | Cloudflare R2 through the quorum-edge gate; PDF/DOCX/XLSX text extraction (bounded local OCR for scans) into the sidecar tender directory | Original objects remain private; downloads use short-lived signed URLs |
 | Infrastructure | CloudFront, nginx, systemd, EC2 in `af-south-1`, Cloudflare Worker and R2 | Deployment and edge configuration live in the repository |
@@ -513,7 +513,7 @@ service, but that is not the default development path.
 
 Open `http://localhost:3000` and sign up or sign in. Local development does not seed the
 hosted judge account. The web app uses a local file store; keep `.env.local` and any model,
-Firebase, Redis or edge credentials out of version control.
+database, model, Redis or edge credentials out of version control.
 
 ### Configuration
 
@@ -529,6 +529,8 @@ writes if Redis is missing or unavailable.
 | `KIRA_API_KEY` | web app + quorum-mcp | Optional bearer token for a hosted Kira endpoint; local Ollama needs none. |
 | `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_KEY` | quorum-mcp | Legacy explicit endpoint. Used only when no `KIRA_*` endpoint is set. |
 | `QUORUM_WEB_URL` | quorum-mcp | Where the sidecar reads the committee roster (default `http://127.0.0.1:3000`). |
+| `QUORUM_SINGLE_WORKSPACE` | web app | `true` by default: the first account opens the workspace and later accounts need an invitation. Set `false` only for a hosted multi-tenant deployment with tenant-scoped storage. |
+| `QUORUM_STORE_KEY` | web app | Optional 32-byte key (64 hex characters or base64) for encrypting TOTP secrets at rest. When empty, a 0600 key is generated at `db/.totp-key`; back it up with the store. |
 | `MUSE_VOICE_BASE_URL` / `MUSE_VOICE_API_KEY` / `MUSE_VOICE_MODEL` | web app | Separate Meta endpoint and model for Muse Voice Transcribe (default `https://api.meta.ai/v1` and `muse-voice-transcribe-1.0`). Switching Kira never sends audio to the Kira host. |
 | `KIRA_REASONING_EFFORT` | web app | Optional Kira reasoning effort for Meta Responses endpoints (`minimal`, `low`, `medium`, `high`; default `medium`). |
 | `KIRA_SAFETY_IDENTIFIER_SECRET` | web app | Optional stable secret used to HMAC the internal user ID into a privacy-preserving safety identifier; `MUSE_SAFETY_IDENTIFIER_SECRET` and `GATE_SIGNING_KEY` are fallbacks. User names and emails are never sent as identifiers. |
@@ -537,20 +539,20 @@ writes if Redis is missing or unavailable.
 | `QUORUM_EDGE_URL` | web app | Cloudflare Worker base URL for neural TTS and the R2 document gate (e.g. `https://quorum-edge.chungu424.workers.dev`). |
 | `QUORUM_EDGE_SECRET` | web app | Server-to-server key for the Worker's `/__edge/tts` and R2 endpoints; never ships to the browser. |
 | `QUORUM_DOWNLOAD_SECRET` | web app | Optional separate key for five-minute signed tender-download URLs. Falls back to `GATE_SECRET`; keep it server-side. |
+| `DATABASE_URL` | web app + quorum-mcp | PostgreSQL connection string. The web app keeps the workspace document in `quorum_web_store`; the sidecar uses the same database for its snapshot, job queue and decisions ledger. Without it both fall back to their local files. |
+| `DATABASE_SSL` / `DATABASE_SSL_REJECT_UNAUTHORIZED` | web app | `DATABASE_SSL=require` negotiates TLS (also inferred from `sslmode=` in the URL); set the second to `true` to verify the provider certificate. |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | web app | Direct Google OAuth client. `GOOGLE_REDIRECT_URI` overrides the derived `${origin}/api/auth/google/callback`. |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | web app | Required distributed Redis rate limit for `POST /api/pipeline/:id/requisition` (20 requests per 15 minutes per authenticated user). The route fails closed if Redis is unavailable. |
 
 **With no LLM configured**, redline drafting runs on the deterministic template fallback and every draft is labelled `template` — nothing breaks, prose quality does. The review plan (see Agent architecture) falls back the same way: a deterministic pack inspection decides review depth when no model is configured.
 
 **Model quality audit.** The normal rule-path evaluation remains deterministic. `npm run eval:model` audits saved model evidence observations for source-quote validity, overlap with the pre-written covered labels, endpoint success, latency and token use. With a model endpoint configured, `npm run eval:model:challenge` adds a canary-based prompt-injection check. Neither command uses an LLM judge or treats model observations as decisions.
 
-**Firebase (identity mirror).** The client-safe web config is in `src/lib/firebase.ts`.
-Firebase is optional for local development: when unavailable, the workspace uses its local
-scrypt-backed session path. Supplier accounts have a separate organization session. Tender
-documents are stored in Cloudflare R2, not Firebase Storage.
+**PostgreSQL (the workspace record).** Set `DATABASE_URL` and the web app keeps its whole workspace document in the `quorum_web_store` row — accounts, sessions, the committee roster, invites, organizations, notification inboxes, oversight events and one-time links. `bun scripts/migrate-store-to-postgres.ts` imports an existing `db/quorum-store.json` once. Without `DATABASE_URL` the app runs on the local file cache, which is what unit tests and an offline demo use; `/api/health` reports `store.persistence` (`postgres` or `file`), the last saved revision, any queued write and the database latency. Writes are serialised with a monotonic revision, so an older document can never overwrite a newer one, and the routes that mint a session await the flush before answering.
 
-**Authorised domains (required for Google sign-in).** Firebase enforces the origin of every browser sign-in server-side: `signInWithPopup`/`signInWithRedirect` fail with `auth/unauthorized-domain` unless the address the app is served from is whitelisted in the project. When Google sign-in reports *"can't run from this address yet"*, add the deployment's hostname (e.g. your EC2 domain or preview host, and `localhost` for development — already on the default list) under **Firebase console → Authentication → Settings → Authorised domains → Add domain**. There is deliberately no code-side bypass: the whitelist is enforced by Google's servers, and any workaround would be a security regression. The email/passphrase path is unaffected by this list.
+**Google sign-in (optional).** Quorum talks to Google's OAuth 2.0 endpoints directly — there is no identity broker. Register the deployment as an OAuth client and set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`; add `${origin}/api/auth/google/callback` as an authorised redirect URI (or set `GOOGLE_REDIRECT_URI` explicitly). State is random, single-use and held in an httpOnly cookie, so a callback that does not match this browser is refused. When Google is not configured the button says so; the email and passphrase path is unaffected.
 
-**Password reset (self-service).** *Forgot access?* on the sign-in screen emails a real reset link through Firebase (`accounts:sendOobCode` — no SMTP to configure; the link is hosted on the project's own authorised auth domain, so the reset completes regardless of where this app is deployed). After the passphrase is changed, the next sign-in reconciles the local scrypt hash automatically (Firebase is the source of truth after a drift), and an account that was verified at Firebase but lost from the local store is restored on verified proof only. Requests are rate-limited and the reply is uniform, so the endpoint never reveals whether an address has an account.
+**Verification and reset (self-service).** Registration emails a one-time link (`/api/auth/verify-email?token=…`) that confirms the address and opens the session; *Forgot access?* emails a one-time reset link (`/reset?token=…`) that sets a new passphrase and signs out every existing session. Both tokens are 256-bit random values, stored only as SHA-256 digests, expiring after 24 hours and 60 minutes respectively, and spent once. Mail goes through the same Cloudflare relay as invitations (`QUORUM_EDGE_URL` + `QUORUM_EDGE_SECRET`), with a direct `RESEND_API_KEY` as the fallback. The replies are uniform, so neither endpoint reveals whether an address has an account.
 
 ---
 
@@ -640,7 +642,8 @@ curl -s localhost:3031/mcp -X POST -H 'content-type: application/json' \
 **Product surfaces:**
 
 - **Landing** (`/`) — product story, live stack console and the [landing-page film](#landing-page-film).
-- **Auth** (`/#/login`, `/#/register`) — email/passphrase + optional Google Sign-In (Firebase identity mirror), with workspace invitation codes.
+- **Auth** (`/#/login`, `/#/register`) — email/passphrase + optional Google Sign-In (direct OAuth), with workspace invitation codes.
+- **Reset** (`/reset?token=…`) — the page a reset email opens.
 - **Workspace** (`/#/dashboard`) — review register and sourced reports, human-gate queue,
   committee and meetings, Tender Cycle, supplier register, notifications, audit trail,
   governance, API directory and role-scoped oversight. Tender documents are stored in
@@ -671,7 +674,7 @@ curl -s localhost:3031/mcp -X POST -H 'content-type: application/json' \
 - Organization accounts open their session immediately at registration — there is no email-verification loop on the supplier door. That is deliberate: an organization's statutory verification (registration number, tax clearance) is the procurement desk's act on the supplier register, not a mail loop; the desk can suspend an organization (`SUSPENDED`), which blocks sign-in and new applications.
 - Beneficial-ownership / registry matching is exposed via the source-request queue as a pending source, not yet a live connector.
 - The live URLs and infrastructure are listed at the top of this README. Availability can change; an HTTP response alone does not prove that sign-in or an end-to-end procurement workflow is healthy.
-- The app defaults to a single-writer JSON store; `DATABASE_URL` enables PostgreSQL snapshots and a durable job queue. Review jobs recover after worker restarts, use expiring leases, bounded retries and backoff, and persist completion before acknowledgment. Recovery replays a run from its beginning; it does not restore an internal LangGraph node checkpoint. Gate decisions are serialized and deduplicated, and simulated filing reuses its receipt on retry. This remains a single-writer deployment, not concurrent multi-instance operation at institutional scale.
+- The web workspace lives in PostgreSQL when `DATABASE_URL` is set, held as one revised document rather than a normalised schema; the local JSON file is the boot cache for that document (and the only store when no database is configured). Two web instances are not supported: the document is single-writer, and a second process would race the same row. The sidecar keeps its own PostgreSQL snapshot plus a durable job queue. Review jobs recover after worker restarts, use expiring leases, bounded retries and backoff, and persist completion before acknowledgment. Recovery replays a run from its beginning; it does not restore an internal LangGraph node checkpoint. Gate decisions are serialized and deduplicated, and simulated filing reuses its receipt on retry. This remains a single-writer deployment, not concurrent multi-instance operation at institutional scale.
 - Every authenticated sidecar request receives a trace ID that follows the review job into the hash-chained event log. `GET /api/observability` reports scoped run, queue, latency and error summaries; `GET /api/traces/:traceId` returns the event timeline for an individual request/run.
 - The evaluation labels have one human labeller. There is no measured human time baseline, completed design-partner pilot or production impact study yet.
 
@@ -703,7 +706,7 @@ Kira endpoint carries redacted evidence only.
 ## Attribution
 
 Infrastructure, architecture, product code and deployment: **CHAMA18** — Quorum, agentic procurement for Africa.
-Stack foundation: Next.js · Bun · LangGraph.js · Model Context Protocol (own server + official filesystem server) · JSON file store · Firebase · an OpenAI-compatible LLM endpoint for drafting.
+Stack foundation: Next.js · Bun · LangGraph.js · Model Context Protocol (own server + official filesystem server) · PostgreSQL · an OpenAI-compatible LLM endpoint for drafting.
 
 ### Current hackathon evidence (4 November 2026)
 

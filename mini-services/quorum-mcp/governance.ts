@@ -250,7 +250,7 @@ export const DUTIES_RULES: DutiesRule[] = [
   {
     id: "sod-evaluator-approver",
     rule: "The officer who prepares an evaluation is not, by that fact, its approver.",
-    enforcement: "Certification requires a PRESENT roster member holding the EVALUATION_COMMITTEE office (or the attested gavel); the office check reads the register, not the UI.",
+    enforcement: "Certification requires a PRESENT roster member holding the EVALUATION_COMMITTEE office; the office check reads the register, not the UI. The gavel exemption exists only when the workspace enables `gavelOffice`.",
     enforcedBy: "Sidecar preApprovalCheck — fail-closed on unknown names.",
   },
   {
@@ -268,7 +268,7 @@ export const DUTIES_RULES: DutiesRule[] = [
   {
     id: "sod-exception",
     rule: "The officer who requests an exception never approves it.",
-    enforcement: "Exception approval is a gate for the ACCOUNTING_OFFICER office; the requester's attested identity rides the gate inputs, and the approver must hold the office or be the gavel.",
+    enforcement: "Exception approval is a gate for the ACCOUNTING_OFFICER office; the requester's attested identity rides the gate inputs, and the approver must hold the office (or the gavel only when `gavelOffice` is enabled).",
     enforcedBy: "Exception gate + office check + step-up re-auth.",
   },
   {

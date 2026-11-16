@@ -1,21 +1,18 @@
-import { getFirebaseIdToken } from "@/lib/firebase";
 import type { MetaProfileDocumentScan } from "@/lib/meta-bid-document-assist";
 
 /**
  * Browser side of the document vault: open, save and scan one stored file.
  *
- * Every call carries the signed-in supplier's Firebase identity token, because
- * the routes verify the organization *and* the person — the org cookie alone is
- * not enough to read another member's standing evidence.
+ * Authorisation is the organization's httpOnly session cookie, which the route
+ * resolves to the organization before touching a key. Nothing about the owner
+ * travels in the request: the server derives it from the session.
  */
 
 async function authorizedFetch(url: string, init: RequestInit = {}): Promise<Response> {
-  const token = await getFirebaseIdToken();
-  if (!token) throw new Error("Reconnect this supplier account to Firebase, then try again.");
   return fetch(url, {
     ...init,
     cache: "no-store",
-    headers: { ...(init.headers ?? {}), authorization: `Bearer ${token}` },
+    headers: { ...(init.headers ?? {}) },
   });
 }
 

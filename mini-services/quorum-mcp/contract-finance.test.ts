@@ -369,7 +369,7 @@ describe("contract and payment gates", () => {
       budgetLineId: "bud_ws5",
     })) as { gate: string };
     const packGate = state.gates.find((g) => g.id === prepared.gate)!;
-    expect(preApprovalCheck(packGate, "Accounting Officer", [], "Accounting Officer")).toBeNull();
+    expect(preApprovalCheck(packGate, "Accounting Officer", [{ name: "Accounting Officer", status: "PRESENT", office: "ACCOUNTING_OFFICER" }], "Accounting Officer")).toBeNull();
     const result = await executeCycleGateAction(packGate);
     expect(result?.status).toBe("DRAFT");
     expect(state.cycle[0].contract?.status).toBe("DRAFT");
@@ -384,7 +384,7 @@ describe("contract and payment gates", () => {
       budgetLineId: "bud_ws5",
     })) as { gate: string };
     const packGate = state.gates.find((g) => g.id === prepared.gate)!;
-    const reason = preApprovalCheck(packGate, "Accounting Officer", [], "Accounting Officer");
+    const reason = preApprovalCheck(packGate, "Accounting Officer", [{ name: "Accounting Officer", status: "PRESENT", office: "ACCOUNTING_OFFICER" }], "Accounting Officer");
     expect(reason).toContain("overcommit");
     await expect(executeCycleGateAction(packGate)).rejects.toThrow(/overcommit/);
   });
@@ -392,11 +392,11 @@ describe("contract and payment gates", () => {
   test("execution requires the supplier acceptance and instruments", async () => {
     state.cycle[0].contract = contract({ status: "DRAFT", supplierAcceptedAt: undefined, supplierSignatory: undefined });
     const draftGate = gate("execute_contract");
-    expect(preApprovalCheck(draftGate, "Accounting Officer", [], "Accounting Officer")).toContain(
+    expect(preApprovalCheck(draftGate, "Accounting Officer", [{ name: "Accounting Officer", status: "PRESENT", office: "ACCOUNTING_OFFICER" }], "Accounting Officer")).toContain(
       "supplier has not accepted",
     );
     state.cycle[0].contract = contract({ status: "DRAFT" });
-    expect(preApprovalCheck(draftGate, "Accounting Officer", [], "Accounting Officer")).toBeNull();
+    expect(preApprovalCheck(draftGate, "Accounting Officer", [{ name: "Accounting Officer", status: "PRESENT", office: "ACCOUNTING_OFFICER" }], "Accounting Officer")).toBeNull();
     const result = await executeCycleGateAction(draftGate);
     expect(result?.status).toBe("EXECUTED");
     expect(state.cycle[0].contract?.status).toBe("EXECUTED");
@@ -414,7 +414,7 @@ describe("contract and payment gates", () => {
       insurance: { policyNo: "POL-1", issuer: "Insurer", validUntil: "2027-10-30" },
       retentionPct: 5,
     });
-    expect(preApprovalCheck(execGate, "Accounting Officer", [], "Accounting Officer")).toBeNull();
+    expect(preApprovalCheck(execGate, "Accounting Officer", [{ name: "Accounting Officer", status: "PRESENT", office: "ACCOUNTING_OFFICER" }], "Accounting Officer")).toBeNull();
     await executeCycleGateAction(execGate);
     expect(state.cycle[0].contract?.security?.amount).toBe(100_000);
     expect(state.cycle[0].contract?.retentionPct).toBe(5);
@@ -448,7 +448,7 @@ describe("contract and payment gates", () => {
     });
     state.budgetLines[0].committed = 1_000_000;
     const paymentGate = gate("certify_payment", { paymentId: "pay_1" });
-    expect(preApprovalCheck(paymentGate, "Accounting Officer", [], "Accounting Officer")).toBeNull();
+    expect(preApprovalCheck(paymentGate, "Accounting Officer", [{ name: "Accounting Officer", status: "PRESENT", office: "ACCOUNTING_OFFICER" }], "Accounting Officer")).toBeNull();
     const result = await executeCycleGateAction(paymentGate);
     expect(result?.net).toBe(450_000);
     expect(state.cycle[0].contract?.payments[0].status).toBe("CERTIFIED");
@@ -473,7 +473,7 @@ describe("contract and payment gates", () => {
       ],
     });
     const paymentGate = gate("certify_payment", { paymentId: "pay_1" });
-    const reason = preApprovalCheck(paymentGate, "Accounting Officer", [], "Accounting Officer");
+    const reason = preApprovalCheck(paymentGate, "Accounting Officer", [{ name: "Accounting Officer", status: "PRESENT", office: "ACCOUNTING_OFFICER" }], "Accounting Officer");
     expect(reason).toContain("cumulative net");
     await expect(executeCycleGateAction(paymentGate)).rejects.toThrow(/cumulative net/);
   });

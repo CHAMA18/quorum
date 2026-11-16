@@ -92,7 +92,7 @@ Three storage layers, each with a clear role:
 
 1. **The web app's store (one JSON file, `db/quorum-store.json`):** `User`, `Session`, `CommitteeMember` (the roster the gate checks against), `SystemSetting`, `ContactMessage`.
 2. **The agent's file-backed state (in `mini-services/quorum-mcp/data/`):** `state.json` (runs/gates/receipts), `tool-log.jsonl` (the audit line set), submission recipes (`data/submissions/*.json`), and the tender documents on disk the filesystem MCP reads.
-3. **Firebase and Cloudflare R2:** Firebase is the identity mirror. Tender uploads are stored in the `quorum-tenders` R2 bucket through the `quorum-edge` Worker's server-to-server upload gate. Before storing, the Next route extracts readable text — page-marked for PDF, raw text for DOCX, worksheet-marked rows for XLSX, UTF-8 for text files — and stages it through the sidecar's attested `POST /api/tenders/:ref/docs`, which writes the notice/bid files the review graph reads. A scanned PDF with no embedded text is first passed through a bounded local OCR fallback (Poppler + Tesseract, up to 20 pages); its text is page-marked and flagged for human verification, and if the OCR tools are absent the upload is stored and reported as needing OCR — never silently treated as reviewed. Downloads are minted as five-minute HMAC-signed URLs bound to the tender, object key and signed-in user; the download route re-checks the session and signature before streaming the object through the edge gate, so a copied link cannot be redeemed by another account.
+3. **PostgreSQL and Cloudflare R2:** PostgreSQL holds accounts, sessions and one-time links; sign-in is Quorum's own (scrypt passphrases, direct Google OAuth). Tender uploads are stored in the `quorum-tenders` R2 bucket through the `quorum-edge` Worker's server-to-server upload gate. Before storing, the Next route extracts readable text — page-marked for PDF, raw text for DOCX, worksheet-marked rows for XLSX, UTF-8 for text files — and stages it through the sidecar's attested `POST /api/tenders/:ref/docs`, which writes the notice/bid files the review graph reads. A scanned PDF with no embedded text is first passed through a bounded local OCR fallback (Poppler + Tesseract, up to 20 pages); its text is page-marked and flagged for human verification, and if the OCR tools are absent the upload is stored and reported as needing OCR — never silently treated as reviewed. Downloads are minted as five-minute HMAC-signed URLs bound to the tender, object key and signed-in user; the download route re-checks the session and signature before streaming the object through the edge gate, so a copied link cannot be redeemed by another account.
 
 ## How do other systems talk to it?
 
@@ -105,7 +105,7 @@ Three storage layers, each with a clear role:
 - The **LLM endpoint** for redline drafting — Llama 3.2 via Ollama in the live demo, or the Meta Model API / any OpenAI-compatible endpoint.
 - The **committee roster read** from the web app — fail-closed on failure.
 - The **local e-GP simulation adapter** records an idempotent simulated receipt; it does not connect to a procurement portal.
-- **Firebase** (authentication) and **Cloudflare R2** through the `quorum-edge` Worker (tender document storage; the edge secret stays server-side).
+- **PostgreSQL** (accounts, sessions, one-time links) and **Cloudflare R2** through the `quorum-edge` Worker (tender document storage; the edge secret stays server-side).
 - **Filesystem stdio** to the official third-party filesystem MCP server, which is the only thing allowed to open tender documents.
 
 ---
@@ -121,7 +121,7 @@ Three storage layers, each with a clear role:
 | Agent protocol | **MCP**: our own JSON-RPC 2.0/HTTP server + the official `@modelcontextprotocol/server-filesystem` | Our design principles plus a critical third-party capability we didn't want to hand-roll |
 | LLM | **Llama 3.2** (`llama3.2:3b`) via Ollama in the live demo; Meta Model API or any OpenAI-compatible endpoint; deterministic template fallback | Open weights keep procurement data in-region, and one env change moves the same drafting path to Meta's hosted API |
 | Databases | One dependency-free JSON file for the web app (users/roster/settings) + file-backed state & append-only audit JSONL on the agent side | Small, inspectable store with no native dependencies; append-only text where it's auditable evidence |
-| Identity & storage | Firebase Auth (email/passphrase + Google) + Cloudflare R2 through the quorum-edge gate | Real authentication without building a password system; uploads stay behind a server-side edge secret |
+| Identity & storage | First-party accounts in PostgreSQL (scrypt passphrase, opaque session digests, TOTP, emailed one-time links, direct Google OAuth) + Cloudflare R2 through the quorum-edge gate | No hosted identity provider in the sign-in path; uploads stay behind a server-side edge secret |
 | Infra | nginx (reverse proxy), systemd (process supervision), one `t4g.small` EC2 in `af-south-1`, Route 53 zone | Small, boring, cheap to run — everything reproducible from the repo |
 | Tests | Bun test runner (`engine.test.ts`, 49 tests: green) | The agent safety rules (roster fail-closed, citations required) are enforced by tests, not only by docs |
 

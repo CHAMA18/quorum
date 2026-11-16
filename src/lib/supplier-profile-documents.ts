@@ -25,7 +25,7 @@ import {
  * that notice. Suppliers asked to keep one set of standing evidence ready, so
  * the same catalogue is also stored against the organization itself:
  *
- *   orgs/<orgId>/<firebaseUid>/profile-documents/<requirementHash>/<file>
+ *   orgs/<orgId>/<ownerId>/profile-documents/<requirementHash>/<file>
  *
  * Same gate, same size limits and same metadata proof as tender uploads — only
  * the prefix and the missing `tenderref` differ. Nothing here is trusted from
@@ -54,23 +54,23 @@ export function canonicalProfileDocument(label: string): string | null {
   return ALL_REQUIRED_DOCUMENTS.find((document) => normalizedLabel(document) === wanted) ?? null;
 }
 
-export function profileDocumentPrefix(orgId: string, firebaseUid: string): string {
-  return `orgs/${orgId}/${firebaseUid}/profile-documents/`;
+export function profileDocumentPrefix(orgId: string, ownerId: string): string {
+  return `orgs/${orgId}/${ownerId}/profile-documents/`;
 }
 
 export function profileDocumentKey(args: {
   orgId: string;
-  firebaseUid: string;
+  ownerId: string;
   requirement: string;
   filename: string;
 }): string {
   const filename = safeSupplierFilename(args.filename);
-  return `${profileDocumentPrefix(args.orgId, args.firebaseUid)}${requirementHash(args.requirement)}/${Date.now()}-${randomUUID()}-${filename}`;
+  return `${profileDocumentPrefix(args.orgId, args.ownerId)}${requirementHash(args.requirement)}/${Date.now()}-${randomUUID()}-${filename}`;
 }
 
 export async function putSupplierProfileDocument(args: {
   org: OrganizationRow;
-  firebaseUid: string;
+  ownerId: string;
   requirement: string;
   filename: string;
   contentType: string;
@@ -82,7 +82,7 @@ export async function putSupplierProfileDocument(args: {
   const sha256 = createHash("sha256").update(args.bytes).digest("hex");
   const key = profileDocumentKey({
     orgId: args.org.id,
-    firebaseUid: args.firebaseUid,
+    ownerId: args.ownerId,
     requirement: args.requirement,
     filename,
   });
@@ -92,7 +92,7 @@ export async function putSupplierProfileDocument(args: {
     bytes: args.bytes,
     metadata: {
       organizationid: args.org.id,
-      firebaseuid: args.firebaseUid,
+      ownerid: args.ownerId,
       scope: "profile",
       requirement: args.requirement.slice(0, 180),
       requirementhash: requirementHash(args.requirement),
@@ -106,7 +106,7 @@ export async function putSupplierProfileDocument(args: {
   /* A re-upload is a replacement: one file stands per catalogue item, so the
      previous object for this requirement is retired once the new one lands. */
   try {
-    const requirementPrefix = `${profileDocumentPrefix(args.org.id, args.firebaseUid)}${requirementHash(args.requirement)}/`;
+    const requirementPrefix = `${profileDocumentPrefix(args.org.id, args.ownerId)}${requirementHash(args.requirement)}/`;
     const { objects } = await listEdgeObjects(requirementPrefix, MAX_SUPPLIER_BID_FILES);
     await Promise.all(
       objects
@@ -129,10 +129,10 @@ export async function putSupplierProfileDocument(args: {
 
 export async function getSupplierProfileDocumentUsage(args: {
   orgId: string;
-  firebaseUid: string;
+  ownerId: string;
 }): Promise<{ files: number; bytes: number; truncated: boolean }> {
   const { objects, truncated } = await listEdgeObjects(
-    profileDocumentPrefix(args.orgId, args.firebaseUid),
+    profileDocumentPrefix(args.orgId, args.ownerId),
     MAX_SUPPLIER_BID_FILES + 1,
   );
   return {
@@ -144,11 +144,11 @@ export async function getSupplierProfileDocumentUsage(args: {
 
 export async function listSupplierProfileDocuments(args: {
   org: OrganizationRow;
-  firebaseUid: string;
+  ownerId: string;
 }): Promise<SupplierProfileDocument[]> {
   const config = supplierEdgeConfig();
   if (!config) throw new Error("Cloudflare R2 storage is not configured for supplier documents.");
-  const prefix = profileDocumentPrefix(args.org.id, args.firebaseUid);
+  const prefix = profileDocumentPrefix(args.org.id, args.ownerId);
   const { objects } = await listEdgeObjects(prefix, MAX_SUPPLIER_BID_FILES);
   const byHash = new Map(ALL_REQUIRED_DOCUMENTS.map((label) => [requirementHash(label), label]));
   const output: SupplierProfileDocument[] = [];
@@ -165,7 +165,7 @@ export async function listSupplierProfileDocuments(args: {
       if (
         !canonical ||
         meta.organizationid !== args.org.id ||
-        meta.firebaseuid !== args.firebaseUid ||
+        meta.ownerid !== args.ownerId ||
         meta.scope !== "profile" ||
         meta.requirementhash !== requirementHash(canonical) ||
         meta.contenttype !== head.contentType ||
@@ -201,10 +201,10 @@ type VerifiedProfileObject =
  */
 async function verifiedProfileObject(args: {
   orgId: string;
-  firebaseUid: string;
+  ownerId: string;
   key: string;
 }): Promise<VerifiedProfileObject> {
-  const prefix = profileDocumentPrefix(args.orgId, args.firebaseUid);
+  const prefix = profileDocumentPrefix(args.orgId, args.ownerId);
   if (!args.key.startsWith(prefix) || args.key.length > 512 || /[\\\u0000-\u001f]/.test(args.key)) {
     return { ok: false, status: 403, error: "This document does not belong to the signed-in supplier." };
   }
@@ -224,7 +224,7 @@ async function verifiedProfileObject(args: {
   if (
     !requirement ||
     meta.organizationid !== args.orgId ||
-    meta.firebaseuid !== args.firebaseUid ||
+    meta.ownerid !== args.ownerId ||
     meta.scope !== "profile" ||
     meta.contenttype !== head.contentType ||
     !/^[a-f0-9]{64}$/i.test(meta.sha256 ?? "")
@@ -236,12 +236,12 @@ async function verifiedProfileObject(args: {
 
 export async function deleteSupplierProfileDocument(args: {
   org: OrganizationRow;
-  firebaseUid: string;
+  ownerId: string;
   key: string;
 }): Promise<{ ok: true } | { ok: false; status: 403 | 404; error: string }> {
   const verified = await verifiedProfileObject({
     orgId: args.org.id,
-    firebaseUid: args.firebaseUid,
+    ownerId: args.ownerId,
     key: args.key,
   });
   if (!verified.ok) return verified;
@@ -258,7 +258,7 @@ export async function deleteSupplierProfileDocument(args: {
  */
 export async function readSupplierProfileDocument(args: {
   org: OrganizationRow;
-  firebaseUid: string;
+  ownerId: string;
   key: string;
 }): Promise<
   | {
@@ -274,7 +274,7 @@ export async function readSupplierProfileDocument(args: {
 > {
   const verified = await verifiedProfileObject({
     orgId: args.org.id,
-    firebaseUid: args.firebaseUid,
+    ownerId: args.ownerId,
     key: args.key,
   });
   if (!verified.ok) return verified;

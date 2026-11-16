@@ -1,17 +1,46 @@
-import { randomUUID } from "crypto";
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "fs";
+import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "crypto";
+import {
+  accessSync,
+  chmodSync,
+  closeSync,
+  constants as fsConstants,
+  existsSync,
+  fsyncSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  statSync,
+  statfsSync,
+  writeFileSync,
+} from "fs";
 import path from "path";
 import { isWorkspaceRole, type WorkspaceRole } from "@/lib/permissions";
 import { claimedMembershipForEmail, roleForNewWorkspaceMember } from "@/lib/role-assignment";
+import { postgresConfigured } from "@/lib/pg";
+import {
+  flushStoreWrites,
+  queueStoreWrite,
+  readStoreDocument,
+  storeWriteStatus,
+} from "@/lib/pg-store";
+
+/* Session cookies are bearer credentials. Store only a digest, so a copied
+   store file cannot be replayed as a live session. */
+const sessionTokenHash = (token: string) => createHash("sha256").update(token).digest("hex");
+let sessionTokenRewriteNeeded = false;
+let totpRewriteNeeded = false;
+
 
 /**
- * Quorum's web-app store: one JSON file, no ORM, no native dependencies.
+ * Quorum's web-app store: one document, held in memory, persisted to
+ * PostgreSQL. There is no ORM.
  *
- * Data is small (accounts, sessions, a standing committee, settings, pilot
- * requests, workspace invites), so the whole store is held in memory and
- * written back atomically (temp file + rename) after every change. Every
- * operation is synchronous, so a single Node process never interleaves two
- * writes. The file lives in `db/`, which is gitignored.
+ * Every operation is synchronous, which is what the routes rely on: the store
+ * answers from memory immediately, and `persist()` hands the new revision to
+ * `@/lib/pg-store`, which serialises writes to the `quorum_web_store` row in
+ * Postgres. A local JSON file is kept as a synchronous boot cache and offline
+ * fallback — it is never the system of record when `DATABASE_URL` is set.
  *
  * Uniqueness that a relational schema would enforce (email, session token,
  * invite code) is enforced here: the create functions throw on a duplicate.
@@ -52,9 +81,29 @@ export interface StepUpLogRow {
   expiresAt: Date;
 }
 
+/* One-time links. Only the SHA-256 digest of a token is stored; the token
+   itself exists exactly twice — in the email and in the request that spends
+   it. A consumed or expired row grants nothing. */
+export interface EmailVerificationRow {
+  tokenHash: string;
+  userId: string;
+  expiresAt: Date;
+  createdAt: Date;
+  usedAt: Date | null;
+}
+
+export interface PasswordResetRow {
+  tokenHash: string;
+  userId: string;
+  expiresAt: Date;
+  createdAt: Date;
+  usedAt: Date | null;
+}
+
 export interface SessionRow {
   id: string;
-  token: string;
+  /** SHA-256 of the opaque cookie token. The token itself never reaches disk. */
+  tokenHash: string;
   userId: string;
   expiresAt: Date;
   createdAt: Date;
@@ -106,6 +155,7 @@ export type OversightAction =
   | "USER_REACTIVATED"
   | "SESSIONS_REVOKED"
   | "ORG_SUSPENDED"
+  | "ORG_VERIFIED"
   | "ORG_REACTIVATED"
   | "ORG_APPEAL_FILED"
   | "ORG_APPEAL_UPHELD"
@@ -287,8 +337,6 @@ export interface OrganizationRow {
   id: string;
   name: string; // legal name
   email: string; // login identity, unique
-  /** First Firebase identity used for supplier-bid uploads; never returned publicly. */
-  firebaseUid?: string;
   password: string; // scrypt:salt:hash
   registrationNo: string; // legal registration number, unique
   country: string;
@@ -304,13 +352,17 @@ export interface OrganizationRow {
   website?: string;
   description?: string;
   categories: string[];
-  status: "ACTIVE" | "SUSPENDED";
+  /* PENDING is the account's state between registration and the desk's
+     identity/statutory review. A pending organization can sign in and
+     complete its profile, but cannot file a bid. */
+  status: "PENDING" | "ACTIVE" | "SUSPENDED";
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface OrgSessionRow {
-  token: string;
+  /** SHA-256 of the opaque supplier cookie token. */
+  tokenHash: string;
   orgId: string;
   expiresAt: Date;
   createdAt: Date;
@@ -343,6 +395,8 @@ export interface OrgAppealRow {
 }
 
 interface StoreShape {
+  /* Monotonic document revision. Postgres refuses to replace a newer one. */
+  revision: number;
   workspaceId: string;
   users: UserRow[];
   sessions: SessionRow[];
@@ -362,6 +416,8 @@ interface StoreShape {
   notifications: NotificationRow[];
   notificationDeliveries: NotificationDeliveryRow[];
   oversightEvents: OversightEventRow[];
+  emailVerifications: EmailVerificationRow[];
+  passwordResets: PasswordResetRow[];
 }
 
 /**
@@ -421,7 +477,62 @@ const LEGACY_FILE =
   !process.env.QUORUM_STORE_PATH && process.cwd().includes(`${path.sep}.next${path.sep}standalone`)
     ? path.join(process.cwd(), "db", "quorum-store.json")
     : null;
-const DATE_FIELDS = ["createdAt", "updatedAt", "expiresAt", "claimedAt", "usedAt", "readAt", "decidedAt", "respondedAt", "emailDeliveryAttemptedAt"] as const;
+
+/* TOTP secrets are the second factor. Encrypt them at rest with a key that is
+   separate from the store file: QUORUM_STORE_KEY when supplied, otherwise a
+   generated 0600 key beside the store. Changing or losing the key makes
+   existing TOTP enrolments unreadable, so back it up with the store. */
+let cachedTotpKey: Buffer | null = null;
+function totpKey(): Buffer {
+  if (cachedTotpKey) return cachedTotpKey;
+  const configured = process.env.QUORUM_STORE_KEY?.trim();
+  if (configured) {
+    const key = /^[0-9a-f]{64}$/i.test(configured)
+      ? Buffer.from(configured, "hex")
+      : Buffer.from(configured, "base64");
+    if (key.length !== 32) throw new Error("QUORUM_STORE_KEY must be 32 bytes (64 hex characters or base64).");
+    cachedTotpKey = key;
+    return key;
+  }
+  const keyPath = path.join(path.dirname(FILE), ".totp-key");
+  try {
+    const existing = Buffer.from(readFileSync(keyPath, "utf8").trim(), "hex");
+    if (existing.length === 32) {
+      cachedTotpKey = existing;
+      return existing;
+    }
+  } catch {
+    /* first boot — generate below */
+  }
+  const key = randomBytes(32);
+  mkdirSync(path.dirname(keyPath), { recursive: true, mode: 0o700 });
+  writeFileSync(keyPath, key.toString("hex"), { mode: 0o600 });
+  try {
+    chmodSync(keyPath, 0o600);
+  } catch {
+    /* non-POSIX host */
+  }
+  cachedTotpKey = key;
+  return key;
+}
+
+function encryptTotpSecret(secret: string): string {
+  if (secret.startsWith("enc:v1:")) return secret;
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", totpKey(), iv);
+  const ciphertext = Buffer.concat([cipher.update(secret, "utf8"), cipher.final()]);
+  return `enc:v1:${iv.toString("base64url")}:${ciphertext.toString("base64url")}:${cipher.getAuthTag().toString("base64url")}`;
+}
+
+function decryptTotpSecret(stored: string): string {
+  if (!stored.startsWith("enc:v1:")) return stored;
+  const [, , iv, ciphertext, tag] = stored.split(":");
+  if (!iv || !ciphertext || !tag) throw new Error("Malformed encrypted TOTP secret.");
+  const decipher = createDecipheriv("aes-256-gcm", totpKey(), Buffer.from(iv, "base64url"));
+  decipher.setAuthTag(Buffer.from(tag, "base64url"));
+  return Buffer.concat([decipher.update(Buffer.from(ciphertext, "base64url")), decipher.final()]).toString("utf8");
+}
+const DATE_FIELDS = ["createdAt", "updatedAt", "expiresAt", "issuedAt", "claimedAt", "usedAt", "readAt", "decidedAt", "respondedAt", "emailDeliveryAttemptedAt"] as const;
 
 function revive<T>(rows: unknown): T[] {
   if (!Array.isArray(rows)) return [];
@@ -548,6 +659,7 @@ function reviveMeetingNotes(rows: unknown): MeetingNoteRow[] {
 
 function load(): StoreShape {
   const empty: StoreShape = {
+    revision: 0,
     workspaceId: randomUUID(),
     users: [],
     sessions: [],
@@ -567,6 +679,8 @@ function load(): StoreShape {
     notifications: [],
     notificationDeliveries: [],
     oversightEvents: [],
+    emailVerifications: [],
+    passwordResets: [],
   };
   if (!existsSync(FILE)) {
     /* One-time migration: a pre-fix build kept the store inside
@@ -585,9 +699,26 @@ function load(): StoreShape {
   }
   const raw = JSON.parse(readFileSync(FILE, "utf8")) as Partial<Record<keyof StoreShape, unknown>>;
   return {
+    revision: typeof raw.revision === "number" && Number.isFinite(raw.revision) ? raw.revision : 0,
     workspaceId: typeof raw.workspaceId === "string" && raw.workspaceId ? raw.workspaceId : randomUUID(),
-    users: revive<UserRow>(raw.users).map((user) => ({ ...user, workspaceId: user.workspaceId || (typeof raw.workspaceId === "string" ? raw.workspaceId : "") })),
-    sessions: revive<SessionRow>(raw.sessions),
+    users: revive<UserRow>(raw.users).map((user) => {
+      if (user.totpSecret && !user.totpSecret.startsWith("enc:v1:")) {
+        try {
+          user.totpSecret = encryptTotpSecret(user.totpSecret);
+          totpRewriteNeeded = true;
+        } catch {
+          /* keep the plaintext secret rather than locking the officer out */
+        }
+      }
+      return { ...user, workspaceId: user.workspaceId || (typeof raw.workspaceId === "string" ? raw.workspaceId : "") };
+    }),
+    sessions: revive<SessionRow & { token?: string }>(raw.sessions).map(({ token, ...session }) => {
+      if (token) sessionTokenRewriteNeeded = true;
+      return {
+        ...session,
+        tokenHash: session.tokenHash || (token ? sessionTokenHash(token) : ""),
+      };
+    }).filter((session) => session.tokenHash.length > 0),
     contacts: revive<ContactRow>(raw.contacts),
     supportRequests: revive<SupportRequestRow>(raw.supportRequests),
     committeeMembers: revive<CommitteeMemberRow>(raw.committeeMembers),
@@ -597,13 +728,21 @@ function load(): StoreShape {
     settings: (raw.settings as Record<string, string>) ?? {},
     invites: revive<InviteRow>(raw.invites),
     organizations: revive<OrganizationRow>(raw.organizations),
-    orgSessions: revive<OrgSessionRow>(raw.orgSessions),
+    orgSessions: revive<OrgSessionRow & { token?: string }>(raw.orgSessions).map(({ token, ...session }) => {
+      if (token) sessionTokenRewriteNeeded = true;
+      return {
+        ...session,
+        tokenHash: session.tokenHash || (token ? sessionTokenHash(token) : ""),
+      };
+    }).filter((session) => session.tokenHash.length > 0),
     orgPasswordResets: revive<OrgPasswordResetRow>(raw.orgPasswordResets),
     orgAppeals: revive<OrgAppealRow>(raw.orgAppeals),
     stepUpLogs: revive<StepUpLogRow>(raw.stepUpLogs),
     notifications: revive<NotificationRow>(raw.notifications),
     notificationDeliveries: revive<NotificationDeliveryRow>(raw.notificationDeliveries),
     oversightEvents: revive<OversightEventRow>(raw.oversightEvents),
+    emailVerifications: revive<EmailVerificationRow>(raw.emailVerifications),
+    passwordResets: revive<PasswordResetRow>(raw.passwordResets),
   };
 }
 
@@ -626,9 +765,22 @@ if (!Array.isArray(store.orgSessions)) store.orgSessions = [];
 if (!Array.isArray(store.orgPasswordResets)) store.orgPasswordResets = [];
 if (!Array.isArray(store.orgAppeals)) store.orgAppeals = [];
 if (!Array.isArray(store.stepUpLogs)) store.stepUpLogs = [];
+/* Rewrite a legacy store once, so the plaintext tokens that were loaded for
+   compatibility are replaced on disk by their digests. A read-only store keeps
+   the in-memory digests and health reports the write failure. */
+if (sessionTokenRewriteNeeded || totpRewriteNeeded) {
+  try {
+    persist();
+  } catch {
+    /* health will report the unwritable store */
+  }
+}
 if (!Array.isArray(store.notifications)) store.notifications = [];
 if (!Array.isArray(store.notificationDeliveries)) store.notificationDeliveries = [];
 if (!Array.isArray(store.oversightEvents)) store.oversightEvents = [];
+if (!Array.isArray(store.emailVerifications)) store.emailVerifications = [];
+if (!Array.isArray(store.passwordResets)) store.passwordResets = [];
+if (typeof store.revision !== "number") store.revision = 0;
 
 /* Backfill roles for stores written before workspace authority existed. The
    earliest account owns the workspace; later accounts inherit the role on a
@@ -663,11 +815,135 @@ if (store.users.length > 0) {
 }
 if (rolesMigrated) persist();
 
+/* ── Postgres hydration ───────────────────────────────────────────────────
+   Boot reads the local cache synchronously so the first request is never made
+   to wait; the authoritative row then decides. A newer database revision
+   replaces the cache in place (same object identity, so every module that
+   already imported the store sees the adopted data). A newer local revision —
+   or any mutation that landed during boot — is pushed up instead. */
+const revisionAtBoot = store.revision;
+let storeHydrated = !postgresConfigured();
+
+async function hydrateStoreFromPostgres(): Promise<void> {
+  if (!postgresConfigured()) return;
+  try {
+    const remote = await readStoreDocument();
+    const mutatedSinceBoot = store.revision !== revisionAtBoot;
+    if (!remote) {
+      storeHydrated = true;
+      /* First boot against an empty database: adopt the local file rather
+         than wait for the next mutation, so a host that already served
+         accounts keeps them. */
+      const hasLocalRecords =
+        store.revision > 0 || store.users.length > 0 || store.organizations.length > 0;
+      if (hasLocalRecords) queueStoreWrite(store, Math.max(store.revision, 1));
+      return;
+    }
+    if (remote.revision > store.revision && !mutatedSinceBoot) {
+      mkdirSync(path.dirname(FILE), { recursive: true, mode: 0o700 });
+      const tmp = `${FILE}.${process.pid}.hydrate.tmp`;
+      writeFileSync(tmp, JSON.stringify(remote.body, null, 2), { mode: 0o600 });
+      renameSync(tmp, FILE);
+      Object.assign(store, load());
+      store.revision = remote.revision;
+    } else if (store.revision > remote.revision || mutatedSinceBoot) {
+      queueStoreWrite(store, store.revision);
+    }
+    storeHydrated = true;
+  } catch (error) {
+    console.error(
+      "[postgres] store hydration failed — continuing on the local cache",
+      error instanceof Error ? error.message : error,
+    );
+  }
+}
+
+const storeHydration = hydrateStoreFromPostgres();
+
 function persist(): void {
-  mkdirSync(path.dirname(FILE), { recursive: true });
+  store.revision = (store.revision ?? 0) + 1;
+  const dir = path.dirname(FILE);
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  try {
+    chmodSync(dir, 0o700);
+  } catch {
+    /* non-POSIX host — the write still succeeds */
+  }
   const tmp = `${FILE}.${process.pid}.tmp`;
-  writeFileSync(tmp, JSON.stringify(store, null, 2));
+  writeFileSync(tmp, JSON.stringify(store, null, 2), { mode: 0o600 });
+  /* fsync the file before the rename, then the directory, so a power loss
+     cannot leave a half-written record or lose the rename itself. */
+  const fd = openSync(tmp, "r");
+  try {
+    fsyncSync(fd);
+  } finally {
+    closeSync(fd);
+  }
   renameSync(tmp, FILE);
+  try {
+    chmodSync(FILE, 0o600);
+    const dfd = openSync(dir, "r");
+    try {
+      fsyncSync(dfd);
+    } finally {
+      closeSync(dfd);
+    }
+  } catch {
+    /* directory fsync is not available on every filesystem */
+  }
+  /* Postgres is the system of record: hand it this revision. The local file
+     above is the boot cache, never the authority when a database is set. */
+  if (storeHydrated) queueStoreWrite(store, store.revision);
+}
+
+/**
+ * Make the current document durable before answering.
+ *
+ * Hydration is awaited first so a request that arrives during boot cannot
+ * race the decision about which side is newer, then the current revision is
+ * queued explicitly: `persist()` skips the queue until hydration finishes.
+ * Used where a lost write would invalidate a session or a one-time link.
+ */
+export async function flushStore(): Promise<void> {
+  if (!postgresConfigured()) return;
+  await storeHydration;
+  queueStoreWrite(store, store.revision);
+  await flushStoreWrites();
+}
+
+/** Readiness probe: the web store must be writable, not merely present. */
+export function storeHealth(): {
+  writable: boolean;
+  bytes: number;
+  freeBytes: number | null;
+  persistence: "postgres" | "file";
+  pendingRevisions: number;
+  lastSavedRevision: number;
+  lastSavedAt: string | null;
+  lastError: string | null;
+} {
+  let writable = false;
+  let bytes = 0;
+  try {
+    accessSync(FILE, fsConstants.W_OK);
+    bytes = statSync(FILE).size;
+    writable = true;
+  } catch {
+    try {
+      accessSync(path.dirname(FILE), fsConstants.W_OK);
+      writable = true;
+    } catch {
+      writable = false;
+    }
+  }
+  let freeBytes: number | null = null;
+  try {
+    const fsStat = statfsSync(path.dirname(FILE));
+    freeBytes = Number(fsStat.bavail) * Number(fsStat.bsize);
+  } catch {
+    /* statfs is unavailable on some hosts; writability still answers */
+  }
+  return { writable, bytes, freeBytes, ...storeWriteStatus() };
 }
 
 const now = () => new Date();
@@ -692,6 +968,16 @@ export function listUsers(workspaceId?: string): UserRow[] {
   return store.users.filter((user) => user.workspaceId === scopedWorkspace).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 }
 
+/* Single-workspace mode is the pilot default: the first account opens the
+   workspace, and every later account needs an invitation into that same
+   workspace. It prevents a public signup from silently opening a second
+   tenant whose committee, settings, suppliers and oversight records are still
+   global. A hosted multi-tenant deployment sets QUORUM_SINGLE_WORKSPACE=false
+   only after the store is tenant-scoped. */
+export function selfServeWorkspaceCreationOpen(): boolean {
+  return process.env.QUORUM_SINGLE_WORKSPACE === "false" || store.users.length === 0;
+}
+
 export function createUser(data: {
   name: string;
   email: string;
@@ -703,6 +989,9 @@ export function createUser(data: {
   workspaceId?: string;
 }): UserRow {
   if (findUserByEmail(data.email)) throw new Error(`User already exists: ${data.email}`);
+  if (!data.workspaceId && !selfServeWorkspaceCreationOpen()) {
+    throw new Error("Self-serve registration is closed — ask a workspace owner for an invitation.");
+  }
   const at = now();
   /* New self-serve workspaces begin with an owner. An explicit invitation
      keeps its assigned role even if the member list is temporarily empty. */
@@ -813,12 +1102,23 @@ export function updateUserPassword(id: string, passwordHash: string): UserRow | 
 export function setUserTotp(id: string, secret: string | null, enabled: boolean): UserRow | null {
   const user = findUserById(id);
   if (!user) return null;
-  if (secret) user.totpSecret = secret;
+  if (secret) user.totpSecret = encryptTotpSecret(secret);
   if (secret === null) delete user.totpSecret;
   user.totpEnabled = enabled;
   user.updatedAt = now();
   persist();
   return user;
+}
+
+/** The decrypted TOTP secret for verification; null when absent or unreadable. */
+export function getUserTotpSecret(id: string): string | null {
+  const user = findUserById(id);
+  if (!user?.totpSecret) return null;
+  try {
+    return decryptTotpSecret(user.totpSecret);
+  } catch {
+    return null;
+  }
 }
 
 export function recordStepUpIssued(data: {
@@ -843,8 +1143,17 @@ export function recordStepUpIssued(data: {
   return row;
 }
 
+/* A store loaded by an older build can still hold issuedAt as a string; parse
+   either form here as well as in revive(), so one legacy row cannot 500 the
+   access-review history until the process restarts. */
+function timeOf(value: unknown): number {
+  if (value instanceof Date) return value.getTime();
+  const parsed = typeof value === "number" ? value : new Date(String(value)).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 export function listStepUpLogs(take = 100): StepUpLogRow[] {
-  return [...store.stepUpLogs].sort((a, b) => b.issuedAt.getTime() - a.issuedAt.getTime()).slice(0, take);
+  return [...store.stepUpLogs].sort((a, b) => timeOf(b.issuedAt) - timeOf(a.issuedAt)).slice(0, take);
 }
 
 /* ── Notifications — the desk's attention layer ─────────────────────────── */
@@ -948,8 +1257,9 @@ export function listNotificationDeliveries(take = 100): NotificationDeliveryRow[
 /* ── Sessions ───────────────────────────────────────────────────────────── */
 
 export function createSession(userId: string, expiresAt: Date, token: string): SessionRow {
-  if (store.sessions.some((s) => s.token === token)) throw new Error("Session token collision");
-  const session: SessionRow = { id: newId(), token, userId, expiresAt, createdAt: now() };
+  const tokenHash = sessionTokenHash(token);
+  if (store.sessions.some((s) => s.tokenHash === tokenHash)) throw new Error("Session token collision");
+  const session: SessionRow = { id: newId(), tokenHash, userId, expiresAt, createdAt: now() };
   store.sessions.push(session);
   persist();
   return session;
@@ -957,15 +1267,17 @@ export function createSession(userId: string, expiresAt: Date, token: string): S
 
 /** Looks up a session by its opaque token and returns it with its user. */
 export function findSessionWithUser(token: string): { session: SessionRow; user: UserRow } | null {
-  const session = store.sessions.find((s) => s.token === token);
+  const tokenHash = sessionTokenHash(token);
+  const session = store.sessions.find((s) => s.tokenHash === tokenHash);
   if (!session) return null;
   const user = findUserById(session.userId);
   return user ? { session, user } : null;
 }
 
 export function deleteSessionByToken(token: string): void {
+  const tokenHash = sessionTokenHash(token);
   const before = store.sessions.length;
-  store.sessions = store.sessions.filter((s) => s.token !== token);
+  store.sessions = store.sessions.filter((s) => s.tokenHash !== tokenHash);
   if (store.sessions.length !== before) persist();
 }
 
@@ -1254,19 +1566,6 @@ export function findOrganizationById(id: string): OrganizationRow | null {
   return store.organizations.find((o) => o.id === id) ?? null;
 }
 
-/** Bind the supplier account to its first verified Firebase identity. */
-export function bindOrganizationFirebaseUid(orgId: string, firebaseUid: string): boolean {
-  const org = findOrganizationById(orgId);
-  if (!org || !/^[A-Za-z0-9_-]{1,128}$/.test(firebaseUid)) return false;
-  if (org.firebaseUid && org.firebaseUid !== firebaseUid) return false;
-  if (!org.firebaseUid) {
-    org.firebaseUid = firebaseUid;
-    org.updatedAt = now();
-    persist();
-  }
-  return true;
-}
-
 export function findOrganizationByRegistrationNo(registrationNo: string): OrganizationRow | null {
   const reg = registrationNo.trim().toLowerCase();
   return store.organizations.find((o) => o.registrationNo.trim().toLowerCase() === reg) ?? null;
@@ -1315,7 +1614,7 @@ export function createOrganization(data: {
     website: data.website,
     description: data.description,
     categories: data.categories ?? [],
-    status: "ACTIVE",
+    status: "PENDING",
     createdAt: at,
     updatedAt: at,
   };
@@ -1339,7 +1638,7 @@ export function updateOrganization(
   if (!org) return null;
   if (typeof patch.name === "string" && patch.name.trim()) org.name = patch.name.trim().slice(0, 160);
   if (typeof patch.country === "string" && patch.country.trim()) org.country = patch.country.trim().slice(0, 80);
-  if (patch.status === "ACTIVE" || patch.status === "SUSPENDED") org.status = patch.status;
+  if (patch.status === "PENDING" || patch.status === "ACTIVE" || patch.status === "SUSPENDED") org.status = patch.status;
   for (const k of ORG_TEXT_FIELDS) {
     if (typeof patch[k] === "string") org[k] = (patch[k] as string).trim().slice(0, 1200) || undefined;
   }
@@ -1354,23 +1653,26 @@ export function updateOrganization(
 /* ── Organization sessions — a separate token space from officer sessions ── */
 
 export function createOrgSession(orgId: string, expiresAt: Date, token: string): OrgSessionRow {
-  if (store.orgSessions.some((s) => s.token === token)) throw new Error("Org session token collision");
-  const session: OrgSessionRow = { token, orgId, expiresAt, createdAt: now() };
+  const tokenHash = sessionTokenHash(token);
+  if (store.orgSessions.some((s) => s.tokenHash === tokenHash)) throw new Error("Org session token collision");
+  const session: OrgSessionRow = { tokenHash, orgId, expiresAt, createdAt: now() };
   store.orgSessions.push(session);
   persist();
   return session;
 }
 
 export function findOrgSessionWithOrg(token: string): { session: OrgSessionRow; org: OrganizationRow } | null {
-  const session = store.orgSessions.find((s) => s.token === token);
+  const tokenHash = sessionTokenHash(token);
+  const session = store.orgSessions.find((s) => s.tokenHash === tokenHash);
   if (!session) return null;
   const org = findOrganizationById(session.orgId);
   return org ? { session, org } : null;
 }
 
 export function deleteOrgSessionByToken(token: string): void {
+  const tokenHash = sessionTokenHash(token);
   const before = store.orgSessions.length;
-  store.orgSessions = store.orgSessions.filter((s) => s.token !== token);
+  store.orgSessions = store.orgSessions.filter((s) => s.tokenHash !== tokenHash);
   if (store.orgSessions.length !== before) persist();
 }
 
@@ -1384,7 +1686,7 @@ export function deleteOrgSessionsByOrg(orgId: string): number {
 
 export function setOrganizationStatus(
   orgId: string,
-  status: "ACTIVE" | "SUSPENDED",
+  status: OrganizationRow["status"],
 ): OrganizationRow | null {
   const org = findOrganizationById(orgId);
   if (!org) return null;
@@ -1419,6 +1721,72 @@ export function consumeOrgPasswordReset(tokenHash: string): void {
     row.usedAt = now();
     persist();
   }
+}
+
+/* ── Email verification and password reset ────────────────────────────────
+   Quorum used to delegate both to Firebase. They are now first-party: the
+   server mints a random token, emails the link through its own relay, stores
+   only the digest, and spends the token exactly once. One outstanding token
+   per account — issuing a fresh one retires the previous. */
+
+export function createEmailVerification(userId: string, tokenHash: string, expiresAt: Date): EmailVerificationRow {
+  store.emailVerifications = store.emailVerifications.filter(
+    (row) => row.userId !== userId || row.usedAt !== null,
+  );
+  const row: EmailVerificationRow = { tokenHash, userId, expiresAt, createdAt: now(), usedAt: null };
+  store.emailVerifications.push(row);
+  persist();
+  return row;
+}
+
+export function findEmailVerification(tokenHash: string): EmailVerificationRow | null {
+  return store.emailVerifications.find((row) => row.tokenHash === tokenHash) ?? null;
+}
+
+/** Spend a verification token. Returns null when it is unknown, used or expired. */
+export function consumeEmailVerification(tokenHash: string): EmailVerificationRow | null {
+  const row = findEmailVerification(tokenHash);
+  if (!row || row.usedAt !== null || row.expiresAt.getTime() <= Date.now()) return null;
+  row.usedAt = now();
+  persist();
+  return row;
+}
+
+export function createPasswordReset(userId: string, tokenHash: string, expiresAt: Date): PasswordResetRow {
+  store.passwordResets = store.passwordResets.filter(
+    (row) => row.userId !== userId || row.usedAt !== null,
+  );
+  const row: PasswordResetRow = { tokenHash, userId, expiresAt, createdAt: now(), usedAt: null };
+  store.passwordResets.push(row);
+  persist();
+  return row;
+}
+
+export function findPasswordReset(tokenHash: string): PasswordResetRow | null {
+  return store.passwordResets.find((row) => row.tokenHash === tokenHash) ?? null;
+}
+
+/** Spend a reset token. Returns null when it is unknown, used or expired. */
+export function consumePasswordReset(tokenHash: string): PasswordResetRow | null {
+  const row = findPasswordReset(tokenHash);
+  if (!row || row.usedAt !== null || row.expiresAt.getTime() <= Date.now()) return null;
+  row.usedAt = now();
+  persist();
+  return row;
+}
+
+/* Expired links are dead weight; prune them on the mutation paths that create
+   new ones rather than on a timer (this store has no scheduler). */
+export function pruneAuthTokens(): void {
+  const cutoff = Date.now();
+  const before = store.emailVerifications.length + store.passwordResets.length;
+  store.emailVerifications = store.emailVerifications.filter(
+    (row) => row.expiresAt.getTime() > cutoff || row.usedAt === null,
+  );
+  store.passwordResets = store.passwordResets.filter(
+    (row) => row.expiresAt.getTime() > cutoff || row.usedAt === null,
+  );
+  if (store.emailVerifications.length + store.passwordResets.length !== before) persist();
 }
 
 /* ── Suspension appeals — filed while the door is closed ────────────────── */

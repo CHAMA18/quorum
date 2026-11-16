@@ -36,7 +36,6 @@ import { QuorumLogo } from "@/components/quorum/logo";
 import { SearchSelect, type SelectOption } from "@/components/quorum/org/search-select";
 import { COUNTRIES, SUGGESTED_COUNTRIES, findCountry, type Country } from "@/lib/countries";
 import { LEGAL_FORMS, LEGAL_FORM_GROUPS, LEGAL_FORM_OTHER } from "@/lib/legal-forms";
-import { getFirebaseIdToken } from "@/lib/firebase";
 import {
   MAX_SUPPLIER_BID_FILE_BYTES,
   MAX_SUPPLIER_BID_FILES,
@@ -444,11 +443,8 @@ function ApplyDialog({
       setRequirementsLoading(true);
       setRequirementsError(null);
       try {
-        const token = await getFirebaseIdToken();
-        if (!token) throw new Error("Reconnect this supplier account to Firebase, then reopen the application.");
         const res = await fetch(`/api/org/tenders/${encodeURIComponent(tender.ref)}/documents`, {
           cache: "no-store",
-          headers: { authorization: `Bearer ${token}` },
         });
         const data = (await res.json().catch(() => ({}))) as {
           requiredDocuments?: string[];
@@ -519,8 +515,6 @@ function ApplyDialog({
     setUploadingRequirement(requirement);
     setUploadErrors((previous) => ({ ...previous, [requirement]: "" }));
     try {
-      const token = await getFirebaseIdToken();
-      if (!token) throw new Error("Your Firebase sign-in has expired. Sign out and back in, then try again.");
       for (const file of files) {
         const form = new FormData();
         form.append("file", file);
@@ -529,7 +523,6 @@ function ApplyDialog({
         try {
           const res = await fetch(`/api/org/tenders/${encodeURIComponent(tender.ref)}/documents`, {
             method: "POST",
-            headers: { authorization: `Bearer ${token}` },
             body: form,
           });
           const data = (await res.json().catch(() => ({}))) as {
@@ -575,11 +568,9 @@ function ApplyDialog({
     setRemovingKey(key);
     setUploadErrors((previous) => ({ ...previous, [requirement]: "" }));
     try {
-      const token = await getFirebaseIdToken();
-      if (!token) throw new Error("Your Firebase sign-in has expired. Sign out and back in, then try again.");
       const res = await fetch(`/api/org/tenders/${encodeURIComponent(tender.ref)}/documents`, {
         method: "DELETE",
-        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({ key }),
       });
       const data = (await res.json().catch(() => ({}))) as { deleted?: boolean; auditWarning?: string; error?: string };
@@ -628,17 +619,9 @@ function ApplyDialog({
     setBusy(true);
     setError(null);
     try {
-      const token = requiredDocuments.length ? await getFirebaseIdToken() : null;
-      if (requiredDocuments.length && !token) {
-        setError("Your Firebase sign-in has expired. Sign out and back in before filing this bid.");
-        return;
-      }
       const res = await fetch("/api/org/applications", {
         method: "POST",
-        headers: {
-          "content-type": "application/json",
-          ...(token ? { authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({
           tenderRef: tender.ref,
           amount: amt,
@@ -1563,6 +1546,22 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
               ) : null}
             </AnimatePresence>
 
+            {org.status === "PENDING" ? (
+              <div
+                role="status"
+                className="mb-5 flex items-start gap-3 rounded-xl border border-amber-300/70 bg-amber-50 px-4 py-3 text-[12.5px] leading-relaxed text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+              >
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                <div>
+                  <p className="font-semibold">Awaiting procurement-desk verification</p>
+                  <p className="mt-0.5">
+                    Your profile is saved. You can complete your details and browse tenders, but filing a bid opens
+                    once the desk verifies your organization&apos;s identity and statutory record.
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
             <AnimatePresence mode="wait">
             <motion.div
               key={tab}
@@ -1814,6 +1813,10 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
                               ) : closed ? (
                                 <div className="flex h-10 items-center justify-center rounded-xl border border-ink-100 text-[12px] font-semibold text-ink-400 dark:border-white/10">
                                   Closed — late applications are refused
+                                </div>
+                              ) : org.status !== "ACTIVE" ? (
+                                <div className="flex min-h-10 items-center justify-center rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2 text-center text-[11.5px] font-semibold text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                                  Awaiting desk verification — filing opens after review
                                 </div>
                               ) : (
                                 <button

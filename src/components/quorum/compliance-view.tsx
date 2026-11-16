@@ -160,7 +160,22 @@ function CustomRulesPanel({ corpus, onToast }: { corpus: string; onToast: (msg: 
     const res = await fetch("/api/settings/rules", { cache: "no-store" }).catch(() => null);
     if (res?.ok) setRules(((await res.json()) as { rules?: CustomRule[] }).rules ?? []);
   }, []);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+    fetch("/api/settings/rules", { cache: "no-store", signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { rules?: CustomRule[] } | null) => {
+        if (!cancelled && data) setRules(data.rules ?? []);
+      })
+      .catch(() => {
+        /* the panel stays empty until the operator retries */
+      });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, []);
   const add = async () => {
     const res = await fetch("/api/settings/rules", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(form) });
     if (!res.ok) { onToast("RULE REFUSED — CHECK THE NAME, KEYWORD AND YOUR ACCESS"); return; }

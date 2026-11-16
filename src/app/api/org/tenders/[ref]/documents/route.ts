@@ -13,7 +13,7 @@ import {
   putSupplierBidObject,
   safeSupplierFilename,
   supplierBidFileType,
-  verifiedSupplierFirebaseIdentity,
+  verifiedSupplierOwner,
 } from "@/lib/supplier-bid-documents";
 import { metaBidDocumentAssistAvailable, reviewBidDocumentWithMeta } from "@/lib/meta-bid-document-assist";
 
@@ -31,14 +31,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ ref:
   if (!safeTenderRef(ref)) return NextResponse.json({ error: "The tender reference is not valid." }, { status: 422 });
   const requirements = await publishedTenderRequirements(ref);
   if (!requirements.ok) return NextResponse.json({ error: requirements.error }, { status: requirements.status });
-  const identity = await verifiedSupplierFirebaseIdentity(req.headers.get("authorization"), org);
+  const identity = await verifiedSupplierOwner(org);
   if (!identity.ok) return NextResponse.json({ error: identity.error }, { status: identity.status });
   let uploadedDocuments;
   try {
     uploadedDocuments = await listSupplierBidObjects({
       tenderRef: ref,
       org,
-      firebaseUid: identity.identity.uid,
+      ownerId: identity.identity.uid,
       requiredDocuments: requirements.requiredDocuments,
     });
   } catch (error) {
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ref
     return NextResponse.json({ error: "Too many bid document uploads. Wait a few minutes and try again." }, { status: 429 });
   }
 
-  const identity = await verifiedSupplierFirebaseIdentity(req.headers.get("authorization"), org);
+  const identity = await verifiedSupplierOwner(org);
   if (!identity.ok) return NextResponse.json({ error: identity.error }, { status: identity.status });
 
   const requirements = await publishedTenderRequirements(ref);
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ref
 
   let usage;
   try {
-    usage = await getSupplierBidStorageUsage({ tenderRef: ref, org, firebaseUid: identity.identity.uid });
+    usage = await getSupplierBidStorageUsage({ tenderRef: ref, org, ownerId: identity.identity.uid });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Cloudflare R2 could not check the current upload limits." }, { status: 503 });
   }
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ref
     document = await putSupplierBidObject({
       tenderRef: ref,
       org,
-      firebaseUid: identity.identity.uid,
+      ownerId: identity.identity.uid,
       requirement,
       filename: rawFile.name,
       contentType: fileType.contentType,
@@ -117,7 +117,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ref
     body: {
       tenderRef: ref,
       organizationId: org.id,
-      firebaseUid: identity.identity.uid,
+      ownerId: identity.identity.uid,
       requirement,
       key: document.key,
       filename: document.filename,
@@ -142,7 +142,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ref
           filename: safeSupplierFilename(rawFile.name),
           contentType: fileType.contentType,
           requirement,
-          firebaseUid: identity.identity.uid,
+          ownerId: identity.identity.uid,
         });
       } catch (error) {
         metaAssistError = error instanceof Error ? error.message : "Muse Spark could not review this document. The upload is still complete.";
@@ -161,7 +161,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ r
   if (!rateLimit(clientKey(req, "org-bid-doc-delete"), 40, 15 * 60_000)) {
     return NextResponse.json({ error: "Too many document changes. Wait a few minutes and try again." }, { status: 429 });
   }
-  const identity = await verifiedSupplierFirebaseIdentity(req.headers.get("authorization"), org);
+  const identity = await verifiedSupplierOwner(org);
   if (!identity.ok) return NextResponse.json({ error: identity.error }, { status: identity.status });
   const body = await req.json().catch(() => null) as Record<string, unknown> | null;
   const key = typeof body?.key === "string" ? body.key : "";
@@ -182,7 +182,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ r
   if (!requirements.ok) return NextResponse.json({ error: requirements.error }, { status: requirements.status });
   const requirement = requirements.requiredDocuments.find((label) => label === meta.requirement);
   if (
-    meta.organizationid !== org.id || meta.firebaseuid !== identity.identity.uid || meta.tenderref !== ref ||
+    meta.organizationid !== org.id || meta.ownerid !== identity.identity.uid || meta.tenderref !== ref ||
     !requirement || meta.contenttype !== object.contentType || !/^[a-f0-9]{64}$/i.test(meta.sha256 ?? "")
   ) return NextResponse.json({ error: "The document ownership metadata could not be verified." }, { status: 403 });
 
@@ -200,7 +200,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ r
   const audit = await sidecarFetch("/api/supplier-bid-document-deletions", {
     method: "POST",
     actor: orgActor(org),
-    body: { tenderRef: ref, organizationId: org.id, firebaseUid: identity.identity.uid, requirement, key, sha256: meta.sha256 },
+    body: { tenderRef: ref, organizationId: org.id, ownerId: identity.identity.uid, requirement, key, sha256: meta.sha256 },
   });
   return NextResponse.json({ deleted: true, auditRecorded: audit.status === 201, auditWarning: audit.status === 201 ? undefined : sidecarError(audit.data, "The file was removed, but its audit receipt could not be recorded.") }, { headers: { "cache-control": "no-store" } });
 }

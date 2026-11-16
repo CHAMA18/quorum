@@ -1,31 +1,33 @@
-import { randomBytes } from "crypto";
+import { randomInt } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
-import { findOrganizationByEmail } from "@/lib/db";
-import { clientKey, rateLimit } from "@/lib/org-auth";
-import {
-  firebaseRestEnsureAccount,
-  firebaseRestSendPasswordReset,
-} from "@/lib/firebase-rest";
+import { createOrgPasswordReset, findOrganizationByEmail } from "@/lib/db";
+import { clientKey, hashResetCode, rateLimit } from "@/lib/org-auth";
+import { appOrigin, sendOrgResetCodeEmail } from "@/lib/auth-email";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
+/* No 0/O or 1/I: a code read over the phone must not be ambiguous. */
+const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+function newResetCode(): string {
+  let code = "";
+  for (let i = 0; i < 8; i++) code += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
+  return code;
+}
+
 /**
- * POST /api/org/auth/forgot-password — email a password-reset link.
+ * POST /api/org/auth/forgot-password — email a supplier reset code.
  * Body: { email }
- * 200 → { sent: true }  uniform reply for every well-formed address, so the
- *       response never reveals whether an organization is registered.
- * 400 → invalid email   429 → rate limited   502 → reset service down
  *
- * The link is emailed by Firebase to the address itself. Holding the link
- * is the proof of inbox control: no code is ever returned to the browser.
- * For an organization on the register, a Firebase identity is bootstrapped
- * first (random passphrase, never shown) so the reset email has a target.
+ * Quorum mints the code itself, stores only its digest and mails it through
+ * its own relay. The code is never returned to the caller — holding the inbox
+ * is the proof, and the response is uniform for every well-formed address.
  */
 export async function POST(req: NextRequest) {
   if (!rateLimit(clientKey(req, "org-forgot"), 4, 15 * 60_000)) {
     return NextResponse.json(
       { error: "Too many reset requests. For security, wait a few minutes before trying again." },
-      { status: 429 }
+      { status: 429 },
     );
   }
 
@@ -34,27 +36,26 @@ export async function POST(req: NextRequest) {
   if (!EMAIL_RE.test(email)) {
     return NextResponse.json(
       { error: "Check the highlighted fields.", errors: { email: "Enter the organization's account email." } },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
-  if (findOrganizationByEmail(email)) {
-    /* Result ignored on purpose: if Firebase is down, the send below fails
-     * too and the same honest 502 covers both. */
-    await firebaseRestEnsureAccount(email, randomBytes(24).toString("hex"));
-  }
+  const org = findOrganizationByEmail(email);
+  if (!org) return NextResponse.json({ sent: true });
 
-  const sent = await firebaseRestSendPasswordReset(email);
-  /* An unknown address is not an error: same reply as a registered one. */
-  if (!sent.ok && sent.code !== "EMAIL_NOT_FOUND") {
+  const code = newResetCode();
+  createOrgPasswordReset(org.id, hashResetCode(code), new Date(Date.now() + 30 * 60_000));
+  const result = await sendOrgResetCodeEmail({ org, code, origin: appOrigin(req.url) });
+
+  if (result.status === "SKIPPED" || result.status === "FAILED") {
     return NextResponse.json(
       {
         error:
-          sent.code === "TOO_MANY_ATTEMPTS_TRY_LATER"
-            ? "The reset service is rate-limiting this address. Try again in a few minutes."
+          result.status === "SKIPPED"
+            ? "Email delivery is not configured on this deployment, so a reset code cannot be sent. Contact the procurement desk."
             : "The reset service is unavailable right now. Try again shortly.",
       },
-      { status: 502 }
+      { status: 502 },
     );
   }
 

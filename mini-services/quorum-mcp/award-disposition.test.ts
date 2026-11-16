@@ -287,7 +287,7 @@ describe("disposition rules", () => {
 
 describe("award revalidation", () => {
   test("an open HIGH finding blocks the award signature", () => {
-    const reason = preApprovalCheck(gate("sign_award_report"), "Accounting Officer", [], "Accounting Officer");
+    const reason = preApprovalCheck(gate("sign_award_report"), "Accounting Officer", [{ name: "Accounting Officer", status: "PRESENT", office: "ACCOUNTING_OFFICER" }], "Accounting Officer");
     expect(reason).toContain("F-01");
     expect(reason).toContain("R-OVER-BUDGET");
   });
@@ -302,7 +302,7 @@ describe("award revalidation", () => {
       note: "The ceiling was revised in addendum 2; the bid is within the revised budget.",
       by: "Accounting Officer",
     });
-    expect(preApprovalCheck(gate("sign_award_report"), "Accounting Officer", [], "Accounting Officer")).toBeNull();
+    expect(preApprovalCheck(gate("sign_award_report"), "Accounting Officer", [{ name: "Accounting Officer", status: "PRESENT", office: "ACCOUNTING_OFFICER" }], "Accounting Officer")).toBeNull();
   });
 
   test("a waiver without a second officer is refused", async () => {
@@ -406,7 +406,7 @@ describe("complaint suspension", () => {
     const reason = preApprovalCheck(
       gate("sign_contract_pack", { value: 1_000_000, budgetLineId: "bud_ws4" }),
       "Accounting Officer",
-      [],
+      [{ name: "Accounting Officer", status: "PRESENT", office: "ACCOUNTING_OFFICER" }],
       "Accounting Officer",
     );
     expect(reason).toContain("cmp_ws4");
@@ -420,7 +420,7 @@ describe("complaint suspension", () => {
       preApprovalCheck(
         gate("sign_contract_pack", { value: 1_000_000, budgetLineId: "bud_ws4" }),
         "Accounting Officer",
-        [],
+        [{ name: "Accounting Officer", status: "PRESENT", office: "ACCOUNTING_OFFICER" }],
         "Accounting Officer",
       ),
     ).toBeNull();
@@ -449,7 +449,7 @@ describe("complaint suspension", () => {
     const reason = preApprovalCheck(
       gate("certify_payment", { paymentId: "pay_1" }),
       "Accounting Officer",
-      [],
+      [{ name: "Accounting Officer", status: "PRESENT", office: "ACCOUNTING_OFFICER" }],
       "Accounting Officer",
     );
     expect(reason).toContain("cmp_ws4");

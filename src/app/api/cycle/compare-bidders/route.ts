@@ -56,7 +56,7 @@ const ApplicationDocumentSchema = z.object({
   bytes: z.number().int().positive().max(MAX_SUPPLIER_BID_FILE_BYTES),
   contentType: z.string().trim().min(1).max(120),
   sha256: z.string().regex(/^[a-f0-9]{64}$/i),
-  firebaseUid: z.string().trim().min(1).max(128),
+  ownerId: z.string().trim().min(1).max(128),
   uploadedAt: z.string().max(80),
 }).strict();
 
@@ -266,7 +266,7 @@ async function extractApplicationDocuments(source: z.infer<typeof ReviewSourceSc
     for (const document of submission.documents) {
       fileCount += 1;
       totalBytes += document.bytes;
-      const expectedPrefix = `tenders/${source.tenderId}/supplier-bids/${submission.organizationId}/${document.firebaseUid}/`;
+      const expectedPrefix = `tenders/${source.tenderId}/supplier-bids/${submission.organizationId}/${document.ownerId}/`;
       if (
         !document.key.startsWith(expectedPrefix) ||
         /[\\\u0000-\u001f]/.test(document.key) ||

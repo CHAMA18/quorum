@@ -8,7 +8,7 @@ import {
   rateLimit,
 } from "@/lib/org-auth";
 import { sidecarError, sidecarFetch } from "@/lib/org-sidecar";
-import { publishedTenderRequirements, verifiedSupplierFirebaseIdentity, verifySubmittedSupplierBidDocuments } from "@/lib/supplier-bid-documents";
+import { publishedTenderRequirements, verifiedSupplierOwner, verifySubmittedSupplierBidDocuments } from "@/lib/supplier-bid-documents";
 
 /**
  * The organization's applications — the end of the supplier journey.
@@ -43,6 +43,18 @@ export async function POST(req: NextRequest) {
   if (!org) {
     return NextResponse.json({ error: "Sign in as an organization to file an application." }, { status: 401 });
   }
+  /* Registration is not verification. Until the procurement desk has reviewed
+     the organization's identity and statutory record, it may complete its
+     profile and browse tenders but may not put a bid on a procurement record. */
+  if (org.status !== "ACTIVE") {
+    return NextResponse.json(
+      {
+        error:
+          "Your organization is awaiting procurement-desk verification. You can complete your profile, but filing opens once the desk activates the account.",
+      },
+      { status: 403 }
+    );
+  }
   /* 30 per 15 min per network: honest abuse protection (no real desk files
      30 bids a quarter-hour) while repeated QA sweeps from one address stay
      deterministic — the sweep files probes each run and shares this bucket. */
@@ -73,15 +85,15 @@ export async function POST(req: NextRequest) {
   }
   const rawDocuments = Array.isArray(body.bidDocuments) ? body.bidDocuments : [];
   let verifiedDocuments: Awaited<ReturnType<typeof verifySubmittedSupplierBidDocuments>>;
-  let firebaseUid = "";
+  let ownerId = "";
   if (requirements.requiredDocuments.length || rawDocuments.length) {
-    const identity = await verifiedSupplierFirebaseIdentity(req.headers.get("authorization"), org);
+    const identity = await verifiedSupplierOwner(org);
     if (!identity.ok) return NextResponse.json({ error: identity.error }, { status: identity.status });
-    firebaseUid = identity.identity.uid;
+    ownerId = identity.identity.uid;
     verifiedDocuments = await verifySubmittedSupplierBidDocuments({
       tenderRef,
       org,
-      firebaseUid,
+      ownerId,
       requiredDocuments: requirements.requiredDocuments,
       rawDocuments,
     });
@@ -101,7 +113,7 @@ export async function POST(req: NextRequest) {
       currency: typeof body.currency === "string" && body.currency.trim() ? body.currency.trim() : undefined,
       coverNote: typeof body.coverNote === "string" && body.coverNote.trim() ? body.coverNote.trim() : undefined,
       bidDocuments: verifiedDocuments.documents,
-      firebaseUid: firebaseUid || undefined,
+      ownerId: ownerId || undefined,
       /* The org profile rides along for the supplier-register sync; the
          identity on the record remains the ATTESTED actor, never this body. */
       org: publicOrg(org),

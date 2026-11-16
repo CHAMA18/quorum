@@ -1,12 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { findUserByEmail, flushStore } from "@/lib/db";
 import {
-  createUser,
-  findClaimedWorkspaceMembership,
-  findUserByEmail,
-  markUserVerified,
-  updateUserPassword,
-} from "@/lib/db";
-import {
+  clearRateLimit,
   clientKey,
   createSession,
   hashPassword,
@@ -16,8 +11,7 @@ import {
   SESSION_COOKIE,
   verifyPassword,
 } from "@/lib/auth";
-import { verifyFirebaseIdToken } from "@/lib/firebase-identity";
-import { firebaseRestSignInWithPassword } from "@/lib/firebase-rest";
+
 
 /**
  * POST /api/auth/login — verify credentials and open a session.
@@ -26,22 +20,10 @@ import { firebaseRestSignInWithPassword } from "@/lib/firebase-rest";
  * 400 → { error, errors? }  401 → bad credentials  403 → EMAIL_UNVERIFIED
  * 429 → rate limited
  *
- * Password-drift fallback: the passphrase can legitimately change outside
- * the local store — through the self-service reset email (Firebase is the
- * system of record for that link) — and a store rebuild can drop an account
- * that still exists at Firebase. When the local scrypt hash rejects, the
- * same credentials are checked against Firebase Auth:
- *
- *   - match + local account        → local hash re-synced to the new
- *                                    passphrase; session opens normally;
- *   - match + no local account     → the account is restored, but ONLY for
- *                                    Firebase-VERIFIED addresses (proof of
- *                                    inbox control — an unverified,
- *                                    attacker-createable Firebase account
- *                                    must never grant anything);
- *   - match, address unverified    → the standard EMAIL_UNVERIFIED gate,
- *                                    which re-sends the verification link;
- *   - no match                     → the original 401.
+ * The account record and its scrypt hash live in Quorum's own store
+ * (Postgres). There is no second identity provider to reconcile against: a
+ * passphrase changed through the emailed reset link is written here, and a
+ * failed check is simply a failed check.
  */
 export async function POST(req: NextRequest) {
   if (!rateLimit(clientKey(req, "login"), 8, 15 * 60_000)) {
@@ -67,57 +49,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Check the highlighted fields.", errors }, { status: 400 });
   }
 
-  let user = findUserByEmail(email);
-  let authed = user ? await verifyPassword(password, user.password) : false;
-
-  if (!authed) {
-    const fb = await firebaseRestSignInWithPassword(email, password);
-    if (!fb.ok && fb.code === "TOO_MANY_ATTEMPTS_TRY_LATER") {
-      return NextResponse.json(
-        { error: "Too many attempts. For security, wait a few minutes before trying again." },
-        { status: 429 }
-      );
-    }
-    if (fb.ok) {
-      const identity = await verifyFirebaseIdToken(fb.value.idToken);
-      if (identity && identity.email === email) {
-        const passwordHash = await hashPassword(password);
-        if (user) {
-          /* Password drift (self-service reset): re-sync the local hash so
-           * the new passphrase works everywhere. */
-          user = updateUserPassword(user.id, passwordHash) ?? user;
-          if (identity.emailVerified && !user.emailVerified) {
-            user = markUserVerified(user.id) ?? user;
-          }
-          authed = true;
-        } else if (identity.emailVerified) {
-          /* Account lost in a store rebuild but alive and verified at
-           * Firebase — restore it. */
-          const membership = findClaimedWorkspaceMembership(email);
-          user = createUser({
-            name: identity.name.trim() || email.split("@")[0],
-            email,
-            password: passwordHash,
-            emailVerified: true,
-            ...(membership ?? {}),
-          });
-          authed = true;
-        } else {
-          /* Credentials are right, but the address was never verified at
-           * Firebase. Route into the existing verification gate instead of
-           * pretending the password was wrong. */
-          return NextResponse.json(
-            {
-              code: "EMAIL_UNVERIFIED",
-              error:
-                "Verify your email to finish signing in. We'll send a fresh verification link.",
-            },
-            { status: 403 }
-          );
-        }
-      }
-    }
+  /* Per-account budget, independent of the caller's IP: a distributed attacker
+     cannot grind one address by rotating networks. Successful sign-in clears
+     the budget below. */
+  const accountKey = `account-login:${email}`;
+  if (!rateLimit(accountKey, 8, 15 * 60_000)) {
+    return NextResponse.json(
+      { error: "Too many attempts for this account. Wait a few minutes before trying again." },
+      { status: 429 },
+    );
   }
+
+  const user = findUserByEmail(email);
+  const authed = user ? await verifyPassword(password, user.password) : false;
 
   if (!authed || !user) {
     return NextResponse.json(
@@ -146,7 +90,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  clearRateLimit(accountKey);
   const { token, expiresAt } = await createSession(user.id, remember);
+  /* The session row must exist before the cookie is handed over. */
+  await flushStore();
   const res = NextResponse.json({ user: publicUser(user) });
   res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions(expiresAt));
   return res;

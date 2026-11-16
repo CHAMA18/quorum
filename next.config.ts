@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { SECURITY_HEADERS } from "./src/lib/security-headers";
 
 /**
  * Two deploy targets from one codebase:
@@ -34,10 +35,13 @@ const nextConfig: NextConfig = {
      read-excel-file) whose bundling trips Turbopack's NFT tracer. Loading them
      from node_modules at runtime keeps the route server-side and the build
      intact; the standalone output copies them. */
-  serverExternalPackages: ["unpdf", "pdfjs-dist", "mammoth", "read-excel-file", "@modelcontextprotocol/server-filesystem"],
+  serverExternalPackages: ["unpdf", "pdfjs-dist", "mammoth", "read-excel-file", "@modelcontextprotocol/server-filesystem", "pg"],
   reactStrictMode: false,
   /* Keep the corner clear — the dashboard sidebar lives bottom-left */
   devIndicators: false,
+  async headers() {
+    return [{ source: "/(.*)", headers: [...SECURITY_HEADERS] }];
+  },
 };
 
 export default nextConfig;

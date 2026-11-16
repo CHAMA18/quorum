@@ -54,6 +54,10 @@ server.log
 /skills/
 # local database
 /db
+test-results/
+playwright-report/
+blob-report/
+
 *.db
 *.db-journal
 

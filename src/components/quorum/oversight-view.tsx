@@ -82,7 +82,7 @@ type OrgRow = {
   email: string;
   registrationNo: string;
   country: string;
-  status: "ACTIVE" | "SUSPENDED";
+  status: "PENDING" | "ACTIVE" | "SUSPENDED";
   sessions: number;
 };
 
@@ -118,7 +118,7 @@ type AppealRow = {
     name: string;
     email: string;
     registrationNo: string;
-    status: "ACTIVE" | "SUSPENDED";
+    status: "PENDING" | "ACTIVE" | "SUSPENDED";
   } | null;
 };
 
@@ -448,7 +448,9 @@ export function OversightView({
       onToast(
         status === "SUSPENDED"
           ? `${org.name.toUpperCase()} SUSPENDED · ${data.revokedSessions ?? 0} SESSION${data.revokedSessions === 1 ? "" : "S"} REVOKED`
-          : `${org.name.toUpperCase()} REINSTATED`,
+          : org.status === "PENDING"
+            ? `${org.name.toUpperCase()} VERIFIED · BIDDING OPEN`
+            : `${org.name.toUpperCase()} REINSTATED`,
       );
       setSuspendTarget(null);
       setSuspendReason("");
@@ -815,8 +817,9 @@ export function OversightView({
                       Organizations
                     </h2>
                     <p className="mt-1 text-[11.5px] leading-relaxed text-ink-500">
-                      Suspending an organization deletes its live portal sessions. The portal checks status on every
-                      request, so an old cookie cannot outlive the decision.
+                      New organizations wait here as PENDING until their identity and statutory record are reviewed.
+                      Suspending an active organization deletes its live portal sessions; the portal checks status on
+                      every request, so an old cookie cannot outlive the decision.
                     </p>
                   </div>
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-paper px-2.5 py-1 font-code text-[10px] font-bold tracking-[0.08em] text-ink-600">
@@ -841,7 +844,9 @@ export function OversightView({
                                 "rounded-full border px-2 py-0.5 font-code text-[10px] font-bold tracking-[0.08em]",
                                 org.status === "ACTIVE"
                                   ? "border-emerald-300 bg-emerald-50 text-emerald-800"
-                                  : "border-red-300 bg-red-50 text-red-700",
+                                  : org.status === "PENDING"
+                                    ? "border-amber-300 bg-amber-50 text-amber-800"
+                                    : "border-red-300 bg-red-50 text-red-700",
                               )}
                             >
                               {org.status}
@@ -856,7 +861,17 @@ export function OversightView({
                         </div>
                         {canManageOrgs && (
                           <div className="shrink-0">
-                            {org.status === "ACTIVE" ? (
+                            {org.status === "PENDING" ? (
+                              <button
+                                type="button"
+                                onClick={() => void patchOrg(org, "ACTIVE", "Identity and statutory record verified by the desk")}
+                                disabled={busy !== null}
+                                className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 font-code text-[10px] font-bold tracking-[0.06em] text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-40"
+                              >
+                                <CheckCircle2 className="h-3 w-3" aria-hidden="true" />
+                                VERIFY
+                              </button>
+                            ) : org.status === "ACTIVE" ? (
                               <button
                                 type="button"
                                 onClick={() => {

@@ -1,4 +1,6 @@
+import { NextResponse, type NextRequest } from "next/server";
 import { recentEvents, subscribeEvents } from "@/lib/event-bus";
+import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +12,10 @@ export const dynamic = "force-dynamic";
  * Server-paced at ~20 messages/second: the first frame goes out immediately,
  * the rest drain from a queue so a catch-up backlog never bursts.
  */
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
+  const user = await getUserFromToken(req.cookies.get(SESSION_COOKIE)?.value).catch(() => null);
+  if (!user) return NextResponse.json({ error: "Sign in to read desk events." }, { status: 401 });
+
   const after = Number(new URL(req.url).searchParams.get("after") ?? 0) || 0;
   const encoder = new TextEncoder();
   let unsubscribe = () => {};

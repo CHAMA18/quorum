@@ -26,10 +26,10 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
  * 400 → { error, errors? }   409 → email or registrationNo taken   429 → rate limited
  *
  * Unlike officer accounts, an organization's session opens immediately:
- * there is no email-verification loop on this door. The procurement desk
- * verifies an organization's statutory documents (registration, tax
- * clearance) as part of its own process — enforced where it belongs, on
- * the register, not in a mail loop.
+ * there is no email-verification loop on this door. The account is created
+ * PENDING, however: it can sign in and complete its profile, but the bid
+ * route stays closed until the procurement desk reviews the organization's
+ * identity and statutory documents and activates it.
  */
 export async function POST(req: NextRequest) {
   if (!rateLimit(clientKey(req, "org-register"), 10, 15 * 60_000)) {

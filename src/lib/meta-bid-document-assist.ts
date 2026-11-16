@@ -92,12 +92,12 @@ async function requestStructuredReview(args: {
   schema: Record<string, unknown>;
   schemaName: string;
   maxOutputTokens: number;
-  firebaseUid: string;
+  ownerId: string;
   failureSuffix: string;
 }): Promise<unknown> {
   const config = metaConfiguration();
   if (!config.available) throw new Error("Meta document review is not enabled for this workspace.");
-  const safetyIdentifier = createHash("sha256").update(args.firebaseUid).digest("hex");
+  const safetyIdentifier = createHash("sha256").update(args.ownerId).digest("hex");
   const response = await fetch(`${config.baseUrl}/responses`, {
     method: "POST",
     headers: { authorization: `Bearer ${config.apiKey}`, "content-type": "application/json" },
@@ -148,7 +148,7 @@ export async function reviewBidDocumentWithMeta(args: {
   filename: string;
   contentType: string;
   requirement: string;
-  firebaseUid: string;
+  ownerId: string;
 }): Promise<MetaBidDocumentAssist> {
   const config = metaConfiguration();
   if (!config.available) throw new Error("Meta document assist is not enabled for this workspace.");
@@ -184,7 +184,7 @@ export async function reviewBidDocumentWithMeta(args: {
     schema,
     schemaName: "quorum_bid_document_assist",
     maxOutputTokens: 650,
-    firebaseUid: args.firebaseUid,
+    ownerId: args.ownerId,
     failureSuffix: "The upload itself is still available.",
   })) as Partial<Omit<MetaBidDocumentAssist, "model" | "note">>;
 
@@ -223,7 +223,7 @@ export async function scanProfileDocumentWithMeta(args: {
   contentType: string;
   requirement: string;
   organizationName: string;
-  firebaseUid: string;
+  ownerId: string;
 }): Promise<MetaProfileDocumentScan> {
   const config = metaConfiguration();
   if (!config.available) throw new Error("Meta document scan is not enabled for this workspace.");
@@ -277,7 +277,7 @@ export async function scanProfileDocumentWithMeta(args: {
     schema,
     schemaName: "quorum_profile_document_scan",
     maxOutputTokens: 900,
-    firebaseUid: args.firebaseUid,
+    ownerId: args.ownerId,
     failureSuffix: "The document is still stored safely in Cloudflare R2.",
   })) as Partial<Omit<MetaProfileDocumentScan, "model" | "note">>;
 

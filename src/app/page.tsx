@@ -21,7 +21,8 @@ import { SiteFooter } from "@/components/quorum/site-footer";
 import { AuthScreen } from "@/components/quorum/auth-screen";
 import { NoiseOverlay, ScrollProgress } from "@/components/quorum/motion-kit";
 import { Dashboard } from "@/components/quorum/dashboard";
-import { MuseAssistant } from "@/components/quorum/muse-assistant";
+import { FloatingAssistant } from "@/components/quorum/assistant-surface";
+import { requestDeskComposer } from "@/components/quorum/desk-agent";
 import type { AuthMode, AuthUser } from "@/lib/auth-types";
 
 /**
@@ -76,8 +77,15 @@ export default function Home() {
   const [user, setUser] = useState<AuthUser | null>(null);
   /* A static landing host has no /api runtime, so auth is settled at mount. */
   const [authReady, setAuthReady] = useState(STATIC_EXPORT);
+  /* Bumped when a new session is established or closed. The mount-time
+     session check is ignored if it lands afterwards: its answer describes
+     the visitor from before the sign-in, not the account now in the seat. */
+  const identityEpoch = useRef(0);
   const officerFirstName = user?.name?.trim().split(/\s+/)[0] || undefined;
   const [toast, setToast] = useState<string | null>(null);
+  /* Which workspace section is on screen. The Overview carries the desk
+     composer, so the floating assistant stands down there. */
+  const [section, setSection] = useState("mc-overview");
   const scrollYRef = useRef(0);
   const prevViewRef = useRef<"landing" | "auth" | "dashboard">("landing");
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -86,16 +94,17 @@ export default function Home() {
   useEffect(() => {
     if (STATIC_EXPORT) return;
     let alive = true;
+    const epoch = identityEpoch.current;
     fetch("/api/auth/me", { cache: "no-store" })
       .then((r) => {
         if (!r.ok) throw new Error("Session check failed");
         return r.json();
       })
       .then((d: { user?: AuthUser | null }) => {
-        if (alive) setUser(d.user ?? null);
+        if (alive && identityEpoch.current === epoch) setUser(d.user ?? null);
       })
       .catch(() => {
-        if (alive) setUser(null);
+        if (alive && identityEpoch.current === epoch) setUser(null);
       })
       .finally(() => {
         if (alive) setAuthReady(true);
@@ -156,6 +165,7 @@ export default function Home() {
   }, [bump]);
 
   const handleAuthSuccess = useCallback((u: AuthUser) => {
+    identityEpoch.current += 1;
     setUser(u);
   }, []);
 
@@ -165,9 +175,14 @@ export default function Home() {
       return;
     }
     if (window.location.hash !== "#/dashboard") {
-      window.location.hash = "/dashboard"; // fires hashchange → snapshot updates
+      /* pushState keeps the back button working without asking Next's router
+         to navigate: a bare hash assignment is treated as a route change and
+         the router can restore the hash it booted with, bouncing a signed-in
+         user back to the auth door. */
+      window.history.pushState(null, "", "#/dashboard");
+      bump();
     }
-  }, []);
+  }, [bump]);
 
   const exitDashboard = useCallback(() => {
     window.history.replaceState(null, "", window.location.pathname + window.location.search);
@@ -180,6 +195,7 @@ export default function Home() {
   }, [closeAuth, showToast, user]);
 
   const signOut = useCallback(() => {
+    identityEpoch.current += 1;
     fetch("/api/auth/logout", { method: "POST" })
       .catch(() => undefined)
       .finally(() => {
@@ -261,15 +277,22 @@ export default function Home() {
               onSignOut={signOut}
               onToast={showToast}
               onExit={exitDashboard}
+              onSectionChange={setSection}
             />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* The voice desk tool rides the workspace only — the landing page and
-          the auth door never show it. Mounted outside the animated view so
-          "fixed" is measured against the viewport, not a transformed parent. */}
-      {view === "dashboard" && user && <MuseAssistant name={officerFirstName} />}
+      {/* Mounted outside the animated view so "fixed" is measured against the
+          viewport, not a transformed parent. Where it shows is decided in
+          assistant-surface: working screens only, never the Overview. */}
+      <FloatingAssistant
+        view={view}
+        user={user}
+        section={section}
+        name={officerFirstName}
+        onOpenDesk={requestDeskComposer}
+      />
 
       {/* Toast */}
       <AnimatePresence>

@@ -651,17 +651,21 @@ export function preApprovalCheck(
      crash. Every roster question below reads this list. */
   const named = roster.filter((m) => typeof m?.name === "string" && m.name.trim().length > 0);
   /* Office-aware gates: a roster member must HOLD the required office. The
-     signed-in officer is the gavel — the accounting officer's seat — and may
-     always sign. FAIL CLOSED: a name that matches nobody on the register is
-     refused with the office named, never waved through. A member with no
+     signed-in officer may act as the gavel only when the desk explicitly
+     enables `gavelOffice`; otherwise "signed in" is not a statutory office and
+     cannot substitute for the accounting officer, evaluation committee or
+     procurement unit. FAIL CLOSED: a name that matches nobody on the register
+     is refused with the office named, never waved through. A member with no
      office on the register fails closed too. */
   if (gate.requiredOffice) {
     const who = approver.trim().toLowerCase();
-    const isOfficer = !!signedInAs?.trim() && signedInAs.trim().toLowerCase() === who;
-    if (!isOfficer) {
-      const member = named.find((m) => m.name.trim().toLowerCase() === who);
-      if (!member)
-        return `${approver.trim()} is not on the committee register — this gate must be signed by the ${gate.requiredOffice.replace(/_/g, " ").toLowerCase()} (or the signed-in officer acting as the gavel).`;
+    const isSignedIn = !!signedInAs?.trim() && signedInAs.trim().toLowerCase() === who;
+    const member = named.find((m) => m.name.trim().toLowerCase() === who);
+    if (!member) {
+      if (!isSignedIn || !state.features.gavelOffice) {
+        return `${approver.trim()} is not on the committee register — this gate must be signed by the ${gate.requiredOffice.replace(/_/g, " ").toLowerCase()}.`;
+      }
+    } else {
       if (attestedActorId && (member.userId ?? member.id) !== attestedActorId) {
         return `${member.name}'s office is bound to a different signed-in user — a typed name cannot borrow another officer's authority. Sign in as the office holder.`;
       }

@@ -145,8 +145,8 @@ export interface Gate {
      claim. Kept beside the cryptographic seal — the hand and the hash. */
   handSignature?: { image: string; signedAt: string; strokes: number; by: string };
   /* Office-aware approval (the cycle's statutory gates): when set, a roster
-     member must HOLD this office to approve. The signed-in officer (the gavel)
-     is the accounting officer and may always sign. */
+     member must HOLD this office to approve. The signed-in officer may act as
+     the gavel only when the workspace explicitly enables `gavelOffice`. */
   requiredOffice?: Office;
   /* Evidential weight. A decided gate is evidence only when it carries both a
      step-up assertion and an Ed25519 receipt; legacy decisions are marked. */
@@ -1362,7 +1362,7 @@ export interface SupplierApplication {
     bytes: number;
     contentType: string;
     sha256: string;
-    firebaseUid: string;
+    ownerId: string;
     uploadedAt: string;
   }[];
   sealed?: SealedBidEnvelope;
@@ -1828,6 +1828,7 @@ export const FEATURE_FLAGS = [
   { key: "jurisdictionClock", label: "Jurisdiction clocks", description: "Compute statutory periods against a signed holiday/timezone pack.", phase: "WS2", default: true },
   { key: "addendumEnforcement", label: "Addendum notice control", description: "Refuse a late addendum that does not extend the closing date.", phase: "WS2", default: true },
   { key: "actorBoundOffice", label: "Actor-bound office authority", description: "Bind every office gate to a user ID, not a typed name.", phase: "WS3", default: true },
+  { key: "gavelOffice", label: "Gavel office authority", description: "Let the signed-in officer sign an office gate without holding that office on the roster. Off by default; the statutory office must otherwise sign.", phase: "WS3", default: false },
   { key: "dualApproval", label: "Dual approval", description: "Require two different officers above the configured value.", phase: "WS3", default: true },
   { key: "findingDispositions", label: "Finding dispositions", description: "Block award while a HIGH finding is undispositioned.", phase: "WS4", default: true },
   { key: "complaintSuspension", label: "Complaint suspension", description: "Block contract and payment while a complaint is open.", phase: "WS4", default: true },

@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, mirror-integration]
   pull_request:
   workflow_dispatch:
 
@@ -22,13 +22,38 @@ jobs:
       - name: Lint (web app)
         run: bun run lint
 
-      - name: Test (agent engine — safety rules enforced by tests)
-        working-directory: mini-services/quorum-mcp
-        run: bun test
+      - name: Typecheck
+        run: bun run typecheck
 
-      - name: Test (web store isolation)
-        run: bun test src/lib/db-store-isolation.test.ts
+      - name: Test (full suite)
+        run: bun run test
 
-      - name: Evaluation harness (regression + mutation detection)
-        working-directory: mini-services/quorum-mcp
-        run: bun eval.ts --runs 3
+      - name: Production build
+        run: bun run build
+
+      - name: Audit (blocking on critical)
+        run: bun run audit:critical
+
+      - name: Audit (report high and below)
+        run: bun audit --production || true
+
+      - name: Container build
+        run: docker build -t quorum:ci .
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Chromium
+        run: node_modules/.bin/playwright install --with-deps chromium
+
+      - name: Browser smoke tests
+        run: bun run test:e2e

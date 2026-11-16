@@ -83,14 +83,17 @@ export function A11yModeRow() {
   const [large, setLarge] = useState(false);
   const [contrast, setContrast] = useState(false);
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("quorum-a11y");
-      if (raw) {
-        const p = JSON.parse(raw) as { large?: boolean; contrast?: boolean };
-        setLarge(p.large === true);
-        setContrast(p.contrast === true);
-      }
-    } catch { /* private mode: toggles still apply for the session */ }
+    const frame = window.requestAnimationFrame(() => {
+      try {
+        const raw = localStorage.getItem("quorum-a11y");
+        if (raw) {
+          const p = JSON.parse(raw) as { large?: boolean; contrast?: boolean };
+          setLarge(p.large === true);
+          setContrast(p.contrast === true);
+        }
+      } catch { /* private mode: toggles still apply for the session */ }
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, []);
   useEffect(() => {
     document.documentElement.dataset.a11yText = large ? "large" : "";

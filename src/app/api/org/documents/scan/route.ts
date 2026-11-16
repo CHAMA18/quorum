@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { clientKey, getOrgFromToken, ORG_SESSION_COOKIE, rateLimit } from "@/lib/org-auth";
 import { metaBidDocumentAssistAvailable, scanProfileDocumentWithMeta } from "@/lib/meta-bid-document-assist";
-import { verifiedSupplierFirebaseIdentity } from "@/lib/supplier-bid-documents";
+import { verifiedSupplierOwner } from "@/lib/supplier-bid-documents";
 import { readSupplierProfileDocument } from "@/lib/supplier-profile-documents";
 
 export const runtime = "nodejs";
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   if (!rateLimit(clientKey(req, "org-profile-doc-scan"), 40, 15 * 60_000)) {
     return NextResponse.json({ error: "Too many document scans. Wait a few minutes and try again." }, { status: 429 });
   }
-  const identity = await verifiedSupplierFirebaseIdentity(req.headers.get("authorization"), org);
+  const identity = await verifiedSupplierOwner(org);
   if (!identity.ok) return NextResponse.json({ error: identity.error }, { status: identity.status });
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   try {
     file = await readSupplierProfileDocument({
       org,
-      firebaseUid: identity.identity.uid,
+      ownerId: identity.identity.uid,
       key,
     });
   } catch (error) {
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       contentType: file.contentType,
       requirement: file.requirement,
       organizationName: org.name,
-      firebaseUid: identity.identity.uid,
+      ownerId: identity.identity.uid,
     });
     return NextResponse.json({ review }, { headers: { "cache-control": "no-store" } });
   } catch (error) {

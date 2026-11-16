@@ -15,6 +15,9 @@ const RuleSchema = z.object({
 export async function GET(request: NextRequest) {
   const user = await getUserFromToken(request.cookies.get(SESSION_COOKIE)?.value);
   if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+  if (!can(user.role, "manage_rules") && !can(user.role, "view_oversight")) {
+    return NextResponse.json({ error: "Rule or oversight access required." }, { status: 403 });
+  }
   return NextResponse.json({ rules: readRules() });
 }
 

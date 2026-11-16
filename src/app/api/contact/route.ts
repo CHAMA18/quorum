@@ -4,7 +4,7 @@ import { createContactMessage } from "@/lib/db";
 import { escapeEmailHtml, renderEmailHtml, renderEmailText, type EmailModel } from "@/lib/email-template";
 import { clientKey, rateLimit } from "@/lib/auth";
 
-const PILOT_REQUEST_INBOX = "chungu424@gmail.com";
+const PILOT_REQUEST_INBOX = process.env.PILOT_REQUEST_INBOX?.trim() || "pilot@quorum-solutions.com";
 const REQUEST_LIMIT = 5;
 const REQUEST_WINDOW_MS = 15 * 60_000;
 

@@ -12,7 +12,6 @@ import {
   ScanSearch,
   X,
 } from "lucide-react";
-import { getFirebaseIdToken } from "@/lib/firebase";
 import { MAX_SUPPLIER_BID_FILE_BYTES } from "@/lib/supplier-bid-document-limits";
 import {
   ALL_REQUIRED_DOCUMENTS,
@@ -59,17 +58,7 @@ export function SupplierDocumentsSection({
     let active = true;
     void (async () => {
       try {
-        const token = await getFirebaseIdToken();
-        if (!token) {
-          if (!active) return;
-          setDocuments([]);
-          setDocumentsError("Reconnect this supplier account to Firebase to pre-upload bid documents.");
-          return;
-        }
-        const res = await fetch("/api/org/documents", {
-          cache: "no-store",
-          headers: { authorization: `Bearer ${token}` },
-        });
+        const res = await fetch("/api/org/documents", { cache: "no-store" });
         const data = (await res.json().catch(() => ({}))) as {
           documents?: ProfileDocument[];
           error?: string;
@@ -117,14 +106,11 @@ export function SupplierDocumentsSection({
     setBusyDocument(requirement);
     setDocumentNotices((previous) => ({ ...previous, [requirement]: "" }));
     try {
-      const token = await getFirebaseIdToken();
-      if (!token) throw new Error("Reconnect this supplier account to Firebase, then try again.");
       const form = new FormData();
       form.append("file", file);
       form.append("requirement", requirement);
       const res = await fetch("/api/org/documents", {
         method: "POST",
-        headers: { authorization: `Bearer ${token}` },
         body: form,
       });
       const data = (await res.json().catch(() => ({}))) as {
@@ -154,11 +140,9 @@ export function SupplierDocumentsSection({
     setBusyDocument(document.key);
     setDocumentNotices((previous) => ({ ...previous, [document.requirement]: "" }));
     try {
-      const token = await getFirebaseIdToken();
-      if (!token) throw new Error("Reconnect this supplier account to Firebase, then try again.");
       const res = await fetch("/api/org/documents", {
         method: "DELETE",
-        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({ key: document.key }),
       });
       const data = (await res.json().catch(() => ({}))) as { deleted?: boolean; error?: string };

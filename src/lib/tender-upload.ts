@@ -4,9 +4,8 @@
  * The bytes go to our own Next route, never to Cloudflare directly: the
  * server holds `QUORUM_EDGE_SECRET` and forwards the file to the quorum-edge
  * Worker's `/__edge/upload` gate. A null result is not an exception: the
- * caller keeps the file in the local vault and says so, exactly like the old
- * Firebase mirror. The object key returned by the route is the durable
- * citation for the stored document.
+ * caller keeps the file in the local vault and says so. The object key
+ * returned by the route is the durable citation for the stored document.
  */
 
 export interface TenderStorageResult {

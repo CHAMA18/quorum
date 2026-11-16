@@ -1582,13 +1582,13 @@ Bun.serve({
 
     /* Record a supplier's required bid document in the procurement audit
        spine. The edge has already confirmed that the bytes landed in R2;
-       the organization and Firebase UID come from the verified gateway
+       the organization and owner id come from the verified gateway
        session, and the file remains pending human review. */
     if (path === "/api/supplier-bid-uploads" && req.method === "POST") {
       const body = await readBody(req);
       const tenderRef = String(body.tenderRef ?? "").trim();
       const orgId = String(body.organizationId ?? "").trim();
-      const firebaseUid = String(body.firebaseUid ?? "").trim();
+      const ownerId = String(body.ownerId ?? "").trim();
       const requirement = String(body.requirement ?? "").trim().slice(0, 180);
       const key = String(body.key ?? "").trim();
       const filename = String(body.filename ?? "").trim().slice(0, 120);
@@ -1598,10 +1598,10 @@ Bun.serve({
       const uploadedAt = String(body.uploadedAt ?? "").trim();
       const safeRef = /^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$/.test(tenderRef);
       const safeOrgId = /^org_[A-Za-z0-9_-]{1,64}$/.test(orgId);
-      const safeUid = /^[A-Za-z0-9_-]{1,128}$/.test(firebaseUid);
+      const safeUid = /^[A-Za-z0-9_-]{1,128}$/.test(ownerId);
       const safeKey =
         key.length > 0 && key.length <= 512 && !/[\\\u0000-\u001f]/.test(key) &&
-        key.startsWith(`tenders/${tenderRef}/supplier-bids/${orgId}/${firebaseUid}/`) &&
+        key.startsWith(`tenders/${tenderRef}/supplier-bids/${orgId}/${ownerId}/`) &&
         key.split("/").every((part) => part.length > 0 && part !== "." && part !== "..");
       if (!attestedActor.startsWith("org:") || !safeRef || !safeOrgId || !safeUid || !requirement || !filename || !safeKey) {
         return json({ error: "A valid attested supplier identity and bid document are required." }, 422);
@@ -1617,7 +1617,7 @@ Bun.serve({
         server: "quorum-mcp",
         tool: "supplier_bid_document_upload",
         kind: "WRITES",
-        inputs: { tenderRef, organizationId: orgId, firebaseUid, requirement, key, filename, contentType, bytes, sha256, uploadedAt },
+        inputs: { tenderRef, organizationId: orgId, ownerId, requirement, key, filename, contentType, bytes, sha256, uploadedAt },
         outputs: { stored: true, storage: "Cloudflare R2", eligibilityDecision: false, humanReviewRequired: true },
         status: "OK",
         durationMs: 0,
@@ -1629,13 +1629,13 @@ Bun.serve({
       const body = await readBody(req);
       const tenderRef = String(body.tenderRef ?? "").trim();
       const orgId = String(body.organizationId ?? "").trim();
-      const firebaseUid = String(body.firebaseUid ?? "").trim();
+      const ownerId = String(body.ownerId ?? "").trim();
       const requirement = String(body.requirement ?? "").trim().slice(0, 180);
       const key = String(body.key ?? "").trim();
       const sha256 = String(body.sha256 ?? "").trim().toLowerCase();
       const requirementHash = createHash("sha256").update(requirement.normalize("NFKC").trim().toLowerCase()).digest("hex").slice(0, 20);
-      const safeKey = key.startsWith(`tenders/${tenderRef}/supplier-bids/${orgId}/${firebaseUid}/${requirementHash}/`) && key.length <= 512 && !/[\\\u0000-\u001f]/.test(key) && key.split("/").every((part) => part.length > 0 && part !== "." && part !== "..");
-      if (!attestedActor.startsWith("org:") || !/^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$/.test(tenderRef) || !/^org_[A-Za-z0-9_-]{1,64}$/.test(orgId) || !/^[A-Za-z0-9_-]{1,128}$/.test(firebaseUid) || !requirement || !safeKey || !/^[a-f0-9]{64}$/.test(sha256)) {
+      const safeKey = key.startsWith(`tenders/${tenderRef}/supplier-bids/${orgId}/${ownerId}/${requirementHash}/`) && key.length <= 512 && !/[\\\u0000-\u001f]/.test(key) && key.split("/").every((part) => part.length > 0 && part !== "." && part !== "..");
+      if (!attestedActor.startsWith("org:") || !/^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$/.test(tenderRef) || !/^org_[A-Za-z0-9_-]{1,64}$/.test(orgId) || !/^[A-Za-z0-9_-]{1,128}$/.test(ownerId) || !requirement || !safeKey || !/^[a-f0-9]{64}$/.test(sha256)) {
         return json({ error: "A valid attested supplier document is required." }, 422);
       }
       const entry = appendLog({
@@ -1643,7 +1643,7 @@ Bun.serve({
         server: "quorum-mcp",
         tool: "supplier_bid_document_delete",
         kind: "WRITES",
-        inputs: { tenderRef, organizationId: orgId, firebaseUid, requirement, key, sha256 },
+        inputs: { tenderRef, organizationId: orgId, ownerId, requirement, key, sha256 },
         outputs: { deleted: true, storage: "Cloudflare R2", beforeFiling: true },
         status: "OK",
         durationMs: 0,
@@ -2762,7 +2762,7 @@ Bun.serve({
           : {};
       const registrationNo = String(orgBlock.registrationNo ?? "").trim().slice(0, 80);
       const orgId = String(orgBlock.id ?? "").trim().slice(0, 64);
-      const firebaseUid = String(body.firebaseUid ?? "").trim().slice(0, 128);
+      const ownerId = String(body.ownerId ?? "").trim().slice(0, 128);
       const rawBidDocuments = Array.isArray(body.bidDocuments) ? body.bidDocuments : [];
       if (rawBidDocuments.length > 100) return json({ error: "A bid may contain at most 100 required documents." }, 422);
       const bidDocuments: NonNullable<SupplierApplication["bidDocuments"]> = [];
@@ -2774,18 +2774,18 @@ Bun.serve({
         const filename = typeof item.filename === "string" ? item.filename.trim().slice(0, 120) : "";
         const contentType = typeof item.contentType === "string" ? item.contentType.trim().slice(0, 120) : "";
         const sha256 = typeof item.sha256 === "string" ? item.sha256.trim().toLowerCase() : "";
-        const documentUid = typeof item.firebaseUid === "string" ? item.firebaseUid.trim() : "";
+        const documentUid = typeof item.ownerId === "string" ? item.ownerId.trim() : "";
         const uploadedAt = typeof item.uploadedAt === "string" ? item.uploadedAt.trim() : "";
         const bytes = Number(item.bytes);
         const requirementHash = createHash("sha256").update(requirement.normalize("NFKC").trim().toLowerCase()).digest("hex").slice(0, 20);
-        const expectedPrefix = `tenders/${tenderRef}/supplier-bids/${orgId}/${firebaseUid}/${requirementHash}/`;
+        const expectedPrefix = `tenders/${tenderRef}/supplier-bids/${orgId}/${ownerId}/${requirementHash}/`;
         if (
-          !orgId || !/^[A-Za-z0-9_-]{1,128}$/.test(firebaseUid) || documentUid !== firebaseUid || !requirement ||
+          !orgId || !/^[A-Za-z0-9_-]{1,128}$/.test(ownerId) || documentUid !== ownerId || !requirement ||
           !key.startsWith(expectedPrefix) || key.length > 512 || /[\\\u0000-\u001f]/.test(key) ||
           !filename || !contentType || !/^[a-f0-9]{64}$/.test(sha256) ||
           !Number.isFinite(bytes) || bytes <= 0 || bytes > 10 * 1024 * 1024 || Number.isNaN(Date.parse(uploadedAt))
         ) return json({ error: "A bid document does not match this organization's verified R2 upload." }, 422);
-        bidDocuments.push({ requirement, key, filename, bytes, contentType, sha256, firebaseUid, uploadedAt });
+        bidDocuments.push({ requirement, key, filename, bytes, contentType, sha256, ownerId, uploadedAt });
       }
       const supplier = registrationNo
         ? state.suppliers.find((s) => s.registrationNo.toLowerCase() === registrationNo.toLowerCase())

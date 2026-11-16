@@ -13,7 +13,8 @@ them. Everything else can be rebuilt from the code; this cannot.
 | `mini-services/quorum-mcp/data/decisions.jsonl` | Every gate decision, hash-chained | Append only |
 | `mini-services/quorum-mcp/data/log-anchors.jsonl` | Daily sealed heads of both chains | Append only |
 | `mini-services/quorum-mcp/data/state.json` | Working record: gates, runs, cycle, suppliers | Mutable |
-| `db/quorum-store.json` | Accounts, sessions, roster, settings | Mutable |
+| `quorum_web_store` (PostgreSQL) | Accounts, sessions, roster, settings, one-time links | Mutable |
+| `db/quorum-store.json` | Boot cache of the row above (and the whole store when `DATABASE_URL` is unset) | Derived |
 
 `GET /api/log/verify` verifies the whole log against its epochs. `GET
 /api/health` reports whether a write is failing, whether a snapshot write was
@@ -27,6 +28,20 @@ Only one process may write the record. With `DATABASE_URL` set the sidecar takes
 process exits with code 78 and names the live owner. Never run two sidecars
 against the same directory — the snapshot guard refuses to overwrite a newer
 record, but the lock is what prevents the situation.
+
+## PostgreSQL
+
+The web app keeps its workspace document in the `quorum_web_store` row and
+refuses to replace a newer revision with an older one. The local
+`db/quorum-store.json` is a boot cache: the process reads it synchronously, then
+adopts the database's revision when it is newer. On paths that mint a session or
+a one-time link the route awaits the write before answering. Two web processes
+are still unsupported — they would race the same row — so keep one instance.
+
+`bun scripts/migrate-store-to-postgres.ts` imports an existing file store once;
+running it again is a no-op while the database holds a newer revision.
+`GET /api/health` reports `store.persistence`, the last saved revision, any
+queued write and the database round-trip.
 
 ## Secrets
 

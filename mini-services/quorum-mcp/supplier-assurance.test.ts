@@ -277,7 +277,7 @@ describe("assurance at the application and award", () => {
       createdAt: NOW.toISOString(),
       requiredOffice: "ACCOUNTING_OFFICER" as const,
     };
-    const blocked = preApprovalCheck(gate, "Accounting Officer", [], "Accounting Officer");
+    const blocked = preApprovalCheck(gate, "Accounting Officer", [{ name: "Accounting Officer", status: "PRESENT", office: "ACCOUNTING_OFFICER" }], "Accounting Officer");
     expect(blocked).toContain("Supplier assurance fails");
     expect(blocked).toContain("no assurance check is on record");
 
@@ -286,7 +286,7 @@ describe("assurance at the application and award", () => {
       ...CLEAN,
       by: "Procurement Officer",
     });
-    expect(preApprovalCheck(gate, "Accounting Officer", [], "Accounting Officer")).toBeNull();
+    expect(preApprovalCheck(gate, "Accounting Officer", [{ name: "Accounting Officer", status: "PRESENT", office: "ACCOUNTING_OFFICER" }], "Accounting Officer")).toBeNull();
   });
 
   test("an expired check blocks contract execution", () => {
@@ -322,7 +322,7 @@ describe("assurance at the application and award", () => {
       createdAt: NOW.toISOString(),
       requiredOffice: "ACCOUNTING_OFFICER" as const,
     };
-    const reason = preApprovalCheck(gate, "Accounting Officer", [], "Accounting Officer");
+    const reason = preApprovalCheck(gate, "Accounting Officer", [{ name: "Accounting Officer", status: "PRESENT", office: "ACCOUNTING_OFFICER" }], "Accounting Officer");
     expect(reason).toContain("Supplier assurance fails");
     expect(reason).toContain("expired on 2026-02-01");
   });
@@ -357,7 +357,7 @@ describe("assurance at the application and award", () => {
       createdAt: NOW.toISOString(),
       requiredOffice: "ACCOUNTING_OFFICER" as const,
     };
-    const reason = preApprovalCheck(gate, "Accounting Officer", [], "Accounting Officer");
+    const reason = preApprovalCheck(gate, "Accounting Officer", [{ name: "Accounting Officer", status: "PRESENT", office: "ACCOUNTING_OFFICER" }], "Accounting Officer");
     expect(reason).toContain("SUSPENDED");
   });
 

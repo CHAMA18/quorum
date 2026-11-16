@@ -177,7 +177,7 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
             >
               Quorum brings tender requirements, supplier documents and price checks into one
               review record. Officers verify the evidence;{" "}
-              <span className="font-semibold text-ink-900 dark:text-ink-100">the committee makes the award decision.</span>
+              <span className="font-semibold text-ink-900">the committee makes the award decision.</span>
             </motion.p>
 
             {/* Put the next step directly after the product promise; the

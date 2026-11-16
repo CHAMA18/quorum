@@ -293,8 +293,21 @@ export async function runDeskTool(name: string, args: Record<string, unknown>, c
       case "list_approvals": {
         const limit = Math.min(Math.max(Number(args.limit ?? 15) || 15, 1), 40);
         const gates = await read("/api/gates");
-        const list = ((gates.gates ?? []) as Gate[]).slice(0, limit);
-        return JSON.stringify({ count: list.length, approvals: list.map(viewGate) });
+        const all = (gates.gates ?? []) as Gate[];
+        const list = all.slice(0, limit);
+        const pending = all.filter((gate) => gate.status === "PENDING").length;
+        /* Stated counts, not just rows: a small model must be able to repeat
+           the answer without inferring an approval that does not exist. */
+        return JSON.stringify({
+          count: all.length,
+          pending,
+          executed: all.filter((gate) => gate.status === "EXECUTED").length,
+          summary:
+            pending === 0
+              ? `No approvals are pending in this workspace. ${all.length} gate${all.length === 1 ? " is" : "s are"} already decided; an executed gate cannot be decided again.`
+              : `${pending} of ${all.length} gates in this workspace are PENDING and awaiting a named human.`,
+          approvals: list.map(viewGate),
+        });
       }
       case "list_audit": {
         const limit = Math.min(Math.max(Number(args.limit ?? 12) || 12, 1), 40);
