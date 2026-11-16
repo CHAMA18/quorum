@@ -100,10 +100,18 @@ report prints the warning on every run; only the notification is daily.
 **Exit code is the alert channel.** Schedule it where a non-zero exit already
 notifies, and no extra account is needed:
 
-- *Render cron job* (Docker runtime, same image as `quorum-api`,
-  `bun scripts/health-watch.ts`, schedule e.g. `*/15 * * * *`). A failed run
-  raises the cron-failure notification above. Cron jobs bill per run, so a
-  15-minute cadence is the cheap end of useful.
+- *Render cron job* — this is what `quorum-health-watch` is: Docker runtime,
+  `Dockerfile.health-watch`, command `bun scripts/health-watch.ts`, schedule
+  `*/15 * * * *`, region frankfurt. A failed run raises the cron-failure
+  notification above. Cron jobs bill per run, so a 15-minute cadence is the
+  cheap end of useful.
+
+  A cron run starts from a fresh container, so `.health-watch-state.json` does
+  not survive between runs: every failing run alerts (Render rate-limits the
+  repeats), and the once-only alert and the recovery notice only apply when the
+  script runs somewhere with a persistent disk — an operator shell or a host
+  that keeps the file. The email channel is what makes the cron path readable
+  rather than a wall of identical failures.
 - *Any uptime monitor*: `https://quorum-api-tgw2.onrender.com/api/health`,
   expect HTTP 200 — but prefer a checks-based monitor that asserts
   `"ok":true` in the body, since the status alone misses the degraded case.
