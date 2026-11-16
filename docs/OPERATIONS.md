@@ -43,6 +43,84 @@ running it again is a no-op while the database holds a newer revision.
 `GET /api/health` reports `store.persistence`, the last saved revision, any
 queued write and the database round-trip.
 
+## Alerting
+
+A deployment that breaks silently is a deployment nobody fixed. Two layers,
+because they fail differently.
+
+**What the platform tells you.** Render notifies by email (and Slack, if
+connected) on these events, each of which covers a crash loop:
+
+| Event | Why it matters here |
+| --- | --- |
+| A build or deploy fails | The Pages export failing on a `force-dynamic` route crashed `quorum-static` on every deploy |
+| A running service becomes unhealthy | The instance is failing its `healthCheckPath` (`/api/health`) and is being restarted |
+| Render suspends a service that keeps failing to start over 24 hours | The loop did not fix itself |
+| Permanent disk usage passes 80% | The sidecar writes the audit log to that disk |
+| A cron job run fails | The watchdog below |
+
+Set the level to **Only failure notifications** at Account Settings →
+Notifications, and override per service on its Settings page if a noisy service
+drowns out the important one. This is a dashboard toggle, not a file in this
+repo — check it is on for `quorum-api` and `quorum-static` after any account
+change.
+
+**What the platform cannot see.** `/api/health` answers 200 when the process is
+up, the sidecar is healthy and the database is *reachable* — but a store write
+can still be failing (`store.lastError`) or queueing behind a stuck flush
+(`store.pendingRevisions`). A 200 that lies is not covered by a health check,
+and a static site has no health check at all. `scripts/health-watch.ts` covers
+both, from outside the service, so it survives the outage it is watching for:
+
+```
+bun scripts/health-watch.ts                 # exit 0 healthy, 1 unhealthy, 2 usage
+bun scripts/health-watch.ts --json           # machine-readable report
+HEALTH_ALERT_WEBHOOK=https://hooks.slack.com/... bun scripts/health-watch.ts
+```
+
+It probes `/api/health` (status **and** payload: `ok`, `sidecar`, database
+reachability, `store.lastError`, the queued-write backlog, the disk floor) plus
+the static site's `/`, retries a cold instance before believing it, and records
+outage state in `.health-watch-state.json` so a sustained outage alerts once and
+then hourly rather than on every run, and recovery alerts once.
+
+Two channels deliver it, both optional and independent:
+
+| Variable | Delivers |
+| --- | --- |
+| `HEALTH_ALERT_WEBHOOK` | One JSON `POST` — Slack, Discord or Google Chat accept it as-is |
+| `HEALTH_ALERT_EMAIL_TO` | Email through `RESEND_API_KEY` + `RESEND_FROM`, the account the app already sends with |
+
+**The database expiry.** The free Render Postgres expires on a fixed date, and
+nothing in the app can see it, so pass it in: `DATABASE_EXPIRES_AT=2026-12-16`.
+Inside `HEALTH_EXPIRY_WARN_DAYS` (default 14) the run warns — once a day, on the
+same channels — while still exiting 0, because the API is healthy today. The
+report prints the warning on every run; only the notification is daily.
+
+**Exit code is the alert channel.** Schedule it where a non-zero exit already
+notifies, and no extra account is needed:
+
+- *Render cron job* (Docker runtime, same image as `quorum-api`,
+  `bun scripts/health-watch.ts`, schedule e.g. `*/15 * * * *`). A failed run
+  raises the cron-failure notification above. Cron jobs bill per run, so a
+  15-minute cadence is the cheap end of useful.
+- *Any uptime monitor*: `https://quorum-api-tgw2.onrender.com/api/health`,
+  expect HTTP 200 — but prefer a checks-based monitor that asserts
+  `"ok":true` in the body, since the status alone misses the degraded case.
+
+GitHub Actions is **not** an option on this account: jobs fail to start with
+"your account is locked due to a billing issue", so a scheduled workflow here
+would be a silent no-op. Do not add one.
+
+**Drill it.** An alert path that has never fired is not evidence. Run
+
+```
+bun scripts/health-watch.ts --api http://127.0.0.1:9 --no-static --attempts 1
+```
+
+It must print `FAIL`, name the connection error and exit 1. If it exits 0, the
+watchdog is blind and the schedule above is worthless.
+
 ## Secrets
 
 Set these in the process environment; each one may be rotated alone, and any
