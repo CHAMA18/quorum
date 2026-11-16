@@ -40,7 +40,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-local-*
+# Root-level scratch files only: unanchored this swallowed real source
+# modules under mini-services (`local-*` matched `local-approval.ts`).
+/local-*
 .claude
 .z-ai-config
 *.log
