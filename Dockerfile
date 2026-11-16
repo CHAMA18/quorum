@@ -35,8 +35,8 @@ COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/tsconfig.json ./tsconfig.json
 COPY --from=build /app/scripts/start-render-api.sh ./scripts/start-render-api.sh
 
-USER quorum
-
+# Started as root only so the entrypoint can take ownership of the Render disk
+# mount, then it drops to `quorum` before running any application code.
 EXPOSE 10000
 
 CMD ["bash", "scripts/start-render-api.sh"]

@@ -7,6 +7,18 @@ export PORT="${PORT:-10000}"
 export QUORUM_DATA_DIR="${QUORUM_DATA_DIR:-/var/data/mcp}"
 export QUORUM_STORE_PATH="${QUORUM_STORE_PATH:-/var/data/quorum-store.json}"
 
+# Render mounts the persistent disk as root, which a non-root process cannot
+# write. Take ownership while privileged, then drop to the app user so no
+# application code ever runs as root.
+if [ "$(id -u)" = "0" ]; then
+  mkdir -p "$QUORUM_DATA_DIR/tenders" "$(dirname "$QUORUM_STORE_PATH")"
+  chown -R quorum:quorum "$QUORUM_DATA_DIR" "$(dirname "$QUORUM_STORE_PATH")"
+  if command -v setpriv >/dev/null 2>&1; then
+    exec setpriv --reuid=quorum --regid=quorum --init-groups "$0" "$@"
+  fi
+  exec runuser -u quorum -- "$0" "$@"
+fi
+
 mkdir -p "$QUORUM_DATA_DIR/tenders" "$(dirname "$QUORUM_STORE_PATH")"
 
 # Keep signing keys stable across deploys even if they are not injected as
