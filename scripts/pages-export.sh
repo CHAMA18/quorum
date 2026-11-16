@@ -9,32 +9,41 @@
 # as it was.
 #
 # Pages components already degrade gracefully: client fetches to the fallen
-# routes simply resolve to their designed idle/empty states.
+# routes simply resolve to their designed idle/empty states. Any route added
+# with `export const dynamic = "force-dynamic"` (or an API handler) must be
+# listed in SERVER_ROUTES, or `next build` fails the export.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+SERVER_ROUTES=(
+  "src/app/api"
+  "src/app/admin"
+  "src/app/award"
+  "src/app/org/dashboard"
+  "src/app/reset"
+)
 
 STASH_DIR=".pages-stash$$"
 mkdir -p "$STASH_DIR"
 
+moved=()
 cleanup() {
   # Restore any moved routes no matter how the build ends.
-  if [ -d "$STASH_DIR/api" ]; then
-    rsync -a "$STASH_DIR/api/" src/app/api/
-  fi
-  if [ -d "$STASH_DIR/admin" ]; then
-    mkdir -p src/app
-    rsync -a "$STASH_DIR/admin/" src/app/admin/
-  fi
-  if [ -d "$STASH_DIR/org-dashboard" ]; then
-    mkdir -p src/app/org
-    rsync -a "$STASH_DIR/org-dashboard/" src/app/org/dashboard/
-  fi
+  for path in "${moved[@]:-}"; do
+    [ -n "$path" ] || continue
+    mkdir -p "$(dirname "$path")"
+    rm -rf "$path"
+    mv "$STASH_DIR/$path" "$path"
+  done
   rm -rf "$STASH_DIR"
 }
 trap cleanup EXIT
 
-mv src/app/api "$STASH_DIR/api"
-mv src/app/admin "$STASH_DIR/admin"
-mv src/app/org/dashboard "$STASH_DIR/org-dashboard"
+for path in "${SERVER_ROUTES[@]}"; do
+  [ -e "$path" ] || continue
+  mkdir -p "$STASH_DIR/$(dirname "$path")"
+  mv "$path" "$STASH_DIR/$path"
+  moved+=("$path")
+done
 
 STATIC_EXPORT=1 bunx next build
