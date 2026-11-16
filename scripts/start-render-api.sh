@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SELF="$(readlink -f "${BASH_SOURCE[0]}")"
+APP_DIR="$(cd "$(dirname "$SELF")/.." && pwd)"
 export HOSTNAME="${HOSTNAME:-0.0.0.0}"
 export PORT="${PORT:-10000}"
 export QUORUM_DATA_DIR="${QUORUM_DATA_DIR:-/var/data/mcp}"
@@ -14,9 +15,9 @@ if [ "$(id -u)" = "0" ]; then
   mkdir -p "$QUORUM_DATA_DIR/tenders" "$(dirname "$QUORUM_STORE_PATH")"
   chown -R quorum:quorum "$QUORUM_DATA_DIR" "$(dirname "$QUORUM_STORE_PATH")"
   if command -v setpriv >/dev/null 2>&1; then
-    exec setpriv --reuid=quorum --regid=quorum --init-groups "$0" "$@"
+    exec setpriv --reuid=quorum --regid=quorum --init-groups /bin/bash "$SELF" "$@"
   fi
-  exec runuser -u quorum -- "$0" "$@"
+  exec runuser -u quorum -- /bin/bash "$SELF" "$@"
 fi
 
 mkdir -p "$QUORUM_DATA_DIR/tenders" "$(dirname "$QUORUM_STORE_PATH")"
