@@ -4295,31 +4295,33 @@ function sealText(run: Pick<McRun, "seal">): string {
   return run.seal ? "APPROVAL RECORDED — FINAL REPORT" : "DRAFT REPORT — AWAITING APPROVAL";
 }
 
-/* The sealed pack leaves the desk as a real file — the evidence, portable.
-   Every number on it is real: the size is this file's own byte length, the
-   seal is the sidecar's receipt hash. Nothing is estimated. */
-function packMarkdown(run: McRun, findings: SeedFinding[], verdict: "AWARDED" | "RETURNED" | null): string {
-  const lines = [
-    `# Quorum — tender review report · ${run.reference ?? run.id}`,
-    "",
-    `- Review reference: ${run.reference ?? run.id}`,
-    `- Approval status: ${verdict === "AWARDED" ? "Award approved" : verdict === "RETURNED" ? "Returned for revision" : "Awaiting committee approval"}`,
-    `- Findings: ${run.findings} · With sources: ${run.citations} · Without a source: ${run.unsourced}`,
-    `- Record integrity code: ${run.seal ?? "Available after approval"}${run.sealedBy ? ` · approved by ${run.sealedBy}` : ""}`,
-    "",
-    "## Findings and sources",
-    ...(findings.length
-      ? findings.map((f) => `- [${f.cls}] ${f.note}${f.src ? ` — ${f.src}` : " — NO SOURCE ON FILE"}`)
-      : ["- All findings are listed in this report."]),
-    "",
-    "## Audit trail",
-    "- Every finding above cites the page, clause or registry ID it was read from.",
-    `- Decision: ${verdict === "AWARDED" ? "Award approved" : verdict === "RETURNED" ? "Returned for revision" : "Awaiting committee approval"}`,
-  ];
-  const base = lines.join("\n");
-  const kb = (new TextEncoder().encode(base).length / 1024).toFixed(1);
-  lines.push("", `- Report size: ${kb} KB · check the record integrity code in the Activity log.`);
-  return lines.join("\n");
+/* The sealed pack leaves the desk as a real PDF — the evidence, portable.
+   Every number on it is real: the counts are the run's own, the seal is
+   the sidecar's receipt hash. Nothing is estimated. Rendered client-side
+   from the same data the card shows, so the file and the screen agree. */
+async function downloadReportPdf(run: McRun, findings: SeedFinding[], verdict: "AWARDED" | "RETURNED" | null): Promise<void> {
+  const { renderReportPdf } = await import("@/lib/report-pdf");
+  const bytes = await renderReportPdf({
+    reference: run.reference ?? run.id,
+    title: run.title,
+    buyer: run.buyer,
+    approvalStatus: verdict === "AWARDED" ? "Award approved" : verdict === "RETURNED" ? "Returned for revision" : "Awaiting committee approval",
+    findingsCount: run.findings,
+    withSources: run.citations,
+    withoutSource: run.unsourced,
+    seal: run.seal,
+    sealedBy: run.sealedBy,
+    findings: findings.map((f) => ({ cls: f.cls, note: f.note, src: f.src })),
+  });
+  const blob = new Blob([bytes.buffer as ArrayBuffer], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `quorum-${(run.reference ?? run.id).replace(/[^\w-]+/g, "-")}-report.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 /* The draft pack, opened for reading: exactly what sealing will carry,
@@ -4739,11 +4741,9 @@ function ReportPacksView({
                   <button
                     type="button"
                     onClick={() => {
-                      downloadText(
-                        `quorum-${(run.reference ?? run.id).replace(/[^\w-]+/g, "-")}-report.md`,
-                        packMarkdown(run, packFindings, v ?? null),
-                      );
-                      onToast(`REPORT DOWNLOADED — ${run.reference ?? run.id}`);
+                      downloadReportPdf(run, packFindings, v ?? null)
+                        .then(() => onToast(`REPORT DOWNLOADED — ${run.reference ?? run.id}`))
+                        .catch(() => onToast("COULD NOT GENERATE THE REPORT PDF — TRY AGAIN"));
                     }}
                     className="focus-brand inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg bg-ink-950 px-3 font-code text-[10.5px] font-bold tracking-[0.06em] text-white transition-colors hover:bg-brand-600"
                   >
