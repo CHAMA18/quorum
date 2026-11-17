@@ -151,6 +151,22 @@ export async function enqueueDurableJob(job: DurableJob): Promise<void> {
   });
 }
 
+/* Bun's SQL hands a jsonb column back as its text form. A string payload read
+   straight through as an object makes job.payload.runId undefined, so the
+   worker finds no run and marks the job done without ever running the review.
+   Parse it — an unparseable payload is an empty object, not a silent act. */
+function parseJobPayload(value: unknown): Record<string, unknown> {
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
+    } catch {
+      return {};
+    }
+  }
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
 export async function claimDueJobs(limit = 20): Promise<DurableJob[]> {
   const sql = await sqlClient();
   if (!sql) {
@@ -165,7 +181,7 @@ export async function claimDueJobs(limit = 20): Promise<DurableJob[]> {
     return due;
   });
   return rows.map((row) => ({
-    id: String(row.id), kind: String(row.kind), payload: row.payload as Record<string, unknown>, status: "RUNNING",
+    id: String(row.id), kind: String(row.kind), payload: parseJobPayload(row.payload), status: "RUNNING",
     attempts: Number(row.attempts) + 1, maxAttempts: Number(row.max_attempts ?? 5), runAt: new Date(String(row.run_at)).toISOString(),
     ...(row.last_error ? { lastError: String(row.last_error) } : {}),
   }));
@@ -232,7 +248,7 @@ export async function listDurableJobs(limit = 100): Promise<DurableJob[]> {
   if (!sql) return (await readJsonJobs()).sort((a, b) => b.runAt.localeCompare(a.runAt)).slice(0, Math.max(1, Math.min(limit, 500))).map((job) => ({ ...job, maxAttempts: job.maxAttempts ?? 5 }));
   const rows = await sql`SELECT id, kind, payload, status, attempts, max_attempts, run_at, last_error FROM quorum_jobs ORDER BY updated_at DESC LIMIT ${Math.max(1, Math.min(limit, 500))}` as Record<string, unknown>[];
   return rows.map((row) => ({
-    id: String(row.id), kind: String(row.kind), payload: row.payload as Record<string, unknown>,
+    id: String(row.id), kind: String(row.kind), payload: parseJobPayload(row.payload),
     status: String(row.status) as DurableJob["status"], attempts: Number(row.attempts), maxAttempts: Number(row.max_attempts ?? 5),
     runAt: new Date(String(row.run_at)).toISOString(),
     ...(row.last_error ? { lastError: String(row.last_error) } : {}),
