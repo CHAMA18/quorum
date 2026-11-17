@@ -370,6 +370,52 @@ describe("quorum-edge Kira chat completions", () => {
     expect(calls[0].input.messages).toEqual([{ role: "user", content: "Is the gate clear?" }]);
   });
 
+  test("reads the current Workers AI chat-completion shape, with its usage", async () => {
+    /* Meta's llama build now answers like OpenAI. The legacy `{ response }`
+       shape kept working in tests while the deployed route returned 502. */
+    const env = {
+      ORIGIN_URL: "http://origin.test",
+      EDGE_SHARED_SECRET: SECRET,
+      AI: {
+        async run() {
+          return {
+            id: "chatcmpl-test",
+            model: "@cf/meta/llama-3.2-3b-instruct-v2",
+            choices: [{ index: 0, message: { role: "assistant", content: "  The gate is clear.  " }, finish_reason: "stop" }],
+            usage: { prompt_tokens: 42, completion_tokens: 5, total_tokens: 47 },
+          };
+        },
+      },
+    } as unknown as EnvArg;
+    const res = await chat(env, { headers: { "x-quorum-edge-key": SECRET } });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      choices: { message: { content: string } }[];
+      usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
+    };
+    expect(body.choices[0].message.content).toBe("The gate is clear.");
+    expect(body.usage).toEqual({ prompt_tokens: 42, completion_tokens: 5, total_tokens: 47 });
+  });
+
+  test("reads content returned as text parts, and reports an empty answer honestly", async () => {
+    const parts = {
+      ORIGIN_URL: "http://origin.test",
+      EDGE_SHARED_SECRET: SECRET,
+      AI: { async run() { return { choices: [{ message: { content: [{ type: "text", text: "The gate " }, { type: "text", text: "is clear." }] } }] }; } },
+    } as unknown as EnvArg;
+    const partsRes = await chat(parts, { headers: { "x-quorum-edge-key": SECRET } });
+    expect(partsRes.status).toBe(200);
+    expect(((await partsRes.json()) as { choices: { message: { content: string } }[] }).choices[0].message.content).toBe("The gate is clear.");
+
+    const silent = {
+      ORIGIN_URL: "http://origin.test",
+      EDGE_SHARED_SECRET: SECRET,
+      AI: { async run() { return { choices: [{ message: { content: "   " } }] }; } },
+    } as unknown as EnvArg;
+    const silentRes = await chat(silent, { headers: { "x-quorum-edge-key": SECRET } });
+    expect(silentRes.status).toBe(502);
+  });
+
   test("accepts the edge secret as a bearer token and refuses a missing one", async () => {
     const bearer = await chat(envWithAI(), { headers: { authorization: `Bearer ${SECRET}` } });
     expect(bearer.status).toBe(200);

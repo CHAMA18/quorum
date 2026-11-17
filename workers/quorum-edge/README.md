@@ -23,7 +23,7 @@ current production origin is `https://quorum-api-tgw2.onrender.com`; Wrangler's
   removes one key for the operator-only app route (idempotent).
 - **Real voice** at `/__edge/tts`: Deepgram Aura-2 through the Workers AI
   binding, with MeloTTS as a server-side fallback. Requires the same
-  `x-quorum-edge-key`; `/api/muse/speak` calls it server-to-server.
+  `x-quorum-edge-key`; `/api/assistant/speak` calls it server-to-server.
 - **Kira at `/v1/chat/completions`**. Quorum's open-weight model is served by
   the Workers AI binding as `@cf/meta/llama-3.2-3b-instruct` behind an
   OpenAI-compatible chat-completions route. It accepts `EDGE_SHARED_SECRET`

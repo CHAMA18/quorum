@@ -285,6 +285,60 @@ export function bidSecurityFindings(
   return findings;
 }
 
+const EXPIRY_DATE =
+  /(\d{4})-(\d{2})-(\d{2})|(\d{1,2})\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{4})|(\d{1,2})\/(\d{1,2})\/(\d{4})/i;
+
+/* The date a licence line states, as YYYY-MM-DD. Null when the line states no date. */
+function expiryDateOf(line: string): string | null {
+  const m = line.match(EXPIRY_DATE);
+  if (!m) return null;
+  if (m[1]) return `${m[1]}-${m[2]}-${m[3]}`;
+  if (m[4]) {
+    const month = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"].indexOf(m[5].toLowerCase());
+    if (month < 0) return null;
+    return `${m[6]}-${String(month + 1).padStart(2, "0")}-${m[4].padStart(2, "0")}`;
+  }
+  const [, d, mo, y] = m;
+  return `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
+}
+
+/**
+ * Licence validity: a licence line whose own words say the licence is expired,
+ * pending or in renewal — and which states no future validity that covers the
+ * closing date — is flagged HIGH for the committee to confirm validity at
+ * award. Statutory wording only: the line must name a licence. "Valid through
+ * <future date>" is never flagged. Pure.
+ */
+export function licenceFindings(
+  bids: { bidder: string; text: string; source: string }[],
+  closingDate: string | undefined,
+  opts: { asOf?: string } = {},
+): Finding[] {
+  const closing = closingDate?.slice(0, 10);
+  const findings: Finding[] = [];
+  for (const bid of bids) {
+    for (const rawLine of bid.text.split("\n")) {
+      const line = rawLine.trim();
+      if (!/licen[cs]e/i.test(line)) continue;
+      if (/valid\s+(?:to|through|until)/i.test(line) && expiryDateOf(line) && !/expired|pending|renewal/i.test(line)) continue;
+      if (!/\bexpired\b/i.test(line) && !/application pending|renewal in progress/i.test(line)) continue;
+      const expiry = expiryDateOf(line);
+      if (expiry && closing && expiry >= closing) continue;
+      if (expiry && !closing && expiry >= (opts.asOf ?? new Date().toISOString()).slice(0, 10)) continue;
+      findings.push({
+        id: "",
+        rule: "R-LICENCE-EXPIRED",
+        severity: "HIGH",
+        item: `${bid.bidder} — ${line.slice(0, 80)}`,
+        evidence: `Licence line states the licence is expired or unconfirmed at bid time, before the closing date ${closing ?? "(not stated in the notice — confirm validity at award)"}: "${line.slice(0, 220)}". The committee must confirm a valid licence covers the award period.`,
+        citation: `${bid.source}, documents enclosed`,
+      });
+      break;
+    }
+  }
+  return findings;
+}
+
 /**
  * Debarment screening: every bidder name is matched against the register.
  * A hit is HIGH and cites the bid itself — the committee sets the bid aside

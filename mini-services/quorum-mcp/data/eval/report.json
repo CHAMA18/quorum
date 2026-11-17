@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-11-12T05:04:40.473Z",
+  "generatedAt": "2026-11-17T01:18:22.273Z",
   "labeller": "one human reviewer, one pass over the source documents, written before the engine was run on them. Not independently double-labelled.",
   "covered_means": "a rule in the engine is designed to raise this finding type. covered:false items measure what the rule set does not claim to catch. Coverage flags track the CURRENT rule set: when a rule lands (e.g. plan_review deep-value parsing of markdown bid values, 2026-10-16), the flags it covers flip to true — the labels themselves are never edited after their original single pass.",
   "summary": {
-    "runsPerTender": 3,
+    "runsPerTender": 5,
     "tenders": 7,
     "guards": {
       "priceVariancePct": 40,
@@ -13,29 +13,29 @@
     "original": {
       "goldLabels": 42,
       "coveredLabels": 39,
-      "recallCovered": 97.4,
-      "recallAll": 90.5,
-      "precision": 84.4,
-      "findingsTotal": 45,
-      "findingsUnlabelled": 7
+      "recallCovered": 100,
+      "recallAll": 97.6,
+      "precision": 87.2,
+      "findingsTotal": 47,
+      "findingsUnlabelled": 6
     },
     "adjudicated": {
       "goldLabels": 42,
       "coveredLabels": 39,
-      "recallCovered": 97.4,
-      "recallAll": 90.5,
-      "precision": 84.4,
-      "findingsTotal": 45,
-      "findingsUnlabelled": 7
+      "recallCovered": 100,
+      "recallAll": 97.6,
+      "precision": 87.2,
+      "findingsTotal": 47,
+      "findingsUnlabelled": 6
     },
     "identicalAcrossRuns": "7/7 tenders",
     "llmCallsPerRun": 0,
     "variance": {
       "findingsIdenticalAcrossRuns": "7/7 tenders",
-      "msMedianPerPack": 0.56,
+      "msMedianPerPack": 0.57,
       "msSpread": [
-        0.42,
-        2.97
+        0.37,
+        0.89
       ],
       "note": "Identical findings across repeated runs prove stability, not sensitivity — the mutation detection rates below are the sensitivity check. This report does NOT measure LLM run-to-run variance: no drafting endpoint runs in this loop. On a live endpoint the sidecar records per-draft usage in tool-log.jsonl and state.json, and the run register shows per-run draft variation."
     },
@@ -47,10 +47,10 @@
       "note": "The rule-path eval makes no model calls, so the measured cost of this report is 0 USD. On a live endpoint, cost per run = (prompt_tokens + completion_tokens) × the endpoint's published per-token price; usage per draft is recorded in tool-log.jsonl and on the run's usage block, so the figure is auditable from the append-only log."
     },
     "mutation": {
-      "repeatsPerMutation": 3,
+      "repeatsPerMutation": 5,
       "executed": 27,
       "skipped": 8,
-      "overallDetectionRate": 88.9,
+      "overallDetectionRate": 100,
       "note": "Detection = the engine raises (or, for the removed-ceiling guard, drops) the expected finding. Skipped = the mutation's precondition did not hold for that tender; reported, never counted as a pass."
     },
     "heldOut": {
@@ -63,9 +63,9 @@
         "goldLabels": 13,
         "coveredLabels": 12,
         "recallCovered": 100,
-        "recallAll": 92.3,
-        "precision": 85.7,
-        "findingsTotal": 14,
+        "recallAll": 100,
+        "precision": 86.7,
+        "findingsTotal": 15,
         "findingsUnlabelled": 2
       }
     }
@@ -104,10 +104,10 @@
       "droppedBySelfCheck": 0,
       "ruleCapHit": false,
       "identicalAcrossRuns": true,
-      "medianMs": 2.97,
+      "medianMs": 0.89,
       "msRange": [
-        0.9,
-        7.47
+        0.73,
+        6.13
       ],
       "mutations": [
         {
@@ -139,19 +139,10 @@
     },
     {
       "tender": "KE-MOH-2026-117",
-      "findings": 10,
+      "findings": 11,
       "gold": 9,
-      "goldHit": 8,
-      "missed": [
-        {
-          "rule": "R-LICENCE-EXPIRED",
-          "file": "03-bid-equatorial-medicines.md",
-          "match": "PPB",
-          "covered": false,
-          "postHoc": false,
-          "note": "wholesaler licence expired; no rule covers licences"
-        }
-      ],
+      "goldHit": 9,
+      "missed": [],
       "unlabelled": [
         {
           "rule": "R-DOC-MISSING",
@@ -170,10 +161,10 @@
       "droppedBySelfCheck": 0,
       "ruleCapHit": false,
       "identicalAcrossRuns": true,
-      "medianMs": 0.95,
+      "medianMs": 0.77,
       "msRange": [
-        0.79,
-        1.01
+        0.67,
+        1.02
       ],
       "mutations": [
         {
@@ -216,8 +207,8 @@
       "identicalAcrossRuns": true,
       "medianMs": 0.47,
       "msRange": [
-        0.46,
-        0.74
+        0.43,
+        0.68
       ],
       "mutations": [
         {
@@ -251,43 +242,27 @@
       "tender": "KE-NCB-104293",
       "findings": 4,
       "gold": 4,
-      "goldHit": 3,
-      "missed": [
-        {
-          "rule": "R-DOC-MISSING",
-          "file": "02-bid-mediqueast.md",
-          "match": "Manufacturer authorization",
-          "covered": true,
-          "postHoc": false,
-          "note": "one REQUIRED document absent. The sample brief says two; the documents show one."
-        }
-      ],
-      "unlabelled": [
-        {
-          "rule": "R-DOC-MISSING",
-          "item": "MedEquip East Africa Ltd — manufacturer authorization letter",
-          "citation": "01-tender-notice.md, eligibility checklist",
-          "evidence": "Tender notice lists \"manufacturer authorization letter\" as REQUIRED; the bid does not reference it. Raised under the STRICT checklist — completeness findings escalate to HIGH."
-        }
-      ],
+      "goldHit": 4,
+      "missed": [],
+      "unlabelled": [],
       "rejectedUncited": 0,
       "droppedBySelfCheck": 0,
       "ruleCapHit": false,
       "identicalAcrossRuns": true,
-      "medianMs": 0.56,
+      "medianMs": 0.57,
       "msRange": [
-        0.52,
-        0.66
+        0.46,
+        0.84
       ],
       "mutations": [
         {
           "name": "bid-value-x10",
-          "detectionRate": 0,
+          "detectionRate": 100,
           "skipped": false
         },
         {
           "name": "hide-required-document",
-          "detectionRate": 0,
+          "detectionRate": 100,
           "skipped": false
         },
         {
@@ -302,26 +277,17 @@
         },
         {
           "name": "line-item-price-x10",
-          "detectionRate": 0,
+          "detectionRate": 100,
           "skipped": false
         }
       ]
     },
     {
       "tender": "KE-PHC-2026-311",
-      "findings": 8,
+      "findings": 9,
       "gold": 8,
-      "goldHit": 7,
-      "missed": [
-        {
-          "rule": "R-LICENCE-EXPIRED",
-          "file": "02-bid-nyota-energy.md",
-          "match": "EPRA",
-          "covered": false,
-          "postHoc": false,
-          "note": "installer licence expired; no rule covers licences"
-        }
-      ],
+      "goldHit": 8,
+      "missed": [],
       "unlabelled": [
         {
           "rule": "R-VALUE-OUTLIER",
@@ -334,10 +300,10 @@
       "droppedBySelfCheck": 0,
       "ruleCapHit": false,
       "identicalAcrossRuns": true,
-      "medianMs": 0.61,
+      "medianMs": 0.87,
       "msRange": [
-        0.55,
-        0.7
+        0.61,
+        4.79
       ],
       "mutations": [
         {
@@ -385,10 +351,10 @@
       "droppedBySelfCheck": 0,
       "ruleCapHit": false,
       "identicalAcrossRuns": true,
-      "medianMs": 0.5,
+      "medianMs": 0.47,
       "msRange": [
-        0.47,
-        0.66
+        0.41,
+        0.68
       ],
       "mutations": [
         {
@@ -429,10 +395,10 @@
       "droppedBySelfCheck": 0,
       "ruleCapHit": false,
       "identicalAcrossRuns": true,
-      "medianMs": 0.42,
+      "medianMs": 0.37,
       "msRange": [
-        0.4,
-        0.51
+        0.35,
+        0.54
       ],
       "mutations": [
         {

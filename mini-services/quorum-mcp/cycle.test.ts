@@ -20,6 +20,7 @@ import {
   isLate,
   namesMatch,
   noticeFieldCheck,
+  licenceFindings,
   parseBidSecurity,
   parseClosingDate,
   parseEvaluationCriteria,
@@ -613,5 +614,25 @@ describe("finding shape", () => {
       "2026-10-20T00:00:00Z",
     );
     expect(findings[0].citation.split(",")[0].trim()).toBe("03-bid.md");
+  });
+});
+
+describe("licence validity (R-LICENCE-EXPIRED)", () => {
+  const closing = "2027-03-03T08:00:00.000Z";
+  const bid = (line: string) => [{ bidder: "Test Medical Ltd", text: line, source: "02-bid-test.md" }];
+
+  test("flags a licence line that states it expired before closing", () => {
+    const f = licenceFindings(bid("- Installer licence (EPRA) — expired 30 June 2026, renewal in progress"), closing);
+    expect(f.length).toBe(1);
+    expect(f[0].rule).toBe("R-LICENCE-EXPIRED");
+    expect(f[0].severity).toBe("HIGH");
+    expect(f[0].citation).toBe("02-bid-test.md, documents enclosed");
+  });
+
+  test("flags an undated expired/pending licence, and never a future-valid one", () => {
+    expect(licenceFindings(bid("- PPB wholesaler licence — application pending; licence issued January 2025–expired"), "2027-01-30T07:00:00.000Z").length).toBe(1);
+    expect(licenceFindings(bid("- PPB wholesaler licence — licence WDL-2026-0341, valid through 2027"), closing).length).toBe(0);
+    expect(licenceFindings(bid("- Radiation Protection Board dossier — submitted, approval in review"), closing).length).toBe(0);
+    expect(licenceFindings(bid("- Tax compliance certificate — valid to 06/2027"), closing).length).toBe(0);
   });
 });

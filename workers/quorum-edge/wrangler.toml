@@ -2,9 +2,11 @@ name = "quorum-edge"
 main = "src/index.ts"
 compatibility_date = "2026-10-28"
 workers_dev = true
-routes = [
-  { pattern = "quorum-solutions.com/admin*", zone_name = "quorum-solutions.com" },
-]
+# No `routes`: quorum-solutions.com is not a zone on this Cloudflare account,
+# so a zone route here failed every deploy *after* the worker had uploaded
+# ("zone does not exist"), which made a successful release look like a failure.
+# The worker is served from workers.dev; the public landing and the admin
+# portal are separate origins (ADMIN_PORTAL_URL).
 
 [vars]
 ORIGIN_URL = "https://quorum-api-tgw2.onrender.com"

@@ -138,6 +138,48 @@ function kiraText(content: unknown): string | null {
   return parts.join("\n");
 }
 
+type KiraWorkerResult = {
+  response?: unknown;
+  choices?: { message?: { content?: unknown } }[];
+  usage?: { prompt_tokens?: unknown; completion_tokens?: unknown; total_tokens?: unknown };
+};
+
+/**
+ * Workers AI answers in two shapes, and the deployed model now uses the second.
+ *
+ * Older models return `{ response: "text" }`; the current meta llama build
+ * returns an OpenAI chat completion (`{ choices: [{ message: { content } }] }`).
+ * Reading only the first shape made every hosted call look empty — a 502 with
+ * no text — while the model itself was answering fine. Accept both, and the
+ * content-parts array some models use.
+ */
+function kiraResultText(result: unknown): string {
+  if (!result || typeof result !== "object") return "";
+  const body = result as KiraWorkerResult;
+  if (typeof body.response === "string") return body.response.trim();
+  const content = body.choices?.[0]?.message?.content;
+  if (typeof content === "string") return content.trim();
+  if (Array.isArray(content)) {
+    return content
+      .map((part) =>
+        part && typeof part === "object" && typeof (part as { text?: unknown }).text === "string"
+          ? (part as { text: string }).text
+          : "",
+      )
+      .join("")
+      .trim();
+  }
+  return "";
+}
+
+function kiraResultUsage(result: unknown): { prompt_tokens: number; completion_tokens: number; total_tokens: number } {
+  const usage = (result as KiraWorkerResult | null)?.usage;
+  const count = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0);
+  const prompt = count(usage?.prompt_tokens);
+  const completion = count(usage?.completion_tokens);
+  return { prompt_tokens: prompt, completion_tokens: completion, total_tokens: count(usage?.total_tokens) || prompt + completion };
+}
+
 async function kiraChat(request: Request, env: Env): Promise<Response> {
   if (!isKiraAuthorised(request, env)) {
     return json({ error: { message: "unauthorised", type: "invalid_request_error" } }, 401);
@@ -193,8 +235,8 @@ async function kiraChat(request: Request, env: Env): Promise<Response> {
   const temperature = Number.isFinite(rawTemp) ? Math.min(Math.max(rawTemp, 0), 2) : 0.3;
 
   try {
-    const result = (await env.AI.run(KIRA_MODEL, { messages, max_tokens: maxTokens, temperature })) as { response?: unknown } | null;
-    const text = typeof result?.response === "string" ? result.response.trim() : "";
+    const result = await env.AI.run(KIRA_MODEL, { messages, max_tokens: maxTokens, temperature });
+    const text = kiraResultText(result);
     if (!text) {
       return json({ error: { message: "Kira returned no text", type: "server_error" } }, 502);
     }
@@ -204,7 +246,7 @@ async function kiraChat(request: Request, env: Env): Promise<Response> {
       created: Math.floor(Date.now() / 1000),
       model: KIRA_MODEL,
       choices: [{ index: 0, message: { role: "assistant", content: text }, finish_reason: "stop" }],
-      usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+      usage: kiraResultUsage(result),
     });
   } catch (err) {
     return json(

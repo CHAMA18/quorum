@@ -9,7 +9,7 @@ import { createRequire } from "node:module";
 import { Annotation, END, START, StateGraph } from "@langchain/langgraph";
 import { appendLog, attestSignature, shaOf, state, type Draft, type EvidenceObservation, type Finding, type Gate, type Office, type Requirement, type ReviewPlan, type Run } from "./store";
 import { resolveDataDir } from "./paths";
-import { BID_SECURITY_VALIDITY_MARGIN_DAYS, bidSecurityFindings, calendarDaysBetween, debarmentFindings, parseBidSecurity, parseClosingDate } from "./cycle";
+import { BID_SECURITY_VALIDITY_MARGIN_DAYS, bidSecurityFindings, calendarDaysBetween, debarmentFindings, licenceFindings, parseBidSecurity, parseClosingDate } from "./cycle";
 import { DEBARMENT_LIST } from "./debarment";
 import { TENDER_REF_RE } from "./marketplace";
 import { llmConfigChainFromEnv, llmConfigFromEnv, modelAttributionForRun, modelStatus, providerLabel, type LlmConfig } from "./model";
@@ -1295,6 +1295,10 @@ export function verifyFindingReason(f: Finding, sources: Record<string, string>)
       /* The finding is about the bidder's identity on the register; the citation
          names the bid it came from, and the register entry is quoted in the evidence. */
       return text === undefined ? `cited document "${file}" is not in this tender` : null;
+    case "R-LICENCE-EXPIRED": {
+      const line = f.evidence.match(/"([\s\S]+)"/)?.[1];
+      return !!line && text.includes(line) ? null : "licence line not found verbatim in cited bid";
+    }
     default:
       return `rule "${f.rule}" has no self-check`;
   }
@@ -1807,6 +1811,7 @@ export function flagPack(
     ...supplierIdFindings(bids),
     ...runAwardRules(pack.records),
     ...bidSecurityFindings(bids, closing, { required: securityRequired }),
+    ...licenceFindings(bids, closing),
     ...debarmentFindings(bids, DEBARMENT_LIST),
     ...injectionFindings(pack),
     ...(guards.registryCrossCheck ? registryFindings(bids, obeys?.registry ?? []) : []),

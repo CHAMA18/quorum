@@ -106,14 +106,25 @@ async function runOnce(tenderId: string) {
   };
 }
 
-/* A bid file's bidder name, as the engine writes it in finding items: "02-bid-mediqueast.md" → "mediqueast". */
+/* A bid file's bidder name, as the engine writes it in finding items: "02-bid-mediqueast.md" → "mediqueast".
+   The engine writes the cover-page display name ("MedEquip East Africa Ltd"), which is not always
+   derivable from the file slug — so matching accepts either. Without the display name the harness
+   under-counts detection whenever the slug and the cover name diverge (e.g. KE-NCB-104293). */
 function bidderKey(file: string): string {
   return file.replace(/^\d+-bid-/, "").replace(/\.md$/, "").replace(/-/g, " ").toLowerCase();
 }
 
-const mentionsBidder = (f: Finding, file: string) => f.item.toLowerCase().includes(bidderKey(file));
-const valueFlaggedBefore = (before: Finding[], file: string) =>
-  before.some((f) => ["R-VALUE-OUTLIER", "R-OVER-BUDGET"].includes(f.rule) && mentionsBidder(f, file));
+const bidderDisplayOf = (file: string, sources?: Record<string, string>): string | null => {
+  const text = sources?.[file];
+  if (!text) return null;
+  const m = text.match(/^\*\*Bidder:\*\*\s*(.+)$/m);
+  return m ? m[1].trim().toLowerCase() : null;
+};
+
+const mentionsBidder = (f: Finding, file: string, display?: string | null) =>
+  f.item.toLowerCase().includes(bidderKey(file)) || (!!display && f.item.toLowerCase().includes(display));
+const valueFlaggedBefore = (before: Finding[], file: string, display?: string | null) =>
+  before.some((f) => ["R-VALUE-OUTLIER", "R-OVER-BUDGET"].includes(f.rule) && mentionsBidder(f, file, display));
 
 /* ── Mutations: one defect at a time, into a copy of the pack ───────────── */
 
@@ -130,9 +141,12 @@ const MUTATIONS: Mutation[] = [
     name: "bid-value-x10",
     description: "a clean bid overstates its own value tenfold — value-outlier and over-budget rules must fire on that bidder",
     apply(files, sources, before) {
-      const file = files.find((f) => /^\d+-bid-/.test(f) && BID_VALUE_LINE.test(sources[f]) && !valueFlaggedBefore(before, f));
+      const file = files.find((f) => /^\d+-bid-/.test(f) && BID_VALUE_LINE.test(sources[f]));
       if (!file) return null;
+      const display = bidderDisplayOf(file, sources);
+      if (valueFlaggedBefore(before, file, display)) return null;
       ctxFile = file;
+      ctxDisplay = display;
       const mutated = { ...sources };
       mutated[file] = sources[file].replace(BID_VALUE_LINE, (_, p1: string, p2: string) => p1 + (Number(p2.replace(/,/g, "")) * 10).toLocaleString("en-US"));
       return mutated;
@@ -140,8 +154,8 @@ const MUTATIONS: Mutation[] = [
     detect(after, before) {
       const file = ctxFile;
       return (
-        after.some((f) => ["R-VALUE-OUTLIER", "R-OVER-BUDGET"].includes(f.rule) && mentionsBidder(f, file)) &&
-        !valueFlaggedBefore(before, file)
+        after.some((f) => ["R-VALUE-OUTLIER", "R-OVER-BUDGET"].includes(f.rule) && mentionsBidder(f, file, ctxDisplay)) &&
+        !valueFlaggedBefore(before, file, ctxDisplay)
       );
     },
   },
@@ -160,14 +174,15 @@ const MUTATIONS: Mutation[] = [
       const idx = lines.findIndex((l) => need.some((o) => bidNamesDocument(l, o)));
       if (idx < 0) return null;
       ctxFile = bidFile;
+      ctxDisplay = bidderDisplayOf(bidFile, sources);
       ctxDoc = provided.toLowerCase();
       const mutated = { ...sources };
       mutated[bidFile] = lines.filter((_, i) => i !== idx).join("\n");
       return mutated;
     },
     detect(after, before) {
-      const wasMissing = before.some((f) => f.rule === "R-DOC-MISSING" && mentionsBidder(f, ctxFile) && f.item.toLowerCase().includes(ctxDoc));
-      const isMissing = after.some((f) => f.rule === "R-DOC-MISSING" && mentionsBidder(f, ctxFile) && f.item.toLowerCase().includes(ctxDoc));
+      const wasMissing = before.some((f) => f.rule === "R-DOC-MISSING" && mentionsBidder(f, ctxFile, ctxDisplay) && f.item.toLowerCase().includes(ctxDoc));
+      const isMissing = after.some((f) => f.rule === "R-DOC-MISSING" && mentionsBidder(f, ctxFile, ctxDisplay) && f.item.toLowerCase().includes(ctxDoc));
       return isMissing && !wasMissing;
     },
   },
@@ -188,6 +203,7 @@ const MUTATIONS: Mutation[] = [
           const corrupted = value.replace(/(^\w)(\d{8})(\d)(\w$)/, "$1$2X$4");
           if (corrupted === value) continue;
           ctxFile = bidFile;
+          ctxDisplay = bidderDisplayOf(bidFile, sources);
           ctxId = corrupted;
           const mutated = { ...sources };
           mutated[bidFile] = lines.map((l, i) => (i === idx ? l.replace(value, corrupted) : l)).join("\n");
@@ -197,8 +213,8 @@ const MUTATIONS: Mutation[] = [
       return null;
     },
     detect(after, before) {
-      const wasFlagged = before.some((f) => f.rule === "R-SUPPLIER-ID" && mentionsBidder(f, ctxFile) && f.evidence.includes(ctxId));
-      const isFlagged = after.some((f) => f.rule === "R-SUPPLIER-ID" && mentionsBidder(f, ctxFile) && f.evidence.includes(ctxId));
+      const wasFlagged = before.some((f) => f.rule === "R-SUPPLIER-ID" && mentionsBidder(f, ctxFile, ctxDisplay) && f.evidence.includes(ctxId));
+      const isFlagged = after.some((f) => f.rule === "R-SUPPLIER-ID" && mentionsBidder(f, ctxFile, ctxDisplay) && f.evidence.includes(ctxId));
       return isFlagged && !wasFlagged;
     },
   },
@@ -223,7 +239,7 @@ const MUTATIONS: Mutation[] = [
     apply(files, sources, before) {
       const bidFile = files.find((f) => /^\d+-bid-/.test(f));
       if (!bidFile) return null;
-      const bidder = bidFile.replace(/^\d+-bid-/, "").replace(/\.md$/, "").replace(/-/g, " ").toUpperCase();
+      const bidder = (bidderDisplayOf(bidFile, sources) ?? bidFile.replace(/^\d+-bid-/, "").replace(/\.md$/, "").replace(/-/g, " ")).toUpperCase();
       const beforeItems = new Set(before.filter((f) => f.rule === "R-PRICE-OUTLIER").map((f) => f.item.toLowerCase()));
       const items = parseBid(sources[bidFile], "x", bidFile);
       const peers = files
@@ -241,6 +257,7 @@ const MUTATIONS: Mutation[] = [
       const idx = lines.findIndex((l) => l.startsWith("|") && l.includes(row.item.split(" ").slice(0, 3).join(" ")));
       if (idx < 0) return null;
       ctxFile = bidFile;
+      ctxDisplay = bidderDisplayOf(bidFile, sources);
       const mutated = { ...sources };
       mutated[bidFile] = lines
         .map((l, i) =>
@@ -253,21 +270,24 @@ const MUTATIONS: Mutation[] = [
     },
     detect(after, before) {
       const beforeItems = new Set(before.filter((f) => f.rule === "R-PRICE-OUTLIER").map((f) => f.item.toLowerCase()));
-      return after.some((f) => f.rule === "R-PRICE-OUTLIER" && mentionsBidder(f, ctxFile) && !beforeItems.has(f.item.toLowerCase()));
+      return after.some((f) => f.rule === "R-PRICE-OUTLIER" && mentionsBidder(f, ctxFile, ctxDisplay) && !beforeItems.has(f.item.toLowerCase()));
     },
   },
 ];
 
 /* Mutable context a mutation hands to its detector (single-threaded loop — safe). */
 let ctxFile = "";
+let ctxDisplay: string | null = null;
 let ctxDoc = "";
 let ctxId = "";
 
 /* A finding matches a label when the rule agrees, it names the bid (directly or via the bidder), and the anchor text appears. */
-function matches(f: Finding, g: GoldItem): boolean {
+function matches(f: Finding, g: GoldItem, display?: string | null): boolean {
   if (f.rule !== g.rule) return false;
   const item = f.item.toLowerCase();
-  const named = f.citation.includes(g.file) || (g.file.includes("-bid-") && item.includes(bidderKey(g.file)));
+  const named =
+    f.citation.includes(g.file) ||
+    (g.file.includes("-bid-") && (item.includes(bidderKey(g.file)) || (!!display && item.includes(display))));
   return named && `${f.item} ${f.evidence}`.toLowerCase().includes(g.match.toLowerCase());
 }
 
@@ -279,6 +299,19 @@ function median(xs: number[]): number {
 
 const gold: Gold = JSON.parse(await readFile(join(EVAL_DIR, "gold.json"), "utf8"));
 const tenderIds = Object.keys(gold.tenders).sort();
+
+/* Display names per tender ("MedEquip East Africa Ltd"), for label matching. */
+const displayByTender: Record<string, Record<string, string>> = {};
+for (const id of tenderIds) {
+  const { sources } = await readPack(id);
+  const map: Record<string, string> = {};
+  for (const file of Object.keys(sources)) {
+    if (!/^\d+-bid-/.test(file)) continue;
+    const display = bidderDisplayOf(file, sources);
+    if (display) map[file] = display;
+  }
+  displayByTender[id] = map;
+}
 
 /* Scores one variant. "original" ignores postHoc labels, so a post-hoc match counts as unlabelled. */
 function score(variant: "original" | "adjudicated", ids: string[] = tenderIds) {
@@ -292,8 +325,9 @@ function score(variant: "original" | "adjudicated", ids: string[] = tenderIds) {
   for (const id of ids) {
     const gl = gold.tenders[id].filter((g) => variant === "adjudicated" || !g.postHoc);
     const f = results[id].findings;
-    const hits = gl.map((g) => f.some((x) => matches(x, g)));
-    const unlabelled = f.filter((x) => !gl.some((g) => matches(x, g)));
+    /* Display names differ per bid file; match each label by its own file's name. */
+    const hits = gl.map((g) => f.some((x) => matches(x, g, displayByTender[id]?.[g.file])));
+    const unlabelled = f.filter((x) => !gl.some((g) => matches(x, g, displayByTender[id]?.[g.file])));
     goldTotal += gl.length;
     coveredTotal += gl.filter((g) => g.covered).length;
     goldHits += hits.filter(Boolean).length;
@@ -354,6 +388,7 @@ for (const tenderId of tenderIds) {
   const per: { name: string; description: string; runs: number; detected: number; detectionRate: number | null; skipped: boolean }[] = [];
   for (const m of MUTATIONS) {
     ctxFile = "";
+    ctxDisplay = null;
     ctxDoc = "";
     ctxId = "";
     let detected = 0;
