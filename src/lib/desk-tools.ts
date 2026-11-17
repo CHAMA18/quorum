@@ -1,6 +1,6 @@
 import { sidecarOrigin } from "@/lib/sidecar-origin";
 /**
- * Desk tools for the Muse assistant.
+ * Desk tools for the desk assistant.
  *
  * Every live tool is a READ — a GET against records that already exist on the
  * quorum-mcp sidecar (:3031) or the web app's committee register. The

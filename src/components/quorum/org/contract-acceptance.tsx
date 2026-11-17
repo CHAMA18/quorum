@@ -96,10 +96,7 @@ export function ContractAcceptance({
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="font-code text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-400">
-            SUPPLIER CONTRACTS
-          </p>
-          <h1 className="type-display mt-2 flex items-center gap-2.5 text-[22px] text-ink-950 dark:text-white">
+          <h1 className="type-display flex items-center gap-2.5 text-[22px] text-ink-950 dark:text-white">
             Contracts
             {contracts !== null ? (
               <span className="rounded-full border border-ink-100 bg-sand/80 px-2 py-0.5 font-code text-[10px] font-semibold text-ink-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-600">
@@ -108,7 +105,7 @@ export function ContractAcceptance({
             ) : null}
           </h1>
           <p className="mt-1.5 max-w-[66ch] text-[13px] leading-relaxed text-ink-500">
-            Contracts appear here after the procurement team awards a tender and prepares the contract. You can review the terms and record your organization&apos;s acceptance here.
+            When a tender is awarded, its contract appears here for your review and acceptance.
           </p>
         </div>
         <button

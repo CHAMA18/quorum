@@ -1,18 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { museTranscribe, museVoiceConfigFromEnv } from "@/lib/muse";
 import { clientKey, rateLimit } from "@/lib/auth";
 import { actorLimitKey, requestActor } from "@/lib/request-auth";
 
 /**
- * POST /api/muse/transcribe — the assistant's ears.
+ * POST /api/assistant/transcribe — the assistant's ears.
  *
- * Three hearing paths, tried in order of quality:
+ * Two hearing paths, tried in order of quality:
  *
- *   1. Muse Voice Transcribe (Meta Model API) — when MUSE_API_KEY is set.
- *   2. The quorum-edge Worker's speech-to-text (Cloudflare Workers AI,
+ *   1. The quorum-edge Worker's speech-to-text (Cloudflare Workers AI,
  *      whisper → nova-3) — when the edge is configured. The clip never
- *      touches disk on either hop and is never stored.
- *   3. The browser's own SpeechRecognition — probed by the client via GET
+ *      touches disk and is never stored.
+ *   2. The browser's own SpeechRecognition — probed by the client via GET
  *      and used live, with no server round trip at all.
  *
  * The clip goes straight to the hearing service and comes back as a
@@ -20,7 +18,7 @@ import { actorLimitKey, requestActor } from "@/lib/request-auth";
  * if no server path exists the route says provider "browser" and the bubble
  * switches to the device's own ears — the product never depends on a secret.
  *
- * GET  → { provider: "meta" | "edge" | "browser" } — one probe, cached client-side.
+ * GET  → { provider: "edge" | "browser" } — one probe, cached client-side.
  * POST → multipart/form-data with a single `audio` part (WAV).
  */
 
@@ -34,7 +32,7 @@ function edgeConfig(): { url: string; secret: string } | null {
 }
 
 export async function GET() {
-  const provider = museVoiceConfigFromEnv() ? "meta" : edgeConfig() ? "edge" : "browser";
+  const provider = edgeConfig() ? "edge" : "browser";
   return NextResponse.json({ provider });
 }
 
@@ -42,13 +40,11 @@ export async function POST(request: NextRequest) {
   const actor = await requestActor(request);
   if (!actor) return NextResponse.json({ error: "Sign in to use the assistant microphone." }, { status: 401 });
   if (
-    !rateLimit(actorLimitKey("muse-transcribe", actor), 20, 5 * 60_000) ||
-    !rateLimit(clientKey(request, "muse-transcribe"), 40, 5 * 60_000)
+    !rateLimit(actorLimitKey("assistant-transcribe", actor), 20, 5 * 60_000) ||
+    !rateLimit(clientKey(request, "assistant-transcribe"), 40, 5 * 60_000)
   ) {
     return NextResponse.json({ error: "Too many transcription requests. Wait a few minutes and try again." }, { status: 429 });
   }
-
-  const cfg = museVoiceConfigFromEnv();
 
   let form: FormData;
   try {
@@ -65,33 +61,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "That clip is too long — hold the mic and ask a short question." }, { status: 413 });
   }
 
-  /* 1. Meta's transcriber, when the console key is present. */
-  if (cfg) {
-    try {
-      const result = await museTranscribe(cfg, audio, "clip.wav");
-      if (!result.text) {
-        return NextResponse.json({
-          configured: true,
-          provider: "meta",
-          text: "",
-          note: "Muse heard nothing on that clip — try again, closer to the mic.",
-        });
-      }
-      return NextResponse.json({ configured: true, provider: "meta", text: result.text, turns: result.turns });
-    } catch (err) {
-      return NextResponse.json(
-        {
-          configured: true,
-          provider: "meta",
-          error: (err as Error).message.slice(0, 300),
-          note: "The voice service did not answer — type your question instead.",
-        },
-        { status: 502 }
-      );
-    }
-  }
-
-  /* 2. The edge Worker's ears — Cloudflare Workers AI, server-to-server. */
+  /* 1. The edge Worker's ears — Cloudflare Workers AI, server-to-server. */
   const edge = edgeConfig();
   if (edge) {
     try {
@@ -125,6 +95,6 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  /* 3. No server ears — the client uses the browser's own recognition. */
+  /* 2. No server ears — the client uses the browser's own recognition. */
   return NextResponse.json({ configured: false, provider: "browser", text: "" });
 }

@@ -3,13 +3,13 @@
 import { useReducedMotion } from "@/lib/use-reduced-motion";
 
 /**
- * MuseAssistant — the text chat bubble for the desk screens.
+ * AssistantBubble — the text chat bubble for the desk screens.
  *
  * One floating button, bottom right, over the workspace, the docs and the
  * org portal — never the public landing page or the auth door. Press it and
  * you get a text chat panel:
  *
- *   · thinking — the sentence goes to /api/muse/chat, where the desk agent
+ *   · thinking — the sentence goes to /api/assistant/chat, where the desk agent
  *     runs an agentic loop: reads (runs, approvals, deadlines, the committee
  *     register, one tender's record) execute at once, and a review assignment
  *     comes back as an HMAC-signed proposal card. A full LLM brain answers
@@ -25,11 +25,12 @@ import { useReducedMotion } from "@/lib/use-reduced-motion";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
-import { ArrowUpRight, Ban, Check, ChevronRight, CircleHelp, MessageSquare, Send, ShieldAlert, Sparkles, X } from "lucide-react";
-import type { Proposal } from "@/lib/muse-actions";
+import { ArrowUpRight, Ban, Check, ChevronRight, CircleHelp, Cpu, MessageSquare, Send, ShieldAlert, Sparkles, X } from "lucide-react";
+import type { Proposal } from "@/lib/assistant-actions";
+import { modelCostLabel } from "@/lib/model-cost";
 import { cn } from "@/lib/utils";
 import { nextRovingTabIndex } from "@/lib/a11y";
-import { useNapsterBarry } from "./use-napster-barry";
+import { useNapsterSession } from "./use-napster-session";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -40,8 +41,14 @@ type Turn = {
   text: string;
   proposal?: Proposal;
   proposalState?: ProposalState;
+  /** Measured Kira usage for this answer, summed across its model passes. */
+  usage?: { promptTokens: number; completionTokens: number; totalTokens: number };
+  model?: string;
+  modelCalls?: number;
 };
-type BarrySupportRequest = {
+
+const fmtTokens = (n: number) => n.toLocaleString("en-GB");
+type DeskSupportRequest = {
   id: string;
   subject: string;
   message: string;
@@ -60,10 +67,10 @@ const SUGGESTIONS = [
   "What can you investigate for me?",
 ];
 
-const BARRY_INTRO =
-  "I'm Barry, your procurement agent. I can read the live desk — approvals, deadlines, the committee register, a tender's file — investigate what you ask, and prepare actions for your approval. Tell me what to take on.";
+const DESK_INTRO =
+  "I'm the desk agent for this workspace. I can read the live desk — approvals, deadlines, the committee register, a tender's file — investigate what you ask, and prepare actions for your approval. Tell me what to take on.";
 
-const BARRY_ACTIONS = [
+const DESK_ACTIONS = [
   "What needs approval?",
   "Review a tender pack",
   "What deadlines are overdue?",
@@ -84,7 +91,7 @@ type AssistantSection = "chat" | "support";
 let turnSeq = 0;
 const nextId = () => `t${++turnSeq}`;
 
-export function MuseAssistant({
+export function AssistantBubble({
   name,
   onOpenDesk,
 }: {
@@ -100,7 +107,7 @@ export function MuseAssistant({
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
-  const [supportRequests, setSupportRequests] = useState<BarrySupportRequest[]>([]);
+  const [supportRequests, setSupportRequests] = useState<DeskSupportRequest[]>([]);
   const [supportLoading, setSupportLoading] = useState(false);
   const [supportSending, setSupportSending] = useState(false);
   const [supportSubject, setSupportSubject] = useState("");
@@ -108,8 +115,8 @@ export function MuseAssistant({
   const [supportError, setSupportError] = useState<string | null>(null);
   const [supportNotice, setSupportNotice] = useState<string | null>(null);
   const [agentPrompts, setAgentPrompts] = useState(false);
-  const [transport, setTransport] = useState<"muse" | "napster">("muse");
-  const napster = useNapsterBarry();
+  const [transport, setTransport] = useState<"quorum" | "napster">("quorum");
+  const napster = useNapsterSession();
   const { connect: connectNapster, send: sendNapster, close: closeNapster } = napster;
 
   const chatTurns: Turn[] =
@@ -120,12 +127,24 @@ export function MuseAssistant({
           text: message.text,
         }))
       : turns;
+  const sessionUsage = chatTurns.reduce(
+    (total, turn) => {
+      if (!turn.usage) return total;
+      return {
+        promptTokens: total.promptTokens + turn.usage.promptTokens,
+        completionTokens: total.completionTokens + turn.usage.completionTokens,
+        totalTokens: total.totalTokens + turn.usage.totalTokens,
+        calls: total.calls + (turn.modelCalls ?? 1),
+      };
+    },
+    { promptTokens: 0, completionTokens: 0, totalTokens: 0, calls: 0 },
+  );
   const composerBusy =
     busy || (transport === "napster" && (napster.status !== "live" || napster.busy));
   const showTyping = busy || (transport === "napster" && napster.busy);
   const headerStatus =
     transport !== "napster"
-      ? "Barry is here to help"
+      ? "Desk agent · here to help"
       : napster.status === "connecting"
         ? "Connecting to Napster…"
         : napster.status === "live"
@@ -139,7 +158,7 @@ export function MuseAssistant({
     event.preventDefault();
     const nextSection = assistantSections[next];
     setSection(nextSection);
-    requestAnimationFrame(() => document.getElementById(`barry-tab-${nextSection}`)?.focus());
+    requestAnimationFrame(() => document.getElementById(`desk-agent-tab-${nextSection}`)?.focus());
   };
 
   const scrollerRef = useRef<HTMLDivElement | null>(null);
@@ -199,7 +218,7 @@ export function MuseAssistant({
     setSupportLoading(true);
     try {
       const res = await fetch("/api/support/requests", { cache: "no-store", signal });
-      const body = (await res.json().catch(() => ({}))) as { requests?: BarrySupportRequest[]; error?: string };
+      const body = (await res.json().catch(() => ({}))) as { requests?: DeskSupportRequest[]; error?: string };
       if (!res.ok) throw new Error(body.error ?? "Your support requests could not be loaded.");
       if (sequence === supportLoadSequenceRef.current && mutationVersion === supportMutationVersionRef.current) {
         setSupportRequests(Array.isArray(body.requests) ? body.requests : []);
@@ -238,7 +257,7 @@ export function MuseAssistant({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ subject: supportSubject.trim(), message: supportMessage.trim() }),
       });
-      const body = (await res.json().catch(() => ({}))) as { request?: BarrySupportRequest; error?: string };
+      const body = (await res.json().catch(() => ({}))) as { request?: DeskSupportRequest; error?: string };
       if (!res.ok || !body.request) throw new Error(body.error ?? "Your support request could not be sent.");
       supportMutationVersionRef.current += 1;
       setSupportSubject("");
@@ -265,7 +284,7 @@ export function MuseAssistant({
       setTurns((prev) => [...prev, mine]);
       setBusy(true);
       try {
-        const res = await fetch("/api/muse/chat", {
+        const res = await fetch("/api/assistant/chat", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
@@ -277,6 +296,9 @@ export function MuseAssistant({
           reply?: string;
           proposal?: Proposal;
           error?: string;
+          model?: string;
+          modelCalls?: number;
+          usage?: { promptTokens: number; completionTokens: number; totalTokens: number };
         };
         const reply = (data.reply ?? data.error ?? "I could not answer that just now.").trim();
         setTurns((prev) => [
@@ -286,6 +308,7 @@ export function MuseAssistant({
             role: "assistant",
             text: reply,
             ...(data.proposal ? { proposal: data.proposal, proposalState: "pending" as const } : {}),
+            ...(data.usage ? { usage: data.usage, model: data.model, modelCalls: data.modelCalls } : {}),
           },
         ]);
       } catch {
@@ -338,7 +361,7 @@ export function MuseAssistant({
           return;
         }
 
-        const res = await fetch("/api/muse/execute", {
+        const res = await fetch("/api/assistant/execute", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ proposal, consent: true }),
@@ -382,11 +405,11 @@ export function MuseAssistant({
     [patchTurn, say]
   );
 
-  /* "Speak to Barry" opens a live Napster text session. Napster is a
+  /* "Speak on Napster" opens a live Napster text session. Napster is a
      conversational channel with no Quorum tools, so it cannot read the desk
      or stage actions. If it cannot start, the panel falls back to the Quorum
      desk agent and says why. */
-  const startBarry = useCallback(async () => {
+  const startNapsterSession = useCallback(async () => {
     setSection("chat");
     setAgentPrompts(false);
     setTransport("napster");
@@ -399,7 +422,7 @@ export function MuseAssistant({
     if (result.cancelled) return;
 
     const reason = result.error ?? "Napster did not start a session.";
-    setTransport("muse");
+    setTransport("quorum");
     setAgentPrompts(true);
     setTurns((prev) => {
       const note: Turn = {
@@ -409,18 +432,18 @@ export function MuseAssistant({
       };
       return prev.length
         ? [...prev, note]
-        : [note, { id: nextId(), role: "assistant", text: BARRY_INTRO }];
+        : [note, { id: nextId(), role: "assistant", text: DESK_INTRO }];
     });
     requestAnimationFrame(() => inputRef.current?.focus());
   }, [connectNapster]);
 
   const useQuorumChat = useCallback(() => {
     closeNapster();
-    setTransport("muse");
+    setTransport("quorum");
     setAgentPrompts(false);
     setSection("chat");
     setTurns((prev) =>
-      prev.length ? prev : [{ id: nextId(), role: "assistant", text: BARRY_INTRO }],
+      prev.length ? prev : [{ id: nextId(), role: "assistant", text: DESK_INTRO }],
     );
     requestAnimationFrame(() => inputRef.current?.focus());
   }, [closeNapster]);
@@ -443,7 +466,7 @@ export function MuseAssistant({
         }}
         aria-label={open ? "Close the Quorum assistant" : "Open the Quorum assistant"}
         aria-expanded={open}
-        title={open ? "Close Barry" : "Ask Barry"}
+        title={open ? "Close the desk agent" : "Ask the desk agent"}
         className="focus-brand group fixed bottom-5 right-5 z-[75] grid h-14 w-14 place-items-center rounded-full bg-brand-600 p-0 text-white shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_18px_40px_-16px_rgba(217,38,22,0.85)] transition-colors hover:bg-brand-700 sm:bottom-7 sm:right-7"
         whileHover={reduce ? undefined : { y: -2 }}
         whileTap={reduce ? undefined : { scale: 0.97 }}
@@ -462,14 +485,14 @@ export function MuseAssistant({
       <AnimatePresence>
         {open && (
           <motion.div
-            key="muse-panel"
+            key="assistant-panel"
             initial={reduce ? false : { opacity: 0, y: 18, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 12, scale: 0.98 }}
             transition={reduce ? { duration: 0 } : { duration: 0.26, ease: EASE }}
             role="dialog"
-            aria-label="Barry — Quorum AI assistant"
-            className="muse-assistant fixed bottom-[88px] right-3 z-[76] flex h-[min(680px,calc(100dvh-112px))] w-[min(400px,calc(100vw-24px))] flex-col overflow-hidden rounded-[24px] border border-black/[0.06] bg-white text-[#202124] shadow-[0_24px_80px_-20px_rgba(24,39,75,0.28)] dark:border-white/10 dark:bg-[#0c0d10] dark:text-ink-900 sm:right-7"
+            aria-label="Desk agent — Quorum assistant"
+            className="assistant-bubble fixed bottom-[88px] right-3 z-[76] flex h-[min(680px,calc(100dvh-112px))] w-[min(400px,calc(100vw-24px))] flex-col overflow-hidden rounded-[24px] border border-black/[0.06] bg-white text-[#202124] shadow-[0_24px_80px_-20px_rgba(24,39,75,0.28)] dark:border-white/10 dark:bg-[#0c0d10] dark:text-ink-900 sm:right-7"
           >
             <header className="relative flex shrink-0 items-center justify-between gap-3 bg-brand-700 px-5 py-4 text-white dark:bg-brand-600">
               <div className="flex min-w-0 items-center gap-3">
@@ -531,7 +554,7 @@ export function MuseAssistant({
               aria-live="polite"
             >
               {section === "chat" ? (
-                <div id="barry-panel-chat" role="tabpanel" aria-labelledby="barry-tab-chat" className="space-y-5">
+                <div id="desk-agent-panel-chat" role="tabpanel" aria-labelledby="desk-agent-tab-chat" className="space-y-5">
                   {transport === "napster" ? (
                     <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-200/80 bg-brand-50/70 px-3 py-2 dark:border-brand-500/25 dark:bg-brand-500/10">
                       <span className="flex items-center gap-1.5 text-[11px] font-medium text-brand-900 dark:text-brand-200">
@@ -552,7 +575,7 @@ export function MuseAssistant({
                         {napster.status !== "live" && napster.status !== "connecting" ? (
                           <button
                             type="button"
-                            onClick={() => void startBarry()}
+                            onClick={() => void startNapsterSession()}
                             className="focus-brand inline-flex min-h-8 items-center rounded-lg px-2 text-[10.5px] font-semibold text-brand-900 hover:bg-white/70 dark:text-brand-200 dark:hover:bg-white/[0.06]"
                           >
                             Start again
@@ -594,12 +617,12 @@ export function MuseAssistant({
                           {napster.status === "connecting"
                             ? "Opening a Napster session…"
                             : napster.status === "live"
-                              ? "Barry is connected on Napster."
+                              ? "Connected on Napster."
                               : "This Napster session has ended."}
                         </p>
                         <p className="mt-1 text-[11.5px] leading-relaxed text-[#62666e] dark:text-ink-600">
                           {napster.status === "connecting"
-                            ? "The server is minting a short-lived session. Barry will greet you when it opens."
+                            ? "The server is minting a short-lived session. It will greet you when it opens."
                             : napster.status === "live"
                               ? "Ask a procurement question below. For live desk records or an action, switch to Quorum chat."
                               : "Start again, or switch to Quorum chat for live desk reads and consent-gated actions."}
@@ -608,7 +631,7 @@ export function MuseAssistant({
                     </div>
                   ) : null}
 
-                  {chatTurns.length === 0 && transport === "muse" && (
+                  {chatTurns.length === 0 && transport === "quorum" && (
                     <div className="space-y-5">
                       <div className="flex items-start gap-2.5">
                         <Image
@@ -621,7 +644,7 @@ export function MuseAssistant({
                           className="mt-5 h-8 w-8 shrink-0 rounded-[10px] shadow-sm"
                         />
                         <div className="min-w-0">
-                          <p className="mb-1.5 text-[11px] font-medium text-[#73777f] dark:text-ink-500">Barry · Quorum</p>
+                          <p className="mb-1.5 text-[11px] font-medium text-[#73777f] dark:text-ink-500">Desk agent · Quorum</p>
                           <div className="rounded-2xl rounded-tl-md border border-[#e8e9ec] bg-white px-4 py-3.5 shadow-[0_1px_2px_rgba(20,25,35,0.04)] dark:border-white/10 dark:bg-[#14161b]">
                             <p className="text-[14px] font-semibold leading-snug text-[#25272b] dark:text-white">
                               Hi{name ? ` ${name.split(" ")[0]}` : " there"}! How can I help?
@@ -665,7 +688,7 @@ export function MuseAssistant({
                         />
                       )}
                       <div className={cn("flex max-w-[86%] min-w-0 flex-col", t.role === "user" ? "items-end" : "items-start")}>
-                        {t.role === "assistant" && <p className="mb-1.5 ml-1 text-[10.5px] font-medium text-[#73777f] dark:text-ink-500">Barry</p>}
+                        {t.role === "assistant" && <p className="mb-1.5 ml-1 text-[10.5px] font-medium text-[#73777f] dark:text-ink-500">Desk agent</p>}
                         <div
                           className={cn(
                             "max-w-full rounded-2xl px-3.5 py-3 shadow-[0_1px_2px_rgba(20,25,35,0.05)]",
@@ -675,6 +698,29 @@ export function MuseAssistant({
                           )}
                         >
                           <p className="whitespace-pre-wrap text-[13px] leading-[1.55]">{t.text}</p>
+
+                          {/* Measured, not estimated: what this answer cost. */}
+                          {t.usage ? (
+                            <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-[#eceef0] pt-2 font-code text-[9.5px] leading-relaxed tracking-[0.03em] text-[#777c84] dark:border-white/10 dark:text-ink-500">
+                              <span className="inline-flex items-center gap-1 font-semibold text-[#54585f] dark:text-ink-600">
+                                <Cpu className="h-3 w-3" aria-hidden="true" />
+                                {t.model ?? "Kira"}
+                              </span>
+                              {t.usage.totalTokens > 0 ? (
+                                <>
+                                  <span>{fmtTokens(t.usage.promptTokens)} in</span>
+                                  <span>{fmtTokens(t.usage.completionTokens)} out</span>
+                                  <span>{fmtTokens(t.usage.totalTokens)} tokens</span>
+                                  <span>
+                                    {t.modelCalls ?? 1} {t.modelCalls === 1 ? "call" : "calls"}
+                                  </span>
+                                  <span>{modelCostLabel(t.usage)}</span>
+                                </>
+                              ) : (
+                                <span>token counts not reported</span>
+                              )}
+                            </p>
+                          ) : null}
 
                           {/* Staged actions remain explicit and consent-gated. */}
                           {t.proposal && (
@@ -732,11 +778,11 @@ export function MuseAssistant({
                     </div>
                   ))}
 
-                  {agentPrompts && transport === "muse" && !busy ? (
+                  {agentPrompts && transport === "quorum" && !busy ? (
                     <div className="pl-[42px]">
-                      <p className="mb-2 text-[11px] font-medium text-[#858991] dark:text-ink-500">Give Barry a task</p>
+                      <p className="mb-2 text-[11px] font-medium text-[#858991] dark:text-ink-500">Give the desk agent a task</p>
                       <div className="flex flex-wrap gap-2">
-                        {BARRY_ACTIONS.map((action) => (
+                        {DESK_ACTIONS.map((action) => (
                           <button
                             key={action}
                             type="button"
@@ -755,7 +801,7 @@ export function MuseAssistant({
                   !napster.busy &&
                   !chatTurns.some((turn) => turn.role === "user") ? (
                     <div className="pl-[42px]">
-                      <p className="mb-2 text-[11px] font-medium text-[#858991] dark:text-ink-500">Ask Barry on Napster</p>
+                      <p className="mb-2 text-[11px] font-medium text-[#858991] dark:text-ink-500">Ask on Napster</p>
                       <div className="flex flex-wrap gap-2">
                         {NAPSTER_PROMPTS.map((action) => (
                           <button
@@ -786,7 +832,7 @@ export function MuseAssistant({
                         transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.15 }}
                       />
                     ))}
-                    <span className="ml-1 text-[11px] text-[#747881] dark:text-ink-500">Barry is typing</span>
+                    <span className="ml-1 text-[11px] text-[#747881] dark:text-ink-500">Desk agent is typing</span>
                   </div>
                 </div>
               )}
@@ -794,17 +840,17 @@ export function MuseAssistant({
                 </div>
               ) : null}
               {section === "support" ? (
-                <section id="barry-panel-support" role="tabpanel" aria-labelledby="barry-tab-support" className="space-y-3.5">
+                <section id="desk-agent-panel-support" role="tabpanel" aria-labelledby="desk-agent-tab-support" className="space-y-3.5">
                   <div className="rounded-[20px] bg-brand-700 p-5 text-white shadow-[0_8px_22px_rgba(130,25,20,0.16)] dark:bg-brand-600">
                     <p className="text-[11px] font-medium text-white/70">Quorum support</p>
                     <h3 className="mt-1 text-[21px] font-semibold tracking-[-0.02em]">How can we help?</h3>
                     <p className="mt-1.5 text-[12px] leading-relaxed text-white/80">
-                      Find a quick answer or start a conversation with Barry.
+                      Find a quick answer or start a conversation with the desk agent.
                     </p>
                   </div>
                   <button
                     type="button"
-                    onClick={() => void startBarry()}
+                    onClick={() => void startNapsterSession()}
                     className="group flex w-full items-center gap-3 rounded-2xl border border-brand-200 bg-gradient-to-br from-brand-50 via-white to-white p-4 text-left shadow-[0_1px_2px_rgba(20,25,35,0.04)] transition-colors hover:border-brand-400 dark:border-brand-500/30 dark:from-brand-500/10 dark:via-[#14161b] dark:to-[#14161b] dark:hover:border-brand-400/60"
                   >
                     <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-700 text-white shadow-sm dark:bg-brand-600">
@@ -812,7 +858,7 @@ export function MuseAssistant({
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2">
-                        <span className="text-[12px] font-semibold text-[#30343a] dark:text-ink-800">Speak to Barry</span>
+                        <span className="text-[12px] font-semibold text-[#30343a] dark:text-ink-800">Speak to the desk agent</span>
                         <span className="rounded-full bg-brand-700 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-white dark:bg-brand-600">Live</span>
                       </span>
                       <span className="mt-0.5 block text-[11px] text-[#777c84] dark:text-ink-500">Napster text agent — procurement guidance</span>
@@ -841,7 +887,7 @@ export function MuseAssistant({
                       <MessageSquare className="h-5 w-5" aria-hidden="true" />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[12px] font-semibold text-[#30343a] dark:text-ink-800">Message Barry</span>
+                      <span className="block text-[12px] font-semibold text-[#30343a] dark:text-ink-800">Message the desk agent</span>
                       <span className="mt-0.5 block text-[11px] text-[#777c84] dark:text-ink-500">Ask about work in your Quorum workspace</span>
                     </span>
                     <ChevronRight className="h-4 w-4 shrink-0 text-[#9a9ea5] transition-transform group-hover:translate-x-0.5 group-hover:text-brand-700 dark:text-ink-500 dark:group-hover:text-brand-300" aria-hidden="true" />
@@ -942,11 +988,30 @@ export function MuseAssistant({
                     )}
                   </section>
                   <p className="px-1 pt-1 text-[11px] leading-relaxed text-[#777c84] dark:text-ink-500">
-                    Message Barry reads the live desk and can prepare actions for review. You always approve them before anything changes. Speak to Barry is conversational and cannot change records.
+                    The desk agent reads the live desk and can prepare actions for review; you always approve them before anything changes. Napster is conversational and cannot change records.
                   </p>
                 </section>
               ) : null}
             </div>
+
+            {/* Session meter — visible whenever an open-weight call has answered. */}
+            {section === "chat" && transport === "quorum" && sessionUsage.calls > 0 ? (
+              <div
+                aria-live="polite"
+                className="flex items-center justify-between gap-3 border-t border-[#eceef0] bg-[#fafbfc] px-4 py-2 text-[10.5px] text-[#62666e] dark:border-white/10 dark:bg-white/[0.03] dark:text-ink-500"
+                title={`Prompt ${fmtTokens(sessionUsage.promptTokens)} · completion ${fmtTokens(sessionUsage.completionTokens)}`}
+              >
+                <span className="inline-flex items-center gap-1.5 font-semibold text-[#454950] dark:text-ink-600">
+                  <Cpu className="h-3.5 w-3.5 text-brand-600 dark:text-brand-400" aria-hidden="true" />
+                  Kira session
+                </span>
+                <span className="font-code tabular">
+                  {sessionUsage.totalTokens > 0
+                    ? `${fmtTokens(sessionUsage.totalTokens)} tokens · ${sessionUsage.calls} ${sessionUsage.calls === 1 ? "call" : "calls"} · ${modelCostLabel(sessionUsage)}`
+                    : `${sessionUsage.calls} model ${sessionUsage.calls === 1 ? "call" : "calls"} · counts not reported`}
+                </span>
+              </div>
+            ) : null}
 
             {/* Composer */}
             {section === "chat" ? <div className="relative border-t border-[#eceef0] bg-white px-3.5 py-3 dark:border-white/10">
@@ -965,7 +1030,7 @@ export function MuseAssistant({
                   ref={inputRef}
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
-                  placeholder={transport === "napster" ? "Ask Barry on Napster…" : "Write a message…"}
+                  placeholder={transport === "napster" ? "Ask on Napster…" : "Write a message…"}
                   disabled={composerBusy}
                   maxLength={2000}
                   className="h-11 min-w-0 flex-1 rounded-full border border-[#e6e8eb] bg-[#f7f8fa] px-4 text-base text-[#26292e] outline-none transition-colors placeholder:text-ink-400 focus:border-brand-400 focus:bg-white disabled:opacity-60 dark:border-white/10 dark:bg-[#0c0d10] dark:text-ink-800 dark:placeholder:text-ink-500 dark:focus:border-brand-400 dark:focus:bg-[#14161b] sm:text-[13px]"
@@ -990,9 +1055,9 @@ export function MuseAssistant({
                   key={id}
                   type="button"
                   role="tab"
-                  id={`barry-tab-${id}`}
+                  id={`desk-agent-tab-${id}`}
                   aria-selected={section === id}
-                  aria-controls={section === id ? `barry-panel-${id}` : undefined}
+                  aria-controls={section === id ? `desk-agent-panel-${id}` : undefined}
                   tabIndex={section === id ? 0 : -1}
                   onClick={() => setSection(id)}
                   className={cn(

@@ -2370,7 +2370,7 @@ function TenderCompare({
     const text = `Tender ${current}. ${bidderCount} bidders compared. ${leader ? `Leading bidder ${leader.bidder}.` : "No leader yet."} ${priceMedian !== null ? `Peer median price ${formatAmount(priceMedian, null)}.` : ""} The committee makes the final decision.`;
     setSpeaking(true);
     try {
-      const res = await fetch("/api/muse/speak", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) });
+      const res = await fetch("/api/assistant/speak", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) });
       if (!res.ok) return;
       const blob = await res.blob();
       const audio = new Audio(URL.createObjectURL(blob));

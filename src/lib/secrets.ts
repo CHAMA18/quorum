@@ -10,14 +10,14 @@
 
 const DEV_SECRET = "quorum-dev-attest-secret";
 
-export type SecretPurpose = "attest" | "stepup" | "download" | "notify" | "muse";
+export type SecretPurpose = "attest" | "stepup" | "download" | "notify" | "assistant";
 
 const SOURCES: Record<SecretPurpose, string[]> = {
   attest: ["ATTEST_SECRET", "GATE_SECRET"],
   stepup: ["STEP_UP_SECRET", "GATE_SECRET"],
   download: ["QUORUM_DOWNLOAD_SECRET", "GATE_SECRET"],
   notify: ["NOTIFY_SECRET", "GATE_SECRET"],
-  muse: ["MUSE_ACTION_SECRET", "GATE_SECRET"],
+  assistant: ["ASSISTANT_ACTION_SECRET", "GATE_SECRET"],
 };
 
 export function secretFor(purpose: SecretPurpose): string {

@@ -1,15 +1,17 @@
 "use client";
 
 import type { AuthUser } from "@/lib/auth-types";
-import { MuseAssistant } from "./muse-assistant";
+import { AssistantBubble } from "./assistant-bubble";
 
 /**
  * Which agent surface the shell offers.
  *
- * Barry's floating bubble belongs to the working screens — never the landing
- * page or the auth door — and stands down on the Overview, where the desk
- * composer is the agent surface. Mounted outside the animated view so
- * "fixed" is measured against the viewport, not a transformed parent.
+ * The floating assistant's bubble belongs to the working screens — never the landing
+ * page or the auth door — and stands down where the desk agent already has
+ * its own surface: the Overview, where the chat (including tender building)
+ * lives.
+ * Mounted outside the animated view so "fixed" is measured against the
+ * viewport, not a transformed parent.
  */
 
 export type ShellView = "landing" | "auth" | "dashboard";
@@ -37,5 +39,5 @@ export function FloatingAssistant({
   onOpenDesk?: () => void;
 }) {
   if (!shouldShowAssistant(view, user, section)) return null;
-  return <MuseAssistant name={name} onOpenDesk={onOpenDesk} />;
+  return <AssistantBubble name={name} onOpenDesk={onOpenDesk} />;
 }

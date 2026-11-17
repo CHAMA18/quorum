@@ -47,6 +47,7 @@ export const API_DIRECTORY = {
         "GET /api/runs/:id/report?XTransformPort=3031",
         "GET /api/gates?XTransformPort=3031 · POST /api/gates/:id/decision?XTransformPort=3031",
         "GET /api/tools?XTransformPort=3031 · GET /api/log?limit=50&XTransformPort=3031",
+        "POST /api/assistant/tender — tender brief from a conversation, open-weight model with a deterministic composer fallback",
       ],
     },
     {

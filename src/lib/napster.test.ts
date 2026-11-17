@@ -209,8 +209,8 @@ describe("Napster client", () => {
     }) as unknown as typeof fetch;
 
     const result = await createTextSession({
-      initialSpeech: "Introduce yourself as Barry.",
-      instructions: "You are Barry, a procurement assistant.",
+      initialSpeech: "Introduce yourself as the desk agent.",
+      instructions: "You are the desk agent, a procurement assistant.",
     });
 
     expect(result.ok).toBe(true);
@@ -220,7 +220,7 @@ describe("Napster client", () => {
     const body = JSON.parse(String(requestInit?.body));
     expect(body.companionId).toBe("companion_test");
     expect(body.modality).toBe("text");
-    expect(body.initialSpeech).toContain("Barry");
+    expect(body.initialSpeech).toContain("desk agent");
     expect(body.providerConfig.settings.instructions).toContain("procurement");
     if (result.ok) {
       expect(result.data.url).toBe("wss://ws.example.test/session?token=abc");

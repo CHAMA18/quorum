@@ -8,7 +8,6 @@ const PRODUCT_LINKS = [
   { label: "Overview", href: "#overview" },
   { label: "Use cases", href: "#use-cases" },
   { label: "Review outputs", href: "#inside" },
-  { label: "Sample report", href: "#report" },
   { label: "Pricing", href: "#pricing" },
   { label: "Get started", href: "#get-started" },
 ];

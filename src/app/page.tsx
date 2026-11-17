@@ -11,9 +11,7 @@ import { DesktopDownloads } from "@/components/quorum/desktop-downloads";
 import { Overview } from "@/components/quorum/overview";
 import { RuleBand } from "@/components/quorum/rule-band";
 import { UseCases } from "@/components/quorum/use-cases";
-import { ReviewProcess } from "@/components/quorum/review-process";
 import { InsideRun } from "@/components/quorum/inside-box";
-import { ReportMock } from "@/components/quorum/report-mock";
 import { ProofBand } from "@/components/quorum/proof-band";
 import { Pricing } from "@/components/quorum/pricing";
 import { GetStarted } from "@/components/quorum/get-started";
@@ -234,9 +232,7 @@ export default function Home() {
                 <Overview />
                 <RuleBand />
                 <UseCases />
-                <ReviewProcess />
                 <InsideRun />
-                <ReportMock />
                 <ProofBand />
                 <Pricing />
                 <GetStarted

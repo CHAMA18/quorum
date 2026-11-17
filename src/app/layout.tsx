@@ -4,7 +4,7 @@ import { MotionConfig } from "framer-motion";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/quorum/theme-toggle";
-import { MuseAssistantGate } from "@/components/quorum/muse-assistant-gate";
+import { AssistantGate } from "@/components/quorum/assistant-gate";
 import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { LocaleProvider } from "@/components/quorum/locale-provider";
 import { LOCALE_COOKIE, resolveLocale } from "@/lib/i18n";
@@ -80,7 +80,7 @@ export default async function RootLayout({
           <MotionConfig reducedMotion="user">
             <LocaleProvider initial={locale}>{children}</LocaleProvider>
             {/* The assistant is for working areas and docs, not sign-in screens. */}
-            <MuseAssistantGate name={firstName} />
+            <AssistantGate name={firstName} />
             <Toaster />
           </MotionConfig>
         </ThemeProvider>

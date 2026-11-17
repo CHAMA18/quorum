@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getUserFromToken, rateLimit, SESSION_COOKIE } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { extractTenderText } from "@/lib/tender-extract";
-import { kiraConfigFromEnv, museChat } from "@/lib/muse";
+import { kiraConfigFromEnv, kiraChat } from "@/lib/kira";
 import { attestSignature } from "@/lib/sidecar-attest";
 
 export const runtime = "nodejs";
@@ -156,7 +156,7 @@ Use null and confidence 0 when a fact is absent or ambiguous. For office, only s
 
   const startedAt = performance.now();
   try {
-    const reply = await museChat(config, messages, [], undefined, {
+    const reply = await kiraChat(config, messages, [], {
       responseSchema: { name: "quorum_tender_notice_extraction", schema: EXTRACTION_JSON_SCHEMA },
       reasoningEffort: "medium",
       maxOutputTokens: 1800,

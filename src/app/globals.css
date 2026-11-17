@@ -532,7 +532,9 @@
     text-wrap: balance;
   }
   .type-display-xl {
-    font-size: clamp(2.4rem, 1.1rem + 4.8vw, 4rem);
+    /* The hero claim is the full-width statement: let it grow with the
+       viewport instead of stopping at 64px and leaving the right half empty. */
+    font-size: clamp(2.4rem, 7.2vw, 10rem);
   }
   .type-display-lg {
     font-size: clamp(2rem, 1.2rem + 2.9vw, 3.1rem);
@@ -1114,20 +1116,20 @@
 /* The floating assistant uses a near-black panel in dark mode. The default
    ink ramp is tuned for paper, so restore a readable text ramp inside this
    surface without changing its light theme or the wider workspace palette. */
-.dark .muse-assistant { color: #f1f2f4; }
-.dark .muse-assistant :is([class~="text-ink-50"], [class~="dark:text-ink-50"]) { color: #f5f5f6; }
-.dark .muse-assistant :is([class~="text-ink-100"], [class~="dark:text-ink-100"]) { color: #e9eaec; }
-.dark .muse-assistant :is([class~="text-ink-200"], [class~="dark:text-ink-200"]) { color: #d3d5da; }
-.dark .muse-assistant :is([class~="text-ink-300"], [class~="dark:text-ink-300"]) { color: #c9ccd3; }
-.dark .muse-assistant :is([class~="text-ink-400"], [class~="dark:text-ink-400"]) { color: #9aa0ab; }
-.dark .muse-assistant :is([class~="text-ink-500"], [class~="dark:text-ink-500"]) { color: #a8adb7; }
-.dark .muse-assistant :is([class~="text-ink-600"], [class~="dark:text-ink-600"]) { color: #b3b8c1; }
-.dark .muse-assistant :is([class~="text-ink-700"], [class~="dark:text-ink-700"]) { color: #c9ccd3; }
-.dark .muse-assistant :is([class~="text-ink-800"], [class~="dark:text-ink-800"]) { color: #dfe1e6; }
-.dark .muse-assistant :is([class~="text-ink-900"], [class~="dark:text-ink-900"]) { color: #f1f2f4; }
-.dark .muse-assistant :is([class~="text-ink-950"], [class~="dark:text-ink-950"]) { color: #fafafb; }
-.dark .muse-assistant input::placeholder,
-.dark .muse-assistant textarea::placeholder {
+.dark .assistant-bubble { color: #f1f2f4; }
+.dark .assistant-bubble :is([class~="text-ink-50"], [class~="dark:text-ink-50"]) { color: #f5f5f6; }
+.dark .assistant-bubble :is([class~="text-ink-100"], [class~="dark:text-ink-100"]) { color: #e9eaec; }
+.dark .assistant-bubble :is([class~="text-ink-200"], [class~="dark:text-ink-200"]) { color: #d3d5da; }
+.dark .assistant-bubble :is([class~="text-ink-300"], [class~="dark:text-ink-300"]) { color: #c9ccd3; }
+.dark .assistant-bubble :is([class~="text-ink-400"], [class~="dark:text-ink-400"]) { color: #9aa0ab; }
+.dark .assistant-bubble :is([class~="text-ink-500"], [class~="dark:text-ink-500"]) { color: #a8adb7; }
+.dark .assistant-bubble :is([class~="text-ink-600"], [class~="dark:text-ink-600"]) { color: #b3b8c1; }
+.dark .assistant-bubble :is([class~="text-ink-700"], [class~="dark:text-ink-700"]) { color: #c9ccd3; }
+.dark .assistant-bubble :is([class~="text-ink-800"], [class~="dark:text-ink-800"]) { color: #dfe1e6; }
+.dark .assistant-bubble :is([class~="text-ink-900"], [class~="dark:text-ink-900"]) { color: #f1f2f4; }
+.dark .assistant-bubble :is([class~="text-ink-950"], [class~="dark:text-ink-950"]) { color: #fafafb; }
+.dark .assistant-bubble input::placeholder,
+.dark .assistant-bubble textarea::placeholder {
   color: #a8adb7;
   opacity: 1;
 }

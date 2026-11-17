@@ -1,7 +1,5 @@
-import type { MetaProfileDocumentScan } from "@/lib/meta-bid-document-assist";
-
 /**
- * Browser side of the document vault: open, save and scan one stored file.
+ * Browser side of the document vault: open and save one stored file.
  *
  * Authorisation is the organization's httpOnly session cookie, which the route
  * resolves to the organization before touching a key. Nothing about the owner
@@ -40,16 +38,4 @@ export async function saveProfileDocument(key: string, filename: string): Promis
   anchor.remove();
   /* Give the browser a beat to start the save before the blob is released. */
   window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
-}
-
-export async function scanProfileDocument(key: string): Promise<MetaProfileDocumentScan> {
-  const res = await authorizedFetch("/api/org/documents/scan", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ key }),
-  });
-  if (!res.ok) throw new Error(await failureMessage(res, "Muse Spark could not scan this document."));
-  const data = (await res.json().catch(() => null)) as { review?: MetaProfileDocumentScan } | null;
-  if (!data?.review) throw new Error("Muse Spark returned an empty scan. Try again in a moment.");
-  return data.review;
 }

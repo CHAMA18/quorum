@@ -74,7 +74,7 @@ export type AdminSupportRequest = {
   requesterId: string;
   requesterName: string;
   requesterEmail: string;
-  source: "BARRY";
+  source: "DESK_AGENT";
   subject: string;
   message: string;
   status: "OPEN" | "RESPONDED" | "CLOSED";

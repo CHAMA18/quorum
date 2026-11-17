@@ -120,7 +120,7 @@ export function ProofBand() {
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
             <Reveal>
-              <SpecBar index="08" label="Workspace activity" tone="light" />
+              <SpecBar index="06" label="Workspace activity" tone="light" />
             </Reveal>
             <Reveal delay={0.06}>
               <h2 className="type-display mt-6 max-w-2xl text-[34px] text-white sm:text-[44px]">
@@ -147,6 +147,18 @@ export function ProofBand() {
             </Reveal>
           ))}
         </dl>
+
+        <Reveal delay={0.14}>
+          <div className="mt-10 rounded-xl border border-white/10 bg-white/[0.04] p-5">
+            <p className="font-code text-[10px] font-bold tracking-[0.14em] text-white/60">COST TO SERVE · MEASURED FROM LOGS</p>
+            <div className="mt-3 grid gap-4 text-[13px] leading-relaxed text-white/85 sm:grid-cols-3">
+              <p><span className="font-display text-[22px] font-black tabular-nums text-white">291–348 tokens</span><br />per completed review (live LLM audit, Llama 3.2 1B — 6 logged runs; rule path is 0 tokens)</p>
+              <p><span className="font-display text-[22px] font-black tabular-nums text-white">$0.0003</span><br />hosted token cost per outcome at Workers AI list prices; in-region/template path is $0</p>
+              <p><span className="font-display text-[22px] font-black tabular-nums text-white">$3–$7.50</span><br />full cost per outcome at pilot volume (infra assumption, stated in Pricing) — the token line is not the constraint</p>
+            </div>
+            <p className="mt-3 font-code text-[10px] tracking-[0.06em] text-white/50">TOKEN COUNTS + COST WORKING IN THE JUDGING FACT SHEET AND PRICING BELOW. LIVE RUN ATTRIBUTION (TOKENS + $) VISIBLE IN TOOLS &amp; MODELS.</p>
+          </div>
+        </Reveal>
       </div>
     </section>
   );

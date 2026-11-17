@@ -252,7 +252,7 @@ export function ApplicationTable({
             onClick={onBrowse}
             className="focus-brand mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-ink-950 px-3.5 text-[12px] font-semibold text-white transition-colors hover:bg-brand-600 dark:bg-white dark:text-night dark:hover:bg-brand-500 dark:hover:text-white"
           >
-            Browse opportunities
+            Browse tenders
             <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
         ) : null}

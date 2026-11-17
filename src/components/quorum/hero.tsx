@@ -2,10 +2,9 @@
 
 import { useReducedMotion } from "@/lib/use-reduced-motion";
 
-import type { MouseEvent, ReactNode } from "react";
-import { motion, useMotionValue, useSpring, useTransform,  } from "framer-motion";
-import { ArrowDown, ArrowRight, CircleDot, Landmark, PenLine } from "lucide-react";
-import { AgentRun } from "@/components/quorum/agent-run";
+import type { ReactNode } from "react";
+import { motion } from "framer-motion";
+import { ArrowDown, ArrowRight, CircleDot } from "lucide-react";
 import { HeroFilm } from "@/components/quorum/hero-film";
 import { SpecBar } from "@/components/quorum/reveal";
 import { Magnetic } from "@/components/quorum/motion-kit";
@@ -67,36 +66,12 @@ function MaskedWord({
 export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
   const reduce = useReducedMotion();
 
-  // Mouse parallax for the run panel: normalised cursor position, springed.
-  // Held to ±2.5° — enough to feel the surface, never enough to distort text.
-  const px = useMotionValue(0);
-  const py = useMotionValue(0);
-  const sx = useSpring(px, { stiffness: 110, damping: 22, mass: 0.7 });
-  const sy = useSpring(py, { stiffness: 110, damping: 22, mass: 0.7 });
-  const rotateY = useTransform(sx, [-0.5, 0.5], [-2.5, 2.5]);
-  const rotateX = useTransform(sy, [-0.5, 0.5], [2, -2]);
-
-  const onMove = (e: MouseEvent<HTMLElement>) => {
-    if (reduce) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    px.set((e.clientX - rect.left) / rect.width - 0.5);
-    py.set((e.clientY - rect.top) / rect.height - 0.5);
-  };
-  const onLeave = () => {
-    px.set(0);
-    py.set(0);
-  };
-
   return (
-    <section
-      className="relative overflow-hidden bg-paper"
-      onMouseMove={onMove}
-      onMouseLeave={onLeave}
-    >
+    <section className="relative overflow-hidden bg-paper">
       {/* ── Ground ─────────────────────────────────────────────────────────
           First light over a drafting sheet: the procurement film under a
-          scrim, a masked engineering grid over it, and a single red source
-          behind the run panel. The film is the room; the grid is the desk. */}
+          scrim, a masked engineering grid over it, and warm red sources held
+          low behind the text. The film is the room; the grid is the desk. */}
       <HeroFilm />
 
       <div className="pointer-events-none absolute inset-0" aria-hidden="true">
@@ -116,30 +91,18 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
         />
       </div>
 
-      {/* Drafting-sheet edge rules, aligned to the text column */}
-      <div className="pointer-events-none absolute inset-0 hidden justify-center lg:flex" aria-hidden="true">
-        <div className="relative h-full w-full max-w-7xl px-8">
+      {/* Drafting-sheet edge rules, aligned to the content edges */}
+      <div className="pointer-events-none absolute inset-0 hidden lg:flex" aria-hidden="true">
+        <div className="relative h-full w-full px-8">
           <span className="rule-v absolute inset-y-0 left-8 w-px opacity-70" />
           <span className="rule-v absolute inset-y-0 right-8 w-px opacity-70" />
         </div>
       </div>
 
-      <div className="relative mx-auto w-full max-w-7xl px-4 pb-14 pt-8 sm:px-6 sm:pb-16 sm:pt-14 lg:px-8 lg:pb-20 lg:pt-16">
-        <motion.div
-          initial={reduce ? false : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={reduce ? { duration: 0 } : { duration: 0.6, ease: EASE }}
-        >
-          <SpecBar
-            index="00"
-            label="Tender review workspace · public health procurement"
-            meta="Source-linked findings · accountable approvals"
-          />
-        </motion.div>
-
-        <div className="mt-8 grid items-start gap-12 sm:mt-10 lg:mt-14 lg:grid-cols-12 lg:gap-10">
+      <div className="relative w-full px-4 pb-14 pt-8 sm:px-6 sm:pb-16 sm:pt-14 lg:px-8 lg:pb-20 lg:pt-16">
+        <div>
           {/* ── The claim ─────────────────────────────────────────────────── */}
-          <div className="lg:col-span-6">
+          <div>
             {/* Headline — per-word masked reveal; the accent phrase set in the
                 editorial italic serif without decoration crossing its text. */}
             <h1
@@ -173,7 +136,7 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
               initial={reduce ? false : { opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={reduce ? { duration: 0 } : { duration: 0.7, delay: 0.55, ease: EASE }}
-              className="type-lede mt-6 max-w-[54ch] text-ink-600 dark:text-ink-400"
+              className="type-lede mt-6 max-w-[78ch] text-ink-600 dark:text-ink-400"
             >
               Quorum brings tender requirements, supplier documents and price checks into one
               review record. Officers verify the evidence;{" "}
@@ -229,80 +192,7 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
               <CircleDot className="h-3 w-3 text-brand-500" aria-hidden="true" />
               Start with up to three tender reviews at no cost
             </motion.p>
-
-            {/* Institutional standing */}
-            <motion.div
-              initial={reduce ? false : { opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={reduce ? { duration: 0 } : { duration: 0.7, delay: 0.62, ease: EASE }}
-              className="mt-6 sm:mt-7"
-            >
-              <span className="inline-flex items-center gap-2.5 rounded-full border border-brand-500/25 bg-brand-500/[0.06] py-2 pl-2 pr-4 text-[13.5px] font-semibold text-brand-700 dark:border-brand-500/30 dark:text-brand-300">
-                <span className="grid h-6 w-6 place-items-center rounded-full bg-brand-500/12">
-                  <Landmark className="h-3.5 w-3.5" aria-hidden="true" />
-                </span>
-                Designed for ministries, medical stores and oversight bodies
-              </span>
-            </motion.div>
-
           </div>
-
-          {/* ── The proof ─────────────────────────────────────────────────── */}
-          <motion.div
-            initial={reduce ? false : { opacity: 0, scale: 0.98, y: 22 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={reduce ? { duration: 0 } : { duration: 0.9, delay: 0.25, ease: EASE }}
-            className="relative lg:col-span-6"
-          >
-            <div className="relative">
-              {/* Caption above the panel: what this artefact is, and the rule
-                  it exists to prove. Marginalia as a datasheet, not a sticker. */}
-              <div className="mb-3 flex items-end justify-between gap-4">
-                <span className="type-micro flex items-center gap-2 text-ink-500">
-                  <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
-                    <span className="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-brand-500" />
-                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-500" />
-                  </span>
-                  Recent review activity
-                </span>
-                <span className="type-micro hidden text-right text-ink-400 sm:block">
-                  Findings linked to their source
-                </span>
-              </div>
-
-              {/* Red source: the light the panel sits in */}
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute left-1/2 top-1/2 h-[560px] w-[560px] -translate-x-1/2 -translate-y-1/2 rounded-full"
-                style={{
-                  background:
-                    "radial-gradient(closest-side, rgba(232,56,42,0.2), rgba(232,56,42,0.05) 58%, transparent)",
-                }}
-              />
-
-              <motion.div
-                style={{ rotateX, rotateY, transformPerspective: 1400 }}
-                className="relative will-change-transform"
-              >
-                <AgentRun />
-              </motion.div>
-
-              {/* The gate, stated as the product's own rule rather than a chip
-                  floating over the log. The terminal above proves it happens. */}
-              <div className="mt-3.5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[10px] border border-ink-200/70 border-l-2 border-l-brand-500 bg-white/70 px-4 py-3 backdrop-blur dark:border-white/10 dark:bg-white/[0.03]">
-                <span className="inline-flex items-center gap-2 text-[13px] font-semibold text-ink-900">
-                  <PenLine className="h-4 w-4 text-brand-600" aria-hidden="true" />
-                  Committee approval
-                </span>
-                <span className="text-[13px] text-ink-500">
-                  Quorum prepares the review; an authorised official records the decision.
-                </span>
-                <span className="ml-auto type-micro hidden text-brand-700 sm:block dark:text-brand-300">
-                  Approval required
-                </span>
-              </div>
-            </div>
-          </motion.div>
         </div>
 
         {/* ── The counted contract ──────────────────────────────────────── */}
@@ -334,6 +224,46 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
               </div>
             ))}
           </dl>
+        </motion.div>
+
+        {/* ── The problem + before/after ── */}
+        <motion.div
+          initial={reduce ? false : { opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-60px" }}
+          transition={reduce ? { duration: 0 } : { duration: 0.8, ease: EASE }}
+          className="mt-14 lg:mt-16"
+        >
+          <SpecBar
+            index="02"
+            label="The desk today"
+            meta="30-day statutory window · hundreds of pages"
+          />
+          <p className="mt-6 max-w-[78ch] text-[15px] leading-relaxed text-ink-600 dark:text-ink-400">
+            A procurement evaluation officer at a Kenyan county health unit must cross-check hundreds of pages of bids
+            against tender requirements inside a 30-day window — and today does it by manual line-by-line reading, which
+            backlogs supply tenders and leaves thin award records.
+          </p>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <div className="rounded-[10px] border border-ink-200/70 bg-white/80 p-5 dark:border-white/10 dark:bg-white/[0.04]">
+              <p className="type-micro text-ink-500">TODAY · MANUAL</p>
+              <ul className="mt-3 space-y-2 text-[13px] leading-relaxed text-ink-600 dark:text-ink-300">
+                <li>Officer reads every file by eye, types SHALL clauses into notes</li>
+                <li>Missing docs, price outliers and spec gaps spotted inconsistently</li>
+                <li>Committee gets a typed summary; citations rarely checked</li>
+                <li>Minutes per review unmeasured — the pilot will time it (see Pricing)</li>
+              </ul>
+            </div>
+            <div className="rounded-[10px] border border-brand-600/30 bg-white p-5 dark:border-brand-500/20">
+              <p className="type-micro text-brand-700 dark:text-brand-300">WITH QUORUM · LIVE</p>
+              <ul className="mt-3 space-y-2 text-[13px] leading-relaxed text-ink-700 dark:text-ink-100">
+                <li>Agent reads the pack over sandboxed MCP; requirements pinned with page refs</li>
+                <li>Deterministic rules flag + verify refuses any finding without its cited text</li>
+                <li>Redlines drafted (tokens/latency recorded); agent halts at the human gate</li>
+                <li>Named rostered officer signs (office + quorum + step-up); sealed receipt</li>
+              </ul>
+            </div>
+          </div>
         </motion.div>
       </div>
 

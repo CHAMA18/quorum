@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getUserFromToken, rateLimit, SESSION_COOKIE } from "@/lib/auth";
 import { can } from "@/lib/permissions";
-import { kiraConfigFromEnv, museChat } from "@/lib/muse";
+import { kiraConfigFromEnv, kiraChat } from "@/lib/kira";
 import { attestSignature } from "@/lib/sidecar-attest";
 import { extractTenderText } from "@/lib/tender-extract";
 import { MAX_SUPPLIER_BID_FILE_BYTES, readEdgeObject } from "@/lib/supplier-bid-documents";
@@ -198,7 +198,7 @@ Return one qualitative assessment for each bidder and each criterion using SUPPO
 function safetyIdentifier(userId: string): string | undefined {
   const key =
     process.env.KIRA_SAFETY_IDENTIFIER_SECRET?.trim() ||
-    process.env.MUSE_SAFETY_IDENTIFIER_SECRET?.trim() ||
+    process.env.ASSISTANT_SAFETY_IDENTIFIER_SECRET?.trim() ||
     process.env.GATE_SIGNING_KEY?.trim();
   return key ? createHmac("sha256", key).update(userId).digest("hex") : undefined;
 }
@@ -428,19 +428,17 @@ export async function POST(request: NextRequest) {
 
   const startedAt = performance.now();
   try {
-    const reply = await museChat(
+    const reply = await kiraChat(
       config,
       [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: inputText },
       ],
       [],
-      undefined,
       {
         reasoningEffort: "medium",
         maxOutputTokens: 7_000,
         safetyIdentifier: safetyIdentifier(user.id),
-        useChatCompletions: true,
         responseSchema: { name: "quorum_bid_evaluation_advisory", schema: RESULT_JSON_SCHEMA },
       },
     );

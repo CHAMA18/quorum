@@ -18,7 +18,7 @@ export async function PATCH(
   if (!can(user.role, "manage_people")) {
     return NextResponse.json({ error: "Only workspace owners and admins can respond to support requests." }, { status: 403 });
   }
-  if (!rateLimit(`barry-support-reply:${user.id}`, 30, 15 * 60_000)) {
+  if (!rateLimit(`desk-agent-support-reply:${user.id}`, 30, 15 * 60_000)) {
     return NextResponse.json({ error: "Too many support replies. Try again shortly." }, { status: 429 });
   }
 

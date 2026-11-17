@@ -1,7 +1,7 @@
 /**
  * The local brain — the desk agent that works with no model key.
  *
- * When MUSE_API_KEY is absent the bubble used to say "no model key yet".
+ * When no model is configured the bubble used to say "no model key yet".
  * It does not any more: this deterministic brain reads the same desk tools
  * and stages the same signed proposals, so the assistant can investigate live
  * records and assign reviews while final gate decisions stay with a named
@@ -15,8 +15,8 @@
  * or a tender reference — it reads them from the desk.
  */
 
-import { runDeskTool, type DeskToolContext } from "@/lib/muse-desk-tools";
-import { buildProposal, hasAffirmativeReviewIntent, type Proposal } from "@/lib/muse-actions";
+import { runDeskTool, type DeskToolContext } from "@/lib/desk-tools";
+import { buildProposal, hasAffirmativeReviewIntent, type Proposal } from "@/lib/assistant-actions";
 import { readSystemGuide } from "@/lib/quorum-knowledge";
 import { can } from "@/lib/permissions";
 
@@ -182,7 +182,7 @@ function answerGuide(text: string): BrainAnswer {
     [/supplier|bidder|vendor|org portal/i, "suppliers"],
     [/notif|clock|deadline|inbox|email|whatsapp/i, "notifications"],
     [/upload|document|pack|pdf|ocr/i, "documents"],
-    [/model|kira|muse|spark|voice|provenance|llm/i, "models"],
+    [/model|kira|spark|voice|provenance|llm/i, "models"],
     [/security|injection|safe|prompt/i, "security"],
     [/deploy|hosting|worker|ec2|storage/i, "deployment"],
     [/roadmap|not yet|limit|real|honest/i, "limits"],

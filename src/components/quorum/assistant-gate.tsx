@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { MuseAssistant } from "./muse-assistant";
+import { AssistantBubble } from "./assistant-bubble";
 
 /**
  * The assistant belongs in working areas, not on sign-in screens. The root
@@ -11,8 +11,8 @@ import { MuseAssistant } from "./muse-assistant";
  * console remains available at /org/dashboard.
  */
 
-export function MuseAssistantGate({ name }: { name?: string }) {
+export function AssistantGate({ name }: { name?: string }) {
   const pathname = usePathname();
   if (pathname === "/" || pathname === "/org") return null;
-  return <MuseAssistant name={name} />;
+  return <AssistantBubble name={name} />;
 }

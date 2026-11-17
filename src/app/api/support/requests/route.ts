@@ -28,7 +28,7 @@ function publicRequest(row: ReturnType<typeof createSupportRequest>) {
 export async function GET(req: NextRequest) {
   const user = await getUserFromToken(req.cookies.get(SESSION_COOKIE)?.value).catch(() => null);
   if (!user) return NextResponse.json({ error: "Sign in to view your support requests." }, { status: 401 });
-  if (!rateLimit(`barry-support-read:${user.id}`, 60, 60_000)) {
+  if (!rateLimit(`desk-agent-support-read:${user.id}`, 60, 60_000)) {
     return NextResponse.json({ error: "Too many support inbox reads. Try again shortly." }, { status: 429 });
   }
   const requests = listSupportRequests(user.workspaceId, user.id).map(publicRequest);
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const user = await getUserFromToken(req.cookies.get(SESSION_COOKIE)?.value).catch(() => null);
   if (!user) return NextResponse.json({ error: "Sign in before sending a support request." }, { status: 401 });
-  if (!rateLimit(`barry-support-create:${user.id}`, 5, 15 * 60_000)) {
+  if (!rateLimit(`desk-agent-support-create:${user.id}`, 5, 15 * 60_000)) {
     return NextResponse.json({ error: "Too many support requests. Wait a few minutes and try again." }, { status: 429 });
   }
 

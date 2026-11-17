@@ -3,11 +3,10 @@ import { clientKey, rateLimit } from "@/lib/auth";
 import { actorLimitKey, requestActor } from "@/lib/request-auth";
 
 /**
- * POST /api/muse/speak — the assistant's real voice.
+ * POST /api/assistant/speak — the assistant's real voice.
  *
- * The model is not a TTS model; Meta Model API gives us Muse Spark and Muse
- * Voice Transcribe, not speech synthesis. The voice therefore comes from
- * Cloudflare Workers AI through the quorum-edge Worker:
+ * The open-weight model is not a TTS model, so speech comes from Cloudflare
+ * Workers AI through the quorum-edge Worker:
  *
  *   Deepgram Aura-2 (English, natural pacing)  ->  MeloTTS fallback
  *
@@ -35,8 +34,8 @@ export async function POST(request: NextRequest) {
   const actor = await requestActor(request);
   if (!actor) return NextResponse.json({ error: "Sign in to use the assistant voice." }, { status: 401 });
   if (
-    !rateLimit(actorLimitKey("muse-speak", actor), 20, 5 * 60_000) ||
-    !rateLimit(clientKey(request, "muse-speak"), 40, 5 * 60_000)
+    !rateLimit(actorLimitKey("assistant-speak", actor), 20, 5 * 60_000) ||
+    !rateLimit(clientKey(request, "assistant-speak"), 40, 5 * 60_000)
   ) {
     return NextResponse.json({ error: "Too many voice requests. Wait a few minutes and try again." }, { status: 429 });
   }

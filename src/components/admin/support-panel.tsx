@@ -50,7 +50,7 @@ function RequestCard({
             <Chip tone={request.status === "OPEN" ? "amber" : request.status === "RESPONDED" ? "emerald" : "neutral"}>
               {request.status}
             </Chip>
-            <Chip tone="brand">FROM BARRY</Chip>
+            <Chip tone="brand">FROM DESK AGENT</Chip>
           </div>
           <p className="mt-1.5 text-[11px] leading-relaxed text-ink-600">
             {request.requesterName} · {request.requesterEmail} · sent {fmtStamp(request.createdAt)}
@@ -109,9 +109,9 @@ export function SupportPanel({ data, refresh, notify }: PanelProps) {
     <div className="space-y-6">
       <SectionHead
         index="08"
-        eyebrow="Barry · Quorum support"
+        eyebrow="Desk agent · Quorum support"
         title={<>A person at the other <span className="text-brand-600">end.</span></>}
-        lede="Manual support requests sent from Barry appear here with the requester’s details. Owners and admins can write a reply; the requester sees it in Barry’s Support tab."
+        lede="Manual support requests sent from the desk agent appear here with the requester’s details. Owners and admins can write a reply; the requester sees it in the assistant’s Support tab."
         aside={<Chip tone={open ? "amber" : "neutral"}>{open} waiting for a reply</Chip>}
       />
 
@@ -132,7 +132,7 @@ export function SupportPanel({ data, refresh, notify }: PanelProps) {
         <PanelHead
           eyebrow="Workspace inbox"
           title="Support requests"
-          description="Replies are saved to the request and shown to the original requester in Barry’s Support tab."
+          description="Replies are saved to the request and shown to the original requester in the assistant’s Support tab."
           action={<Chip tone="neutral">{requests.length} total</Chip>}
         />
         {requests.length ? (
@@ -148,7 +148,7 @@ export function SupportPanel({ data, refresh, notify }: PanelProps) {
             ))}
           </div>
         ) : (
-          <Empty title="No support requests yet" body="When someone sends a manual request from Barry’s Support tab, it will arrive here for a human reply." />
+          <Empty title="No support requests yet" body="When someone sends a manual request from the assistant’s Support tab, it will arrive here for a human reply." />
         )}
       </Panel>
     </div>

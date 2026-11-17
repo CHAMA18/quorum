@@ -44,7 +44,7 @@ export type NotesMeeting = {
   attendees?: { name: string }[];
 };
 
-/* ── browser hearing (same contract the Muse assistant uses) ─────────────── */
+/* ── browser hearing (same contract the assistant uses) ─────────────── */
 
 interface SpeechRecognitionLike {
   continuous: boolean;

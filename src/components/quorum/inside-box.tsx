@@ -71,7 +71,7 @@ export function InsideRun() {
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
             <Reveal>
-              <SpecBar index="06" label="Review outputs" meta="Evidence · findings · decisions" />
+              <SpecBar index="05" label="Review outputs" meta="Evidence · findings · decisions" />
             </Reveal>
             <Reveal delay={0.06}>
               <h2 className="type-display mt-6 max-w-2xl text-[34px] text-ink-950 sm:text-[44px]">
@@ -104,7 +104,7 @@ export function InsideRun() {
                       What Quorum does
                     </h3>
                   </div>
-                  <span className="ml-auto font-code text-[11px] font-semibold text-ink-400 tabular">
+                  <span className="ml-auto shrink-0 whitespace-nowrap font-code text-[11px] font-semibold text-ink-400 tabular">
                     6 ITEMS
                   </span>
                 </header>
@@ -148,7 +148,7 @@ export function InsideRun() {
                       What you get
                     </h3>
                   </div>
-                  <span className="ml-auto font-code text-[11px] font-semibold text-ink-400 tabular">
+                  <span className="ml-auto shrink-0 whitespace-nowrap font-code text-[11px] font-semibold text-ink-400 tabular">
                     5 ITEMS
                   </span>
                 </header>

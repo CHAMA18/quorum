@@ -87,12 +87,12 @@ export function SupplierClarifications() {
 
   return (
     <section className="overflow-hidden rounded-[12px] supplier-panel panel dark:bg-night-2/80">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink-100 px-5 py-3.5 dark:border-white/[0.06]">
-        <div>
+      <div className="flex items-start justify-between gap-3 border-b border-ink-100 px-5 py-3.5 dark:border-white/[0.06]">
+        <div className="min-w-0 flex-1">
           <p className="font-code text-[10.5px] font-semibold uppercase tracking-[0.14em] text-ink-500">Buyer clarification requests</p>
-          <p className="mt-1 text-[12px] leading-relaxed text-ink-500">Respond with an explanation and evidence before the recorded deadline.</p>
+          <p className="mt-1 text-[12px] leading-relaxed text-ink-500">Answer any request from the buyer before its deadline.</p>
         </div>
-        <button type="button" onClick={() => void load()} className="focus-brand inline-flex min-h-11 items-center justify-center rounded-lg px-3 text-[11px] font-semibold text-ink-500 hover:bg-ink-50 dark:hover:bg-white/[0.06]">Refresh</button>
+        <button type="button" onClick={() => void load()} className="focus-brand inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg px-3 text-[11px] font-semibold text-ink-500 hover:bg-ink-50 dark:hover:bg-white/[0.06]">Refresh</button>
       </div>
 
       {message ? <p aria-live="polite" className="border-b border-ink-100 px-5 py-2.5 text-[12.5px] leading-relaxed text-ink-700 dark:border-white/[0.06] dark:text-ink-200">{message}</p> : null}

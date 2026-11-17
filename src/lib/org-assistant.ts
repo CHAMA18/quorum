@@ -1,13 +1,13 @@
 import type { OrganizationRow } from "@/lib/db";
-import { kiraConfigFromEnv, museChat } from "@/lib/muse";
+import { kiraConfigFromEnv, kiraChat, type ModelUsage } from "@/lib/kira";
 import { orgActor } from "@/lib/org-auth";
 import { sidecarFetch } from "@/lib/org-sidecar";
 
 /**
- * Barry on the supplier door.
+ * The assistant on the supplier door.
  *
  * The floating assistant is mounted over the organization console too, but
- * /api/muse/chat is an officer session — so a signed-in supplier used to get
+ * /api/assistant/chat is an officer session — so a signed-in supplier used to get
  * "Sign in to use the assistant" from a bubble the portal had just offered
  * them. An organization now gets its OWN assistant: the same model when one
  * is configured, the same deterministic answer otherwise, and only facts
@@ -165,7 +165,7 @@ function deterministicReply(facts: OrgAssistantFacts, message: string): string {
 export async function orgAssistantReply(
   org: OrganizationRow,
   message: string,
-): Promise<{ reply: string; model?: string; toolsRead: string[] }> {
+): Promise<{ reply: string; model?: string; toolsRead: string[]; usage?: ModelUsage; modelCalls?: number }> {
   const facts = await orgAssistantFacts(org, message);
   const toolsRead = ["org_profile", ...(facts.contracts.length ? ["org_contract"] : [])];
   const fallback = deterministicReply(facts, message);
@@ -174,13 +174,13 @@ export async function orgAssistantReply(
 
   try {
     const reply = await Promise.race([
-      museChat(
+      kiraChat(
         cfg,
         [
           {
             role: "system",
             content:
-              `You are Barry, Quorum's supplier-portal assistant. You speak to ${org.name} only, and only about its own record. ` +
+              `You are Quorum's supplier-portal assistant. You speak to ${org.name} only, and only about its own record. ` +
               "Never mention another bidder, the buyer's internal evaluation, gates, findings or officer-only data. " +
               "Answer in at most three short sentences, plain words, the number that matters first. " +
               "If the facts do not contain the answer, say what you can see and what is missing; never invent a figure, date or status.\n\n" +
@@ -189,13 +189,12 @@ export async function orgAssistantReply(
           { role: "user", content: message },
         ],
         [],
-        undefined,
         { maxOutputTokens: 260 },
       ),
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error("supplier assistant timed out")), 12_000)),
     ]);
     const text = reply.text.trim();
-    return { reply: text || fallback, model: reply.model, toolsRead };
+    return { reply: text || fallback, model: reply.model, toolsRead, usage: reply.usage, modelCalls: 1 };
   } catch {
     return { reply: fallback, toolsRead };
   }

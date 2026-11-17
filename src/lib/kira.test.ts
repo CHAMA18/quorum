@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { kiraConfigFromEnv, museChat, museUsesResponses, museVoiceConfigFromEnv } from "./muse";
+import { kiraChat, kiraConfigFromEnv } from "./kira";
 
 const realFetch = globalThis.fetch;
 
@@ -22,15 +22,14 @@ describe("Kira model configuration", () => {
     expect(kiraConfigFromEnv({})).toBeNull();
   });
 
-  test("prefers KIRA_* over the legacy LLM_* and MUSE_* names", () => {
+  test("prefers KIRA_* over the legacy LLM_* names", () => {
     const cfg = kiraConfigFromEnv({
       KIRA_BASE_URL: "https://kira.example/v1/",
       KIRA_MODEL: "kira-procurement-1",
       KIRA_API_KEY: "kira-key",
       KIRA_REASONING_EFFORT: "low",
-      LLM_BASE_URL: "https://api.meta.ai/v1",
-      LLM_MODEL: "muse-spark-1.3",
-      MUSE_MODEL: "muse-spark-1.3",
+      LLM_BASE_URL: "https://legacy.example/v1",
+      LLM_MODEL: "legacy-model",
     });
     expect(cfg).toEqual({
       baseUrl: "https://kira.example/v1",
@@ -42,26 +41,6 @@ describe("Kira model configuration", () => {
 
   test("does not call a remote Kira host without a key", () => {
     expect(kiraConfigFromEnv({ KIRA_BASE_URL: "https://kira.example/v1" })).toBeNull();
-  });
-
-  test("keeps voice on its own endpoint and credential", () => {
-    const voice = museVoiceConfigFromEnv({
-      MUSE_VOICE_BASE_URL: "https://voice.example/v1/",
-      MUSE_VOICE_API_KEY: "voice-key",
-      MUSE_VOICE_MODEL: "voice-model",
-      KIRA_BASE_URL: "http://localhost:11434/v1",
-      KIRA_API_KEY: "kira-key",
-    });
-    expect(voice).toEqual({
-      baseUrl: "https://voice.example/v1",
-      apiKey: "voice-key",
-      voiceModel: "voice-model",
-    });
-  });
-
-  test("uses Meta Responses only for Meta hosts", () => {
-    expect(museUsesResponses({ baseUrl: "https://api.meta.ai/v1" })).toBe(true);
-    expect(museUsesResponses({ baseUrl: "http://localhost:11434/v1" })).toBe(false);
   });
 
   test("sends the configured model id on a chat-completions call", async () => {
@@ -82,7 +61,7 @@ describe("Kira model configuration", () => {
       );
     }) as typeof fetch;
 
-    const reply = await museChat(
+    const reply = await kiraChat(
       {
         baseUrl: "https://kira.example/v1",
         apiKey: "kira-key",
@@ -91,12 +70,36 @@ describe("Kira model configuration", () => {
       },
       [{ role: "user", content: "Test" }],
       [],
-      undefined,
-      { useChatCompletions: true },
     );
 
     expect(body?.model).toBe("kira-procurement-1");
     expect(reply.model).toBe("kira-procurement-1");
     expect(reply.text).toBe("Ready.");
+    expect(reply.usage).toEqual({ promptTokens: 0, completionTokens: 0, totalTokens: 0 });
+  });
+
+  test("reports the endpoint's measured token usage", async () => {
+    globalThis.fetch = (async (_url: string | URL | Request, _init?: RequestInit) =>
+      new Response(
+        JSON.stringify({
+          model: "kira-procurement-1",
+          choices: [{ finish_reason: "stop", message: { role: "assistant", content: "Ready." } }],
+          usage: { prompt_tokens: 512, completion_tokens: 64, total_tokens: 576 },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      )) as typeof fetch;
+
+    const reply = await kiraChat(
+      {
+        baseUrl: "https://kira.example/v1",
+        apiKey: "kira-key",
+        model: "kira-procurement-1",
+        reasoningEffort: "medium",
+      },
+      [{ role: "user", content: "Test" }],
+      [],
+    );
+
+    expect(reply.usage).toEqual({ promptTokens: 512, completionTokens: 64, totalTokens: 576 });
   });
 });

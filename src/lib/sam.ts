@@ -84,9 +84,9 @@ function samConfig(env: Record<string, string | undefined> = process.env): {
   apiKey: string;
   model: string;
 } | null {
-  const apiKey = env.SAM_API_KEY?.trim() || env.MUSE_API_KEY?.trim() || env.LLM_API_KEY?.trim();
+  const apiKey = env.SAM_API_KEY?.trim() || env.LLM_API_KEY?.trim();
   if (!apiKey) return null;
-  const baseUrl = (env.SAM_BASE_URL?.trim() || env.MUSE_BASE_URL?.trim() || env.LLM_BASE_URL?.trim() || "https://api.meta.ai/v1").replace(/\/+$/, "");
+  const baseUrl = (env.SAM_BASE_URL?.trim() || env.LLM_BASE_URL?.trim() || "https://api.meta.ai/v1").replace(/\/+$/, "");
   const model = env.SAM_MODEL?.trim() || DEFAULT_MODEL;
   return { baseUrl, apiKey, model };
 }

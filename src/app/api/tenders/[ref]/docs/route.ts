@@ -9,7 +9,6 @@ import {
 } from "@/lib/tender-access";
 import { classifyTenderDocument, extractTenderText } from "@/lib/tender-extract";
 import { samEnabled, segmentTenderScan, type SamResult } from "@/lib/sam";
-import { museScanEnabled, transcribeTenderScan } from "@/lib/muse-scan";
 import {
   deleteLocalObject,
   hasLocalObject,
@@ -42,9 +41,9 @@ import {
  * with a reason — OCR is not claimed.
  *
  * Scanned pages and image uploads may be handed to SAM 3.1 for table regions.
- * Muse Spark transcription is a separate opt-in requiring an explicit hosted
- * raw-image acknowledgement. Its text can be staged for search, but the upload
- * remains `humanReviewRequired`; model output is never treated as verified.
+ * A scan with no embedded text is stored and flagged `humanReviewRequired`;
+ * SAM locates a region but never reads the page, so no model output here is
+ * treated as verified.
  *
  * GET /api/tenders/:ref/docs — list every stored object under this tender's
  * prefix, from the edge and from this deployment's own store. Requires
@@ -351,17 +350,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ref
           : vision.error,
       }
     : null;
-  const museVision = isVisionDoc && museScanEnabled()
-    ? await transcribeTenderScan(new Uint8Array(bytes), file.name || "document", extracted?.pages ?? 1)
-    : null;
-  if (museVision?.ok && !extracted?.text.trim()) {
-    extracted = {
-      text: museVision.text,
-      kind: classifyTenderDocument(file.name || "document", museVision.text),
-      pages: extracted?.pages ?? museVision.pages.length,
-      note: `${museVision.note} Verify the original scan before relying on extracted text or citations.`,
-    };
-  }
   const humanReviewRequired = isVisionDoc || /OCR|scan/i.test(extracted?.note ?? "");
 
   const key = `tenders/${ref}/${Date.now()}-${parsed.stem}${parsed.ext}`;
@@ -478,9 +466,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ref
               note: visionSummary.note,
             }
           : undefined,
-        museVision: museVision
-          ? { model: museVision.model, ok: museVision.ok, pages: museVision.pages, latencyMs: museVision.latencyMs, usage: museVision.usage, note: museVision.note, error: museVision.error }
-          : undefined,
         durationMs: Date.now() - startedAt,
       },
     },
@@ -522,7 +507,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ref
       files,
       humanReviewRequired,
       vision: visionSummary ?? undefined,
-      museVision: museVision ? { model: museVision.model, ok: museVision.ok, pages: museVision.pages, latencyMs: museVision.latencyMs, usage: museVision.usage, note: museVision.note, error: museVision.error } : undefined,
       audited,
       audit: audited && auditSeq !== undefined && auditId && auditSelf
         ? { seq: auditSeq, id: auditId, self: auditSelf }

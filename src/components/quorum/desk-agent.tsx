@@ -3,27 +3,33 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import {
   ArrowUp,
+  ArrowUpRight,
   Check,
   CornerDownLeft,
+  Cpu,
+  FileText,
   Loader2,
   Mic,
+  RotateCcw,
   ShieldCheck,
   Sparkles,
   Square,
   Wand2,
   X,
 } from "lucide-react";
-import type { Proposal } from "@/lib/muse-actions";
+import type { Proposal } from "@/lib/assistant-actions";
+import { modelCostLabel } from "@/lib/model-cost";
+import { formatBudget, formatClosing, type DraftGap, type TenderDraft } from "@/lib/tender-draft";
 import { cn } from "@/lib/utils";
 
 /**
  * DeskAgent — the agentic command surface on the workspace overview.
  *
- * This is not a mock chat box. It posts to /api/muse/chat, where the desk
+ * This is not a mock chat box. It posts to /api/assistant/chat, where the desk
  * agent runs its real loop: reads against the quorum-mcp sidecar (runs,
  * approvals, deadlines, the committee register, one tender's record), and an
  * assignment returned as an HMAC-signed proposal that only the signed-in
- * human can confirm through /api/muse/execute.
+ * human can confirm through /api/assistant/execute.
  *
  * Two modes:
  *   · Ask       — read the desk, explain, investigate, find contradictions.
@@ -35,6 +41,7 @@ import { cn } from "@/lib/utils";
 type Mode = "ask" | "generate";
 type ProposalState = "pending" | "confirmed" | "executed" | "declined" | "failed";
 
+type TokenUsage = { promptTokens: number; completionTokens: number; totalTokens: number };
 type Turn = {
   id: string;
   role: "user" | "assistant";
@@ -43,8 +50,18 @@ type Turn = {
   tools?: string[];
   proposal?: Proposal;
   proposalState?: ProposalState;
+  /* Tender-building turns carry the updated draft inline — the builder
+     is a mode of this chat, not a separate screen. */
+  draft?: TenderDraft;
+  gaps?: DraftGap[];
+  committedRef?: string | null;
   note?: string;
+  /** Measured Kira tokens for this answer, summed across its model passes. */
+  usage?: TokenUsage;
+  modelCalls?: number;
 };
+
+const fmtTokens = (n: number) => n.toLocaleString("en-GB");
 
 /* Chips that have a deterministic destination go there; only genuinely open
    questions go to the model. "What needs approval" must never depend on a
@@ -58,6 +75,7 @@ type Chip = {
 const ASK_CHIPS: Chip[] = [
   { label: "What is overdue?", prompt: "Which deadlines are overdue, and by how long?" },
   { label: "Committee attendance", prompt: "Does the committee meet its attendance requirement today?" },
+  { label: "Draft a tender", prompt: "Draft a tender brief. Supply and delivery of 12 ambulances to the Ministry of Health, budget ZMW 4.5 million, closing 15 December 2026." },
   { label: "Approvals", action: "gates" },
 ];
 
@@ -102,7 +120,7 @@ function safeHistory(turns: Turn[]) {
    the officer reads them before Enter. The browser's own recogniser is tried
    first — it answers instantly, needs no upload and spends no quota. A browser
    without one (Firefox) records a 16 kHz mono WAV and posts it to
-   /api/muse/transcribe, where Muse Voice or the edge Worker does the hearing. */
+   /api/assistant/transcribe, where the edge Worker does the hearing. */
 
 type SpeechRecognitionLike = {
   lang: string;
@@ -138,7 +156,7 @@ function microphoneNote(error: unknown): string {
   return "The microphone did not open — allow it, or type instead.";
 }
 
-/* Whisper, Muse and the edge Worker all read PCM; WAV is the format the
+/* Whisper and the edge Worker all read PCM; WAV is the format the
    transcriber is told to expect, so the browser records exactly that. */
 export function encodeWav(samples: Float32Array, sampleRate: number): Blob {
   const buffer = new ArrayBuffer(44 + samples.length * 2);
@@ -182,7 +200,7 @@ function resample(input: Float32Array, from: number, to: number): Float32Array {
 }
 
 /* ── The two doors ───────────────────────────────────────────────────────────
-   Barry's floating bubble and this composer are the same agent. The bubble
+   The floating assistant and this composer are the same agent. The bubble
    stands down on the Overview, so it carries a link here; the workspace asks
    it to open this section, and the composer takes focus once it is mounted. */
 
@@ -300,6 +318,12 @@ export function DeskAgent({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
+  /* The in-progress tender draft. Sent with every message while a build
+     is active, so refinements need no keywords — and cleared when the
+     draft is committed or started over. */
+  const [draft, setDraft] = useState<TenderDraft | null>(null);
+  const [draftTurnId, setDraftTurnId] = useState<string | null>(null);
+  const [committing, setCommitting] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -344,10 +368,10 @@ export function DeskAgent({
       setTurns((prev) => [...prev, { id: nextTurnId(), role: "user", text: raw }]);
 
       try {
-        const res = await fetch("/api/muse/chat", {
+        const res = await fetch("/api/assistant/chat", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ message, history }),
+          body: JSON.stringify({ message, history, ...(draft ? { draft } : {}) }),
         });
         const data = (await res.json().catch(() => null)) as
           | {
@@ -355,6 +379,11 @@ export function DeskAgent({
               model?: string | null;
               toolsRead?: string[];
               proposal?: Proposal;
+              usage?: TokenUsage;
+              modelCalls?: number;
+              draft?: TenderDraft;
+              gaps?: DraftGap[];
+              composedBy?: string;
               error?: string;
             }
           | null;
@@ -364,17 +393,25 @@ export function DeskAgent({
           return;
         }
 
+        const assistantTurnId = nextTurnId();
+        if (data?.draft) {
+          setDraft(data.draft);
+          setDraftTurnId(assistantTurnId);
+        }
         setTurns((prev) => [
           ...prev,
           {
-            id: nextTurnId(),
+            id: assistantTurnId,
             role: "assistant",
             text: data?.reply?.trim() || "I have nothing on that — try naming a tender reference.",
             model: data?.model ?? null,
             tools: data?.toolsRead ?? [],
             proposal: data?.proposal,
             proposalState: data?.proposal ? "pending" : undefined,
+            ...(data?.draft ? { draft: data.draft, gaps: data.gaps ?? [], committedRef: null } : {}),
             note: data?.error,
+            usage: data?.usage,
+            modelCalls: data?.modelCalls,
           },
         ]);
 
@@ -384,8 +421,55 @@ export function DeskAgent({
         setBusy(false);
       }
     },
-    [busy, mode, text, turns],
+    [busy, draft, mode, text, turns],
   );
+
+  /* Commit the in-chat draft to the Tender Workflow — the same act the
+     old builder screen performed, now without leaving the conversation.
+     Nothing is published until this button is pressed. */
+  const commitDraft = useCallback(
+    async (turnId: string) => {
+      if (!draft?.title.trim() || committing) return;
+      if (!canRun) {
+        onToast("YOUR WORKSPACE ROLE CANNOT OPEN A PROCUREMENT");
+        return;
+      }
+      setCommitting(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/pipeline?XTransformPort=3031", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            title: draft.title,
+            ...(draft.buyer ? { office: draft.buyer } : {}),
+            ...(draft.budget !== null ? { budgetEstimate: draft.budget } : {}),
+            currency: draft.currency || "ZMW",
+            ...(draft.closingDate ? { expectedPublication: draft.closingDate } : {}),
+          }),
+        });
+        const data = (await res.json().catch(() => null)) as { entry?: { ref?: string }; error?: string } | null;
+        if (!res.ok) throw new Error(data?.error ?? `The workflow refused the draft (HTTP ${res.status}).`);
+        const ref = data?.entry?.ref ?? "";
+        patchTurn(turnId, { committedRef: ref });
+        setDraft(null);
+        setDraftTurnId(null);
+        if (ref) onToast(`DRAFT ADDED TO THE WORKFLOW — ${ref.toUpperCase()}`);
+        onExecuted();
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : "The workflow could not be reached.");
+      } finally {
+        setCommitting(false);
+      }
+    },
+    [canRun, committing, draft, onExecuted, onToast, patchTurn],
+  );
+
+  const startDraftOver = () => {
+    setDraft(null);
+    setDraftTurnId(null);
+    inputRef.current?.focus();
+  };
 
   const insertHeard = useCallback((heard: string) => {
     setText((prev) => (prev.trim().length > 0 ? `${prev.trim()} ${heard}` : heard).slice(0, 2000));
@@ -452,7 +536,7 @@ export function DeskAgent({
     setVoice("starting");
     try {
       if (!providerRef.current) {
-        const probe = await fetch("/api/muse/transcribe", { cache: "no-store" })
+        const probe = await fetch("/api/assistant/transcribe", { cache: "no-store" })
           .then((res) => res.json() as Promise<{ provider?: string }>)
           .catch(() => null);
         providerRef.current =
@@ -499,7 +583,7 @@ export function DeskAgent({
         }
         const form = new FormData();
         form.append("audio", clip, "clip.wav");
-        const res = await fetch("/api/muse/transcribe", { method: "POST", body: form });
+        const res = await fetch("/api/assistant/transcribe", { method: "POST", body: form });
         const body = (await res.json().catch(() => null)) as {
           text?: string;
           note?: string;
@@ -523,7 +607,7 @@ export function DeskAgent({
     })();
   }, [insertHeard]);
 
-  /* Arrived here from Barry's bubble: put the caret in the composer. The
+  /* Arrived here from the floating assistant: put the caret in the composer. The
      mount pass covers the usual case (the Overview mounts because of the
      request); the listener covers the composer already being on screen. */
   const focusComposer = useCallback(() => {
@@ -572,7 +656,7 @@ export function DeskAgent({
       patchTurn(turnId, { proposalState: "confirmed" });
 
       try {
-        const res = await fetch("/api/muse/execute", {
+        const res = await fetch("/api/assistant/execute", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ proposal, consent: true }),
@@ -836,8 +920,19 @@ export function DeskAgent({
                   )}
 
                   {turn.model && (
-                    <p className="mt-1 font-code text-[10px] tracking-[0.04em] text-ink-400 dark:text-ink-500">
-                      Answered by {turn.model}
+                    <p className="mt-1 flex flex-wrap items-center gap-x-2 font-code text-[10px] tracking-[0.04em] text-ink-400 dark:text-ink-500">
+                      <span>Answered by {turn.model}</span>
+                      {turn.usage ? (
+                        <span className="inline-flex items-center gap-1 text-ink-500 dark:text-ink-400">
+                          <Cpu className="h-3 w-3" aria-hidden="true" />
+                          {turn.usage.totalTokens > 0
+                            ? `${fmtTokens(turn.usage.promptTokens)} in · ${fmtTokens(turn.usage.completionTokens)} out · ${fmtTokens(turn.usage.totalTokens)} tokens · ${modelCostLabel(turn.usage)}`
+                            : "token counts not reported"}
+                          {turn.usage.totalTokens > 0 && turn.modelCalls
+                            ? ` · ${turn.modelCalls} ${turn.modelCalls === 1 ? "call" : "calls"}`
+                            : ""}
+                        </span>
+                      ) : null}
                     </p>
                   )}
 
@@ -910,6 +1005,87 @@ export function DeskAgent({
                       )}
                     </div>
                   )}
+
+                  {turn.draft && (
+                    <div className="mt-3 overflow-hidden rounded-[10px] border border-ink-200/80 bg-white dark:border-white/[0.1] dark:bg-white/[0.04]">
+                      <div className="flex items-center justify-between gap-2 border-b border-ink-100 px-3.5 py-2 dark:border-white/[0.06]">
+                        <p className="flex items-center gap-1.5 font-code text-[10px] font-bold uppercase tracking-[0.12em] text-ink-500">
+                          <FileText className="h-3 w-3" aria-hidden="true" />
+                          Tender draft {turn.committedRef ? "· on the workflow" : "· not published"}
+                        </p>
+                        <span className="font-code text-[10px] font-bold uppercase tracking-[0.08em] text-ink-400">
+                          {turn.committedRef ? `Ref ${turn.committedRef}` : `${6 - (turn.gaps?.length ?? 0)}/6 fields`}
+                        </span>
+                      </div>
+                      <div className="px-3.5 py-3">
+                        <p className="text-[14px] font-bold leading-snug text-ink-950 dark:text-white">
+                          {turn.draft.title || <span className="text-ink-400 dark:text-ink-600">Untitled tender</span>}
+                        </p>
+                        <dl className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-2">
+                          {([
+                            ["Buyer", turn.draft.buyer || "Not set"],
+                            ["Category", turn.draft.category || "Not set"],
+                            ["Budget", formatBudget(turn.draft)],
+                            ["Closing", formatClosing(turn.draft.closingDate)],
+                            ["Contract term", turn.draft.contractMonths ? `${turn.draft.contractMonths} months` : "Not set"],
+                            ["Currency", turn.draft.currency || "ZMW"],
+                          ] as [string, string][]).map(([label, value]) => (
+                            <div key={label} className="min-w-0">
+                              <dt className="font-code text-[8.5px] font-bold uppercase tracking-[0.12em] text-ink-400">{label}</dt>
+                              <dd className="mt-0.5 truncate text-[11.5px] font-medium text-ink-800 dark:text-ink-200">{value}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                        {turn.draft.summary ? (
+                          <p className="mt-2.5 text-[11.5px] leading-relaxed text-ink-500 dark:text-ink-400">{turn.draft.summary}</p>
+                        ) : null}
+                        {turn.gaps && turn.gaps.length > 0 && !turn.committedRef ? (
+                          <p className="mt-2.5 rounded-lg border border-amber-500/25 bg-amber-500/[0.05] px-2.5 py-2 text-[11px] leading-relaxed text-amber-900 dark:text-amber-200/85">
+                            <span className="font-semibold">{turn.gaps.length} {turn.gaps.length === 1 ? "field" : "fields"} to settle</span> —{" "}
+                            {turn.gaps.map((gap) => gap.label).join(", ")}. Tell me in words and I will fold it in.
+                          </p>
+                        ) : null}
+                        {turn.id === draftTurnId && (
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          {turn.committedRef ? (
+                            <button
+                              type="button"
+                              onClick={() => onNavigate("mc-cycle")}
+                              className="focus-brand inline-flex h-8 items-center gap-1.5 rounded-lg bg-ink-950 px-3 text-[11.5px] font-semibold text-white dark:bg-brand-600"
+                            >
+                              Open Tender Workflow
+                              <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => void commitDraft(turn.id)}
+                                disabled={committing || !draft}
+                                className="focus-brand inline-flex h-8 items-center gap-1.5 rounded-lg bg-ink-950 px-3 text-[11.5px] font-semibold text-white transition-opacity disabled:opacity-40 dark:bg-brand-600"
+                              >
+                                {committing ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : null}
+                                Add to Tender Workflow
+                              </button>
+                              <button
+                                type="button"
+                                onClick={startDraftOver}
+                                disabled={committing}
+                                className="focus-brand inline-flex h-8 items-center gap-1 rounded-lg border border-ink-200 px-2.5 text-[11.5px] font-medium text-ink-600 transition-colors hover:text-ink-900 disabled:opacity-40 dark:border-white/[0.12] dark:text-ink-300 dark:hover:text-white"
+                              >
+                                <RotateCcw className="h-3 w-3" aria-hidden="true" />
+                                Start over
+                              </button>
+                              {!canRun ? (
+                                <span className="text-[11px] leading-relaxed text-ink-500">Your role can draft; an officer, admin or owner must add it to the workflow.</span>
+                              ) : null}
+                            </>
+                          )}
+                        </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ),
             )}
@@ -925,17 +1101,47 @@ export function DeskAgent({
             <p className="text-[10.5px] leading-relaxed text-ink-500 dark:text-ink-400">
               The agent prepares the file. It cannot sign, approve or award.
             </p>
-            <button
-              type="button"
-              onClick={() => {
-                setTurns([]);
-                setError(null);
-                inputRef.current?.focus();
-              }}
-              className="focus-brand font-code text-[10px] font-bold uppercase tracking-[0.08em] text-ink-500 transition-colors hover:text-ink-900 dark:text-ink-400 dark:hover:text-white"
-            >
-              Clear
-            </button>
+            <div className="flex items-center gap-3">
+              {(() => {
+                const usage = turns.reduce(
+                  (total, turn) => {
+                    if (!turn.usage) return total;
+                    return {
+                      promptTokens: total.promptTokens + turn.usage.promptTokens,
+                      completionTokens: total.completionTokens + turn.usage.completionTokens,
+                      totalTokens: total.totalTokens + turn.usage.totalTokens,
+                      calls: total.calls + (turn.modelCalls ?? 1),
+                    };
+                  },
+                  { promptTokens: 0, completionTokens: 0, totalTokens: 0, calls: 0 },
+                );
+                if (usage.calls === 0) return null;
+                return (
+                  <span
+                    className="inline-flex items-center gap-1 font-code text-[10px] tracking-[0.04em] text-ink-500 tabular dark:text-ink-400"
+                    title="Measured prompt and completion tokens reported by the model endpoint"
+                  >
+                    <Cpu className="h-3 w-3 text-brand-600 dark:text-brand-400" aria-hidden="true" />
+                    {usage.totalTokens > 0
+                      ? `${fmtTokens(usage.totalTokens)} tokens · ${usage.calls} ${usage.calls === 1 ? "call" : "calls"} · ${modelCostLabel(usage)}`
+                      : `${usage.calls} model ${usage.calls === 1 ? "call" : "calls"} · counts not reported`}
+                  </span>
+                );
+              })()}
+              <button
+                type="button"
+                onClick={() => {
+                  setTurns([]);
+                  setDraft(null);
+                  setDraftTurnId(null);
+                  setError(null);
+                  inputRef.current?.focus();
+                }}
+                className="focus-brand font-code text-[10px] font-bold uppercase tracking-[0.08em] text-ink-500 transition-colors hover:text-ink-900 dark:text-ink-400 dark:hover:text-white"
+              >
+                Clear
+              </button>
+            </div>
           </div>
         </div>
       )}

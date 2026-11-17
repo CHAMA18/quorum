@@ -40,7 +40,7 @@ export function Pricing() {
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
             <Reveal>
-              <SpecBar index="09" label="Pricing" meta="Three tender reviews included at no cost" />
+              <SpecBar index="07" label="Pricing" meta="Three tender reviews included at no cost" />
             </Reveal>
             <Reveal delay={0.06}>
               <h2 className="type-display mt-6 max-w-2xl text-[34px] text-ink-950 sm:text-[44px]">
@@ -130,6 +130,30 @@ export function Pricing() {
               </Spotlight>
             </Reveal>
           ))}
+        </div>
+
+        <div className="mt-10 rounded-[16px] border border-ink-200 bg-white p-6 sm:p-8">
+          <p className="font-code text-[10px] font-bold tracking-[0.26em] text-ink-500">UNIT ECONOMICS · MEASURED, WITH ASSUMPTIONS LABELLED</p>
+          <h3 className="mt-3 font-display text-[22px] font-black tracking-tight text-ink-950">What one completed outcome costs — and who pays.</h3>
+          <p className="mt-2 max-w-3xl text-[13.5px] leading-relaxed text-ink-600">An outcome is one first-pass tender review parked at the human gate with a sourced report. Token counts come from the audit log; infra is an explicit assumption. Full working: <span className="font-semibold text-ink-900">SUBMISSION/NAIROBI-FACT-SHEET.md §§3–5</span>.</p>
+          <div className="mt-5 grid gap-4 md:grid-cols-3">
+            <div className="rounded-xl border border-ink-100 bg-paper/70 p-4">
+              <p className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-500">TOKENS PER OUTCOME</p>
+              <p className="mt-2 font-display text-[26px] font-black tabular-nums text-ink-950">291–348</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-ink-600">Live LLM audit (Llama 3.2 1B, 6 runs, logged). Rule path is 0 tokens. Proof run: 1,259 tokens (Muse Spark 1.3). Token cost at Workers AI list ($0.0509 in / $0.335 out per M) is under half a cent.</p>
+            </div>
+            <div className="rounded-xl border border-ink-100 bg-paper/70 p-4">
+              <p className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-500">FULL COST PER OUTCOME</p>
+              <p className="mt-2 font-display text-[26px] font-black tabular-nums text-ink-950">$3–$7.50</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-ink-600">Assumption: $60–150/mo footprint ÷ 20 outcomes/mo at pilot. Falls to $0.30–$0.75 at 10× and $0.03–$0.08 at 100× before capacity upgrades. No per-outcome metered fee.</p>
+            </div>
+            <div className="rounded-xl border border-ink-100 bg-paper/70 p-4">
+              <p className="font-code text-[10px] font-bold tracking-[0.1em] text-ink-500">PILOT PRICE HYPOTHESIS</p>
+              <p className="mt-2 font-display text-[26px] font-black tabular-nums text-ink-950">$25 / outcome</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-ink-600">Or $499/unit/mo (40 outcomes). The procuring entity pays from its operations/ICT budget — never a bidder fee. First 3 outcomes free. No pilot signed yet: this is the hypothesis the pilot will validate, not a savings claim.</p>
+            </div>
+          </div>
+          <p className="mt-4 text-[12px] leading-relaxed text-ink-500">Value formula (for the pilot to price): (manual officer-minutes − Quorum officer-minutes) × loaded officer cost/min + avoided correction & compliance risk. Manual minutes are deliberately unmeasured until the pre-registered pilot runs — no hour-saved figure is claimed.</p>
         </div>
       </div>
     </section>

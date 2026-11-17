@@ -15,7 +15,7 @@ import {
  * short-lived session token. The client opens that socket directly; Napster
  * records the transcript on its side.
  *
- * This channel is deliberately separate from /api/muse/chat:
+ * This channel is deliberately separate from /api/assistant/chat:
  *   · Napster is conversational. It has no Quorum tools and cannot read or
  *     change procurement records.
  *   · Quorum's desk agent remains the only path that can stage a signed,
@@ -31,19 +31,19 @@ const noStore = {
   "referrer-policy": "no-referrer",
 } as const;
 
-const BARRY_INSTRUCTIONS = [
-  "You are Barry, Quorum's procurement agent, in a live text channel with a signed-in procurement officer.",
+const DESK_AGENT_INSTRUCTIONS = [
+  "You are Quorum's desk agent, in a live text channel with a signed-in procurement officer.",
   "Quorum is a public-procurement tender review desk. Its workspace covers tenders, evaluations, the human approval gate, committee quorum, suppliers, operational deadlines and an append-only audit trail. Final decisions are made by named humans in Approvals; no agent makes them.",
   "Be concise and practical: lead with the answer that matters, then the reason. Use plain words, not corporate padding.",
-  "You do not have access to Quorum's live desk records in this channel. Do not claim to have read a tender, approval, supplier, deadline, audit entry or committee register. If asked for live data, say it is not available here and tell the officer to use Message Barry in the same panel, which can read the desk.",
+  "You do not have access to Quorum's live desk records in this channel. Do not claim to have read a tender, approval, supplier, deadline, audit entry or committee register. If asked for live data, say it is not available here and tell the officer to use Message, the desk agent in the same panel, which can read the desk.",
   "You cannot approve, reject, award, sign, return or record a final procurement decision, and you cannot change Quorum records in this channel. Explain the process and route the human to Approvals.",
   "Never invent a tender, supplier, gate, date, approval, signature, permission or citation. If you are unsure, say so.",
   "Do not ask for passwords, API keys or unnecessary personal data.",
-  "If the officer asks you to take an action, say plainly that this Napster channel is conversational and that Message Barry can stage the action for their explicit confirmation.",
+  "If the officer asks you to take an action, say plainly that this Napster channel is conversational and that Message, the desk agent in the same panel, can stage the action for their explicit confirmation.",
 ].join(" ");
 
 const INITIAL_SPEECH =
-  "Introduce yourself as Barry, Quorum's procurement agent, in one short sentence, then ask what procurement question the officer needs help with.";
+  "Introduce yourself as Quorum's desk agent in one short sentence, then ask what procurement question the officer needs help with.";
 
 export async function POST(request: NextRequest) {
   const user = await getUserFromToken(request.cookies.get(SESSION_COOKIE)?.value).catch(() => null);
@@ -53,8 +53,8 @@ export async function POST(request: NextRequest) {
       {
         error: org
           ? "Napster live sessions are for Quorum workspace staff. Quorum chat is still available."
-          : "Sign in to speak to Barry.",
-        fallback: "muse",
+          : "Sign in to speak to the desk agent.",
+        fallback: "assistant",
       },
       { status: org ? 403 : 401, headers: noStore },
     );
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
 
   if (!rateLimit(`napster-session:${user.id}`, 6, 60_000)) {
     return NextResponse.json(
-      { error: "Too many Napster sessions. Wait a minute and try again.", fallback: "muse" },
+      { error: "Too many Napster sessions. Wait a minute and try again.", fallback: "assistant" },
       { status: 429, headers: noStore },
     );
   }
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
      across the whole key, so keep a shared guard in front of it. */
   if (!rateLimit("napster-session:upstream", 1, 1_500)) {
     return NextResponse.json(
-      { error: "Napster is still opening the previous session. Try again in a moment.", fallback: "muse" },
+      { error: "Napster is still opening the previous session. Try again in a moment.", fallback: "assistant" },
       { status: 429, headers: noStore },
     );
   }
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       {
         error: "NAPSTER_API_KEY is not configured on this deployment.",
         code: "not_configured",
-        fallback: "muse",
+        fallback: "assistant",
       },
       { status: 503, headers: noStore },
     );
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
       {
         error: "Set NAPSTER_AGENT_ID or NAPSTER_COMPANION_ID to start a Napster session.",
         code: "not_configured",
-        fallback: "muse",
+        fallback: "assistant",
       },
       { status: 503, headers: noStore },
     );
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
 
   const result = await createTextSession({
     initialSpeech: INITIAL_SPEECH,
-    instructions: BARRY_INSTRUCTIONS,
+    instructions: DESK_AGENT_INSTRUCTIONS,
   });
 
   if (!result.ok) {
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
       {
         error: result.error,
         code: result.code,
-        fallback: "muse",
+        fallback: "assistant",
         ...(result.upstreamDetail ? { upstreamDetail: result.upstreamDetail } : {}),
         ...(result.retryAfter ? { retryAfter: result.retryAfter } : {}),
       },
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
         companionId: result.data.companionId,
       },
       transport: "napster",
-      fallback: "muse",
+      fallback: "assistant",
     },
     { headers: noStore },
   );

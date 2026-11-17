@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { kiraConfigFromEnv, museChat } from "@/lib/muse";
+import { kiraConfigFromEnv, kiraChat } from "@/lib/kira";
 import { draftMinutes, type MeetingForNotes, type MeetingMinutes } from "@/lib/meeting-minutes";
 
 /**
@@ -91,7 +91,7 @@ export async function composeMinutes(transcript: string, meeting: MeetingForNote
   const invited = meeting.attendees.map((attendee) => attendee.name).filter(Boolean).join(", ") || "none recorded";
 
   try {
-    const reply = await museChat(
+    const reply = await kiraChat(
       config,
       [
         {
@@ -120,7 +120,6 @@ ${transcript.slice(0, 30_000)}`,
         },
       ],
       [],
-      undefined,
       { responseSchema: { name: "quorum_meeting_minutes", schema: MINUTES_JSON_SCHEMA }, reasoningEffort: "medium", maxOutputTokens: 2800 },
     );
 

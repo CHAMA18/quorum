@@ -4,9 +4,9 @@ import type { AuthUser } from "@/lib/auth-types";
 
 /* The rule is about where the bubble mounts, so the bubble itself is stubbed:
    rendering the real panel would pull in images, motion and live fetches. */
-mock.module("./muse-assistant", () => ({
-  MuseAssistant: ({ name }: { name?: string; onOpenDesk?: () => void }) => (
-    <div data-testid="floating-assistant">{name ?? "Barry"}</div>
+mock.module("./assistant-bubble", () => ({
+  AssistantBubble: ({ name }: { name?: string; onOpenDesk?: () => void }) => (
+    <div data-testid="floating-assistant">{name ?? "Assistant"}</div>
   ),
 }));
 

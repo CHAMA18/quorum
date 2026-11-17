@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "health:watch": "bun scripts/health-watch.ts",
+    "kira:check": "bash -c 'set -a; [ -f .env.local ] && . ./.env.local; set +a; bun scripts/kira-check.ts'",
     "test:e2e": "playwright test",
     "audit:critical": "bun audit --production --audit-level=critical",
     "eval:model": "bun mini-services/quorum-mcp/model-eval.ts",

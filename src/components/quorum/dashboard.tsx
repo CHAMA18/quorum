@@ -50,6 +50,7 @@ import {
   ScrollText,
   Settings,
   ShieldCheck,
+  Sparkles,
   Stamp,
   Terminal,
   Trash2,
@@ -2140,7 +2141,9 @@ function SidebarContent({
                         <Icon
                           className={cn(
                             "h-4 w-4 shrink-0 transition-colors",
-                            isActive ? "text-brand-400" : "text-ink-400 group-hover:text-ink-200"
+                            isActive
+                              ? "text-brand-400"
+                              : "text-ink-400 group-hover:text-ink-200"
                           )}
                           aria-hidden="true"
                           strokeWidth={1.8}
@@ -10401,7 +10404,7 @@ export function Dashboard({
     onSectionChange?.(active);
   }, [active, onSectionChange]);
 
-  /* Barry's bubble asks for the composer: bring the Overview on screen. */
+  /* The floating assistant asks for the composer: bring the Overview on screen. */
   useEffect(
     () =>
       onDeskComposerRequest(() => {

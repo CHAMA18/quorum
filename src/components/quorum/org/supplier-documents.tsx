@@ -9,7 +9,6 @@ import {
   Eye,
   FileText,
   Loader2,
-  ScanSearch,
   X,
 } from "lucide-react";
 import { MAX_SUPPLIER_BID_FILE_BYTES } from "@/lib/supplier-bid-document-limits";
@@ -52,7 +51,7 @@ export function SupplierDocumentsSection({
   const [documentsError, setDocumentsError] = useState<string | null>(null);
   const [documentNotices, setDocumentNotices] = useState<Record<string, string>>({});
   const [busyDocument, setBusyDocument] = useState<string | null>(null);
-  const [inspecting, setInspecting] = useState<{ document: ProfileDocument; autoScan: boolean } | null>(null);
+  const [inspecting, setInspecting] = useState<{ document: ProfileDocument } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -172,9 +171,7 @@ export function SupplierDocumentsSection({
             Bid documents to upload overall
           </h4>
           <p className="mt-0.5 max-w-[72ch] text-[11.5px] leading-relaxed text-ink-600 dark:text-ink-300">
-            Upload each document once here — it is held against your organization for every opportunity.
-            When you apply, the tender notice still asks you to attach the required files. Open any saved file
-            to preview it, or request an optional AI-assisted check of its document type, named entity and expiry date.
+            Upload each file once, then attach it when a tender asks for it. Open a saved file to preview it.
           </p>
         </div>
         <span className="rounded-full border border-ink-200/80 px-2.5 py-1 font-code text-[10px] tracking-[0.06em] text-ink-600 tabular dark:border-white/10 dark:text-ink-300">
@@ -270,21 +267,12 @@ export function SupplierDocumentsSection({
                           <>
                             <button
                               type="button"
-                              onClick={() => setInspecting({ document: { ...uploaded }, autoScan: false })}
+                              onClick={() => setInspecting({ document: { ...uploaded } })}
                               aria-label={`Preview ${document}`}
                               title="Preview this document"
                               className="focus-brand grid h-8 w-8 place-items-center rounded-md border border-ink-200/80 text-ink-600 transition-colors hover:border-brand-400 hover:text-brand-700 dark:border-white/10 dark:text-ink-300 dark:hover:border-brand-500/40 dark:hover:text-brand-300"
                             >
                               <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setInspecting({ document: { ...uploaded }, autoScan: true })}
-                              aria-label={`Review ${document} with AI`}
-                              title="Review document with AI"
-                              className="focus-brand grid h-8 w-8 place-items-center rounded-md border border-ink-200/80 text-ink-600 transition-colors hover:border-brand-400 hover:text-brand-700 dark:border-white/10 dark:text-ink-300 dark:hover:border-brand-500/40 dark:hover:text-brand-300"
-                            >
-                              <ScanSearch className="h-3.5 w-3.5" aria-hidden="true" />
                             </button>
                           </>
                         ) : null}
@@ -356,7 +344,6 @@ export function SupplierDocumentsSection({
 
       <SupplierDocumentInspector
         doc={inspecting?.document ?? null}
-        autoScan={inspecting?.autoScan ?? false}
         onClose={closeInspector}
       />
     </div>

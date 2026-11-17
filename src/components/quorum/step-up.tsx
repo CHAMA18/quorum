@@ -13,7 +13,7 @@ import { trapTabFocus } from "@/lib/a11y";
  * code — and returns a short-lived, single-use token bound to that gate. The
  * caller puts the token in `x-quorum-stepup`; the sidecar verifies it.
  *
- * The dialog is mounted at the dashboard root, and the Muse assistant bubble
+ * The dialog is mounted at the dashboard root, and the assistant bubble
  * mounts its own while it is open — so a gate decision staged in chat can be
  * signed right there, on any screen. Hosts register on a stack and
  * requestStepUp always opens the topmost (most recently mounted) one.

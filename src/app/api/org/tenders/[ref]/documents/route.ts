@@ -15,7 +15,6 @@ import {
   supplierBidFileType,
   verifiedSupplierOwner,
 } from "@/lib/supplier-bid-documents";
-import { metaBidDocumentAssistAvailable, reviewBidDocumentWithMeta } from "@/lib/meta-bid-document-assist";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,7 +46,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ ref:
   return NextResponse.json({
     requiredDocuments: requirements.requiredDocuments,
     uploadedDocuments,
-    metaAssistAvailable: metaBidDocumentAssistAvailable(),
     maxFileBytes: MAX_SUPPLIER_BID_FILE_BYTES,
   }, { headers: { "cache-control": "no-store" } });
 }
@@ -129,28 +127,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ref
   });
   const auditWarning = audit.status !== 201 ? sidecarError(audit.data, "The document uploaded, but its procurement audit receipt could not be recorded.") : undefined;
 
-  let metaAssist: Awaited<ReturnType<typeof reviewBidDocumentWithMeta>> | undefined;
-  let metaAssistError: string | undefined;
-  const requestedAssist = form?.get("metaAssist") === "true";
-  if (requestedAssist) {
-    if (!metaBidDocumentAssistAvailable()) {
-      metaAssistError = "Muse Spark review is not enabled for this workspace; the file is safely uploaded for the procurement team.";
-    } else {
-      try {
-        metaAssist = await reviewBidDocumentWithMeta({
-          bytes,
-          filename: safeSupplierFilename(rawFile.name),
-          contentType: fileType.contentType,
-          requirement,
-          ownerId: identity.identity.uid,
-        });
-      } catch (error) {
-        metaAssistError = error instanceof Error ? error.message : "Muse Spark could not review this document. The upload is still complete.";
-      }
-    }
-  }
-
-  return NextResponse.json({ document, auditRecorded: audit.status === 201, auditWarning, metaAssist, metaAssistError }, { status: 201, headers: { "cache-control": "no-store" } });
+  return NextResponse.json({ document, auditRecorded: audit.status === 201, auditWarning }, { status: 201, headers: { "cache-control": "no-store" } });
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ ref: string }> }) {

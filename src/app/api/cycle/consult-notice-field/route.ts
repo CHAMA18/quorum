@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getUserFromToken, rateLimit, SESSION_COOKIE } from "@/lib/auth";
 import { can } from "@/lib/permissions";
-import { kiraConfigFromEnv, museChat } from "@/lib/muse";
+import { kiraConfigFromEnv, kiraChat } from "@/lib/kira";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -174,26 +174,24 @@ export async function POST(request: NextRequest) {
 
   const safetySecret =
     process.env.KIRA_SAFETY_IDENTIFIER_SECRET?.trim() ||
-    process.env.MUSE_SAFETY_IDENTIFIER_SECRET?.trim() ||
+    process.env.ASSISTANT_SAFETY_IDENTIFIER_SECRET?.trim() ||
     process.env.GATE_SIGNING_KEY?.trim();
   const safetyIdentifier = safetySecret
     ? createHmac("sha256", safetySecret).update(user.id).digest("hex")
     : undefined;
 
   try {
-    const reply = await museChat(
+    const reply = await kiraChat(
       config,
       [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: JSON.stringify(parsed.data) },
       ],
       [],
-      undefined,
       {
         reasoningEffort: "low",
         maxOutputTokens: 2_400,
         safetyIdentifier,
-        useChatCompletions: true,
         responseSchema: { name: "tender_field_consultation", schema: RESULT_JSON_SCHEMA },
       },
     );

@@ -1,5 +1,5 @@
 /**
- * Muse action tools — the consent-gated write surface.
+ * Assistant action tools — the consent-gated write surface.
  *
  * The desk assistant is genuinely agentic: it may READ permitted desk records
  * and may assign a review — but an action never runs because a
@@ -97,7 +97,7 @@ export function buildProposal(tool: string, args: Record<string, unknown>, actor
 const PROPOSAL_TTL_MS = 10 * 60_000;
 
 function actionSecret(): string {
-  return secretFor("muse");
+  return secretFor("assistant");
 }
 
 function payloadOf(p: Proposal): string {

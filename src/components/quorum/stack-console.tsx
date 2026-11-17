@@ -232,7 +232,6 @@ function isMetaModelCall(entry: LogEntry): boolean {
     provider.includes("meta") ||
     provider.includes("ollama") ||
     provider.includes("kira") ||
-    model.startsWith("muse-") ||
     model.startsWith("llama")
   );
 }
@@ -1083,6 +1082,11 @@ export function StackConsole({ onToast }: { onToast: (msg: string) => void }) {
                     · PLAN {lastRun.model.planSource === "llm" ? "MODEL-LED" : "DETERMINISTIC"} · DRAFTS{" "}
                     {lastRun.model.draftLlm ?? 0}/{lastRun.model.draftTotal ?? 0} BY MODEL ·{" "}
                     {((lastRun.model.promptTokens ?? 0) + (lastRun.model.completionTokens ?? 0)).toLocaleString()} TOKENS
+                    {" "}({(lastRun.model.promptTokens ?? 0).toLocaleString()} IN /{" "}
+                    {(lastRun.model.completionTokens ?? 0).toLocaleString()} OUT)
+                    {((lastRun.model.promptTokens ?? 0) + (lastRun.model.completionTokens ?? 0)) > 0
+                      ? ` · ≈ $${(((lastRun.model.promptTokens ?? 0) * 0.0509 + (lastRun.model.completionTokens ?? 0) * 0.335) / 1e6).toFixed(4)} AT HOSTED LIST (LLAMA 3.2 3B)`
+                      : ""}
                   </p>
                 )}
                 <ModelControls onToast={onToast} />

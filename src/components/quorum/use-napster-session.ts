@@ -10,9 +10,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * down when the panel asks it to. It never sees the Napster API key.
  */
 
-export type NapsterBarryStatus = "idle" | "connecting" | "live" | "closed" | "error";
+export type NapsterSessionStatus = "idle" | "connecting" | "live" | "closed" | "error";
 
-export interface NapsterBarryMessage {
+export interface NapsterSessionMessage {
   id: string;
   role: "user" | "assistant";
   text: string;
@@ -56,12 +56,12 @@ type ServerEvent = {
 const MAX_MESSAGE = 8_000;
 const OPEN_TIMEOUT_MS = 15_000;
 
-export function useNapsterBarry() {
-  const [status, setStatus] = useState<NapsterBarryStatus>("idle");
+export function useNapsterSession() {
+  const [status, setStatus] = useState<NapsterSessionStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [messages, setMessages] = useState<NapsterBarryMessage[]>([]);
+  const [messages, setMessages] = useState<NapsterSessionMessage[]>([]);
 
   const socketRef = useRef<WebSocket | null>(null);
   const intentionalCloseRef = useRef(false);
@@ -268,7 +268,7 @@ export function useNapsterBarry() {
           }
           if (message.action === "failed") {
             setBusy(false);
-            setNotice("Barry's reply could not be completed. Try asking again.");
+            setNotice("The Napster reply could not be completed. Try asking again.");
           }
           return;
         }

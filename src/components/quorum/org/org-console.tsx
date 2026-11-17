@@ -27,7 +27,6 @@ import {
   ScrollText,
   Search,
   ShieldCheck,
-  Sparkles,
   Stamp,
   UserRound,
   X,
@@ -204,11 +203,11 @@ function ConsoleSidebar({
 /* ── Search palette ──────────────────────────────────────────────────────── */
 
 const QUICK_LINKS: { id: Tab; label: string; hint: string; icon: typeof LayoutGrid }[] = [
-  { id: "opportunities", label: "Open tenders", hint: "Find tenders accepting applications", icon: ScrollText },
+  { id: "opportunities", label: "Tenders", hint: "Find tenders accepting applications", icon: ScrollText },
   { id: "applications", label: "Applications", hint: "Everything you have filed", icon: FileText },
   { id: "documents", label: "Documents", hint: "Your standing bid documents", icon: Files },
   { id: "contracts", label: "Contracts", hint: "Signed packs and acceptance", icon: FileSignature },
-  { id: "profile", label: "Organization profile", hint: "Details used to verify your organization", icon: Building2 },
+  { id: "profile", label: "Profile", hint: "Details used to verify your organization", icon: Building2 },
 ];
 
 function SearchPalette({
@@ -385,19 +384,7 @@ function SearchPalette({
 
 /* ── Apply dialog ──────────────────────────────────────────────────────────── */
 
-type MetaAssistView = {
-  model: string;
-  documentType: string;
-  requirementMatch: boolean;
-  expiryDate: string;
-  documentNumber: string;
-  cautions: string[];
-  note: string;
-};
-
 type UploadedBidDocumentView = SupplierBidDocument & {
-  metaAssist?: MetaAssistView;
-  metaAssistError?: string;
   auditWarning?: string;
 };
 
@@ -427,8 +414,6 @@ function ApplyDialog({
   const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
   const [uploadingRequirement, setUploadingRequirement] = useState<string | null>(null);
   const [removingKey, setRemovingKey] = useState<string | null>(null);
-  const [metaAssistAvailable, setMetaAssistAvailable] = useState(false);
-  const [useMuseAssist, setUseMuseAssist] = useState(false);
   const [busy, setBusy] = useState(false);
   const [filed, setFiled] = useState<Application | null>(null);
   const [submissionAttempted, setSubmissionAttempted] = useState(false);
@@ -449,14 +434,12 @@ function ApplyDialog({
         const data = (await res.json().catch(() => ({}))) as {
           requiredDocuments?: string[];
           uploadedDocuments?: SupplierBidDocument[];
-          metaAssistAvailable?: boolean;
           error?: string;
         };
         if (!res.ok) throw new Error(data.error ?? "The tender's required bid documents could not be loaded.");
         if (!active) return;
         const requirements = Array.isArray(data.requiredDocuments) ? data.requiredDocuments : [];
         setRequiredDocuments(requirements);
-        setMetaAssistAvailable(data.metaAssistAvailable === true);
         const existing: Record<string, UploadedBidDocumentView[]> = {};
         for (const document of Array.isArray(data.uploadedDocuments) ? data.uploadedDocuments : []) {
           if (!requirements.includes(document.requirement)) continue;
@@ -519,7 +502,6 @@ function ApplyDialog({
         const form = new FormData();
         form.append("file", file);
         form.append("requirement", requirement);
-        form.append("metaAssist", useMuseAssist ? "true" : "false");
         try {
           const res = await fetch(`/api/org/tenders/${encodeURIComponent(tender.ref)}/documents`, {
             method: "POST",
@@ -528,8 +510,6 @@ function ApplyDialog({
           const data = (await res.json().catch(() => ({}))) as {
             document?: SupplierBidDocument;
             auditWarning?: string;
-            metaAssist?: MetaAssistView;
-            metaAssistError?: string;
             error?: string;
           };
           if (!res.ok || !data.document) throw new Error(data.error ?? `${file.name} could not be uploaded.`);
@@ -537,8 +517,6 @@ function ApplyDialog({
             ...previous,
             [requirement]: [...(previous[requirement] ?? []), {
               ...data.document!,
-              metaAssist: data.metaAssist,
-              metaAssistError: data.metaAssistError,
               auditWarning: data.auditWarning,
             }],
           }));
@@ -760,13 +738,8 @@ function ApplyDialog({
                                           Remove
                                         </button>
                                       </div>
-                                      {document.metaAssist ? (
-                                        <p className="mt-1.5 pl-5 text-[10.5px] leading-relaxed text-ink-700 dark:text-ink-200">
-                                          The AI document check suggests {document.metaAssist.documentType || "the document"}{document.metaAssist.requirementMatch ? " may match this requirement" : " may need a closer match"}{document.metaAssist.expiryDate ? ` · expiry date ${document.metaAssist.expiryDate}` : ""}{document.metaAssist.documentNumber ? ` · no. ${document.metaAssist.documentNumber}` : ""}. Confirm against the original; this is not an eligibility decision.
-                                        </p>
-                                      ) : null}
-                                      {document.metaAssistError || document.auditWarning ? (
-                                        <p className="mt-1.5 pl-5 text-[10.5px] leading-relaxed text-amber-800 dark:text-amber-200">{document.metaAssistError ?? document.auditWarning}</p>
+                                      {document.auditWarning ? (
+                                        <p className="mt-1.5 pl-5 text-[10.5px] leading-relaxed text-amber-800 dark:text-amber-200">{document.auditWarning}</p>
                                       ) : null}
                                     </li>
                                   ))}
@@ -813,13 +786,6 @@ function ApplyDialog({
                     <p className="mb-3 font-code text-[10px] font-medium tracking-[0.03em] text-ink-600 dark:text-ink-300" aria-live="polite" aria-atomic="true">
                       {uploadedDocumentCount} / {MAX_SUPPLIER_BID_FILES} files · {formatDocumentBytes(uploadedDocumentBytes)} / {MAX_SUPPLIER_BID_TOTAL_BYTES / (1024 * 1024)} MB total · {MAX_SUPPLIER_BID_FILE_BYTES / (1024 * 1024)} MB maximum per file
                     </p>
-                    <label className={cn("flex min-h-11 items-start gap-2.5 rounded-md py-2", metaAssistAvailable && !requirementsLoading && !requirementsError ? "cursor-pointer" : "cursor-not-allowed opacity-70")}>
-                      <input type="checkbox" className="mt-0.5 size-5 shrink-0 accent-brand-600" checked={useMuseAssist} disabled={!metaAssistAvailable || requirementsLoading || !!requirementsError || busy || !!uploadingRequirement || !!removingKey} onChange={(event) => setUseMuseAssist(event.target.checked)} />
-                      <span className="min-w-0">
-                        <span className="flex items-center gap-1.5 text-[11.5px] font-semibold text-ink-800 dark:text-ink-100"><Sparkles className="h-3.5 w-3.5 text-brand-600 dark:text-brand-300" aria-hidden="true" /> Optional AI document check {metaAssistAvailable ? "" : "(not enabled)"}</span>
-                        <span className="mt-0.5 block text-[10.5px] leading-relaxed text-ink-600 dark:text-ink-300">When enabled, a copy of each selected file is sent inline to Meta’s hosted model for document type, relevance and expiry hints. AI does not determine eligibility or authenticity.</span>
-                      </span>
-                    </label>
                   </div>
                 ) : null}
               </section>
@@ -1393,8 +1359,8 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
 
   const TABS: { id: Tab; label: string; icon: typeof LayoutGrid; badge?: number }[] = [
     { id: "overview", label: "Overview", icon: LayoutGrid },
-    { id: "profile", label: "Organization profile", icon: Building2, badge: profile.missing.length > 0 ? profile.missing.length : undefined },
-    { id: "opportunities", label: "Open tenders", icon: ScrollText, badge: openTenders.length || undefined },
+    { id: "profile", label: "Profile", icon: Building2 },
+    { id: "opportunities", label: "Tenders", icon: ScrollText, badge: openTenders.length || undefined },
     { id: "applications", label: "Applications", icon: FileText, badge: applications?.length || undefined },
     { id: "documents", label: "Documents", icon: Files },
     { id: "contracts", label: "Contracts", icon: FileSignature, badge: awaitingAcceptance || undefined },
@@ -1553,10 +1519,10 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
               >
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                 <div>
-                  <p className="font-semibold">Awaiting procurement-desk verification</p>
+                  <p className="font-semibold">Verification pending</p>
                   <p className="mt-0.5">
-                    Your profile is saved. You can complete your details and browse tenders, but filing a bid opens
-                    once the desk verifies your organization&apos;s identity and statutory record.
+                    You can browse tenders now. Filing a bid opens after the procurement desk verifies your
+                    organization.
                   </p>
                 </div>
               </div>
@@ -1573,7 +1539,6 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
               {tab === "overview" ? (
                 <SupplierOverview
                   orgName={org.name}
-                  orgCreatedAt={org.createdAt}
                   profile={profile}
                   tenders={tenders}
                   applications={applications}
@@ -1596,38 +1561,15 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
 
               {tab === "profile" ? (
                 <div className="mx-auto max-w-5xl space-y-6">
-                  <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-                    <div className="max-w-2xl">
-                      <p className="font-code text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-700 dark:text-brand-400">
-                        The register&apos;s view
-                      </p>
-                      <h1 className="type-display mt-2 text-[26px] text-ink-950 dark:text-white sm:text-[30px]">
-                        Organization profile
-                      </h1>
-                      <p className="mt-2 max-w-[64ch] text-[13px] leading-relaxed text-ink-500 sm:text-[13.5px]">
-                        Keep your organization&apos;s details current so the procurement team can verify your organization and match relevant tenders.
-                      </p>
-                    </div>
-                    <div className="w-full shrink-0 rounded-[12px] border border-ink-200/70 bg-white dark:border-white/10 p-4 shadow-[0_1px_2px_rgba(11,12,15,0.04)] sm:w-[230px] dark:border-white/[0.07] dark:bg-night-2/80">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="font-code text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-600 dark:text-ink-300">Record health</span>
-                        <span className="font-code text-[10px] font-bold tabular text-ink-700 dark:text-ink-200">{profile.filled}/{profile.total}</span>
-                      </div>
-                      <div
-                        role="progressbar"
-                        aria-label="Organization profile details on file"
-                        aria-valuemin={0}
-                        aria-valuemax={profile.total}
-                        aria-valuenow={profile.filled}
-                        className="mt-3 h-1.5 overflow-hidden rounded-full bg-ink-100 dark:bg-white/10"
-                      >
-                        <div
-                          className="h-full rounded-full bg-brand-500 transition-[width] duration-500"
-                          style={{ width: `${Math.round((profile.filled / profile.total) * 100)}%` }}
-                        />
-                      </div>
-                      <p className="mt-2 text-[11px] text-ink-500">{profile.missing.length === 0 ? "All profile details are on file." : `${profile.missing.length} profile ${profile.missing.length === 1 ? "detail" : "details"} still to complete`}</p>
-                    </div>
+                  <div className="max-w-2xl">
+                    <h1 className="type-display text-[26px] text-ink-950 dark:text-white sm:text-[30px]">
+                      Your organization
+                    </h1>
+                    <p className="mt-2 max-w-[64ch] text-[13px] leading-relaxed text-ink-500 sm:text-[13.5px]">
+                      {profile.missing.length === 0
+                        ? "Your details are complete. Keep them current so the procurement team can verify your organization."
+                        : `${profile.missing.length} ${profile.missing.length === 1 ? "detail is" : "details are"} still missing. Complete them so the procurement team can verify your organization.`}
+                    </p>
                   </div>
                   <ProfileEditor
                     org={org}
@@ -1644,11 +1586,8 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
                 <div className="space-y-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div>
-                      <p className="font-code text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-700 dark:text-brand-400">
-                        Open tenders
-                      </p>
-                      <h1 className="type-display mt-2 flex items-center gap-2.5 text-[22px] text-ink-950 dark:text-white">
-                        Opportunities
+                      <h1 className="type-display flex items-center gap-2.5 text-[22px] text-ink-950 dark:text-white">
+                        Tenders
                         {tenders !== null ? (
                           <span className="rounded-full border border-ink-100 bg-sand/80 px-2 py-1 font-code text-[10px] font-semibold text-ink-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-300">
                             {openTenders.length} open
@@ -1656,7 +1595,7 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
                         ) : null}
                       </h1>
                       <p className="mt-1.5 max-w-[66ch] text-[13px] leading-relaxed text-ink-500">
-                        Browse published tenders that are open for applications. Submissions close at the deadline shown on each tender.
+                        Browse tenders that are open for applications, then submit a bid before its deadline.
                       </p>
                     </div>
                     <button
@@ -1844,10 +1783,7 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
                 <div className="space-y-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div>
-                      <p className="font-code text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-700 dark:text-brand-400">
-                        Application history
-                      </p>
-                      <h1 className="type-display mt-2 flex items-center gap-2.5 text-[22px] text-ink-950 dark:text-white">
+                      <h1 className="type-display flex items-center gap-2.5 text-[22px] text-ink-950 dark:text-white">
                         Applications
                         {applications !== null ? (
                           <span className="rounded-full border border-ink-100 bg-sand/80 px-2 py-1 font-code text-[10px] font-semibold text-ink-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-ink-300">
@@ -1856,16 +1792,18 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
                         ) : null}
                       </h1>
                       <p className="mt-1.5 max-w-[66ch] text-[13px] leading-relaxed text-ink-500">
-                        Every bid this organization has submitted, with its tender reference and submission time. You can download a receipt for each application.
+                        Every bid you have submitted, with its tender reference and receipt.
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setTab("opportunities")}
-                      className="focus-brand inline-flex min-h-11 shrink-0 items-center gap-1.5 self-start rounded-lg bg-brand-500 px-3.5 text-[12px] font-semibold text-white shadow-[0_10px_24px_-12px_rgba(232,56,42,0.9)] transition-colors hover:bg-brand-600"
-                    >
-                      <Stamp className="h-3.5 w-3.5" aria-hidden="true" /> New submission
-                    </button>
+                    {applications && applications.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => setTab("opportunities")}
+                        className="focus-brand inline-flex min-h-11 shrink-0 items-center gap-1.5 self-start rounded-lg bg-brand-500 px-3.5 text-[12px] font-semibold text-white shadow-[0_10px_24px_-12px_rgba(232,56,42,0.9)] transition-colors hover:bg-brand-600"
+                      >
+                        <Stamp className="h-3.5 w-3.5" aria-hidden="true" /> Find a tender
+                      </button>
+                    ) : null}
                   </div>
 
                   <SupplierClarifications />
@@ -1891,12 +1829,11 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
                   <section className="overflow-hidden rounded-[12px] supplier-panel panel dark:bg-night-2/80">
                     <div className="flex items-center justify-between gap-3 border-b border-ink-100 px-5 py-3.5 dark:border-white/[0.06]">
                       <p className="font-code text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-600 dark:text-ink-300">
-                        Filing times in UTC · newest first
+                        Newest first
                       </p>
                       <button
                         type="button"
-                        onClick={() => void loadApplications()}
-                        className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-[11px] font-semibold text-ink-500 transition-colors hover:bg-ink-50 hover:text-ink-900 dark:hover:bg-white/[0.06] dark:hover:text-white"
+                        onClick={() => void loadApplications()}                          className="focus-brand inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-[11px] font-semibold text-ink-500 transition-colors hover:bg-ink-50 hover:text-ink-900 dark:hover:bg-white/[0.06] dark:hover:text-white"
                       >
                         <RotateCw className="h-3 w-3" aria-hidden="true" /> Refresh
                       </button>
@@ -1933,16 +1870,11 @@ export function OrgConsole({ initialOrg }: { initialOrg: PublicOrg }) {
                 <div className="mx-auto max-w-6xl space-y-5">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div>
-                      <p className="font-code text-[10px] font-semibold uppercase tracking-[0.1em] text-brand-700 dark:text-brand-400">
-                        The document vault
-                      </p>
-                      <h1 className="type-display mt-2 text-[26px] text-ink-950 dark:text-white sm:text-[30px]">
+                      <h1 className="type-display text-[26px] text-ink-950 dark:text-white sm:text-[30px]">
                         Documents
                       </h1>
                       <p className="mt-1.5 max-w-[68ch] text-[13px] leading-relaxed text-ink-500">
-                        The bid documents requested across tenders, uploaded once against your organization and held in
-                        Cloudflare R2 for every opportunity. Each notice still asks you to attach the set it requires
-                        when you apply.
+                        Upload each document once. Tenders ask you to attach the set they need when you apply.
                       </p>
                     </div>
                   </div>

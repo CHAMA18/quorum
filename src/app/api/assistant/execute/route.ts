@@ -4,10 +4,10 @@ import { z } from "zod";
 import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { attestSignature } from "@/lib/sidecar-attest";
 import { canMutateSidecar } from "@/lib/permissions";
-import { verifyProposal } from "@/lib/muse-actions";
+import { verifyProposal } from "@/lib/assistant-actions";
 
 /**
- * POST /api/muse/execute — the consent gate for the desk agent's actions.
+ * POST /api/assistant/execute — the consent gate for the desk agent's actions.
  *
  * The chat loop never executes a write. When the officer confirms a proposal
  * card, the bubble posts it here and — only here — the action actually runs:

@@ -78,7 +78,7 @@ export function GetStarted({
                   the index stays legible rather than tinted on red. */}
               <div>
                 <span aria-hidden="true" className="block h-px w-full bg-white/25" />
-                <p className="mt-3 type-micro text-white/75">10 · Getting started</p>
+                <p className="mt-3 type-micro text-white/75">08 · Getting started</p>
               </div>
             </Reveal>
             <Reveal delay={0.08}>

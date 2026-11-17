@@ -195,7 +195,7 @@ export interface SupportRequestRow {
   requesterId: string;
   requesterName: string;
   requesterEmail: string;
-  source: "BARRY";
+  source: "DESK_AGENT";
   subject: string;
   message: string;
   status: SupportRequestStatus;
@@ -1352,7 +1352,7 @@ export function createSupportRequest(data: {
   const row: SupportRequestRow = {
     id: `sup_${newId().slice(0, 12)}`,
     ...data,
-    source: "BARRY",
+    source: "DESK_AGENT",
     subject: data.subject.trim().slice(0, 120),
     message: data.message.trim().slice(0, 2000),
     status: "OPEN",
