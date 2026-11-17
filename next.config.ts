@@ -16,7 +16,7 @@ const isStatic = process.env.STATIC_EXPORT === "1";
    (e.g. a custom domain) sets STATIC_BASE_PATH="" to build without a prefix. */
 const staticBasePath = process.env.STATIC_BASE_PATH ?? "/the-bid-box-challenge";
 const workspaceOrigin =
-  process.env.NEXT_PUBLIC_WORKSPACE_ORIGIN ?? "https://d1n7mv5t5hn4xe.cloudfront.net";
+  process.env.NEXT_PUBLIC_WORKSPACE_ORIGIN ?? "https://quorum-api-tgw2.onrender.com";
 
 const nextConfig: NextConfig = {
   output: isStatic ? "export" : "standalone",

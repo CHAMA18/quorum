@@ -12,11 +12,11 @@ statutory and irreversible decisions: the review graph stops at a named-human ga
 the filing path checks the user's session, committee roster, office, quorum and step-up
 requirements before it can execute.
 
-**Product:** [Live workspace](https://d1n7mv5t5hn4xe.cloudfront.net) ·
+**Product:** [Live workspace](https://quorum-api-tgw2.onrender.com) ·
 [Landing page](https://quorum-solutions.com) ·
-[Admin portal](https://quorum-solutions.com/admin) ·
-[API directory](https://d1n7mv5t5hn4xe.cloudfront.net/api) ·
-[Product documentation](https://d1n7mv5t5hn4xe.cloudfront.net/docs) ·
+[Admin portal](https://quorum-api-tgw2.onrender.com/admin) ·
+[API directory](https://quorum-api-tgw2.onrender.com/api) ·
+[Product documentation](https://quorum-api-tgw2.onrender.com/docs) ·
 [MCP implementation](SUBMISSION/06-mcp-implementation.md)
 
 **Core capabilities**
@@ -51,7 +51,7 @@ claimed. See [Limitations](#limitations) for the boundaries and evaluation statu
 | ![Quorum landing](docs/screenshots/hero.png) | ![Officer dashboard](docs/screenshots/dashboard.png) |
 | ![Committee desk](docs/screenshots/committee.png) | ![Mobile](docs/screenshots/mobile.png) |
 
-**Judge's 5-minute path:** open the [live app](https://d1n7mv5t5hn4xe.cloudfront.net)
+**Judge's 5-minute path:** open the [live app](https://quorum-api-tgw2.onrender.com)
 → sign in with the seeded judge account (`judge@quorum.test` / `Gatekeeper#2026`, verified,
 no email needed) → run the KEMSA pack → read the sourced report → watch the agent halt at
 the gate; signing without a fresh step-up is refused **403**.
