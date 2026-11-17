@@ -4,8 +4,8 @@
  * Wati is the *sending* provider: it carries Quorum's alerts to phone
  * numbers over the WhatsApp Business number connected in the Wati
  * account. The Meta adapter in lib/whatsapp stays as the fallback, and
- * the webhook (inbound STOP/START/HELP + delivery receipts) keeps its
- * Meta shape until the Wati webhook branch lands (docs/WHATSAPP-WATI.md).
+ * the webhook route branches on the payload shape: Meta Graph shape or
+ * this Wati branch (docs/WHATSAPP-WATI.md).
  *
  * Wati v3 contract (docs.wati.io, "Send Template Messages - V3"):
  *
@@ -166,4 +166,157 @@ export function parseWatiSendResponse(data: unknown): WatiSendResult {
       ? { messageId: first.localMessageId }
       : {}),
   };
+}
+
+/* ------------------------------------------------------------------ */
+/* Webhook (docs.wati.io, "Webhooks"): Wati POSTs one event per
+ * callback, named by `eventType`. `localMessageId` is the correlation
+ * id we supplied at send time (stored as the delivery's
+ * providerMessageId); `whatsappMessageId` is the wamid fallback.
+ *
+ * Events handled here:
+ *   inbound   `message` / `newContactMessageReceived` (text, owner:false)
+ *   delivery  `templateMessageSent_v2`   -> sent
+ *             `sentMessageDELIVERED_v2`  -> delivered
+ *             `sentMessageREAD_v2`       -> read
+ *             `sentMessageREPLIED_v2`    -> replied
+ *             `templateMessageFailed`    -> failed (error from statusString)
+ * Anything else — operator events, chatbot events, `ctaUrlClicked` —
+ * is acknowledged silently: the webhook never errors on an unknown
+ * event (Wati retries non-200 deliveries up to 144 times).
+ */
+
+export interface WatiInboundMessage {
+  /** Sender in E.164 ("+" + digits) — same normalisation as Meta inbound. */
+  from: string;
+  text: string;
+  senderName?: string;
+}
+
+export interface WatiStatusEvent {
+  /** Caller-supplied localMessageId — the id we stored at send time. */
+  id: string;
+  /** Wamid fallback when localMessageId was not echoed. */
+  wamid?: string;
+  status: string;
+  error?: string;
+}
+
+const WATI_STATUS_EVENTS: Record<string, string> = {
+  templateMessageSent_v2: "sent",
+  sentMessageDELIVERED_v2: "delivered",
+  sentMessageREAD_v2: "read",
+  sentMessageREPLIED_v2: "replied",
+  templateMessageFailed: "failed",
+};
+
+const WATI_INBOUND_EVENTS = new Set(["message", "newContactMessageReceived"]);
+
+/** Tolerant reader for one Wati webhook payload; returns normalised
+ *  inbound messages and delivery statuses. Unknown events return no
+ *  rows and must be ack'd, never errored. */
+export function parseWatiWebhook(payload: unknown): {
+  messages: WatiInboundMessage[];
+  statuses: WatiStatusEvent[];
+} {
+  const d = (payload ?? {}) as Record<string, unknown>;
+  if (typeof d !== "object" || d === null) return { messages: [], statuses: [] };
+  const eventType = typeof d.eventType === "string" ? d.eventType : "";
+  if (WATI_INBOUND_EVENTS.has(eventType)) {
+    /* Outbound copies of the same conversation must never look like
+     * inbound (owner:true) — only other people's texts can opt out. */
+    if (d.owner === true) return { messages: [], statuses: [] };
+    const waId = typeof d.waId === "string" ? d.waId.replace(/\D/g, "") : "";
+    const text = typeof d.text === "string" ? d.text : "";
+    /* Non-text types (image/voice/…) carry `text: null` — they cannot
+     * mean STOP/START/HELP; only text is actionable here. But a blank
+     * text with a waId still deserves an ack (returned as a message
+     * with empty text; the route treats it as a no-op). */
+    if (!waId) return { messages: [], statuses: [] };
+    return {
+      messages: [
+        {
+          from: `+${waId}`,
+          text,
+          ...(typeof d.senderName === "string" && d.senderName ? { senderName: d.senderName } : {}),
+        },
+      ],
+      statuses: [],
+    };
+  }
+  const status = WATI_STATUS_EVENTS[eventType];
+  if (!status) return { messages: [], statuses: [] };
+  const id = typeof d.localMessageId === "string" ? d.localMessageId : "";
+  const wamid = typeof d.whatsappMessageId === "string" ? d.whatsappMessageId : "";
+  let error: string | undefined;
+  if (status === "failed") {
+    const raw = typeof d.statusString === "string" ? d.statusString : "";
+    const tmpl = typeof d.templateName === "string" ? `${d.templateName}: ` : "";
+    error = raw && raw.toLowerCase() !== "failed" ? `${tmpl}${raw}` : `${tmpl}Wati rejected the template send`;
+  }
+  if (!id && !wamid) return { messages: [], statuses: [] };
+  return {
+    messages: [],
+    statuses: [
+      {
+        id: id || wamid,
+        ...(wamid ? { wamid } : {}),
+        status,
+        ...(error ? { error } : {}),
+      },
+    ],
+  };
+}
+
+/** Body for replying to an inbound WhatsApp message (inside the 24h
+ *  session window, so free-form text is legal). */
+export function buildWatiTextPayload(to: string, text: string): Record<string, unknown> {
+  return { target: normalizeWhatsAppNumber(to) ?? to, text };
+}
+
+export const WATI_TEXT_URL = (cfg: WatiConfig) =>
+  `${cfg.baseUrl.replace(/\/+$/, "")}/api/ext/v3/conversations/messages/text`;
+
+/** Read the v3 templates list and report whether our named template
+ *  exists and whether Meta approved it. `unknown` covers API failures
+ *  (token scope, outage) — the caller must not treat unknown as
+ *  approved, nor as definitively missing. */
+export function findWatiTemplate(templatesJson: unknown, name: string): {
+  state: "approved" | "rejected" | "missing" | "unknown";
+  templateStatus?: string;
+} {
+  const d = (templatesJson ?? {}) as { templates?: unknown };
+  if (!Array.isArray(d.templates)) return { state: "unknown" };
+  const found = d.templates.find(
+    (t) =>
+      t !== null &&
+      typeof t === "object" &&
+      (t as { name?: unknown }).name === name,
+  ) as { status?: unknown } | undefined;
+  if (!found) return { state: "missing" };
+  const status = typeof found.status === "string" ? found.status : "";
+  return {
+    state: status === "approved" ? "approved" : "rejected",
+    ...(status ? { templateStatus: status } : {}),
+  };
+}
+
+export async function checkWatiTemplate(cfg: WatiConfig = watiConfigFromEnv()): Promise<{
+  state: "approved" | "rejected" | "missing" | "unknown";
+  templateStatus?: string;
+}> {
+  if (!cfg.token) return { state: "unknown" };
+  try {
+    const res = await fetch(
+      `${cfg.baseUrl.replace(/\/+$/, "")}/api/ext/v3/messageTemplates`,
+      {
+        headers: { authorization: `Bearer ${cfg.token}`, accept: "application/json" },
+        signal: AbortSignal.timeout(4000),
+      },
+    );
+    if (!res.ok) return { state: "unknown" };
+    return findWatiTemplate((await res.json().catch(() => null)) as unknown, cfg.templateName);
+  } catch {
+    return { state: "unknown" };
+  }
 }

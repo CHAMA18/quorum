@@ -1,9 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import {
   WATI_SEND_URL,
+  WATI_TEXT_URL,
   buildWatiPayload,
+  buildWatiTextPayload,
+  findWatiTemplate,
   isWatiConfigured,
   parseWatiSendResponse,
+  parseWatiWebhook,
   watiStatus,
   type WatiConfig,
 } from "./whatsapp-wati";
@@ -97,5 +101,88 @@ describe("parseWatiSendResponse", () => {
   test("an accepted body with no receivers is still a failure", () => {
     expect(parseWatiSendResponse({ result: true, receivers: [] }).ok).toBe(false);
     expect(parseWatiSendResponse(null).ok).toBe(false);
+  });
+});
+
+describe("parseWatiWebhook", () => {
+  test("an inbound message becomes an E.164 sender + text", () => {
+    const got = parseWatiWebhook({
+      eventType: "message",
+      waId: "260771406330",
+      text: "STOP",
+      senderName: "Chama",
+      owner: false,
+      type: "text",
+      timestamp: "1764238453",
+    });
+    expect(got.messages).toStrictEqual([{ from: "+260771406330", text: "STOP", senderName: "Chama" }]);
+    expect(got.statuses).toStrictEqual([]);
+  });
+
+  test("outbound owner copies and unknown events are never actionable", () => {
+    expect(parseWatiWebhook({ eventType: "message", waId: "260771406330", text: "STOP", owner: true }).messages).toStrictEqual([]);
+    expect(parseWatiWebhook({ eventType: "ctaUrlClicked", waId: "260771406330" })).toStrictEqual({ messages: [], statuses: [] });
+    expect(parseWatiWebhook(null)).toStrictEqual({ messages: [], statuses: [] });
+  });
+
+  test("delivery / read / failed statuses map with the correlation id", () => {
+    expect(
+      parseWatiWebhook({
+        eventType: "sentMessageDELIVERED_v2",
+        statusString: "Delivered",
+        localMessageId: "quorum-1",
+        whatsappMessageId: "wamid.x",
+        timestamp: "1765791326",
+      }).statuses,
+    ).toStrictEqual([{ id: "quorum-1", wamid: "wamid.x", status: "delivered" }]);
+    expect(
+      parseWatiWebhook({ eventType: "templateMessageSent_v2", statusString: "SENT", localMessageId: "quorum-2" }).statuses,
+    ).toStrictEqual([{ id: "quorum-2", status: "sent" }]);
+    const failed = parseWatiWebhook({
+      eventType: "templateMessageFailed",
+      statusString: "Template not found",
+      localMessageId: "quorum-3",
+      templateName: "quorum_alert",
+      whatsappMessageId: "",
+    }).statuses;
+    expect(failed).toStrictEqual([{ id: "quorum-3", status: "failed", error: "quorum_alert: Template not found" }]);
+  });
+
+  test("status events with no correlation id at all are acked silently", () => {
+    expect(parseWatiWebhook({ eventType: "sentMessageREAD_v2", statusString: "Read" }).statuses).toStrictEqual([]);
+  });
+});
+
+describe("buildWatiTextPayload", () => {
+  test("replies target the conversation phone with the given text", () => {
+    expect(buildWatiTextPayload("+260771406330", "STOP received.")).toStrictEqual({
+      target: "260771406330",
+      text: "STOP received.",
+    });
+    expect(WATI_TEXT_URL(cfg())).toBe(
+      "https://live-mt-server.wati.io/api/ext/v3/conversations/messages/text",
+    );
+  });
+});
+
+describe("findWatiTemplate", () => {
+  const list = {
+    templates: [
+      { name: "welcome", status: "approved" },
+      { name: "quorum_alert", status: "approved" },
+    ],
+  };
+  test("approved template is reported approved", () => {
+    expect(findWatiTemplate(list, "quorum_alert")).toStrictEqual({ state: "approved", templateStatus: "approved" });
+  });
+
+  test("unapproved template is rejected, absent template is missing", () => {
+    expect(findWatiTemplate({ templates: [{ name: "quorum_alert", status: "pending" }] }, "quorum_alert").state).toBe("rejected");
+    expect(findWatiTemplate(list, "quorum_missing")).toStrictEqual({ state: "missing" });
+  });
+
+  test("unreadable payloads are unknown, never missing-or-approved", () => {
+    expect(findWatiTemplate(null, "quorum_alert")).toStrictEqual({ state: "unknown" });
+    expect(findWatiTemplate({ templates: "nope" }, "quorum_alert")).toStrictEqual({ state: "unknown" });
   });
 });
