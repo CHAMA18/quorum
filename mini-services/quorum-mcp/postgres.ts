@@ -43,7 +43,21 @@ export async function readSnapshot(): Promise<unknown | null> {
   const sql = await sqlClient();
   if (sql) {
     const rows = await sql`SELECT body FROM quorum_snapshots WHERE id = ${SNAPSHOT_KEY}` as { body: unknown }[];
-    return rows[0]?.body ?? null;
+    const body = rows[0]?.body;
+    /* Some drivers hand back a jsonb column as its text form. A string here
+       would make every `raw.gates` read undefined, and the boot would start
+       empty and then save that emptiness over the record — a silent wipe.
+       Parse it, and treat an unparseable body as "no snapshot" so the JSON
+       import path can still run. */
+    if (typeof body === "string") {
+      try {
+        return JSON.parse(body);
+      } catch {
+        console.error("[store] quorum_snapshots body was not valid JSON — treating as no snapshot, not as empty state");
+        return null;
+      }
+    }
+    return body ?? null;
   }
   return readJsonSnapshot();
 }
