@@ -129,6 +129,30 @@ export const DESK_TOOLS: DeskTool[] = [
       required: ["tenderId"],
     },
   },
+  {
+    name: "ocds_registry",
+    description:
+      "Read the live OCDS market evidence: the Open Contracting Partnership's Data Registry as the desk keeps it — one row per country (datasets, publishers, coverage span, last retrieval, formats, stale flags), across Africa first and then the world, plus the refresh status. The model's OCDS grounding: use this for any question about what OCDS data exists for a country, how fresh it is, or what to cite. Pass country for one country's row.",
+    parameters: {
+      type: "object",
+      properties: {
+        country: { type: "string", description: "Optional country name (case-insensitive), e.g. Kenya, Uganda, Rwanda. Omit for all countries." },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "ocds_feed",
+    description:
+      "Read the OCDS records staged in one tender pack: the OCDS 1.1 compiled records (ocid, tender title/value, bid details with amounts, awards with suppliers) plus the release files the pack carries. Use when the officer wants the model to judge a tender against its actual published OCDS data. Requires the tender reference.",
+    parameters: {
+      type: "object",
+      properties: {
+        ref: { type: "string", description: "The tender reference, e.g. RW-RURA-2027-021." },
+      },
+      required: ["ref"],
+    },
+  },
 ];
 
 /* ── Executors (these stay on the server) ────────────────────────────────── */
@@ -159,6 +183,8 @@ export function canReadDeskTool(name: string, args: Record<string, unknown>, use
     name === "desk_snapshot" || name === "list_evaluations" ? "/api/runs" :
     name === "list_approvals" ? "/api/gates" :
     name === "list_deadlines" ? "/api/cycle/deadlines" :
+    name === "ocds_registry" ? "/api/ocp-africa" :
+    name === "ocds_feed" ? `/api/ocds-feed?ref=${encodeURIComponent(String(args.ref ?? ""))}` :
     name === "committee_state" ? "/api/committee" : null;
   return path !== null && canReadSidecar(user.role, path);
 }
@@ -388,6 +414,85 @@ export async function runDeskTool(name: string, args: Record<string, unknown>, c
             .slice(0, 20)
             .map((m) => ({ name: m.name, role: m.role, status: m.status, chair: !!m.isChair, office: m.office ?? null })),
           openSitting: cm.sitting ? { title: (cm.sitting as { title?: string }).title ?? null, status: (cm.sitting as { status?: string }).status ?? null } : null,
+        });
+      }
+      case "ocds_registry": {
+        const country = String(args.country ?? "").trim().toLowerCase();
+        const snap = await read("/api/ocp-africa");
+        type CountryRow = {
+          country: string;
+          iso: string;
+          datasets: number;
+          stale: number;
+          publishers: string[];
+          coverageFrom: string;
+          coverageTo: string;
+          lastRetrieved: string;
+          formats: string[];
+          searchUrl: string;
+        };
+        const africa = ((snap.countries ?? []) as CountryRow[]);
+        const global = (((snap.global as { countries?: CountryRow[] } | undefined)?.countries) ?? []);
+        const pool = [...africa.map((r) => ({ ...r, scope: "Africa" })), ...global.map((r) => ({ ...r, scope: "Global" }))];
+        const rows = (country ? pool.filter((r) => r.country.toLowerCase() === country || r.iso.toLowerCase() === country) : pool);
+        const refresh = ((snap.refresh ?? {}) as { lastRunAt?: string; nextDueAt?: string; lastError?: string; totalDatasets?: number });
+        return JSON.stringify({
+          source: snap.source ?? null,
+          refresh: {
+            lastRunAt: refresh.lastRunAt ?? null,
+            nextDueAt: refresh.nextDueAt ?? null,
+            lastError: refresh.lastError ?? null,
+          },
+          match: country || null,
+          rows: rows.map((r) => ({
+            country: r.country,
+            iso: r.iso,
+            scope: r.scope,
+            datasets: r.datasets,
+            staleDatasets: r.stale,
+            publishers: r.publishers.slice(0, 4),
+            coverage: `${r.coverageFrom} → ${r.coverageTo}`,
+            lastRetrieved: r.lastRetrieved,
+            formats: r.formats,
+            searchUrl: r.searchUrl,
+          })),
+          /* The snapshot the model is standing on — refresh state, so a
+             stale registry is discussed as stale, never as current. */
+          note: "Live OCP Data Registry snapshot as refreshed by the desk's own scheduler. Stale datasets keep the registry's stale flag. Cite coverage dates verbatim.",
+        });
+      }
+      case "ocds_feed": {
+        const raw = String(args.ref ?? "").trim();
+        if (!raw) return JSON.stringify({ error: "A tender reference is required." });
+        const feed = await read(`/api/ocds-feed?ref=${encodeURIComponent(raw)}`);
+        if (feed.error) return JSON.stringify({ error: String(feed.error) });
+        const records = ((feed.records ?? []) as {
+          ocid?: string;
+          source?: string;
+          tender?: { title?: string; value?: unknown };
+          bids?: { details?: { tenderers?: { name?: string }[]; value?: { amount?: number; currency?: string } }[] };
+          awards?: { suppliers?: { name?: string }[]; value?: { amount?: number; currency?: string } }[];
+        }[]);
+        return JSON.stringify({
+          standard: feed.standard ?? "OCDS 1.1",
+          ref: raw,
+          recordCount: records.length,
+          records: records.slice(0, 10).map((record) => ({
+            ocid: record.ocid ?? null,
+            source: record.source ?? null,
+            tender: record.tender?.title ?? null,
+            tenderValue: record.tender?.value ?? null,
+            bids: (record.bids?.details ?? []).slice(0, 10).map((b) => ({
+              bidder: (b.tenderers ?? [])[0]?.name ?? null,
+              value: b.value ?? null,
+            })),
+            awards: (record.awards ?? []).slice(0, 10).map((a) => ({
+              supplier: (a.suppliers ?? [])[0]?.name ?? null,
+              value: a.value ?? null,
+            })),
+          })),
+          sourceFiles: (feed.sourceFiles ?? []) as string[],
+          note: "The OCDS records staged in this tender's pack. Quote ocids, values and publishers from these records; never invent an ocid.",
         });
       }
       case "find_tender": {
