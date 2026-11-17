@@ -839,6 +839,12 @@ async function runReviewJob(job: DurableJob) {
   const traceId = String(job.payload.traceId ?? `recovery-${runId}`);
   const run = state.runs.find((row) => row.id === runId && (row.workspaceId ?? "demo") === workspaceId);
   if (!run) {
+    console.error("[workflow-worker] review job has no matching run in memory", {
+      jobId: job.id,
+      runId,
+      workspaceId,
+      runs: state.runs.map((row) => ({ id: row.id, workspaceId: row.workspaceId ?? "demo", status: row.status })),
+    });
     await finishDurableJob(job.id);
     return;
   }
