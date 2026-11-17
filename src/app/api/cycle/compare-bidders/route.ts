@@ -429,15 +429,23 @@ export async function POST(request: NextRequest) {
   const bidderInputs = admittedBids.map((bid) => ({
     bidder: bid.bidder,
     criteria: source.notice.criteria.map(({ id }) => ({ id })),
-    recordedEvaluation: {
-      responsiveness: bid.responsiveness,
-      reasons: bid.reasons,
-      technicalScores: bid.technicalScores,
-      technicalTotal: bid.technicalTotal,
-      financial: bid.financial ?? null,
-      total: bid.total ?? null,
-      verdict: bid.verdict,
-    },
+    /* Committee scores are context only where a committee has actually scored.
+       Sending the empty scoring grid made a small model copy that shape instead
+       of the answer: it returned criterion ids with no alignment and evidence
+       objects carrying relevance/decision keys. */
+    ...(bid.technicalScores?.some((score) => Number(score.score) > 0) || bid.total != null
+      ? {
+          recordedEvaluation: {
+            responsiveness: bid.responsiveness,
+            reasons: bid.reasons,
+            technicalScores: bid.technicalScores,
+            technicalTotal: bid.technicalTotal,
+            financial: bid.financial ?? null,
+            total: bid.total ?? null,
+            verdict: bid.verdict,
+          },
+        }
+      : {}),
     documents: documents.filter((document) => document.bidder.toLowerCase() === bid.bidder.toLowerCase()),
   }));
   /* Small open-weight models paraphrase when asked to retrieve a quotation, and
