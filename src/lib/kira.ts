@@ -57,6 +57,13 @@ export function kiraConfigFromEnv(env: Record<string, string | undefined> = proc
   };
 }
 
+/** A slow open-weight model on a laptop needs minutes for a full review; a
+    hosted endpoint answers in seconds. KIRA_TIMEOUT_MS sets the default. */
+export function kiraTimeoutMs(): number {
+  const configured = Number(process.env.KIRA_TIMEOUT_MS);
+  return Number.isFinite(configured) && configured >= 5_000 ? configured : 45_000;
+}
+
 export type KiraToolCall = { id: string; name: string; args: Record<string, unknown> };
 export type KiraRawToolCall = { id: string; type: "function"; function: { name: string; arguments: string } };
 
@@ -121,6 +128,17 @@ export interface KiraGenerationOptions {
   timeoutMs?: number;
 }
 
+/* Some OpenAI-compatible endpoints refuse `reasoning_effort` for a model that
+   cannot think — Ollama answers 400 "does not support thinking" for
+   llama3.2:3b. A review must not fail over an optional knob, so remember the
+   endpoint+model pair and stop sending it there. */
+const reasoningRefused = new Set<string>();
+
+function reasoningUnsupported(status: number, detail: string): boolean {
+  if (status !== 400 && status !== 422) return false;
+  return /does not support thinking|unsupported (?:reasoning|thinking)|reasoning[^.]{0,40}not supported/i.test(detail);
+}
+
 export async function kiraChat(
   cfg: KiraConfig,
   messages: KiraMessage[],
@@ -138,27 +156,39 @@ export async function kiraChat(
       }
     : undefined;
 
-  const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: { authorization: `Bearer ${cfg.apiKey}`, "content-type": "application/json" },
-    body: JSON.stringify({
-      model: cfg.model,
-      messages,
-      ...(tools.length ? {
-        tools: tools.map((tool) => ({ type: "function", function: { name: tool.name, description: tool.description, parameters: tool.parameters } })),
-        tool_choice: "auto",
-      } : {}),
-      ...(generation.maxOutputTokens ? { max_completion_tokens: generation.maxOutputTokens } : {}),
-      ...(generation.reasoningEffort ? { reasoning_effort: generation.reasoningEffort } : {}),
-      ...(generation.safetyIdentifier ? { safety_identifier: generation.safetyIdentifier } : {}),
-      store: false,
-      ...(responseFormat ? { response_format: responseFormat } : {}),
-    }),
-    cache: "no-store",
-    signal: AbortSignal.timeout(generation.timeoutMs ?? 45_000),
-  });
+  const endpointKey = `${cfg.baseUrl}|${cfg.model}`;
+  const send = (withReasoning: boolean) =>
+    fetch(`${cfg.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${cfg.apiKey}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        model: cfg.model,
+        messages,
+        ...(tools.length ? {
+          tools: tools.map((tool) => ({ type: "function", function: { name: tool.name, description: tool.description, parameters: tool.parameters } })),
+          tool_choice: "auto",
+        } : {}),
+        ...(generation.maxOutputTokens ? { max_completion_tokens: generation.maxOutputTokens } : {}),
+        ...(withReasoning && generation.reasoningEffort ? { reasoning_effort: generation.reasoningEffort } : {}),
+        ...(generation.safetyIdentifier ? { safety_identifier: generation.safetyIdentifier } : {}),
+        store: false,
+        ...(responseFormat ? { response_format: responseFormat } : {}),
+      }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(generation.timeoutMs ?? kiraTimeoutMs()),
+    });
+
+  let res = await send(Boolean(generation.reasoningEffort) && !reasoningRefused.has(endpointKey));
+  let detail = "";
   if (!res.ok) {
-    const detail = await res.text().catch(() => "");
+    detail = await res.text().catch(() => "");
+    if (generation.reasoningEffort && reasoningUnsupported(res.status, detail)) {
+      reasoningRefused.add(endpointKey);
+      res = await send(false);
+      detail = res.ok ? "" : await res.text().catch(() => "");
+    }
+  }
+  if (!res.ok) {
     throw new Error(`Kira chat failed (HTTP ${res.status})${detail ? `: ${detail.slice(0, 200)}` : ""}`);
   }
   const data = (await res.json().catch(() => null)) as {

@@ -17,6 +17,18 @@ export interface BidReviewSource {
   bidders: { bidder: string; criteria: { id: string }[]; documents: { citation: string; text: string }[] }[];
 }
 
+/** A model copying a line often normalises its markdown dressing — heading
+ * depth, wrapping, repeated spaces. Compare on the text itself so a real line
+ * still verifies, while a reworded sentence keeps failing. */
+function comparableEvidence(text: string): string {
+  return text
+    .replace(/\r/g, "")
+    .replace(/\s+/g, " ")
+    .replace(/^[\s#>*-]+/, "")
+    .trim()
+    .toLowerCase();
+}
+
 export function validateBidReviewGrounding(result: GroundedBidAssessment, input: BidReviewSource): string | null {
   const expectedBidders = new Map(input.bidders.map((bid) => [bid.bidder.toLowerCase(), bid]));
   if (result.bidders.length !== expectedBidders.size) return "Kira did not assess every admitted bidder.";
@@ -39,7 +51,11 @@ export function validateBidReviewGrounding(result: GroundedBidAssessment, input:
       }
       for (const evidence of criterion.evidence) {
         const source = sourceBid.documents.find((document) => document.citation === evidence.citation);
-        if (!evidence.quote.trim() || !source || !source.text.includes(evidence.quote)) {
+        const quote = evidence.quote.trim();
+        const found = source
+          ? source.text.includes(quote) || comparableEvidence(source.text).includes(comparableEvidence(quote))
+          : false;
+        if (!quote || !found) {
           return `Kira returned an unsupported source quote for ${assessed.bidder}. The assessment was not shown.`;
         }
       }

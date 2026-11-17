@@ -20,6 +20,11 @@ describe("bid review source grounding", () => {
     const result = valid(); result.bidders[0].criteria[0].evidence = [];
     expect(validateBidReviewGrounding(result, sources)).toContain("supported without source evidence");
   });
+  test("accepts a real line copied with different markdown or wrapping", () => {
+    const result = valid();
+    result.bidders[0].criteria[0].evidence[0].quote = "##   Delivery is committed\n within 30 days.";
+    expect(validateBidReviewGrounding(result, sources)).toBeNull();
+  });
   test("refuses invented quotations", () => {
     const result = valid(); result.bidders[0].criteria[0].evidence[0].quote = "Delivery is guaranteed in 2 days.";
     expect(validateBidReviewGrounding(result, sources)).toContain("unsupported source quote");
