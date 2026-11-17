@@ -13,7 +13,6 @@ import argparse
 import gzip
 import hashlib
 import json
-import os
 import re
 import shutil
 import sqlite3
@@ -308,119 +307,6 @@ def retrieve(args: argparse.Namespace) -> None:
     db.close()
 
 
-def env_file_values(path: Path) -> dict[str, str]:
-    values: dict[str, str] = {}
-    if not path.is_file():
-        return values
-    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#") or "=" not in stripped:
-            continue
-        name, value = stripped.split("=", 1)
-        if name.strip() not in {
-            "MODEL_API_KEY", "META_MODEL_API_KEY", "MUSE_API_KEY",
-            "MUSE_BASE_URL", "MUSE_MODEL",
-        }:
-            continue
-        value = value.strip()
-        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
-            value = value[1:-1]
-        values[name.strip()] = value
-    return values
-
-
-def consult_meta(args: argparse.Namespace) -> None:
-    """Answer a retrieval question with Meta Model API inference (not training)."""
-    env = env_file_values(Path(args.env_file))
-    api_key = next((os.environ.get(key) or env.get(key) for key in (
-        "MODEL_API_KEY", "META_MODEL_API_KEY", "MUSE_API_KEY",
-    ) if os.environ.get(key) or env.get(key)), None)
-    if not api_key:
-        raise SystemExit("Meta Model API key is not configured; set MODEL_API_KEY or MUSE_API_KEY in the environment or env file.")
-    base_url = (os.environ.get("MUSE_BASE_URL") or env.get("MUSE_BASE_URL") or "https://api.meta.ai/v1").rstrip("/")
-    model = os.environ.get("MUSE_MODEL") or env.get("MUSE_MODEL") or args.model
-    if not model.startswith("muse-"):
-        raise SystemExit("consult-meta only accepts Meta Muse model IDs; set MUSE_MODEL to a Muse model or use --model muse-spark-1.3.")
-
-    db = sqlite3.connect(args.db)
-    db.row_factory = sqlite3.Row
-    words = re.findall(r"[\w-]+", args.query, flags=re.UNICODE)
-    if not words:
-        raise SystemExit("query must contain searchable words")
-    fts_query = " OR ".join('"' + word.replace('"', '""') + '"' for word in words[:24])
-    rows = db.execute("""
-        SELECT ocid,release_id,title,buyer,body,source_url,license,
-               bm25(search,0,0,0,7.0,3.0,1.0,0,0) AS score
-        FROM search WHERE search MATCH ? AND country=? ORDER BY score LIMIT ?
-    """, (fts_query, args.country, args.limit)).fetchall()
-    db.close()
-    sources = [{
-        "jurisdiction": args.country,
-        "ocid": row["ocid"],
-        "release_id": row["release_id"],
-        "title": row["title"],
-        "buyer": row["buyer"],
-        "excerpt": row["body"][:1000],
-        "dataset": row["source_url"],
-        "license": row["license"],
-    } for row in rows]
-    if not sources:
-        print(json.dumps({"model": model, "query": args.query, "answer": "No matching records were found in the selected jurisdiction.", "sources": []}, indent=2))
-        return
-
-    payload = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": (
-                "You are a public procurement records research assistant. Answer only from the retrieved "
-                "source excerpts. State the jurisdiction. Cite each factual claim with the OCID and release ID. "
-                "Do not infer legal compliance, bidder eligibility, fraud, value-for-money, or award quality from "
-                "these records. If the sources do not answer the question, say so."
-            )},
-            {"role": "user", "content": json.dumps({"question": args.query, "retrieved_sources": sources}, ensure_ascii=False)},
-        ],
-        "temperature": 0.1,
-        "max_tokens": args.max_tokens,
-    }
-    request = urllib.request.Request(
-        base_url + "/chat/completions",
-        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=90) as response:
-            result = json.loads(response.read())
-    except urllib.error.HTTPError as error:
-        # Do not echo provider bodies: they can include request data or account details.
-        raise SystemExit(f"Meta Model API returned HTTP {error.code}.") from None
-    except urllib.error.URLError as error:
-        raise SystemExit(f"Meta Model API connection failed: {error.reason}") from None
-
-    choice = (result.get("choices") or [{}])[0]
-    message = mapping(choice.get("message"))
-    answer_value = message.get("content")
-    if isinstance(answer_value, list):
-        answer = "".join(
-            part.get("text", "") for part in answer_value
-            if isinstance(part, dict) and part.get("type") in {"text", "output_text"}
-        )
-    elif isinstance(answer_value, str):
-        answer = answer_value
-    else:
-        answer = result.get("output_text", "")
-    if not answer and choice.get("finish_reason") == "length":
-        raise SystemExit("Meta Model API exhausted the output-token budget before returning an answer; retry with a larger --max-tokens value.")
-    print(json.dumps({
-        "model": result.get("model", model),
-        "finish_reason": choice.get("finish_reason"),
-        "usage": result.get("usage"),
-        "query": args.query,
-        "answer": answer,
-        "sources": sources,
-    }, ensure_ascii=False, indent=2))
-
-
 def prepare(args: argparse.Namespace) -> None:
     input_path = Path(args.input)
     # Pass one deterministically selects unique OCIDs; pass two keeps only
@@ -514,15 +400,6 @@ def main() -> None:
     search.add_argument("--query", required=True)
     search.add_argument("--limit", type=int, default=5)
     search.set_defaults(func=retrieve)
-    meta = sub.add_parser("consult-meta", help="answer from retrieved records using Meta Model API inference")
-    meta.add_argument("--db", default=str(DEFAULT_DATA_DIR / "zambia.sqlite3"))
-    meta.add_argument("--country", default=COUNTRY)
-    meta.add_argument("--query", required=True)
-    meta.add_argument("--limit", type=int, default=4)
-    meta.add_argument("--max-tokens", type=int, default=4096)
-    meta.add_argument("--model", default="muse-spark-1.3")
-    meta.add_argument("--env-file", default=".env.local")
-    meta.set_defaults(func=consult_meta)
     data = sub.add_parser("prepare", help="build train/valid/test chat JSONL split by OCID")
     data.add_argument("--input", required=True, help="source OCDS JSONL or JSONL.GZ file")
     data.add_argument("--output", default=str(DEFAULT_DATA_DIR / "sft"))

@@ -1754,25 +1754,6 @@ Bun.serve({
                   note: String((body.vision as Record<string, unknown>).note ?? "").slice(0, 220) || undefined,
                 }
               : undefined,
-          museVision:
-            body.museVision && typeof body.museVision === "object"
-              ? {
-                  model: String((body.museVision as Record<string, unknown>).model ?? "").slice(0, 60) || undefined,
-                  ok: (body.museVision as Record<string, unknown>).ok === true,
-                  pages: Array.isArray((body.museVision as Record<string, unknown>).pages)
-                    ? ((body.museVision as Record<string, unknown>).pages as unknown[]).filter((page): page is number => Number.isInteger(page) && Number(page) > 0).slice(0, 5)
-                    : [],
-                  usage: (body.museVision as Record<string, unknown>).usage && typeof (body.museVision as Record<string, unknown>).usage === "object"
-                    ? {
-                        promptTokens: Number(((body.museVision as Record<string, unknown>).usage as Record<string, unknown>).promptTokens) || 0,
-                        completionTokens: Number(((body.museVision as Record<string, unknown>).usage as Record<string, unknown>).completionTokens) || 0,
-                      }
-                    : undefined,
-                  latencyMs: Number((body.museVision as Record<string, unknown>).latencyMs) || 0,
-                  note: String((body.museVision as Record<string, unknown>).note ?? "").slice(0, 300) || undefined,
-                  error: String((body.museVision as Record<string, unknown>).error ?? "").slice(0, 240) || undefined,
-                }
-              : undefined,
         },
         status: "OK",
         durationMs: Math.max(0, Math.min(600_000, Number(body.durationMs) || 0)),

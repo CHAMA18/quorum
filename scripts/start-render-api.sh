@@ -30,7 +30,7 @@ mapfile -t quorum_runtime_secrets < <(
     const crypto = require("node:crypto");
     const fs = require("node:fs");
     const path = require("node:path");
-    const names = ["GATE_SECRET", "ATTEST_SECRET", "STEP_UP_SECRET", "QUORUM_DOWNLOAD_SECRET", "NOTIFY_SECRET", "AUDIT_SECRET", "MUSE_ACTION_SECRET", "BID_VAULT_SECRET"];
+    const names = ["GATE_SECRET", "ATTEST_SECRET", "STEP_UP_SECRET", "QUORUM_DOWNLOAD_SECRET", "NOTIFY_SECRET", "AUDIT_SECRET", "ASSISTANT_ACTION_SECRET", "BID_VAULT_SECRET"];
     const file = path.join(process.env.QUORUM_DATA_DIR, "runtime-secrets.json");
     let stored = {};
     try { stored = JSON.parse(fs.readFileSync(file, "utf8")); } catch {}
@@ -58,7 +58,7 @@ export STEP_UP_SECRET="${STEP_UP_SECRET:-${quorum_runtime_secrets[2]}}"
 export QUORUM_DOWNLOAD_SECRET="${QUORUM_DOWNLOAD_SECRET:-${quorum_runtime_secrets[3]}}"
 export NOTIFY_SECRET="${NOTIFY_SECRET:-${quorum_runtime_secrets[4]}}"
 export AUDIT_SECRET="${AUDIT_SECRET:-${quorum_runtime_secrets[5]}}"
-export MUSE_ACTION_SECRET="${MUSE_ACTION_SECRET:-${quorum_runtime_secrets[6]}}"
+export ASSISTANT_ACTION_SECRET="${ASSISTANT_ACTION_SECRET:-${quorum_runtime_secrets[6]}}"
 export BID_VAULT_SECRET="${BID_VAULT_SECRET:-${quorum_runtime_secrets[7]}}"
 
 # Seed only the public sample tender documents on first deploy. Runtime state,

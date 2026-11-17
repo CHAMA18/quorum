@@ -5,7 +5,7 @@ import json,subprocess
 R=Path(__file__).resolve().parent.parent;P=R/'demo-video/quorum-recordings';A=P/'assets';review=P/'review';overlay=review/'caption-overlays';overlay.mkdir(parents=True,exist_ok=True)
 W,H=3840,2160
 captions=json.loads((P/'captions.json').read_text())
-labels=[(20,45,'PART 1 · RECORDED SUPPLIER WORKFLOW'),(45,72,'EARLIER RECORDING · ILLUSTRATIVE FIELDS VARY'),(72,110,'PART 2 · READ-ONLY BID REVIEW'),(110,134,'UNTITLED VIDEO · COMMITTEE + MEMBER REGISTRATION'),(134,142,'PART 2 · EVALUATION INTEGRITY'),(105,110,'SEPARATE LIVE CHECK: MUSE-SPARK-1.3 · SOURCE QUOTES VERIFIED')]
+labels=[(20,45,'PART 1 · RECORDED SUPPLIER WORKFLOW'),(45,72,'EARLIER RECORDING · ILLUSTRATIVE FIELDS VARY'),(72,110,'PART 2 · READ-ONLY BID REVIEW'),(110,134,'UNTITLED VIDEO · COMMITTEE + MEMBER REGISTRATION'),(134,142,'PART 2 · EVALUATION INTEGRITY'),(105,110,'SEPARATE LIVE CHECK: HOSTED MODEL · SOURCE QUOTES VERIFIED')]
 def font(size,weight):
  f=ImageFont.truetype(str(A/'Montserrat.ttf'),size)
  if hasattr(f,'get_variation_axes'):

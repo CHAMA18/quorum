@@ -19,12 +19,12 @@ Quorum now has two Napster surfaces:
 
 1. **Diagnostics** — verify the key, list companions, and probe whether the key
    can actually start a text session.
-2. **Speak to Barry** — a server-minted, text-only Napster WebSocket session
+2. **Speak to the desk agent** — a server-minted, text-only Napster WebSocket session
    shown in the Support tab.
 
 The Napster channel is **conversational only**. It receives no Quorum tender,
 approval, supplier, deadline, audit or committee data, and it cannot change a
-Quorum record. The separate **Message Barry** path remains the Quorum desk
+Quorum record. The separate **Message the desk agent** path remains the Quorum desk
 agent: it reads live records and can stage a signed action for explicit human
 confirmation.
 
@@ -36,8 +36,8 @@ confirmation.
 | `src/lib/napster.test.ts` | Unit tests for auth header, mapping, pagination clamp, error mapping, key non-disclosure, unsafe-id rejection, non-JSON and network failures, session creation, agent preference, inactive-subscription mapping, missing target and readiness cleanup. |
 | `src/app/api/integrations/napster/route.ts` | `GET` — owner/admin diagnostics. `POST` — create and immediately end a text session to prove the key can start conversations. |
 | `src/app/api/napster/session/route.ts` | Authenticated `POST` that mints a short-lived text session and returns only its WebSocket URL. |
-| `src/components/quorum/use-napster-barry.ts` | Browser WebSocket client: opens the session, sends messages, streams `message_received` text, handles session errors and cleanup. |
-| `src/components/quorum/muse-assistant.tsx` | **Speak to Barry** card, live Napster state, status banner, fallback to the Quorum desk agent. |
+| `src/components/quorum/use-napster-session.ts` | Browser WebSocket client: opens the session, sends messages, streams `message_received` text, handles session errors and cleanup. |
+| `src/components/quorum/assistant-bubble.tsx` | **Speak to the desk agent** card, live Napster state, status banner, fallback to the Quorum desk agent. |
 | `.env.example` | Documents `NAPSTER_API_KEY`, `NAPSTER_TIMEOUT_MS`, `NAPSTER_AGENT_ID`, `NAPSTER_COMPANION_ID` and `NAPSTER_VOICE_ID`. |
 
 Deliberately **not** included: companion/agent creation from Quorum, knowledge
@@ -101,8 +101,8 @@ POST /public/ws-connections
 ```
 
 The per-session path is how the current project runs while it has no Omniagent.
-The instructions still make the agent speak as Barry; the companion supplies
-the underlying identity and voice, which is not displayed in text mode.
+The session instructions make the agent speak as Quorum's desk agent; the companion
+supplies the underlying identity and voice, which is not displayed in text mode.
 
 At the time of writing, creating an Omniagent returned
 `409 AgentLimitExceeded`, and per-session creation returned
@@ -164,7 +164,7 @@ Signed-in staff only. Mints one text session and returns:
     "companionId": "companion_..."
   },
   "transport": "napster",
-  "fallback": "muse"
+  "fallback": "assistant"
 }
 ```
 
@@ -172,11 +172,11 @@ Rate limits: 6 sessions/minute per user and one upstream connection request
 every 1.5 seconds across the deployment, because Napster limits connection
 creation to roughly one request per second per key. The URL is returned with
 `cache-control: no-store` and `referrer-policy: no-referrer`. Failure responses
-include `fallback: "muse"` so the client can continue in Quorum chat.
+include `fallback: "assistant"` so the client can continue in Quorum chat.
 
-## 5. The Speak to Barry flow
+## 5. The Speak to the desk agent flow
 
-1. The officer opens **Support → Speak to Barry**.
+1. The officer opens **Support → Speak to the desk agent**.
 2. The client calls `POST /api/napster/session`.
 3. The server creates a text-only session and decodes the returned base64 token
    to get its WebSocket URL. Only the URL leaves the server.
@@ -188,7 +188,7 @@ include `fallback: "muse"` so the client can continue in Quorum chat.
    ```
 6. Assistant text arrives as `message_received` events with
    `data.message.action` of `delta` (append) or `completed` (replace). The panel
-   renders it in the same Barry bubble.
+   renders it in the same assistant bubble.
 7. The status banner shows **Live on Napster** and offers **Use Quorum chat**.
    Switching closes the Napster socket.
 8. If session creation or the WebSocket fails, the panel shows the reason and
@@ -197,7 +197,7 @@ include `fallback: "muse"` so the client can continue in Quorum chat.
 
 Napster's agent has **no Quorum tools**. It cannot read the desk, stage a
 review, approve, reject, award, sign or change a record. If asked for live data
-or an action, its instructions direct the officer to **Message Barry**.
+or an action, its instructions direct the officer to **Message the desk agent**.
 
 ## 6. Verify it
 
@@ -254,13 +254,13 @@ session URL. Error text is bounded to 240 characters.
 ## 8. Data boundary and privacy
 
 - **No Quorum desk records leave Quorum in this channel.** The only outbound
-  session request contains a companion/agent id, a voice id, Barry's
+  session request contains a companion/agent id, a voice id, the desk agent's
   instructions and an opening instruction. It contains no tender, bidder,
   supplier, document, gate, deadline, session or user record.
 - **Napster records the conversation.** The text session and transcript live in
   Napster's project. Officers should not paste confidential documents or
   personal data into the Napster channel; the UI says it is conversational and
-  points to Message Barry for desk work.
+  points to Message the desk agent for desk work.
 - **No API key in the browser.** The browser receives only the short-lived
   session URL. The URL is a bearer secret; it is not logged and is returned
   with no-store headers.
@@ -279,8 +279,8 @@ The Napster channel is a separate agent with no authenticated access to the
 Quorum sidecar and no signed-proposal tools. Wiring those in would require a
 public, per-user tool endpoint and a new privacy review. Until then:
 
-- **Speak to Barry** = Napster conversation, no desk data, no writes.
-- **Message Barry** = Quorum desk agent, live reads, one consent-gated
+- **Speak to the desk agent** = Napster conversation, no desk data, no writes.
+- **Message the desk agent** = Quorum desk agent, live reads, one consent-gated
   `launch_review` action, and a signed confirmation card.
 
 That separation is deliberate: the conversational channel cannot become a
@@ -289,11 +289,11 @@ back door around the human gate.
 ## 10. Removing the integration
 
 1. Delete `src/lib/napster.ts`, `src/lib/napster.test.ts`,
-   `src/components/quorum/use-napster-barry.ts`,
+   `src/components/quorum/use-napster-session.ts`,
    `src/app/api/napster/` and `src/app/api/integrations/napster/`.
 2. Remove `src/lib/napster.test.ts` from the `test` script in `package.json`.
-3. Remove the `useNapsterBarry` import and Napster state from
-   `src/components/quorum/muse-assistant.tsx`.
+3. Remove the `useNapsterSession` import and Napster state from
+   `src/components/quorum/assistant-bubble.tsx`.
 4. Remove `NAPSTER_API_KEY`, `NAPSTER_TIMEOUT_MS`, `NAPSTER_AGENT_ID`,
    `NAPSTER_COMPANION_ID` and `NAPSTER_VOICE_ID` from the environment and
    `.env.example`.

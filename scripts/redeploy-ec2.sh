@@ -6,7 +6,7 @@
 #   bash scripts/redeploy-ec2.sh
 #
 # It stops the web service, builds the Next standalone server, verifies that
-# the Muse routes are actually in the build, starts the services again and
+# the assistant routes are actually in the build, starts the services again and
 # probes the routes. The previous .next is kept as .next.prev and restored if
 # the build, the start or the probes fail.
 #
@@ -111,11 +111,11 @@ fi
 say "Building the standalone server"
 bun run build
 
-say "Verifying the Muse routes are present in the standalone build"
+say "Verifying the assistant routes are present in the standalone build"
 for route in chat speak transcribe; do
-  path=".next/standalone/.next/server/app/api/muse/${route}/route.js"
-  [ -f "$path" ] || fail "missing ${path} — the build does not expose /api/muse/${route}"
-  echo "  ok  /api/muse/${route}"
+  path=".next/standalone/.next/server/app/api/assistant/${route}/route.js"
+  [ -f "$path" ] || fail "missing ${path} — the build does not expose /api/assistant/${route}"
+  echo "  ok  /api/assistant/${route}"
 done
 
 say "Starting ${WEB_SERVICE}"
@@ -142,14 +142,14 @@ if [ "$root_code" != "200" ]; then
   fail "the new build did not serve the homepage"
 fi
 
-say "Probing the Muse routes (404 means an old build is still serving)"
+say "Probing the assistant routes (404 means an old build is still serving)"
 for route in chat speak transcribe; do
   code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 -X POST \
     -H 'content-type: application/json' --data '{}' \
-    "$BASE_URL/api/muse/${route}" 2>/dev/null || echo 000)
-  printf '  /api/muse/%-10s %s\n' "$route" "$code"
+    "$BASE_URL/api/assistant/${route}" 2>/dev/null || echo 000)
+  printf '  /api/assistant/%-10s %s\n' "$route" "$code"
   if [ "$code" = "404" ] || [ "$code" = "000" ]; then
-    fail "/api/muse/${route} is not being served (HTTP ${code})"
+    fail "/api/assistant/${route} is not being served (HTTP ${code})"
   fi
 done
 
@@ -163,7 +163,7 @@ trap - ERR
 say "Redeploy complete"
 echo "  build:    $(cat .next/BUILD_ID)"
 echo "  service:  ${WEB_SERVICE}"
-echo "  routes:   /api/muse/{chat,speak,transcribe} are served"
+echo "  routes:   /api/assistant/{chat,speak,transcribe} are served"
 if [ -d "$PREV" ]; then
   echo "  rollback: rm -rf .next && mv .next.prev .next && sudo systemctl restart ${WEB_SERVICE}"
 fi

@@ -16,7 +16,7 @@ import { toolLog, type Run } from "./store";
  * which path answered and how many spans were redacted.
  */
 
-export type ModelProvider = "ollama" | "meta-model-api" | "kira" | "openai-compatible";
+export type ModelProvider = "ollama" | "kira" | "openai-compatible";
 export type ModelProviderOrTemplate = ModelProvider | "template";
 export type ModelMode = "llm" | "template";
 
@@ -25,7 +25,7 @@ export interface LlmConfig {
   model: string;
   apiKey?: string;
   provider: ModelProvider;
-  configuredBy: "llm-env" | "meta-model-api" | "kira-env";
+  configuredBy: "llm-env" | "kira-env";
 }
 
 export interface ModelStatus {
@@ -71,7 +71,6 @@ export interface RunModelAttribution {
 
 export function providerLabel(provider: ModelProviderOrTemplate): string {
   if (provider === "ollama") return "Ollama · local";
-  if (provider === "meta-model-api") return "Meta Model API · hosted";
   if (provider === "kira") return "Kira · open weights";
   if (provider === "openai-compatible") return "OpenAI-compatible endpoint";
   return "Template fallback";
@@ -97,15 +96,6 @@ export function modelEndpoint(baseUrl: string): string {
 export function modelProvider(baseUrl: string, model: string): ModelProvider {
   const host = hostOf(baseUrl);
   const raw = `${baseUrl} ${model}`.toLowerCase();
-  if (
-    host === "api.meta.ai" ||
-    host.endsWith(".api.meta.ai") ||
-    host === "api.llama.com" ||
-    host.endsWith(".api.llama.com") ||
-    host === "dev.meta.ai"
-  ) {
-    return "meta-model-api";
-  }
   if (raw.includes("11434") || raw.includes("ollama")) return "ollama";
   if (model.toLowerCase().startsWith("kira")) return "kira";
   return "openai-compatible";
@@ -119,15 +109,13 @@ export function modelProvider(baseUrl: string, model: string): ModelProvider {
  *      default is Ollama at http://localhost:11434/v1 with llama3.2:3b.
  *   2. LLM_BASE_URL + LLM_MODEL — the legacy explicit endpoint (any
  *      OpenAI-compatible service). Kept for existing deployments.
- *   3. No endpoint at all, but a Meta/Muse key — Meta Model API with
- *      META_MODEL / MUSE_MODEL (legacy voice/vision deployments).
- *   4. Nothing — template fallback.
+ *   3. Nothing — template fallback.
  *
  * A half-configured pair returns null rather than silently sending procurement
  * data to a different provider.
  */
 export function llmConfigFromEnv(env: Record<string, string | undefined> = process.env): LlmConfig | null {
-  const sharedKey = env.LLM_API_KEY?.trim() || env.META_MODEL_API_KEY?.trim() || env.MUSE_API_KEY?.trim() || undefined;
+  const sharedKey = env.LLM_API_KEY?.trim() || undefined;
   const kiraBase = env.KIRA_BASE_URL?.trim();
   const kiraModel = env.KIRA_MODEL?.trim();
   const kiraKey = env.KIRA_API_KEY?.trim() || sharedKey;
@@ -157,17 +145,7 @@ export function llmConfigFromEnv(env: Record<string, string | undefined> = proce
   }
   if (baseUrl || model) return null;
 
-  const metaKey = env.META_MODEL_API_KEY?.trim() || env.MUSE_API_KEY?.trim() || env.LLM_API_KEY?.trim();
-  if (!metaKey) return null;
-  const metaBase = env.META_MODEL_BASE_URL?.trim() || env.MUSE_BASE_URL?.trim() || "https://api.meta.ai/v1";
-  const metaModel = env.META_MODEL?.trim() || env.MUSE_MODEL?.trim() || "muse-spark-1.3";
-  return {
-    baseUrl: metaBase,
-    model: metaModel,
-    apiKey: metaKey,
-    provider: modelProvider(metaBase, metaModel),
-    configuredBy: "meta-model-api",
-  };
+  return null;
 }
 
 /**

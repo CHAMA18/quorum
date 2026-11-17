@@ -141,7 +141,7 @@ purpose without its own key falls back to `GATE_SECRET`.
 | Download links | `QUORUM_DOWNLOAD_SECRET` | Signed, expiring tender links |
 | Notifications | `NOTIFY_SECRET` | Internal event callbacks |
 | Audit epochs and anchors | `AUDIT_SECRET` | Segment register, head anchors |
-| Assistant actions | `MUSE_ACTION_SECRET` | Staged proposals |
+| Assistant actions | `ASSISTANT_ACTION_SECRET` | Staged proposals |
 
 In production a missing key is a hard refusal, not a dev default. The same
 applies to `GATE_SECRET` itself.

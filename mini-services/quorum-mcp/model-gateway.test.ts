@@ -105,7 +105,7 @@ describe("the gateway call path", () => {
     const n = toolLog.length;
     await expect(
       callModel(
-        { baseUrl: HOSTED, model: "llama-4", provider: "meta-model-api", apiKey: "k" },
+        { baseUrl: HOSTED, model: "llama-4", provider: "openai-compatible", apiKey: "k" },
         [{ role: "user", content: "draft a clause" }],
         async () => {
           throw new Error("must not be called");
@@ -124,24 +124,22 @@ describe("the gateway call path", () => {
     const bodies: string[] = [];
     const urls: string[] = [];
     const completion = await callModel(
-      { baseUrl: HOSTED, model: "llama-4", provider: "meta-model-api", apiKey: "k" },
+      { baseUrl: HOSTED, model: "llama-4", provider: "openai-compatible", apiKey: "k" },
       [{ role: "user", content: "Acme Supplies bid ZMW 1,250,000 against the ceiling." }],
-      /* meta-model-api is spoken to over the Responses API: the completion
-         arrives as output_text and the counts as input/output_tokens. */
       async (url, init) => {
         urls.push(String(url));
         bodies.push(String(init?.body ?? ""));
         return httpOk({
           model: "llama-4",
-          output_text: "{}",
-          usage: { input_tokens: 12, output_tokens: 4 },
+          choices: [{ message: { content: "{}" } }],
+          usage: { prompt_tokens: 12, completion_tokens: 4 },
         });
       },
       { purpose: "plan_review", runId: "run_2", policy: HOSTED_POLICY },
     );
-    expect(urls[0]).toBe(`${HOSTED}/responses`);
+    expect(urls[0]).toBe(`${HOSTED}/chat/completions`);
     expect(completion.content).toBe("{}");
-    expect(completion.api).toBe("responses");
+    expect(completion.api).toBe("chat_completions");
     const body = bodies[0];
     expect(body).not.toContain("Acme Supplies");
     expect(body).not.toContain("1,250,000");

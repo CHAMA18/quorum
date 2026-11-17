@@ -455,9 +455,9 @@ New cross-cutting services:
 **Build**
 1. Add `WorkspaceSettings.residency: "IN_REGION" | "HOSTED" | "HYBRID"`, `allowedProviders[]`, `redactionPolicy`.
 2. Add `src/lib/model-gateway.ts`: resolves the provider from policy; refuses a hosted call when policy is `IN_REGION`; redacts supplier names, identifiers and prices for `HOSTED` unless explicitly allowed; records `{ provider, model, purpose, tokens, latency, redactions, at }`.
-3. Route Muse chat, minutes, drafting and transcription through the gateway. No direct `fetch` to a model endpoint from a feature module.
+3. Route assistant chat, minutes, drafting and transcription through the gateway. No direct `fetch` to a model endpoint from a feature module.
 4. Add a model-call audit entry and a visible provenance badge on every generated artifact.
-5. Add a key-rotation and secrets inventory: `MUSE_API_KEY`, `LLM_API_KEY`, `QUORUM_BID_KEY`, `GATE_SECRET`, `QUORUM_EDGE_SECRET`; document rotation and revocation.
+5. Add a key-rotation and secrets inventory: `KIRA_API_KEY`, `LLM_API_KEY`, `QUORUM_BID_KEY`, `GATE_SECRET`, `QUORUM_EDGE_SECRET`; document rotation and revocation.
 6. Add a data-processing record and a per-workspace deletion/export path.
 
 **Tests**

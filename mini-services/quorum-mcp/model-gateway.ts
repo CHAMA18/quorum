@@ -110,7 +110,7 @@ export function redactForModel(
 export interface ModelProvenance {
   provider: string;
   model: string;
-  purpose: "plan_review" | "evidence_review" | "draft_redline" | "repair" | "muse_chat" | "transcribe";
+  purpose: "plan_review" | "evidence_review" | "draft_redline" | "repair" | "assistant_chat" | "transcribe";
   runId: string | null;
   endpoint: string | null;
   residency: Residency;
@@ -181,9 +181,8 @@ export async function callModel(
 }> {
   const policy = options.policy ?? residencyFromEnv();
   const started = performance.now();
-  const useResponses = cfg.provider === "meta-model-api";
-  const api: "responses" | "chat_completions" = useResponses ? "responses" : "chat_completions";
-  const reasoningEffort = useResponses ? options.reasoningEffort ?? configuredReasoningEffort(options.purpose) : undefined;
+  const api = "chat_completions" as const;
+  const reasoningEffort = undefined;
   const refusal = residencyRefusal(policy, cfg.baseUrl);
   if (refusal) {
     logModelProvenance({
@@ -220,34 +219,21 @@ export async function callModel(
   try {
     const root = cfg.baseUrl.endsWith("/") ? cfg.baseUrl.slice(0, -1) : cfg.baseUrl;
     const schema = options.responseSchema;
-    const body = useResponses
-      ? {
-          model: cfg.model,
-          input: outgoing.map((m) => ({ role: m.role, content: m.content })),
-          store: false,
-          max_output_tokens: options.maxOutputTokens ?? outputLimit(options.purpose),
-          reasoning: { effort: reasoningEffort },
-          ...(schema
-            ? { text: { format: { type: "json_schema", name: schema.name, schema: schema.schema, strict: true } } }
-            : {}),
-        }
-      : {
-          model: cfg.model,
-          messages: outgoing,
-          temperature: 0.2,
-          max_tokens: options.maxOutputTokens ?? outputLimit(options.purpose),
-          ...(schema
-            ? { response_format: { type: "json_schema", json_schema: { name: schema.name, schema: schema.schema, strict: true } } }
-            : {}),
-        };
-    const res = await fetchImpl(root + (useResponses ? "/responses" : "/chat/completions"), {
+    const body = {
+      model: cfg.model,
+      messages: outgoing,
+      temperature: 0.2,
+      max_tokens: options.maxOutputTokens ?? outputLimit(options.purpose),
+      ...(schema
+        ? { response_format: { type: "json_schema", json_schema: { name: schema.name, schema: schema.schema, strict: true } } }
+        : {}),
+    };
+    const res = await fetchImpl(root + "/chat/completions", {
       method: "POST",
       headers: {
         "content-type": "application/json",
         ...(cfg.apiKey ? { authorization: `Bearer ${cfg.apiKey}` } : {}),
       },
-      /* Meta Responses keeps reasoning in the provider protocol without
-         server-side conversation storage. Private reasoning is never logged. */
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(60_000),
     });
@@ -261,18 +247,14 @@ export async function callModel(
       input_tokens?: number;
       output_tokens?: number;
     };
-    const content = useResponses
-      ? data.output_text ?? data.output?.flatMap((item) => item.content ?? []).filter((part) => part.type === "output_text" || part.type === "text").map((part) => part.text ?? "").join("") ?? ""
-      : data.choices?.[0]?.message?.content ?? "";
+    const content = data.choices?.[0]?.message?.content ?? "";
     const latent = {
       model: data.model ?? cfg.model,
       content,
-      /* Chat completions count prompt/completion_tokens; the Responses API
-         counts input/output_tokens inside `usage`. Both are read so the
-         provenance line never reports a hosted call as costing nothing. */
+      /* The provenance line never reports a hosted call as costing nothing. */
       usage: {
-        promptTokens: data.usage?.prompt_tokens ?? data.usage?.input_tokens ?? data.input_tokens ?? 0,
-        completionTokens: data.usage?.completion_tokens ?? data.usage?.output_tokens ?? data.output_tokens ?? 0,
+        promptTokens: data.usage?.prompt_tokens ?? 0,
+        completionTokens: data.usage?.completion_tokens ?? 0,
       },
       redactions,
       api,

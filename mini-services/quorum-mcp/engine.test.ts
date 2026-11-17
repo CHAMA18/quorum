@@ -183,8 +183,8 @@ describe("drafting model: OpenAI-compatible LLM endpoint", () => {
     const kira = llmConfigFromEnv({
       KIRA_BASE_URL: "http://localhost:11434/v1",
       KIRA_MODEL: "llama3.2:3b",
-      LLM_BASE_URL: "https://api.meta.ai/v1",
-      LLM_MODEL: "muse-spark-1.3",
+      LLM_BASE_URL: "https://legacy.example/v1",
+      LLM_MODEL: "legacy-model",
       LLM_API_KEY: "legacy-key",
     });
     expect(kira).toMatchObject({
@@ -202,7 +202,7 @@ describe("drafting model: OpenAI-compatible LLM endpoint", () => {
     expect(providerLabel("kira")).toBe("Kira · open weights");
   });
 
-  test("recognises the live Llama 3.2 path and the Meta Model API fallback", () => {
+  test("recognises the live Llama 3.2 path", () => {
     const llama = llmConfigFromEnv({
       LLM_BASE_URL: "http://localhost:11434/v1",
       LLM_MODEL: "llama3.2:3b",
@@ -216,15 +216,8 @@ describe("drafting model: OpenAI-compatible LLM endpoint", () => {
       provider: "ollama",
       endpoint: "http://localhost:11434",
     });
-    const meta = llmConfigFromEnv({ META_MODEL_API_KEY: "k", META_MODEL: "muse-spark-1.3" });
-    expect(meta).toMatchObject({
-      baseUrl: "https://api.meta.ai/v1",
-      model: "muse-spark-1.3",
-      provider: "meta-model-api",
-      configuredBy: "meta-model-api",
-    });
-    /* A partial LLM_* pair is not silently redirected to a different provider. */
-    expect(llmConfigFromEnv({ LLM_BASE_URL: "http://localhost:11434/v1", MUSE_API_KEY: "k" })).toBeNull();
+    /* A key without an endpoint is not a configuration. */
+    expect(llmConfigFromEnv({ LLM_API_KEY: "k" })).toBeNull();
     expect(modelStatus({})).toMatchObject({ configured: false, mode: "template", provider: "template" });
   });
 

@@ -35,12 +35,12 @@ process.env.MCP_PORT = "3131";
 process.env.QUORUM_SIDECAR_URL = sidecar;
 // Ephemeral test-only keys: never inherit a deployed signing identity or use
 // development defaults to make a production-mode demonstration pass.
-for (const key of ["ATTEST_SECRET", "STEP_UP_SECRET", "NOTIFY_SECRET", "AUDIT_SECRET", "BID_VAULT_SECRET", "QUORUM_DOWNLOAD_SECRET", "MUSE_ACTION_SECRET", "GATE_SECRET"]) {
+for (const key of ["ATTEST_SECRET", "STEP_UP_SECRET", "NOTIFY_SECRET", "AUDIT_SECRET", "BID_VAULT_SECRET", "QUORUM_DOWNLOAD_SECRET", "ASSISTANT_ACTION_SECRET", "GATE_SECRET"]) {
   process.env[key] = randomBytes(32).toString("hex");
 }
 process.env.GATE_SIGNING_KEY = generateKeyPairSync("ed25519").privateKey.export({ type: "pkcs8", format: "pem" }).toString();
 if (isTemplate) {
-  for (const key of ["LLM_BASE_URL", "LLM_MODEL", "LLM_API_KEY", "META_MODEL_API_KEY", "MUSE_API_KEY", "LLM_FALLBACK_BASE_URL"]) process.env[key] = "";
+  for (const key of ["LLM_BASE_URL", "LLM_MODEL", "LLM_API_KEY", "LLM_FALLBACK_BASE_URL"]) process.env[key] = "";
 }
 mkdirSync(data, { recursive: true });
 mkdirSync(output, { recursive: true });
