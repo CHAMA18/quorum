@@ -67,8 +67,14 @@ SEED_TENDERS="$APP_DIR/deploy-seed/tenders"
 if [ ! -d "$SEED_TENDERS" ]; then
   SEED_TENDERS="$APP_DIR/mini-services/quorum-mcp/data/tenders"
 fi
-if [ -d "$SEED_TENDERS" ]; then
+SEED_STAMP="$QUORUM_DATA_DIR/.seed-tenders-done"
+if [ -d "$SEED_TENDERS" ] && [ ! -f "$SEED_STAMP" ]; then
   cp -Rn "$SEED_TENDERS"/. "$QUORUM_DATA_DIR/tenders/"
+  # Record that the sample pack has been placed. Without this marker every
+  # boot re-copied the samples, so a document an officer withdrew came back on
+  # the next deploy, and the pack could never be brought back in line with a
+  # certified opening register.
+  date -u +%Y-%m-%dT%H:%M:%SZ > "$SEED_STAMP"
 fi
 
 bun "$APP_DIR/mini-services/quorum-mcp/index.ts" &
