@@ -186,7 +186,9 @@ export function canReadDeskTool(name: string, args: Record<string, unknown>, use
     name === "ocds_registry" ? "/api/ocp-africa" :
     name === "ocds_feed" ? `/api/ocds-feed?ref=${encodeURIComponent(String(args.ref ?? ""))}` :
     name === "committee_state" ? "/api/committee" : null;
-  return path !== null && canReadSidecar(user.role, path);
+  /* Strip any ?ref= the executor's path carries — the capability table
+     classifies by pathname only. */
+  return path !== null && canReadSidecar(user.role, path.split("?")[0]);
 }
 
 /* The sidecar answers with its own shapes; the model sees a trimmed, stable
