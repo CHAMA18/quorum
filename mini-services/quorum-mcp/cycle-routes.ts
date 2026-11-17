@@ -1713,7 +1713,16 @@ async function coreBuildMatrix(tenderId: string, criteriaRaw: { title: unknown; 
   const stagedNames = pack.bids.map((bid) => bid.bidder.trim().toLowerCase());
   if (new Set(openingNames).size !== openingNames.length || new Set(stagedNames).size !== stagedNames.length ||
       openingNames.length !== stagedNames.length || openingNames.some((name) => !stagedNames.includes(name))) {
-    throw new Error("the certified opening register and staged bid pack must contain exactly the same bidder set");
+    /* Name the disagreement: "different bidder set" alone sends an officer
+       hunting through a folder for a submission that is simply not staged. */
+    const packOnly = [...new Set(stagedNames)].filter((name) => !openingNames.includes(name));
+    const registerOnly = [...new Set(openingNames)].filter((name) => !stagedNames.includes(name));
+    throw new Error(
+      "the certified opening register and staged bid pack must contain exactly the same bidder set" +
+        (packOnly.length ? ` — in the pack but not the register: ${packOnly.join(", ")}` : "") +
+        (registerOnly.length ? ` — in the register but not the pack: ${registerOnly.join(", ")}` : "") +
+        (!packOnly.length && !registerOnly.length ? " — a bidder appears twice on one side" : ""),
+    );
   }
   const sourceNotice = [...(cycle.notices ?? [])].reverse().find((notice) => !!notice.issuedAt);
   if (!sourceNotice) throw new Error("publish the tender notice, including its evaluation criteria, before building the matrix");
