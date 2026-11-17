@@ -74,6 +74,7 @@ import { SpecBar } from "@/components/quorum/reveal";
 import { QuorumLogo } from "@/components/quorum/logo";
 import { NotificationBell } from "@/components/quorum/notification-bell";
 import { DeploymentSettings } from "@/components/quorum/deployment-settings";
+import { McpToolLogs } from "@/components/quorum/mcp-tool-logs";
 import { StackConsole } from "@/components/quorum/stack-console";
 import { StepUpHost, requestStepUp } from "@/components/quorum/step-up";
 import {
@@ -7570,6 +7571,10 @@ function SettingsView({
               </div>
             ))}
           </dl>
+        </div>
+
+        <div className="lg:col-span-2">
+          <McpToolLogs />
         </div>
       </div>
     </ViewShell>
