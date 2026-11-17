@@ -1,6 +1,6 @@
 /**
- * Live demo seed — three fully-populated tenders, twelve supplier accounts,
- * four bids per tender, and one review run per tender that parks at the
+ * Live demo seed — three fully-populated tenders, fifteen supplier accounts,
+ * five bids per tender, and one review run per tender that parks at the
  * human-approval gate.
  *
  * Everything goes through the same HTTP routes the demo will use: the
@@ -52,6 +52,7 @@ const TENDERS: Tender[] = [
       { name: "Equatorial Medicines Supply Ltd", amount: 612_250_000, reg: "PVT-KE-2014-55190", pin: "P051447290M", contact: "Joseph Kariuki Mwangi", phone: "+254733908214", city: "Nakuru", note: "Full tracer list quoted; two thermolabile lines offered from a PPB-registered secondary source; cold-chain capability report attached." },
       { name: "Coastline Health Partners Ltd", amount: 704_900_000, reg: "PVT-KE-2019-11207", pin: "P052001188K", contact: "Fatuma Said Ali", phone: "+254711466203", city: "Mombasa", note: "Bid 12.8% above the published ceiling; regional depot model with third-party cold-chain subcontractor." },
       { name: "Rift Valley Medical Wholesalers Ltd", amount: 655_300_000, reg: "PVT-KE-2020-77341", pin: "P051993204T", contact: "Daniel Kipchoge Bett", phone: "+254720774118", city: "Eldoret", note: "Tracer list partially quoted; 44 of 48 lines priced, four lines deferred to a second call-off." },
+      { name: "Lakeside Pharmaceuticals Ltd", amount: 631_700_000, reg: "PVT-KE-2011-60837", pin: "P051330887D", contact: "Rose Atieno Ouma", phone: "+254715664902", city: "Kisumu", note: "Full tracer list quoted; WHO prequalification certificates for 46 of 48 items; validated cold chain subcontracted to a licensed third party." },
     ],
   },
   {
@@ -70,6 +71,7 @@ const TENDERS: Tender[] = [
       { name: "Rift Pumps & Boreholes Ltd", amount: 7_980_000, reg: "PVT-KE-2017-90214", pin: "P051773019B", contact: "Peter Omondi Ochieng", phone: "+254726551900", city: "Kisumu", note: "Lots 1 and 2 quoted; Lot 3 offered with an alternative impeller material (AISI 316 stainless) at the same price." },
       { name: "Sahel Water Works Ltd", amount: 9_240_000, reg: "PVT-KE-2015-41009", pin: "P051668034F", contact: "Halima Abdalla Noor", phone: "+254799203611", city: "Garissa", note: "Single lump-sum bid for all lots; bid value 15.5% above the published ceiling; commissioning included." },
       { name: "Tsavo Pump Systems Ltd", amount: 6_880_000, reg: "PVT-KE-2021-12056", pin: "P052118840R", contact: "Mercy Wambui Kariuki", phone: "+254714330872", city: "Machakos", note: "Lowest compliant-looking offer; installation subcontracted to a WRA-registered partner; pump test certificates attached." },
+      { name: "Highland Borehole Services Ltd", amount: 7_410_000, reg: "PVT-KE-2018-40392", pin: "P051812065C", contact: "Elias Mwangi Gichuru", phone: "+254728110547", city: "Nyeri", note: "Lots 1 and 3 quoted; Lot 2 priced separately as a framework call-off; five-year warranty letter from the pump manufacturer attached." },
     ],
   },
   {
@@ -88,6 +90,7 @@ const TENDERS: Tender[] = [
       { name: "Rift Valley Lab Equipment Ltd", amount: 88_900_000, reg: "PVT-KE-2018-66450", pin: "P051889220C", contact: "Simon Kiprono Cheruiyot", phone: "+254738004711", city: "Nakuru", note: "Laboratory kits fully specified; desk supply offered from a subcontracted workshop without a manufacturer authorization letter." },
       { name: "Summit Learning Systems Ltd", amount: 94_750_000, reg: "PVT-KE-2016-77318", pin: "P051552036N", contact: "Wanjiru Muthoni Karanja", phone: "+254720667214", city: "Nairobi", note: "Bid 5.3% above the ceiling; premium ergonomic desk specification offered as a value-add at no change to the quoted total." },
       { name: "Mara Educational Works Ltd", amount: 82_150_000, reg: "PVT-KE-2022-30117", pin: "P052204418G", contact: "David Ole Sankale", phone: "+254712998450", city: "Narok", note: "Desks manufactured in-house; 36 of 40 laboratory kits quoted, remaining four deferred." },
+      { name: "Nyanza Furniture Works Ltd", amount: 84_600_000, reg: "PVT-KE-2019-58624", pin: "P052009771J", contact: "Emily Anyango Were", phone: "+254736445120", city: "Kisumu", note: "All 6,000 desks and 40 kits quoted; ISO 9001 and manufacturer authorization attached; installation crew based in Siaya and Kisumu." },
     ],
   },
 ];
@@ -343,7 +346,20 @@ async function fileBid(t: Tender, s: Tender["suppliers"][number], orgId: string,
 
 async function seedSuppliers(t: Tender) {
   log(`\n▸ ${t.ref} — supplier accounts and bids`);
+  /* A bid already on record means the account, the desk activation and the
+     filing all landed in an earlier run — skip the whole chain rather than
+     spend the registration rate window re-proving it. */
+  const filed = await call(`/api/applications${JP}`, { cookie: judge });
+  const onRecord = new Set<string>(
+    (filed.data.applications ?? [])
+      .filter((a: any) => a.tenderId === t.ref)
+      .map((a: any) => String(a.orgName ?? "").trim().toLowerCase()),
+  );
   for (const s of t.suppliers) {
+    if (onRecord.has(s.name.trim().toLowerCase())) {
+      skip(`${s.name}: bid already on record`);
+      continue;
+    }
     const account = await registerSupplier(t, s);
     if (!account) continue;
     const orgId = account.org?.id ?? "";
