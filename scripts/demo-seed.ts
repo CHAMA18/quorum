@@ -427,3 +427,5 @@ for (const tender of TENDERS) {
   log(`  · ${tender.ref}: ${row?.applications ?? 0} bids on record · ${row?.status ?? "?"}`);
 }
 log("\nDone. Presenter signs in as judge@quorum.test and approves from Approvals.");
+
+export {};
