@@ -3949,8 +3949,14 @@ export async function handleCycleRoutes(
     } catch {
       /* Supplier portal attachments can be the complete source for live bids. */
     }
+    /* Applications filed through the public supplier door carry no workspace
+       stamp: there is no desk session on that request. Reading them as "demo"
+       hid every portal submission from the desk that owns the tender, so the
+       identity check below could never match the register it certified. An
+       untagged row is claimed by the desk reviewing that tender; a tagged row
+       still has to match. */
     const tenderApplications = state.applications.filter((application) =>
-      (application.workspaceId ?? "demo") === workspaceId && application.tenderId === tenderId,
+      (application.workspaceId ?? workspaceId) === workspaceId && application.tenderId === tenderId,
     );
     const applicationsById = new Map(tenderApplications.map((application) => [application.id, application]));
     const applicationSubmissions: {
