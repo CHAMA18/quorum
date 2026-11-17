@@ -174,8 +174,11 @@ let judge: Cookie;
 
 async function planTender(t: Tender) {
   log(`\n▸ ${t.ref} — procurement plan`);
-  const existing = await call(`/api/pipeline${JP}`, { cookie: judge });
-  const rows: any[] = Array.isArray(existing.data.pipeline) ? existing.data.pipeline : Array.isArray(existing.data.entries) ? existing.data.entries : [];
+  /* The cycle endpoint is the read model for both workflow records and the
+     procurement pipeline; there is no GET /api/pipeline route. */
+  const existing = await call(`/api/cycle${JP}`, { cookie: judge });
+  if (existing.status !== 200) throw new Error(`pipeline/cycle read failed (${existing.status}): ${JSON.stringify(existing.data).slice(0, 260)}`);
+  const rows: any[] = Array.isArray(existing.data.pipeline) ? existing.data.pipeline : [];
   const linked = rows.find((row) => row.linkedTenderId === t.ref);
   if (linked) {
     skip(`plan entry already linked (${linked.ref})`);
@@ -257,7 +260,14 @@ async function registerSupplier(t: Tender, s: Tender["suppliers"][number]): Prom
     });
   }
   if (reg.status === 409) {
-    const signed = await call("/api/org/auth/login", { body: { email, password: SUPPLIER_PASSWORD } });
+    /* Organization sign-in has its own rate limit, and a 429 here must be
+       waited out rather than abandoning an account that already exists. */
+    let signed = await call("/api/org/auth/login", { body: { email, password: SUPPLIER_PASSWORD } });
+    for (let attempt = 0; signed.status === 429 && attempt < 30; attempt++) {
+      warn(`${s.name}: organization sign-in rate limited — waiting 60s (attempt ${attempt + 1})`);
+      await sleep(60_000);
+      signed = await call("/api/org/auth/login", { body: { email, password: SUPPLIER_PASSWORD } });
+    }
     if (signed.status !== 200 || !signed.cookie) {
       warn(`${s.name}: exists, sign-in failed (${signed.status})`);
       return null;
@@ -341,8 +351,11 @@ async function seedSuppliers(t: Tender) {
 
     /* The desk verifies the organization's identity and statutory record —
        the same oversight action an officer takes before bids open. */
+    /* /api/oversight is a PATCH endpoint; a POST here returns 405 and the
+       organization correctly remains unaudited and unfileable. */
     const activation = await call("/api/oversight", {
       cookie: judge,
+      method: "PATCH",
       body: { orgId, status: "ACTIVE", reason: "Identity, registration and tax standing verified by the demonstration desk." },
     });
     if (activation.status >= 400) {
@@ -426,6 +439,6 @@ for (const tender of TENDERS) {
   const row = (market.data.tenders ?? []).find((r: any) => r.ref === tender.ref);
   log(`  · ${tender.ref}: ${row?.applications ?? 0} bids on record · ${row?.status ?? "?"}`);
 }
-log("\nDone. Presenter signs in as judge@quorum.test and approves from Approvals.");
+log("\nDone. Sign in as chungu424@gmail.com (the single accounting-officer approver) and approve from Approvals.");
 
 export {};
