@@ -19,7 +19,6 @@ import {
   CircleAlert,
   CircleCheck,
   CloudUpload,
-  Command as CommandIcon,
   Copy,
   Database,
   Download,
@@ -10971,68 +10970,10 @@ export function Dashboard({
                   <PanelLeftOpen className="h-4 w-4" aria-hidden="true" />
                 </button>
               )}
-              {/* The breadcrumb is pure navigation: where I am. System state
-                  lives in the status cluster on the right — one pulsing dot
-                  per screen, not two. */}
-              <nav aria-label="Workspace location" className="flex min-w-0 items-center gap-2.5">
-                <span className="hidden shrink-0 font-code text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-500 sm:inline">
-                  Workspace
-                </span>
-                <span className="hidden shrink-0 text-[11px] text-ink-300 sm:inline dark:text-ink-600" aria-hidden="true">
-                  /
-                </span>
-                <span
-                  aria-current="page"
-                  aria-live="polite"
-                  aria-atomic="true"
-                  className="min-w-0 truncate text-[13.5px] font-semibold tracking-[-0.01em] text-ink-950 dark:text-white"
-                >
-                  {SECTION_LABEL[active] ?? "Overview"}
-                </span>
-              </nav>
-            </div>
-            {/* Hairline between the location zone and the tool zone — the bar
-                reads as three instruments, not one crowded strip. */}
-            <span
-              aria-hidden="true"
-              className="hidden h-5 w-px shrink-0 bg-ink-200/80 sm:block dark:bg-white/[0.09]"
-            />
-            <div className="flex min-w-0 flex-1 items-center gap-1 sm:gap-1.5">
-              <button
-                type="button"
-                onClick={() => setPaletteOpen(true)}
-                aria-label="Jump to a workspace section"
-                aria-keyshortcuts="Meta+K Control+K"
-                title="Jump to… (⌘K)"
-                className="focus-brand inline-flex h-11 shrink-0 items-center gap-2 rounded-lg border border-ink-200/80 bg-white/60 px-2.5 text-ink-500 shadow-[0_1px_2px_rgba(11,12,15,0.03)] transition-colors hover:border-ink-300 hover:text-ink-900 dark:border-white/[0.1] dark:bg-white/[0.04] dark:text-ink-400 dark:hover:border-white/20 dark:hover:text-white"
-              >
-                <CommandIcon className="h-3.5 w-3.5" aria-hidden="true" />
-                <span className="font-code text-[10px] font-bold tracking-[0.06em] sm:hidden">JUMP TO</span>
-                <span className="hidden font-code text-[10px] font-bold tracking-[0.06em] xl:inline">JUMP TO</span>
-                <kbd
-                  aria-hidden="true"
-                  className="hidden rounded-[4px] border border-ink-200/80 bg-white px-1 py-[2px] font-code text-[10px] font-bold leading-none text-ink-500 lg:inline dark:border-white/10 dark:bg-white/[0.06] dark:text-ink-400"
-                >
-                  ⌘K
-                </kbd>
-              </button>
-              {/* The field flexes with the bar: full share of the tool zone,
-                  capped at its resting width — focus no longer reflows the
-                  status cluster because the width never jumps. */}
-              <div className="relative hidden min-w-0 w-full max-w-[13rem] sm:block">
-                <Search
-                  className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400 dark:text-[#a8adb7]"
-                  aria-hidden="true"
-                />
-                <input
-                  type="search"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search evaluations…"
-                  aria-label="Search evaluations by reference, title or buyer"
-                  className="focus-brand h-11 w-full rounded-lg border border-ink-200/80 bg-[#fffdfb] pl-9 pr-3.5 text-base text-ink-900 shadow-[inset_0_1px_1px_rgba(11,12,15,0.03)] outline-none transition-[border-color,background-color] duration-300 placeholder:text-ink-400 focus:border-ink-950 focus:ring-[3px] focus:ring-ink-950/[0.07] dark:border-white/[0.1] dark:bg-white/[0.04] dark:focus:border-white/35 dark:focus:ring-white/[0.06]"
-                />
-              </div>
+              {/* The location zone is intentionally gone: the bar leads with the
+                  status cluster on the right. The sidebar expand button below
+                  is the one breadcrumb-era control kept — it is the only way
+                  back from a collapsed sidebar. */}
             </div>
             {/* Status + application controls — the system's side of the bar.
                 Every child is shrink-0: the cluster compresses by hiding,
