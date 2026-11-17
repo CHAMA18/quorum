@@ -161,8 +161,8 @@ export function ApiView() {
       {
         id: "whatsapp",
         label: "WhatsApp alerts",
-        state: channels?.whatsapp === true ? "online" : "warning",
-        detail: channels?.whatsapp === true ? "WhatsApp delivery configured" : "WhatsApp not configured — sends are logged SKIPPED, never silent",
+        state: channels?.whatsappTemplate === true ? "online" : "warning",
+        detail: channels?.whatsappTemplate === true ? "WhatsApp template alerts configured" : channels?.whatsapp === true ? "WhatsApp connected without an approved template — proactive alerts cannot send" : "WhatsApp not configured — sends are logged SKIPPED, never silent",
       },
       {
         id: "r2",

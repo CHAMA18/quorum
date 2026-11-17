@@ -143,6 +143,9 @@ export interface NotificationDeliveryRow {
   channel: DeliveryChannel;
   status: DeliveryStatus;
   detail: string;
+  /* Provider message id (WhatsApp wamid / Resend id) so delivery and read
+     receipts from a webhook can be matched back to this row. */
+  providerMessageId?: string;
   createdAt: Date;
 }
 
@@ -987,6 +990,7 @@ export function createUser(data: {
   role?: WorkspaceRole;
   status?: "ACTIVE" | "SUSPENDED";
   workspaceId?: string;
+  phone?: string;
 }): UserRow {
   if (findUserByEmail(data.email)) throw new Error(`User already exists: ${data.email}`);
   if (!data.workspaceId && !selfServeWorkspaceCreationOpen()) {
@@ -1007,6 +1011,7 @@ export function createUser(data: {
     password: data.password,
     emailVerified: data.emailVerified ?? false,
     organization: data.organization ?? null,
+    ...(data.phone?.trim() ? { phone: data.phone.trim().slice(0, 32) } : {}),
     role,
     status: data.status ?? "ACTIVE",
     createdAt: at,
@@ -1235,6 +1240,7 @@ export function recordNotificationDelivery(data: {
   channel: DeliveryChannel;
   status: DeliveryStatus;
   detail: string;
+  providerMessageId?: string;
 }): NotificationDeliveryRow {
   const row: NotificationDeliveryRow = {
     id: `ndl_${randomUUID().slice(0, 10)}`,
@@ -1252,6 +1258,45 @@ export function recordNotificationDelivery(data: {
 
 export function listNotificationDeliveries(take = 100): NotificationDeliveryRow[] {
   return [...store.notificationDeliveries].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, take);
+}
+
+/** Match a provider delivery/read receipt to the row that sent it. */
+export function findDeliveryByProviderMessageId(providerMessageId: string): NotificationDeliveryRow | null {
+  if (!providerMessageId) return null;
+  return store.notificationDeliveries.find((d) => d.providerMessageId === providerMessageId) ?? null;
+}
+
+/** Append a provider status (delivered / read / failed) to the send record,
+ *  keeping the original send detail so the log reads as one history. */
+export function appendDeliveryStatus(id: string, status: string, error?: string): void {
+  const row = store.notificationDeliveries.find((d) => d.id === id);
+  if (!row) return;
+  const note = `WhatsApp ${status}${error ? `: ${error}` : ""}`;
+  if (!row.detail.includes(note)) {
+    row.detail = `${row.detail} · ${note}`.slice(0, 500);
+    persist();
+  }
+}
+
+/** Find the account that claimed a WhatsApp number — used by the webhook to
+ *  apply STOP / START to exactly that account and no other. */
+export function findUserByPhone(phoneDigits: string): UserRow | null {
+  const digits = phoneDigits.replace(/[^\d]/g, "");
+  if (!digits) return null;
+  return store.users.find((u) => (u.phone ?? "").replace(/[^\d]/g, "") === digits) ?? null;
+}
+
+/** Set (or clear, with "") the number WhatsApp alerts go to. Stored as
+ *  typed; delivery normalises to E.164 digits at send time. */
+export function setUserPhone(id: string, phone: string): UserRow | null {
+  const user = findUserById(id);
+  if (!user) return null;
+  const trimmed = phone.trim().slice(0, 32);
+  if (trimmed) user.phone = trimmed;
+  else delete user.phone;
+  user.updatedAt = now();
+  persist();
+  return user;
 }
 
 /* ── Sessions ───────────────────────────────────────────────────────────── */

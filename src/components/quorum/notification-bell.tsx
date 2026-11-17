@@ -67,8 +67,11 @@ export function NotificationBell({
   const [markAllBusy, setMarkAllBusy] = useState(false);
   const [inboxError, setInboxError] = useState("");
   const [actionError, setActionError] = useState("");
-  const [channels, setChannels] = useState({ email: false, whatsapp: false });
+  const [channels, setChannels] = useState({ email: false, whatsapp: false, whatsappTemplate: false, whatsappWebhook: false });
   const [prefs, setPrefs] = useState({ email: true, whatsapp: true });
+  const [waPhone, setWaPhone] = useState("");
+  const [waSaving, setWaSaving] = useState(false);
+  const [waNote, setWaNote] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -76,12 +79,31 @@ export function NotificationBell({
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (d?.prefs) setPrefs({ email: d.prefs.email !== false, whatsapp: d.prefs.whatsapp !== false }); })
       .catch(() => undefined);
+    void fetch("/api/notifications/whatsapp", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (typeof d?.phone === "string") setWaPhone(d.phone);
+        if (d?.status) setChannels((c) => ({ ...c, whatsapp: d.status.configured === true, whatsappTemplate: d.status.templateConfigured === true, whatsappWebhook: d.status.webhookConfigured === true }));
+      })
+      .catch(() => undefined);
   }, [open ]);
 
   const savePref = (key: "email" | "whatsapp", value: boolean) => {
     const next = { ...prefs, [key]: value };
     setPrefs(next);
     void fetch("/api/notifications/preferences", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(next) }).catch(() => undefined);
+  };
+  const saveWaPhone = () => {
+    setWaSaving(true);
+    setWaNote("");
+    void fetch("/api/notifications/whatsapp", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ phone: waPhone }) })
+      .then(async (r) => {
+        const d = await r.json().catch(() => null);
+        if (!r.ok) throw new Error(d?.error ?? "Could not save the number.");
+        setWaNote("Saved — WhatsApp alerts will go to this number.");
+      })
+      .catch((e) => setWaNote(e instanceof Error ? e.message : "Could not save the number."))
+      .finally(() => setWaSaving(false));
   };
   const [showLog, setShowLog] = useState(false);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
@@ -99,11 +121,11 @@ export function NotificationBell({
       const data = (await res.json()) as {
         notifications?: Notification[];
         unread?: number;
-        channels?: { email?: boolean; whatsapp?: boolean };
+        channels?: { email?: boolean; whatsapp?: boolean; whatsappTemplate?: boolean; whatsappWebhook?: boolean };
       };
       setItems(data.notifications ?? []);
       setUnread(data.unread ?? 0);
-      if (data.channels) setChannels({ email: data.channels.email === true, whatsapp: data.channels.whatsapp === true });
+      if (data.channels) setChannels({ email: data.channels.email === true, whatsapp: data.channels.whatsapp === true, whatsappTemplate: data.channels.whatsappTemplate === true, whatsappWebhook: data.channels.whatsappWebhook === true });
       setInboxError("");
     } catch {
       setInboxError("The inbox could not refresh. Retry to check for new notifications.");
@@ -348,7 +370,7 @@ export function NotificationBell({
                   <Mail className="h-3 w-3" aria-hidden="true" /> EMAIL {channels.email ? "LIVE" : "OFF"}
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <MessageCircle className="h-3 w-3" aria-hidden="true" /> WHATSAPP {channels.whatsapp ? "LIVE" : "OFF"}
+                  <MessageCircle className="h-3 w-3" aria-hidden="true" /> WHATSAPP {channels.whatsappTemplate ? "LIVE" : channels.whatsapp ? "NO TEMPLATE" : "OFF"}
                 </span>
               </div>
               <button type="button" onClick={loadLog} className="focus-brand inline-flex min-h-11 items-center rounded-md px-2 font-code text-[10px] font-bold tracking-[0.05em] text-brand-700 hover:underline">
@@ -364,6 +386,18 @@ export function NotificationBell({
                 <input type="checkbox" checked={prefs.whatsapp} onChange={(e) => savePref("whatsapp", e.target.checked)} className="h-3.5 w-3.5 accent-[#b52b22]" /> WhatsApp
               </label>
             </div>
+            {prefs.whatsapp ? (
+              <div className="mt-2 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <label htmlFor="wa-phone" className="font-code text-[9px] font-bold tracking-[0.06em] text-ink-400">WHATSAPP NUMBER</label>
+                  <input id="wa-phone" type="tel" autoComplete="tel" value={waPhone} onChange={(e) => setWaPhone(e.target.value)} placeholder="+254 712 345 678" className="min-h-9 w-44 rounded-md border border-ink-200 bg-white px-2 text-[12px] text-ink-900" />
+                  <button type="button" onClick={saveWaPhone} disabled={waSaving} className="focus-brand min-h-9 rounded-md bg-ink-950 px-3 font-code text-[10px] font-bold tracking-[0.05em] text-white disabled:opacity-50">{waSaving ? "SAVING…" : "SAVE"}</button>
+                </div>
+                <p role="status" className="text-[11px] leading-relaxed text-ink-500">
+                  {waNote || (!channels.whatsapp ? "WhatsApp is not configured on this workspace yet — alerts stay in-app and are logged as skipped." : !channels.whatsappTemplate ? "WhatsApp is connected but has no approved alert template — proactive alerts cannot be sent yet." : !channels.whatsappWebhook ? "Alerts are live. STOP / START replies need the webhook configured (WHATSAPP_VERIFY_TOKEN)." : "Alerts are live. Reply STOP to opt out, START to return. Approvals always happen on the desk.")}
+                </p>
+              </div>
+            ) : null}
             {showLog ? (
               <div className="mt-2 max-h-[150px] space-y-1 overflow-y-auto rounded-md border border-ink-200 bg-white p-2">
                 {logLoading ? (

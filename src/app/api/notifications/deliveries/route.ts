@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { countUnreadNotifications, listNotificationDeliveries } from "@/lib/db";
+import { whatsappStatus } from "@/lib/whatsapp";
 
 /** GET /api/notifications/deliveries — the signed-in officer's channel log. */
 export async function GET(req: NextRequest) {
@@ -12,7 +13,9 @@ export async function GET(req: NextRequest) {
     unread: countUnreadNotifications(user.id),
     providers: {
       email: Boolean(process.env.RESEND_API_KEY?.trim()),
-      whatsapp: Boolean(process.env.WHATSAPP_TOKEN?.trim() && process.env.WHATSAPP_PHONE_NUMBER_ID?.trim()),
+      whatsapp: whatsappStatus().configured,
+      whatsappTemplate: whatsappStatus().templateConfigured,
+      whatsappWebhook: whatsappStatus().webhookConfigured,
     },
   });
 }

@@ -22,7 +22,7 @@
 | Google OAuth + first-party accounts (PostgreSQL, scrypt, TOTP, step-up) | **LIVE** | Server-side role checks on every route and again at the sidecar gateway (HMAC attestation). Step-up re-auth at signing, bound to `{userId, gateId, documentHash}`. | Sign-in; gate signing dialog |
 | Kira drafting (Llama 3.2 3B, `quorum-edge` Workers AI) | **LIVE (hosted)** | Open-weight endpoint at `https://quorum-edge.chungu424.workers.dev/v1` (`@cf/meta/llama-3.2-3b-instruct`). Verified answering 2026-11-16 (`docs/MODEL-HOSTING.md`). Hosted calls carry **redacted evidence only**; redaction count is recorded per draft. In-region Ollama and deterministic template fallbacks remain. | Run attribution table; `/api/health` names endpoint + residency |
 | Email (Resend) + pilot intake `POST /api/contact` | **LIVE (pilot channel)** | Pilot requests stored in the workspace store; email sent when `RESEND_API_KEY` is set, otherwise the failure is reported and the request retained. | Landing → Get started |
-| WhatsApp / Slack / Teams / Calendars / SharePoint catalogue | **PLANNED — explicitly not connected** | Shown in Integrations as setup requirements only. The page states "Connections are not enabled yet." **No external messages are sent.** | Workspace → Integrations ("NOT CONNECTED") |
+| WhatsApp catalogue (Slack / Teams / Calendars / SharePoint) | **WhatsApp: ADAPTER BUILT — credentials pending**; rest PLANNED | WhatsApp: template-first Cloud API adapter + signature-verified webhook (STOP/START, delivery/read receipts), honest `NO TEMPLATE` status; sends only once token + phone-number ID + approved template are set, otherwise logged SKIPPED. Slack/Teams/Calendars/SharePoint remain setup-requirements only. | Workspace → Integrations · bell footer · `docs/WHATSAPP-INTEGRATION.md` |
 | National e-GP filing (Kenya PPIP / Rwanda UMUCYO) | **SANDBOX (simulated)** | `egp-portal (simulated)` — sealed sha-256 receipt written to `data/submissions/`, labelled `SIMULATED`. **No live national endpoint is called by Quorum.** Sample bid packs are synthetic (invented references, no real personal data); one regression pack (`KE-KEMSA-2024-ONT08`) is a real public award register (11 awards, no line items). | Receipt marked `SIMULATED`; README "Data reality" |
 
 ### Tool-call log for the run you just watched
@@ -180,7 +180,7 @@ Assumes the hosted-Kira token line (≈$0.0001/outcome — negligible at any sca
 1. **Pilot:** one consenting Kenyan county health procurement unit (primary target), KEMSA framework desk as the high-volume comparator, PPRA as the audit-trail reviewer — outreach drafted, **not yet sent** (`SUBMISSION/11-pilot-outreach.md`).
 2. **National:** other Kenyan county units via the same jurisdiction pack; Rwanda extension proven by the unchanged RW sample pack (portability claim).
 3. **Regional:** other Central/East African jurisdictions via OCDS field mapping + rule packs (currency, validation, statutory offices) — the multi-portal design already models this.
-4. **Channels:** web desk first; WhatsApp deep-link alerts (never approvals), then SMS/USSD review summaries for low-connectivity officers — planned, gated by provider credential issuance.
+4. **Channels:** web desk first; WhatsApp deep-link alerts (never approvals) — adapter built, going live gated by Meta template approval + credential issuance; then SMS/USSD review summaries for low-connectivity officers — planned, gated by provider credential issuance.
 
 ### Oversight and impact metrics (with baselines)
 

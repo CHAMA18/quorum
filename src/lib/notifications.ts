@@ -3,6 +3,13 @@ import { renderEmailHtml, renderEmailText, type EmailModel } from "@/lib/email-t
 import { channelAllowed, parsePrefs, prefsKey } from "@/lib/notification-prefs";
 import { sidecarOrigin } from "@/lib/sidecar-origin";
 import { createHmac, timingSafeEqual } from "crypto";
+import {
+  GRAPH_MESSAGES_URL,
+  buildWhatsAppPayload,
+  isWhatsAppConfigured,
+  normalizeWhatsAppNumber,
+  whatsappConfigFromEnv,
+} from "@/lib/whatsapp";
 import { secretFor } from "@/lib/secrets";
 import {
   createNotification,
@@ -147,27 +154,42 @@ async function sendEmail(to: string, n: NotificationRow, user: UserRow): Promise
   }
 }
 
-async function sendWhatsApp(to: string, n: NotificationRow): Promise<{ status: "SENT" | "SKIPPED" | "FAILED"; detail: string }> {
-  const token = process.env.WHATSAPP_TOKEN?.trim();
-  const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID?.trim();
-  if (!token || !phoneId) return { status: "SKIPPED", detail: "WHATSAPP_TOKEN / WHATSAPP_PHONE_NUMBER_ID are not configured." };
-  const number = to.replace(/[^\d]/g, "");
-  if (number.length < 8) return { status: "SKIPPED", detail: "The account has no usable phone number." };
+/** Send one alert over WhatsApp. Proactive alerts go out as the approved
+ *  template (see lib/whatsapp) — free-form text is only legal inside an
+ *  open 24-hour window, so a business-initiated free-form send is a
+ *  guaranteed failure outside a reply. Unconfigured stays SKIPPED and
+ *  logged, never silent. */
+async function sendWhatsApp(
+  to: string,
+  n: NotificationRow,
+): Promise<{ status: "SENT" | "SKIPPED" | "FAILED"; detail: string; providerMessageId?: string }> {
+  const cfg = whatsappConfigFromEnv();
+  if (!isWhatsAppConfigured(cfg)) {
+    return { status: "SKIPPED", detail: "WHATSAPP_TOKEN / WHATSAPP_PHONE_NUMBER_ID are not configured." };
+  }
+  const number = normalizeWhatsAppNumber(to);
+  if (!number) return { status: "SKIPPED", detail: "The account has no usable phone number." };
+  const payload = buildWhatsAppPayload(cfg, number, {
+    headline: plainTitle(n.title),
+    summary: n.body,
+    url: notificationUrl(n),
+  });
+  const viaTemplate = payload.type === "template";
   try {
-    const res = await fetch(`https://graph.facebook.com/v20.0/${encodeURIComponent(phoneId)}/messages`, {
+    const res = await fetch(GRAPH_MESSAGES_URL(cfg.phoneNumberId), {
       method: "POST",
-      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to: number,
-        type: "text",
-        text: { preview_url: true, body: `Quorum · ${n.title}\n\n${n.body}\n\n${notificationUrl(n)}` },
-      }),
+      headers: { authorization: `Bearer ${cfg.token}`, "content-type": "application/json" },
+      body: JSON.stringify(payload),
       signal: AbortSignal.timeout(8000),
     });
     const data = (await res.json().catch(() => ({}))) as { messages?: { id?: string }[]; error?: { message?: string } };
     if (!res.ok) return { status: "FAILED", detail: `WhatsApp HTTP ${res.status}: ${data.error?.message ?? "unknown error"}` };
-    return { status: "SENT", detail: `WhatsApp message ${data.messages?.[0]?.id ?? "accepted"}.` };
+    const wamid = data.messages?.[0]?.id;
+    return {
+      status: "SENT",
+      detail: `WhatsApp ${viaTemplate ? `template ${cfg.templateName}` : "free-form (24h window)"} message ${wamid ?? "accepted"}.`,
+      ...(wamid ? { providerMessageId: wamid } : {}),
+    };
   } catch (e) {
     return { status: "FAILED", detail: `WhatsApp request failed: ${(e as Error).message}` };
   }
@@ -191,7 +213,7 @@ export async function deliverNotification(n: NotificationRow): Promise<void> {
       : user.phone
         ? sendWhatsApp(user.phone, n)
         : Promise.resolve({ status: "SKIPPED" as const, detail: "No phone number on the account profile." })
-    ).then((r) => recordNotificationDelivery({ notificationId: n.id, userId: user.id, channel: "whatsapp", status: r.status, detail: r.detail })),
+    ).then((r) => recordNotificationDelivery({ notificationId: n.id, userId: user.id, channel: "whatsapp", status: r.status, detail: r.detail, providerMessageId: "providerMessageId" in r ? r.providerMessageId : undefined })),
   );
   await Promise.allSettled(jobs);
 }

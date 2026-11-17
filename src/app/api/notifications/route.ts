@@ -7,6 +7,7 @@ import {
   markNotificationRead,
 } from "@/lib/db";
 import { syncNotificationsForUser } from "@/lib/notifications";
+import { whatsappStatus } from "@/lib/whatsapp";
 
 /**
  * GET /api/notifications — the signed-in officer's inbox.
@@ -29,7 +30,9 @@ export async function GET(req: NextRequest) {
     unread: countUnreadNotifications(user.id),
     channels: {
       email: Boolean(process.env.RESEND_API_KEY?.trim()),
-      whatsapp: Boolean(process.env.WHATSAPP_TOKEN?.trim() && process.env.WHATSAPP_PHONE_NUMBER_ID?.trim()),
+      whatsapp: whatsappStatus().configured,
+      whatsappTemplate: whatsappStatus().templateConfigured,
+      whatsappWebhook: whatsappStatus().webhookConfigured,
     },
   });
 }
