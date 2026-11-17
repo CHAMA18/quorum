@@ -74,10 +74,12 @@ const isDefaultBiddingMethod = (methodId?: string) =>
   ["open-national-bidding", "open-international-bidding"].includes(canonicalMethodId(methodId));
 const scopeForMethodId = (methodId: string): "National" | "International" | undefined =>
   methodId.includes("-international-") ? "International" : methodId.includes("-national-") ? "National" : undefined;
-const tenderReferenceLabel = (tender?: { systemReference?: string; source?: "sample" | "record" }) =>
+const tenderReferenceLabel = (tender?: { ref?: string; systemReference?: string; source?: "sample" | "record" }) =>
   isSystemReference(tender?.systemReference)
     ? systemReferenceLabel(tender.systemReference)
-    : tender?.source === "sample" ? "BUILT-IN SAMPLE TENDER" : "REFERENCE PENDING";
+    : tender?.ref?.trim()
+      ? tender.ref
+      : "REFERENCE PENDING";
 const EASE = [0.22, 1, 0.36, 1] as const;
 
 /* The evaluation-criteria table is authored in the specification and carried
