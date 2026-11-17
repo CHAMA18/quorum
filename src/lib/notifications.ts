@@ -10,11 +10,20 @@ import {
   normalizeWhatsAppNumber,
   whatsappConfigFromEnv,
 } from "@/lib/whatsapp";
+import {
+  SLACK_MUTED_KEY,
+  SLACK_POST_MESSAGE_URL,
+  buildSlackPayload,
+  isSlackConfigured,
+  slackConfigFromEnv,
+  slackDedupeKey,
+} from "@/lib/slack";
 import { secretFor } from "@/lib/secrets";
 import {
   createNotification,
   findUserById,
   getSetting,
+  setSetting,
   listUsers,
   recordNotificationDelivery,
   type NotificationRow,
@@ -195,6 +204,74 @@ async function sendWhatsApp(
   }
 }
 
+/** Post one alert to the shared Slack channel. The channel is a team
+ *  destination, not a DM: the dedupe key is the event, so a gate fanned
+ *  out to every officer posts once. The claim is written synchronously
+ *  before the fetch, so concurrent per-user deliveries cannot race into
+ *  duplicate posts; a failed send releases the claim for a later retry.
+ *  Channel-level mute (`stop` in Slack) suppresses everything. */
+async function sendSlack(
+  n: NotificationRow,
+): Promise<{ status: "SENT" | "SKIPPED" | "FAILED"; detail: string; providerMessageId?: string }> {
+  const cfg = slackConfigFromEnv();
+  if (!isSlackConfigured(cfg)) {
+    return { status: "SKIPPED", detail: "SLACK_BOT_TOKEN / SLACK_ALERT_CHANNEL_ID are not configured." };
+  }
+  if (getSetting(SLACK_MUTED_KEY) === "1") {
+    return { status: "SKIPPED", detail: "Slack alerts are muted in the channel (a member replied stop)." };
+  }
+  const dedupe = slackDedupeKey({ kind: n.kind, entityType: n.entityType, entityId: n.entityId, title: n.title });
+  const prior = getSetting(dedupe);
+  if (prior) {
+    return { status: "SKIPPED", detail: `Already posted to the Slack channel for this event (${prior}).` };
+  }
+  setSetting(dedupe, "pending");
+  const claim = dedupe;
+  try {
+    const res = await fetch(SLACK_POST_MESSAGE_URL, {
+      method: "POST",
+      headers: { authorization: `Bearer ${cfg.botToken}`, "content-type": "application/json; charset=utf-8" },
+      body: JSON.stringify(buildSlackPayload(cfg, { headline: plainTitle(n.title), summary: n.body, url: notificationUrl(n) })),
+      signal: AbortSignal.timeout(8000),
+    });
+    const data = (await res.json().catch(() => ({}))) as { ok?: boolean; ts?: string; error?: string };
+    if (!res.ok || data.ok === false) {
+      setSetting(claim, "");
+      return { status: "FAILED", detail: `Slack HTTP ${res.status}: ${data.error ?? "unknown error"}` };
+    }
+    setSetting(claim, data.ts ?? "posted");
+    return { status: "SENT", detail: `Slack message ${data.ts ?? "posted"} to ${cfg.alertChannel}.`, ...(data.ts ? { providerMessageId: data.ts } : {}) };
+  } catch (e) {
+    setSetting(claim, "");
+    return { status: "FAILED", detail: `Slack request failed: ${(e as Error).message}` };
+  }
+}
+
+/** Post a test alert to the configured channel — the one-click check in
+ *  the notification bell. Recorded in the delivery log like any send. */
+export async function sendSlackTest(user: UserRow): Promise<{ status: "SENT" | "SKIPPED" | "FAILED"; detail: string }> {
+  const probe: NotificationRow = {
+    id: `test_${Date.now()}`,
+    userId: user.id,
+    kind: "SYSTEM",
+    title: "Quorum · Slack test alert",
+    body: "This is a test post from the Quorum notification bell. Real gate and deadline alerts look like this. Reply stop in this channel to mute them.",
+    href: "mc-gates",
+    entityType: null,
+    entityId: null,
+    dedupeKey: `slack:test:${Date.now()}`,
+    readAt: null,
+    createdAt: new Date(),
+  };
+  const cfg = slackConfigFromEnv();
+  if (isSlackConfigured(cfg) && getSetting(SLACK_MUTED_KEY) === "1") {
+    return { status: "SKIPPED", detail: "Slack alerts are muted in the channel (a member replied stop). Unmute with start first." };
+  }
+  const r = await sendSlack(probe);
+  recordNotificationDelivery({ notificationId: probe.id, userId: user.id, channel: "slack", status: r.status, detail: r.detail, providerMessageId: r.providerMessageId });
+  return r;
+}
+
 /** Deliver one notification to every channel the account can receive and has not muted. */
 export async function deliverNotification(n: NotificationRow): Promise<void> {
   const user = findUserById(n.userId);
@@ -214,6 +291,12 @@ export async function deliverNotification(n: NotificationRow): Promise<void> {
         ? sendWhatsApp(user.phone, n)
         : Promise.resolve({ status: "SKIPPED" as const, detail: "No phone number on the account profile." })
     ).then((r) => recordNotificationDelivery({ notificationId: n.id, userId: user.id, channel: "whatsapp", status: r.status, detail: r.detail, providerMessageId: "providerMessageId" in r ? r.providerMessageId : undefined })),
+  );
+  jobs.push(
+    (channelAllowed(prefs, "slack")
+      ? sendSlack(n)
+      : Promise.resolve({ status: "SKIPPED" as const, detail: "Slack is off in your notification preferences." })
+    ).then((r) => recordNotificationDelivery({ notificationId: n.id, userId: user.id, channel: "slack", status: r.status, detail: r.detail, providerMessageId: "providerMessageId" in r ? r.providerMessageId : undefined })),
   );
   await Promise.allSettled(jobs);
 }

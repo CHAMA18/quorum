@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bell, CheckCheck, Loader2, Mail, MessageCircle, ShieldAlert, Stamp, TimerReset, X } from "lucide-react";
+import { Bell, CheckCheck, Hash, Loader2, Mail, MessageCircle, ShieldAlert, Stamp, TimerReset, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Notification = {
@@ -19,7 +19,7 @@ type Notification = {
 
 type Delivery = {
   id: string;
-  channel: "email" | "whatsapp";
+  channel: "email" | "whatsapp" | "slack";
   status: "SENT" | "SKIPPED" | "FAILED";
   detail: string;
   createdAt: string;
@@ -67,17 +67,20 @@ export function NotificationBell({
   const [markAllBusy, setMarkAllBusy] = useState(false);
   const [inboxError, setInboxError] = useState("");
   const [actionError, setActionError] = useState("");
-  const [channels, setChannels] = useState({ email: false, whatsapp: false, whatsappTemplate: false, whatsappWebhook: false });
-  const [prefs, setPrefs] = useState({ email: true, whatsapp: true });
+  const [channels, setChannels] = useState({ email: false, whatsapp: false, whatsappTemplate: false, whatsappWebhook: false, slack: false, slackEvents: false });
+  const [prefs, setPrefs] = useState({ email: true, whatsapp: true, slack: true });
   const [waPhone, setWaPhone] = useState("");
   const [waSaving, setWaSaving] = useState(false);
   const [waNote, setWaNote] = useState("");
+  const [slackMuted, setSlackMuted] = useState(false);
+  const [slackTesting, setSlackTesting] = useState(false);
+  const [slackNote, setSlackNote] = useState("");
 
   useEffect(() => {
     if (!open) return;
     void fetch("/api/notifications/preferences", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (d?.prefs) setPrefs({ email: d.prefs.email !== false, whatsapp: d.prefs.whatsapp !== false }); })
+      .then((d) => { if (d?.prefs) setPrefs({ email: d.prefs.email !== false, whatsapp: d.prefs.whatsapp !== false, slack: d.prefs.slack !== false }); })
       .catch(() => undefined);
     void fetch("/api/notifications/whatsapp", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
@@ -86,9 +89,29 @@ export function NotificationBell({
         if (d?.status) setChannels((c) => ({ ...c, whatsapp: d.status.configured === true, whatsappTemplate: d.status.templateConfigured === true, whatsappWebhook: d.status.webhookConfigured === true }));
       })
       .catch(() => undefined);
+    void fetch("/api/notifications/slack", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.status) setChannels((c) => ({ ...c, slack: d.status.configured === true, slackEvents: d.status.eventsConfigured === true }));
+        if (typeof d?.muted === "boolean") setSlackMuted(d.muted);
+      })
+      .catch(() => undefined);
   }, [open ]);
 
-  const savePref = (key: "email" | "whatsapp", value: boolean) => {
+  const saveSlackTest = () => {
+    setSlackTesting(true);
+    setSlackNote("");
+    void fetch("/api/notifications/slack", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ test: true }) })
+      .then(async (r) => {
+        const d = await r.json().catch(() => null);
+        if (!r.ok) throw new Error(d?.detail ?? d?.error ?? "Could not post the test.");
+        setSlackNote(d?.detail ?? "Test posted to the Slack channel.");
+        void refreshLog();
+      })
+      .catch((e) => setSlackNote(e instanceof Error ? e.message : "Could not post the test."))
+      .finally(() => setSlackTesting(false));
+  };
+  const savePref = (key: "email" | "whatsapp" | "slack", value: boolean) => {
     const next = { ...prefs, [key]: value };
     setPrefs(next);
     void fetch("/api/notifications/preferences", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(next) }).catch(() => undefined);
@@ -121,11 +144,11 @@ export function NotificationBell({
       const data = (await res.json()) as {
         notifications?: Notification[];
         unread?: number;
-        channels?: { email?: boolean; whatsapp?: boolean; whatsappTemplate?: boolean; whatsappWebhook?: boolean };
+        channels?: { email?: boolean; whatsapp?: boolean; whatsappTemplate?: boolean; whatsappWebhook?: boolean; slack?: boolean; slackEvents?: boolean };
       };
       setItems(data.notifications ?? []);
       setUnread(data.unread ?? 0);
-      if (data.channels) setChannels({ email: data.channels.email === true, whatsapp: data.channels.whatsapp === true, whatsappTemplate: data.channels.whatsappTemplate === true, whatsappWebhook: data.channels.whatsappWebhook === true });
+      if (data.channels) setChannels({ email: data.channels.email === true, whatsapp: data.channels.whatsapp === true, whatsappTemplate: data.channels.whatsappTemplate === true, whatsappWebhook: data.channels.whatsappWebhook === true, slack: data.channels.slack === true, slackEvents: data.channels.slackEvents === true });
       setInboxError("");
     } catch {
       setInboxError("The inbox could not refresh. Retry to check for new notifications.");
@@ -372,6 +395,9 @@ export function NotificationBell({
                 <span className="inline-flex items-center gap-1">
                   <MessageCircle className="h-3 w-3" aria-hidden="true" /> WHATSAPP {channels.whatsappTemplate ? "LIVE" : channels.whatsapp ? "NO TEMPLATE" : "OFF"}
                 </span>
+                <span className="inline-flex items-center gap-1">
+                  <Hash className="h-3 w-3" aria-hidden="true" /> SLACK {channels.slack ? (slackMuted ? "MUTED" : "LIVE") : "OFF"}
+                </span>
               </div>
               <button type="button" onClick={loadLog} className="focus-brand inline-flex min-h-11 items-center rounded-md px-2 font-code text-[10px] font-bold tracking-[0.05em] text-brand-700 hover:underline">
                 {showLog ? "HIDE LOG" : "DELIVERY LOG"}
@@ -385,7 +411,21 @@ export function NotificationBell({
               <label className="inline-flex cursor-pointer items-center gap-1.5">
                 <input type="checkbox" checked={prefs.whatsapp} onChange={(e) => savePref("whatsapp", e.target.checked)} className="h-3.5 w-3.5 accent-[#b52b22]" /> WhatsApp
               </label>
+              <label className="inline-flex cursor-pointer items-center gap-1.5">
+                <input type="checkbox" checked={prefs.slack} onChange={(e) => savePref("slack", e.target.checked)} className="h-3.5 w-3.5 accent-[#b52b22]" /> Slack
+              </label>
             </div>
+            {prefs.slack ? (
+              <div className="mt-2 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-code text-[9px] font-bold tracking-[0.06em] text-ink-400">TEAM CHANNEL</span>
+                  <button type="button" onClick={saveSlackTest} disabled={slackTesting || !channels.slack} className="focus-brand min-h-9 rounded-md bg-ink-950 px-3 font-code text-[10px] font-bold tracking-[0.05em] text-white disabled:opacity-50">{slackTesting ? "POSTING…" : "SEND TEST"}</button>
+                </div>
+                <p role="status" className="text-[11px] leading-relaxed text-ink-500">
+                  {slackNote || (!channels.slack ? "Slack is not configured on this workspace yet — alerts stay in-app and are logged as skipped." : slackMuted ? "Slack alerts are muted in the channel. Type start in Slack (or /quorum start) to resume." : !channels.slackEvents ? "Slack can post alerts. Muting with stop / the /quorum command needs the Events API configured (SLACK_SIGNING_SECRET)." : "Slack posts once per event to the shared channel. Reply stop there to mute, start to resume. Approvals always happen on the desk.")}
+                </p>
+              </div>
+            ) : null}
             {prefs.whatsapp ? (
               <div className="mt-2 space-y-1">
                 <div className="flex flex-wrap items-center gap-2">

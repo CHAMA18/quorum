@@ -165,6 +165,12 @@ export function ApiView() {
         detail: channels?.whatsappTemplate === true ? "WhatsApp template alerts configured" : channels?.whatsapp === true ? "WhatsApp connected without an approved template — proactive alerts cannot send" : "WhatsApp not configured — sends are logged SKIPPED, never silent",
       },
       {
+        id: "slack",
+        label: "Slack alerts",
+        state: channels?.slack === true ? "online" : "warning",
+        detail: channels?.slack === true ? (channels?.slackEvents === true ? "Slack channel alerts + Events API configured" : "Slack can post alerts — Events API / stop-start not configured") : "Slack not configured — sends are logged SKIPPED, never silent",
+      },
+      {
         id: "r2",
         label: "Document storage (R2)",
         state: docsList?.ok ? "online" : "warning",

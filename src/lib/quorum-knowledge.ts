@@ -131,7 +131,7 @@ The supplier portal at /org is a separate account space. A supplier registers an
   {
     id: "notifications",
     title: "Notifications and clocks",
-    body: `Quorum keeps an in-app notification inbox with an unread count and deep links to the gate, tender or audit entry. Delivery attempts are recorded in a delivery log. Email goes through the configured Resend adapter; WhatsApp goes through the WhatsApp Business adapter (approved template + phone-number id + token; STOP/START handled by webhook) when configured — until then sends are logged as skipped, never silent. There is also an HMAC-authenticated sidecar-to-web notification webhook, so a gate or deadline event can be delivered without an external provider.
+    body: `Quorum keeps an in-app notification inbox with an unread count and deep links to the gate, tender or audit entry. Delivery attempts are recorded in a delivery log. Email goes through the configured Resend adapter; WhatsApp goes through the WhatsApp Business adapter (approved template + phone-number id + token; STOP/START handled by webhook) and Slack through the Slack app adapter (bot token + alert channel; stop/start in-channel and /quorum) when configured — until then sends are logged as skipped, never silent. There is also an HMAC-authenticated sidecar-to-web notification webhook, so a gate or deadline event can be delivered without an external provider.
 
 The cycle record carries statutory clocks: submissions closing, abnormally-low-bid responses, standstill periods, contract milestones and complaint responses. The assistant can read the current clocks and call out overdue ones. A notification is a prompt to act; it is never an approval.`,
   },

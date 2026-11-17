@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { countUnreadNotifications, listNotificationDeliveries } from "@/lib/db";
 import { whatsappStatus } from "@/lib/whatsapp";
+import { slackStatus } from "@/lib/slack";
 
 /** GET /api/notifications/deliveries — the signed-in officer's channel log. */
 export async function GET(req: NextRequest) {
@@ -16,6 +17,8 @@ export async function GET(req: NextRequest) {
       whatsapp: whatsappStatus().configured,
       whatsappTemplate: whatsappStatus().templateConfigured,
       whatsappWebhook: whatsappStatus().webhookConfigured,
+      slack: slackStatus().configured,
+      slackEvents: slackStatus().eventsConfigured,
     },
   });
 }

@@ -8,6 +8,7 @@ import {
 } from "@/lib/db";
 import { syncNotificationsForUser } from "@/lib/notifications";
 import { whatsappStatus } from "@/lib/whatsapp";
+import { slackStatus } from "@/lib/slack";
 
 /**
  * GET /api/notifications — the signed-in officer's inbox.
@@ -33,6 +34,8 @@ export async function GET(req: NextRequest) {
       whatsapp: whatsappStatus().configured,
       whatsappTemplate: whatsappStatus().templateConfigured,
       whatsappWebhook: whatsappStatus().webhookConfigured,
+      slack: slackStatus().configured,
+      slackEvents: slackStatus().eventsConfigured,
     },
   });
 }

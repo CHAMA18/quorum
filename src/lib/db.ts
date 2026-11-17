@@ -133,7 +133,7 @@ export interface NotificationRow {
   createdAt: Date;
 }
 
-export type DeliveryChannel = "email" | "whatsapp";
+export type DeliveryChannel = "email" | "whatsapp" | "slack";
 export type DeliveryStatus = "SENT" | "SKIPPED" | "FAILED";
 
 export interface NotificationDeliveryRow {

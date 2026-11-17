@@ -4,7 +4,7 @@ import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { getSetting, setSetting } from "@/lib/db";
 import { parsePrefs, prefsKey } from "@/lib/notification-prefs";
 
-const BodySchema = z.object({ email: z.boolean(), whatsapp: z.boolean() });
+const BodySchema = z.object({ email: z.boolean(), whatsapp: z.boolean(), slack: z.boolean().optional() });
 
 /** GET/POST /api/notifications/preferences — per-user outbound channel toggles. */
 export async function GET(request: NextRequest) {
