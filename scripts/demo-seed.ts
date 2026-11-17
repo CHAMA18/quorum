@@ -1,7 +1,8 @@
 /**
  * Live demo seed — three fully-populated tenders, fifteen supplier accounts,
- * five bids per tender, and one review run per tender that parks at the
- * human-approval gate.
+ * five bids per tender, a drafted tender notice with published evaluation
+ * criteria, and one review run per tender that parks at the human-approval
+ * gate.
  *
  * Everything goes through the same HTTP routes the demo will use: the
  * procurement-plan actions as the signed-in officer, the supplier portal as
@@ -32,6 +33,11 @@ type Tender = {
   closing: string;
   category: string;
   specification: string;
+  method: string;
+  contact: string;
+  technicalWeightPct: number;
+  procedure: string;
+  criteria: { title: string; weight: number; evidence: string; scoringMethod: string }[];
   suppliers: { name: string; amount: number; reg: string; pin: string; contact: string; phone: string; city: string; note: string }[];
 };
 
@@ -47,6 +53,16 @@ const TENDERS: Tender[] = [
     category: "Health commodities · pharmaceuticals",
     specification:
       "Supply of the 48-item essential medicines tracer list to Level 4–6 facilities across 12 counties; WHO-prequalified or PPB-registered products; validated cold chain for thermolabile items; quarterly delivery call-offs against a frame agreement.",
+    method: "Open competitive bidding (national)",
+    contact: "Procurement Secretariat, Division of Health Products and Technologies — tenders@health.go.ke · +254 20 271 7077",
+    technicalWeightPct: 60,
+    procedure:
+      "Bids are opened publicly at the closing time and examined in three stages: preliminary examination against the required documents, technical scoring against the published criteria, and financial comparison of technically compliant bids only. The lowest evaluated price receives the full financial weight. Kira's review is advisory evidence for the committee; the committee records the scores and the accounting officer approves the outcome.",
+    criteria: [
+      { title: "Regulatory standing and product prequalification", weight: 30, evidence: "PPB wholesaler licence, WHO prequalification or PPB registration certificate for each tracer item, and certificates of analysis for every quoted batch", scoringMethod: "Scored out of 30: full marks where every tracer item is WHO-prequalified or PPB-registered with batch analyses on file; a proportional deduction for each item without a certificate" },
+      { title: "Tracer-list coverage and cold-chain capability", weight: 30, evidence: "Price schedule covering all 48 tracer items, a validated cold-chain capability report, and a delivery plan for the 12 counties", scoringMethod: "Scored out of 30: 15 for complete tracer-list coverage and 15 for validated cold chain with a delivery plan for all 12 counties" },
+      { title: "Evaluated price", weight: 40, evidence: "Completed price schedule in KES, valid for 90 days from bid opening", scoringMethod: "The lowest evaluated price scores 40; every other compliant bid scores 40 multiplied by the lowest evaluated price divided by its own evaluated price" },
+    ],
     suppliers: [
       { name: "Savanna Pharma Distributors Ltd", amount: 598_400_000, reg: "PVT-KE-2016-88421", pin: "P051882734Q", contact: "Amina Wanjiku Otieno", phone: "+254722145880", city: "Nairobi", note: "PPB wholesaler licence held for all twelve counties; cold-chain fleet with 14 validated vehicles; WHO prequalified source manufacturers." },
       { name: "Equatorial Medicines Supply Ltd", amount: 612_250_000, reg: "PVT-KE-2014-55190", pin: "P051447290M", contact: "Joseph Kariuki Mwangi", phone: "+254733908214", city: "Nakuru", note: "Full tracer list quoted; two thermolabile lines offered from a PPB-registered secondary source; cold-chain capability report attached." },
@@ -66,6 +82,16 @@ const TENDERS: Tender[] = [
     category: "Water infrastructure · pumping equipment",
     specification:
       "Supply, install and commission solar submersible borehole pumps across three lots (Lot 1: 6 units, Lot 2: 9 units, Lot 3: 12 units); pump test certificates per unit; five-year warranty; WRA-registered installer required.",
+    method: "Open competitive bidding (national)",
+    contact: "Procurement Office, Water Resources Authority — procurement@wra.go.ke · +254 20 271 6030",
+    technicalWeightPct: 70,
+    procedure:
+      "Bids are opened publicly at the closing time and examined in two stages before price comparison: preliminary examination against the required documents, then technical scoring against the published criteria. Only bids reaching the technical threshold proceed to financial evaluation. Kira's review is advisory evidence for the committee; the committee records the scores and the accounting officer approves the outcome.",
+    criteria: [
+      { title: "Pump specification and test certification", weight: 35, evidence: "Pump test certificates for each unit, manufacturer datasheets against the published duty points, and the five-year warranty terms", scoringMethod: "Scored out of 35 against the published duty points for each lot; a unit without a test certificate scores zero for that lot" },
+      { title: "Installation capacity and statutory registration", weight: 35, evidence: "Water Resources Authority installer registration, the installation methodology and a commissioning plan for all three lots", scoringMethod: "Scored out of 35: 20 for WRA-registered installation capacity and 15 for a commissioning plan covering every lot" },
+      { title: "Evaluated price", weight: 30, evidence: "Lot-by-lot price schedule in KES, valid for 90 days from bid opening", scoringMethod: "The lowest evaluated price scores 30; every other compliant bid scores 30 multiplied by the lowest evaluated price divided by its own evaluated price" },
+    ],
     suppliers: [
       { name: "Aqua Dynamics Engineering Ltd", amount: 7_640_000, reg: "PVT-KE-2013-33820", pin: "P051226610H", contact: "Grace Njeri Kamau", phone: "+254701882744", city: "Nairobi", note: "All three lots quoted; pump test certificates and manufacturer warranty letter attached; in-house WRA-registered installation crew." },
       { name: "Rift Pumps & Boreholes Ltd", amount: 7_980_000, reg: "PVT-KE-2017-90214", pin: "P051773019B", contact: "Peter Omondi Ochieng", phone: "+254726551900", city: "Kisumu", note: "Lots 1 and 2 quoted; Lot 3 offered with an alternative impeller material (AISI 316 stainless) at the same price." },
@@ -85,6 +111,16 @@ const TENDERS: Tender[] = [
     category: "Education supplies · furniture and laboratory equipment",
     specification:
       "Supply and install 6,000 two-seater student desks and 40 physics laboratory kits across 40 secondary schools in eight counties; ISO 9001-manufactured furniture; manufacturer authorization for laboratory kits; installation within 90 days of contract signature.",
+    method: "Open competitive bidding (national)",
+    contact: "Procurement Unit, State Department for Basic Education — tenders@education.go.ke · +254 20 318 5812",
+    technicalWeightPct: 60,
+    procedure:
+      "Bids are opened publicly at the closing time and examined in three stages: preliminary examination against the required documents, technical scoring against the published criteria, and financial comparison of technically compliant bids only. The lowest evaluated price receives the full financial weight. Kira's review is advisory evidence for the committee; the committee records the scores and the accounting officer approves the outcome.",
+    criteria: [
+      { title: "Manufacturing quality and manufacturer authorization", weight: 30, evidence: "ISO 9001 certificate and a manufacturer authorization letter covering every quoted laboratory kit", scoringMethod: "Scored out of 30: 15 for a current ISO 9001 certificate and 15 for manufacturer authorization covering every quoted kit" },
+      { title: "Scope coverage and installation plan", weight: 30, evidence: "Bill of quantities for 6,000 desks and 40 kits, with an installation schedule for 40 schools in eight counties", scoringMethod: "Scored out of 30: 15 for complete scope coverage and 15 for an installation schedule inside 90 days of contract signature" },
+      { title: "Evaluated price", weight: 40, evidence: "Completed price schedule in KES, valid for 90 days from bid opening", scoringMethod: "The lowest evaluated price scores 40; every other compliant bid scores 40 multiplied by the lowest evaluated price divided by its own evaluated price" },
+    ],
     suppliers: [
       { name: "Lakeshore Educational Supplies Ltd", amount: 86_400_000, reg: "PVT-KE-2012-20981", pin: "P051034472L", contact: "Beatrice Achieng Odhiambo", phone: "+254705118349", city: "Kisumu", note: "6,000 desks and all 40 kits quoted; ISO 9001 certificate and manufacturer authorization letter attached." },
       { name: "Rift Valley Lab Equipment Ltd", amount: 88_900_000, reg: "PVT-KE-2018-66450", pin: "P051889220C", contact: "Simon Kiprono Cheruiyot", phone: "+254738004711", city: "Nakuru", note: "Laboratory kits fully specified; desk supply offered from a subcontracted workshop without a manufacturer authorization letter." },
@@ -382,6 +418,67 @@ async function seedSuppliers(t: Tender) {
   }
 }
 
+async function draftNotice(t: Tender, officer: Cookie) {
+  log(`\n▸ ${t.ref} — tender notice`);
+  const cycleRead = await call(`/api/cycle${JP}`, { cookie: judge });
+  const cycle = (cycleRead.data.cycles ?? []).find((c: any) => c.tenderId === t.ref);
+  const existing = (cycle?.notices ?? []).at(-1);
+  /* The workspace jurisdiction supplies the evaluation currency and FX basis
+     when the draft does not state them, which is why a Kenyan tender seeded in
+     a Zambian-era workspace read ZMW. A draft still carrying that stamp is
+     replaced by a corrected one on the next run. */
+  const stale =
+    !!existing &&
+    !existing.issuedAt &&
+    (!existing.md.includes(`**Evaluation currency:** ${t.currency}`) || existing.md.includes("**FX basis:** NOT STATED"));
+  if (existing && !stale) {
+    skip(`notice ${existing.id} already on record${existing.issuedAt ? " (issued)" : " (draft)"}`);
+    return;
+  }
+  if (stale) warn(`notice ${existing.id} carried the workspace default currency — drafting a corrected revision`);
+
+  /* The notice is generated from the specification, so the evaluation criteria
+     have to be on the file before the notice is drafted — otherwise the
+     criteria table in the notice is empty and it cannot be issued. */
+  const criteria = await call(`/api/tenders/${t.ref}/specs/criteria${JP}`, {
+    cookie: officer,
+    body: { criteria: t.criteria, procedure: t.procedure },
+  });
+  if (criteria.status >= 400) {
+    warn(`evaluation criteria refused (${criteria.status}) ${JSON.stringify(criteria.data).slice(0, 220)}`);
+    return;
+  }
+  ok(`${t.criteria.length} evaluation criteria recorded in the specification (${t.criteria.map((c) => c.weight).join(" / ")})`);
+
+  const market = await call(`/api/marketplace${JP}`, { cookie: judge });
+  const row = (market.data.tenders ?? []).find((r: any) => r.ref === t.ref);
+  const requiredDocs: string[] = row?.requiredDocuments ?? [];
+
+  const drafted = await call(`/api/tenders/${t.ref}/notices/draft${JP}`, {
+    cookie: officer,
+    body: {
+      buyer: t.buyer,
+      subject: t.title,
+      method: t.method,
+      contact: t.contact,
+      closingDate: t.closing,
+      ceiling: `${t.currency} ${t.ceiling.toLocaleString("en-US")}`,
+      technicalWeightPct: t.technicalWeightPct,
+      evaluationCurrency: t.currency,
+      fxBasis: `${t.currency} is the evaluation currency; any figure quoted in another currency is converted at the Central Bank mean rate for the bid opening date`,
+      requiredDocs,
+    },
+  });
+  if (drafted.status !== 201) {
+    warn(`notice draft refused (${drafted.status}) ${JSON.stringify(drafted.data).slice(0, 260)}`);
+    return;
+  }
+  const notice = drafted.data.notice ?? drafted.data;
+  const missing = (notice.fieldCheck ?? []).filter((field: any) => !field.present).map((field: any) => field.field);
+  if (missing.length) warn(`draft ${notice.id} is missing mandatory fields: ${missing.join(", ")}`);
+  else ok(`notice ${notice.id} drafted with every mandatory field (${requiredDocs.length} required documents, ${notice.md.length} chars)`);
+}
+
 async function launchReview(t: Tender, officer: Cookie) {
   log(`\n▸ ${t.ref} — review run`);
   const runs = await call(`/api/runs${JP}`, { cookie: judge });
@@ -440,6 +537,7 @@ ok(`signed in as ${OFFICER.email} (prepares reviews so four eyes holds at approv
 for (const tender of TENDERS) {
   await planTender(tender);
   await seedSuppliers(tender);
+  await draftNotice(tender, officer);
 }
 
 for (const tender of TENDERS) {
