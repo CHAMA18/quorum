@@ -479,6 +479,79 @@ async function draftNotice(t: Tender, officer: Cookie) {
   else ok(`notice ${notice.id} drafted with every mandatory field (${requiredDocs.length} required documents, ${notice.md.length} chars)`);
 }
 
+/** A bid document for one supplier, in the pack's convention: the stated
+ *  "**Bidder:**" line is what the register, matrix and review agree on. */
+function bidDocument(t: Tender, s: Tender["suppliers"][number]): string {
+  return [
+    `# BID — ${s.name}`,
+    "",
+    `**Reference:** ${t.ref}`,
+    `**Bidder:** ${s.name}`,
+    `**Bid value:** ${t.currency} ${s.amount.toLocaleString("en-US")}`,
+    "",
+    "## Documents enclosed",
+    "",
+    ...(t.ref === "KE-MOH-2026-117"
+      ? ["- PPB wholesaler licence — current", "- WHO prequalification or PPB registration certificates", "- Certificate of analysis — samples for the quoted batches", "- Cold-chain capability report", "- Tax compliance certificate — current"]
+      : t.ref === "KE-WRA-2026-058"
+        ? ["- Pump test certificate — one per unit", "- Manufacturer warranty letter — five years", "- Water Resources Authority registration", "- Tax compliance certificate — current"]
+        : ["- ISO 9001 certificate", "- Manufacturer authorization letter — laboratory kits", "- Tax compliance certificate — current"]),
+    "",
+    "## Declarations",
+    "",
+    s.note,
+    `The bidder shall maintain the quoted price for 90 days from bid opening.`,
+    "No deviations from the technical specification are offered beyond those stated above.",
+    "",
+  ].join("\n");
+}
+
+async function normalisePack(t: Tender, officer: Cookie) {
+  log(`\n▸ ${t.ref} — bid pack`);
+  const prune = await call(`/api/tenders/${t.ref}/pack/prune${JP}`, { cookie: officer, method: "POST", body: {} });
+  if (prune.status >= 400) {
+    warn(`pack prune refused (${prune.status}) ${JSON.stringify(prune.data).slice(0, 200)}`);
+    return;
+  }
+  const removed: string[] = prune.data.removed ?? [];
+  const staged = new Set<string>((prune.data.bidders ?? []).map((name: string) => name.trim().toLowerCase()));
+  if (removed.length) ok(`withdrew ${removed.length} staged bid file(s) that were not on the certified register`);
+
+  for (const s of t.suppliers) {
+    if (staged.has(s.name.trim().toLowerCase())) {
+      skip(`${s.name}: bid document already in the pack`);
+      continue;
+    }
+    const form = new FormData();
+    const slug = s.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    form.append("file", new Blob([bidDocument(t, s)], { type: "text/markdown" }), `bid-${slug}.md`);
+    const put = await fetch(`${BASE}/api/tenders/${t.ref}/docs`, { method: "POST", headers: { cookie: officer }, body: form });
+    const body = (await put.json().catch(() => ({}))) as any;
+    if (!put.ok || body.staged !== true) {
+      warn(`${s.name}: bid document not staged (${put.status}) ${JSON.stringify(body).slice(0, 180)}`);
+      continue;
+    }
+    ok(`${s.name}: bid document staged as ${body.files?.[0] ?? body.key}`);
+  }
+}
+
+async function buildMatrix(t: Tender, officer: Cookie) {
+  log(`\n▸ ${t.ref} — evaluation matrix`);
+  const res = await call(`/api/tenders/${t.ref}/matrix${JP}`, {
+    cookie: officer,
+    body: { technicalWeightPct: t.technicalWeightPct, criteria: t.criteria.map(({ title, weight }) => ({ title, weight })) },
+  });
+  if (res.status === 201) {
+    ok(`matrix ${res.data.matrix?.id ?? ""} built from the issued notice (${t.criteria.length} criteria)`);
+    return;
+  }
+  if (/already exists/i.test(JSON.stringify(res.data))) {
+    skip("matrix already on record — the published basis is immutable");
+    return;
+  }
+  warn(`matrix not built (${res.status}) ${JSON.stringify(res.data).slice(0, 240)}`);
+}
+
 async function launchReview(t: Tender, officer: Cookie) {
   log(`\n▸ ${t.ref} — review run`);
   const runs = await call(`/api/runs${JP}`, { cookie: judge });
@@ -538,6 +611,11 @@ for (const tender of TENDERS) {
   await planTender(tender);
   await seedSuppliers(tender);
   await draftNotice(tender, officer);
+  await normalisePack(tender, officer);
+}
+
+for (const tender of TENDERS) {
+  await buildMatrix(tender, officer);
 }
 
 for (const tender of TENDERS) {

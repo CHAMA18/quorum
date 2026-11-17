@@ -80,7 +80,7 @@ import { createSitting, endSitting, recordAttendance } from "./sittings";
 import { forwardWebEvent } from "./audit-forward";
 import { normalizeDeployment, registeredConnector } from "./store";
 import { disabledPortalIds, loadPortalState, setPortalsEnabled } from "./portal-state";
-import { mkdirSync, writeFileSync, existsSync } from "node:fs";
+import { mkdirSync, writeFileSync, existsSync, unlinkSync } from "node:fs";
 import { loadPack, TENDERS_DIR } from "./engine";
 import { getRuntimeModelOverride, modelAttributionForRun, modelStatus, setRuntimeModelOverride } from "./model";
 import { residencyFromEnv } from "./model-gateway";
@@ -1502,6 +1502,54 @@ Bun.serve({
         durationMs: 0,
       });
       return json({ run }, 201);
+    }
+
+    /* Withdraw staged bid documents that never reached the certified opening
+       register. The register is the authoritative list of who bid, so a pack
+       file naming anyone else is a leftover from staging, not a bid: it makes
+       the matrix refuse the whole tender and nobody can remove it otherwise.
+       Only `NN-bid-<slug>.md` files are touched, never the notice, and every
+       withdrawal writes its own audit line. */
+    if (/^\/api\/tenders\/[A-Za-z0-9._-]+\/pack\/prune$/.test(path) && req.method === "POST") {
+      const tenderId = decodeURIComponent(path.match(/^\/api\/tenders\/([A-Za-z0-9._-]+)\/pack\/prune$/)![1]);
+      const cycle = state.cycle.find((c) => c.tenderId === tenderId && (c.workspaceId ?? "demo") === currentWorkspaceId());
+      const opening = cycle?.opening;
+      if (!opening?.certifiedAt) {
+        return json({ error: "a certified bid opening register is required before the staged pack can be pruned" }, 409);
+      }
+      const registered = new Set((opening.rows ?? []).map((row) => row.bidder.trim().toLowerCase()));
+      const { pack } = await loadPack(tenderId);
+      const removed: string[] = [];
+      const kept: string[] = [];
+      const stagedBidders: string[] = [];
+      for (const bid of pack.bids) {
+        if (registered.has(bid.bidder.trim().toLowerCase())) {
+          kept.push(bid.source);
+          stagedBidders.push(bid.bidder);
+          continue;
+        }
+        if (!/^\d+-bid-.+\.md$/i.test(bid.source)) continue;
+        try {
+          unlinkSync(TENDERS_DIR + tenderId + "/" + bid.source);
+          removed.push(bid.source);
+        } catch {
+          /* a file already gone is not a failure to report */
+        }
+      }
+      if (removed.length) {
+        appendLog({
+          actor: attestedActor || "web-app",
+          server: "quorum-mcp",
+          tool: "tender_pack_prune",
+          kind: "WRITES",
+          runId: "cycle",
+          inputs: { tenderId, register: opening.id },
+          outputs: { removed, kept },
+          status: "OK",
+          durationMs: 0,
+        });
+      }
+      return json({ removed, kept, bidders: stagedBidders });
     }
 
     /* Stage manual tender documents — the typed entries become real files the
