@@ -4719,6 +4719,38 @@ export async function handleCycleRoutes(
       return json({ error: (err as Error).message }, 422);
     }
   }
+  /* Drop notice drafts that a later notice has replaced. A draft that was
+     never issued carries no decision, but it stays in the file and is read as
+     a live notice by anyone scanning the list — a superseded draft stating the
+     wrong currency is worse than no draft at all. The latest notice is always
+     kept, and an issued notice is never removed: that is the publication. */
+  if (/^\/api\/tenders\/[A-Za-z0-9._-]+\/notices\/prune$/.test(path) && mustPost()) {
+    const ref = tenderRef(/^\/api\/tenders\/([A-Za-z0-9._-]+)\/notices\/prune$/);
+    const cycle = cycleFor(ref);
+    const notices = cycle.notices ?? [];
+    if (!notices.length) return json({ removed: [], kept: [] });
+    const latest = notices[notices.length - 1];
+    const superseded = notices.filter((notice) => notice !== latest && !notice.issuedAt);
+    if (superseded.length) {
+      cycle.notices = notices.filter((notice) => notice === latest || notice.issuedAt);
+      saveState();
+      appendLog({
+        actor: attestedActor || "web-app",
+        server: "quorum-mcp",
+        tool: "notice_prune_superseded",
+        kind: "WRITES",
+        runId: "cycle",
+        inputs: { tenderId: ref },
+        outputs: { removed: superseded.map((notice) => ({ id: notice.id, reference: notice.reference })), kept: cycle.notices.map((notice) => notice.id) },
+        status: "OK",
+        durationMs: 0,
+      });
+    }
+    return json({
+      removed: superseded.map((notice) => ({ id: notice.id, reference: notice.reference })),
+      kept: cycle.notices.map((notice) => ({ id: notice.id, reference: notice.reference, issued: !!notice.issuedAt })),
+    });
+  }
   if (/^\/api\/tenders\/[A-Za-z0-9._-]+\/addenda$/.test(path) && mustPost()) {
     const ref = tenderRef(/^\/api\/tenders\/([A-Za-z0-9._-]+)\/addenda$/);
     if (!str(body.summary).trim()) return json({ error: "summary is required" }, 422);
