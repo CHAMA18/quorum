@@ -4,6 +4,7 @@ import { getUserFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { getSetting, setSetting, setUserPhone } from "@/lib/db";
 import { parsePrefs, prefsKey } from "@/lib/notification-prefs";
 import { normalizeWhatsAppNumber, whatsappStatus } from "@/lib/whatsapp";
+import { watiStatus } from "@/lib/whatsapp-wati";
 
 /**
  * GET /api/notifications/whatsapp — the signed-in officer's WhatsApp state:
@@ -21,9 +22,12 @@ export async function GET(req: NextRequest) {
   const prefs = parsePrefs(getSetting(prefsKey(user.id)));
   return NextResponse.json({
     status: whatsappStatus(),
+    wati: watiStatus(),
     phone: user.phone ?? "",
     optedIn: prefs.whatsapp,
-    ready: Boolean(whatsappStatus().templateConfigured && user.phone && prefs.whatsapp),
+    ready: Boolean(
+      (whatsappStatus().templateConfigured || watiStatus().configured) && user.phone && prefs.whatsapp,
+    ),
   });
 }
 
@@ -62,5 +66,6 @@ export async function PATCH(req: NextRequest) {
     phone: savedPhone,
     optedIn: prefs.whatsapp,
     status: whatsappStatus(),
+    wati: watiStatus(),
   });
 }

@@ -11,6 +11,13 @@ import {
   whatsappConfigFromEnv,
 } from "@/lib/whatsapp";
 import {
+  WATI_SEND_URL,
+  buildWatiPayload,
+  isWatiConfigured,
+  parseWatiSendResponse,
+  watiConfigFromEnv,
+} from "@/lib/whatsapp-wati";
+import {
   SLACK_MUTED_KEY,
   SLACK_POST_MESSAGE_URL,
   buildSlackPayload,
@@ -172,12 +179,49 @@ async function sendWhatsApp(
   to: string,
   n: NotificationRow,
 ): Promise<{ status: "SENT" | "SKIPPED" | "FAILED"; detail: string; providerMessageId?: string }> {
-  const cfg = whatsappConfigFromEnv();
-  if (!isWhatsAppConfigured(cfg)) {
-    return { status: "SKIPPED", detail: "WHATSAPP_TOKEN / WHATSAPP_PHONE_NUMBER_ID are not configured." };
-  }
   const number = normalizeWhatsAppNumber(to);
   if (!number) return { status: "SKIPPED", detail: "The account has no usable phone number." };
+  /* Wati is the preferred sender when configured — it carries the same
+   * approved-template semantics (quorum_alert) over the account's
+   * connected WhatsApp number. The Meta adapter stays as the fallback. */
+  const watiCfg = watiConfigFromEnv();
+  if (isWatiConfigured(watiCfg)) {
+    const localMessageId = `quorum-${n.id}`;
+    try {
+      const res = await fetch(WATI_SEND_URL(watiCfg), {
+        method: "POST",
+        headers: { authorization: `Bearer ${watiCfg.token}`, "content-type": "application/json" },
+        body: JSON.stringify(
+          buildWatiPayload(
+            watiCfg,
+            number,
+            { headline: plainTitle(n.title), summary: n.body, url: notificationUrl(n) },
+            localMessageId,
+          ),
+        ),
+        signal: AbortSignal.timeout(8000),
+      });
+      const data = (await res.json().catch(() => ({}))) as unknown;
+      const parsed = res.ok ? parseWatiSendResponse(data) : { ok: false, error: `Wati HTTP ${res.status}` };
+      if (!parsed.ok) {
+        return { status: "FAILED", detail: `Wati send failed: ${parsed.error ?? "unknown error"}` };
+      }
+      return {
+        status: "SENT",
+        detail: `Wati template ${watiCfg.templateName} accepted (${parsed.messageId ?? "no id"}).`,
+        ...(parsed.messageId ? { providerMessageId: parsed.messageId } : {}),
+      };
+    } catch (e) {
+      return { status: "FAILED", detail: `Wati request failed: ${(e as Error).message}` };
+    }
+  }
+  const cfg = whatsappConfigFromEnv();
+  if (!isWhatsAppConfigured(cfg)) {
+    return {
+      status: "SKIPPED",
+      detail: "No WhatsApp sender configured (WATI_API_TOKEN/WATI_TEMPLATE_NAME, or WHATSAPP_TOKEN/WHATSAPP_PHONE_NUMBER_ID).",
+    };
+  }
   const payload = buildWhatsAppPayload(cfg, number, {
     headline: plainTitle(n.title),
     summary: n.body,
